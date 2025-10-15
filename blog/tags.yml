@@ -1,19 +1,29 @@
-facebook:
-  label: Facebook
-  permalink: /facebook
-  description: Facebook tag description
+tokenring:
+  label: TokenRing
+  permalink: /tokenring
+  description: TokenRing AI ecosystem
 
-hello:
-  label: Hello
-  permalink: /hello
-  description: Hello tag description
+ai:
+  label: AI
+  permalink: /ai
+  description: Artificial Intelligence
 
-docusaurus:
-  label: Docusaurus
-  permalink: /docusaurus
-  description: Docusaurus tag description
+coding-assistant:
+  label: Coding Assistant
+  permalink: /coding-assistant
+  description: AI-powered coding tools
 
-hola:
-  label: Hola
-  permalink: /hola
-  description: Hola tag description
+announcement:
+  label: Announcement
+  permalink: /announcement
+  description: Product announcements
+
+writing:
+  label: Writing
+  permalink: /writing
+  description: Content writing and creation
+
+content-creation:
+  label: Content Creation
+  permalink: /content-creation
+  description: Content creation tools

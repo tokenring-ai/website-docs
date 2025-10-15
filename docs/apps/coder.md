@@ -154,12 +154,11 @@ bun run coder
 
 ## License
 
-MIT License - see [LICENSE](LICENSE) for details.
+MIT License
 
 ## Support
 
-- Check the [documentation](docs/) for detailed guides
-- Review package-specific READMEs in `pkg/*/README.md`
+- Check the [plugin documentation](/docs/plugins/overview) for detailed guides
 - Open an issue for bugs or feature requests
 
 ---
