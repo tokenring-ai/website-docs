@@ -27,3 +27,88 @@ content-creation:
   label: Content Creation
   permalink: /content-creation
   description: Content creation tools
+
+plugins:
+  label: Plugins
+  permalink: /plugins
+  description: TokenRing plugins and extensions
+
+database:
+  label: Database
+  permalink: /database
+  description: Database integrations
+
+cloud:
+  label: Cloud
+  permalink: /cloud
+  description: Cloud services and storage
+
+storage:
+  label: Storage
+  permalink: /storage
+  description: Data storage solutions
+
+sandbox:
+  label: Sandbox
+  permalink: /sandbox
+  description: Isolated execution environments
+
+security:
+  label: Security
+  permalink: /security
+  description: Security features and tools
+
+web-search:
+  label: Web Search
+  permalink: /web-search
+  description: Web search and scraping
+
+tasks:
+  label: Tasks
+  permalink: /tasks
+  description: Task management and workflows
+
+workflow:
+  label: Workflow
+  permalink: /workflow
+  description: Workflow automation
+
+mcp:
+  label: MCP
+  permalink: /mcp
+  description: Model Context Protocol
+
+integration:
+  label: Integration
+  permalink: /integration
+  description: Third-party integrations
+
+audio:
+  label: Audio
+  permalink: /audio
+  description: Audio and voice features
+
+voice:
+  label: Voice
+  permalink: /voice
+  description: Voice interaction
+
+state:
+  label: State
+  permalink: /state
+  description: State management
+
+checkpoint:
+  label: Checkpoint
+  permalink: /checkpoint
+  description: Checkpoint and persistence
+
+scripting:
+  label: Scripting
+  permalink: /scripting
+  description: Scripting and automation
+
+automation:
+  label: Automation
+  permalink: /automation
+  description: Workflow automation
