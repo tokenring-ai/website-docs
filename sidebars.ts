@@ -25,6 +25,40 @@ const sidebars: SidebarsConfig = {
     },
     {
       type: 'category',
+      label: 'Agents',
+      items: [
+        'agents/overview',
+        {
+          type: 'category',
+          label: 'Writing Agents',
+          items: [
+            'agents/content-writer',
+            'agents/managing-editor',
+          ],
+        },
+        {
+          type: 'category',
+          label: 'Coding Agents',
+          items: [
+            'agents/interactive-code-agent',
+            'agents/team-leader',
+            'agents/product-manager',
+            'agents/system-architect',
+            'agents/full-stack-developer',
+            'agents/frontend-design',
+            'agents/backend-design',
+            'agents/api-designer',
+            'agents/database-design',
+            'agents/test-engineer',
+            'agents/security-review',
+            'agents/devops-engineer',
+            'agents/documentation-engineer',
+          ],
+        },
+      ],
+    },
+    {
+      type: 'category',
       label: 'Plugins',
       items: [
         'plugins/overview',
@@ -65,9 +99,11 @@ const sidebars: SidebarsConfig = {
         'plugins/scraperapi',
         'plugins/scripting',
         'plugins/serper',
+        'plugins/slack',
         'plugins/sqlite-storage',
         'plugins/tasks',
         'plugins/template',
+        'plugins/telegram',
         'plugins/testing',
         'plugins/utility',
         'plugins/vault',

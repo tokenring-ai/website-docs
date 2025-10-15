@@ -15,14 +15,38 @@ TokenRing Writer (tr-writer) provides a powerful interface where you can create,
 - **Research capabilities**: Built-in web search and Wikipedia integration for content research
 - **File system integration**: Direct integration with local and cloud file systems
 
+## Available Agents
+
+TokenRing Writer includes specialized AI agents for different content creation workflows:
+
+- **Content Writer**: Expert content writer specializing in creating engaging, well-structured articles and blog posts. Excels at research, storytelling, and adapting writing style to different audiences.
+- **Managing Editor**: Coordinates content creation by searching for trending news topics, evaluating newsworthiness, creating article assignments, and dispatching tasks to specialized writing agents.
+
 ## Getting Started
+
+### Quick Start (NPM)
+
+Run directly using npx without installation:
+
+```bash
+npx @tokenring-ai/writer --source ./path-to-your-content --initialize
+```
+
+### Quick Start (Docker)
+
+Pull and run from GitHub Container Registry:
+
+```bash
+docker pull ghcr.io/tokenring-ai/writer:latest
+docker run -ti --net host $(env | grep '_KEY' | sed 's/^/-e /') -v ./path-to-your-content:/repo:rw ghcr.io/tokenring-ai/writer:latest
+```
 
 ### Prerequisites
 
-- Bun
+- Bun (for local development)
 - Git initialized content directory
 
-### Installation (local)
+### Installation (local development)
 
 1. **Sync git submodules**: This project uses git submodules that need to be initialized and updated before installation:
    ```bash
@@ -56,6 +80,18 @@ TokenRing Writer (tr-writer) provides a powerful interface where you can create,
    ```bash
    docker run -ti --net host $(env | grep '_KEY' | sed 's/^/-e /') -v ./:/repo:rw token-ring/writer:latest
    ```
+
+#### Container Registry
+
+The Docker image is automatically built and published to GitHub Container Registry on version tags. Available tags:
+
+- `latest`: Latest stable release
+- `v*.*.*`: Specific version tags
+- `main`: Latest build from main branch
+
+```bash
+docker pull ghcr.io/tokenring-ai/writer:latest
+```
 
 ### Initialization
 
