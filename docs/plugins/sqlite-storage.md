@@ -23,9 +23,18 @@ Implements `AgentCheckpointProvider` for SQLite-based checkpoint management.
 
 **Constructor:**
 ```typescript
-new SQLiteAgentStateStorage({ db: Database })
+new SQLiteAgentStateStorage({ 
+  databasePath: string,
+  busyTimeout?: number,
+  maxRetries?: number,
+  retryDelayMs?: number
+})
 ```
-- Parameters: `{ db }` - A Bun SQLite database instance
+- Parameters:
+  - `databasePath` (required): Path to the SQLite database file
+  - `busyTimeout` (optional): SQLite busy timeout in ms (default: 5000)
+  - `maxRetries` (optional): Max retry attempts for busy database (default: 3)
+  - `retryDelayMs` (optional): Base delay between retries in ms (default: 100)
 
 **Key Methods:**
 
@@ -67,15 +76,20 @@ CREATE TABLE IF NOT EXISTS AgentState (
 ### Basic Initialization and Storage
 
 ```typescript
-import Database from 'bun:sqlite';
-import initializeLocalDatabase from '@tokenring-ai/sqlite-storage/db/initializeLocalDatabase';
 import SQLiteAgentStateStorage from '@tokenring-ai/sqlite-storage';
 
-// Initialize database
-const db = initializeLocalDatabase('./agent_state.db');
+// Create storage instance with default options
+const storage = new SQLiteAgentStateStorage({ 
+  databasePath: './agent_state.db' 
+});
 
-// Create storage instance
-const storage = new SQLiteAgentStateStorage({ db });
+// Or with custom configuration
+const storage = new SQLiteAgentStateStorage({ 
+  databasePath: './agent_state.db',
+  busyTimeout: 10000,
+  maxRetries: 5,
+  retryDelayMs: 200
+});
 
 // Store a checkpoint
 const checkpoint = {
@@ -105,11 +119,13 @@ console.log('Checkpoints:', list);
 ### Full Workflow
 
 ```typescript
-import { NamedAgentCheckpoint } from '@tokenring-ai/agent/AgentCheckpointProvider';
+import { NamedAgentCheckpoint } from '@tokenring-ai/checkpoint/AgentCheckpointProvider';
+import SQLiteAgentStateStorage from '@tokenring-ai/sqlite-storage';
 
 async function agentWorkflow() {
-  const db = initializeLocalDatabase('./myapp.db');
-  const storage = new SQLiteAgentStateStorage({ db });
+  const storage = new SQLiteAgentStateStorage({ 
+    databasePath: './myapp.db' 
+  });
 
   // Store initial state
   await storage.storeCheckpoint({
@@ -134,14 +150,27 @@ async function agentWorkflow() {
 
 ## Configuration Options
 
-- **Database File Path**: Specify path when calling `initializeLocalDatabase` (e.g., `./data/agent.db`)
-- **No environment variables**: All configuration via database instance
-- **Error Handling**: Uses Bun SQLite's built-in error propagation; wrap in try-catch for production
+The `SQLiteAgentStateStorage` constructor accepts the following configuration:
+
+- **databasePath** (required): `string` – Path to the SQLite database file (e.g., `./data/agent.db`)
+- **busyTimeout** (optional): `number` – SQLite busy timeout in milliseconds (default: 5000)
+- **maxRetries** (optional): `number` – Maximum retry attempts for SQLITE_BUSY errors (default: 3)
+- **retryDelayMs** (optional): `number` – Base delay between retries in milliseconds (default: 100)
+
+**Concurrency Features:**
+- WAL (Write-Ahead Logging) mode automatically enabled
+- Automatic retry logic with exponential backoff for busy database
+- Configurable busy timeout and retry parameters
+
+**Error Handling:**
+- Automatically retries on SQLITE_BUSY errors up to `maxRetries` times
+- Throws error after max retries exceeded
+- Wrap operations in try-catch for production use
 
 ## API Reference
 
 ### SQLiteAgentStateStorage (implements AgentCheckpointProvider)
-- `constructor({ db }: { db: Database })`
+- `constructor({ databasePath, busyTimeout?, maxRetries?, retryDelayMs? })`
 - `storeCheckpoint(checkpoint: NamedAgentCheckpoint): Promise<string>`
 - `retrieveCheckpoint(agentId: string): Promise<StoredAgentCheckpoint | null>`
 - `listCheckpoints(): Promise<AgentCheckpointListItem[]>`
@@ -163,7 +192,8 @@ async function agentWorkflow() {
 ## Notes
 
 - Requires Bun runtime for `bun:sqlite`
-- Single-file database; consider WAL mode for concurrency: `db.exec('PRAGMA journal_mode=WAL;')`
+- WAL mode automatically enabled for better concurrency
+- Automatic retry logic handles database busy scenarios
 - State must be JSON-serializable
 - Text/JSON only; binary states not supported
 - Auto-increment IDs for checkpoints
