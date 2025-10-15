@@ -1,5 +1,5 @@
 {
-  "name": "tokenring-docs",
+  "name": "@tokenring-ai/website-docs",
   "version": "0.0.0",
   "private": true,
   "scripts": {
