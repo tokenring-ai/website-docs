@@ -30,7 +30,7 @@ const sidebars: SidebarsConfig = {
         'agents/overview',
         {
           type: 'category',
-          label: 'Writing Agents',
+          label: 'Content Agents',
           items: [
             'agents/content-writer',
             'agents/managing-editor',
