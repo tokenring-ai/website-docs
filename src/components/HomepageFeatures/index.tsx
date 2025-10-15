@@ -11,6 +11,26 @@ type FeatureItem = {
 
 const FeatureList: FeatureItem[] = [
   {
+    title: 'TokenRing Coder',
+    emoji: '💻',
+    description: (
+      <>
+        AI-powered coding assistant for software development. Edit, refactor, test,
+        and commit code with integrated git operations and automated testing.
+      </>
+    ),
+  },
+  {
+    title: 'TokenRing Writer',
+    emoji: '✍️',
+    description: (
+      <>
+        Unified platform for content creation and publishing. Research, write, and
+        publish articles with WordPress, Ghost.io, and NewsRPM integration.
+      </>
+    ),
+  },
+  {
     title: 'Multiple AI Providers',
     emoji: '🤖',
     description: (
@@ -21,12 +41,12 @@ const FeatureList: FeatureItem[] = [
     ),
   },
   {
-    title: 'Code Operations',
-    emoji: '🛠️',
+    title: '40+ Extensible Plugins',
+    emoji: '🧩',
     description: (
       <>
-        Edit, refactor, test, and commit code changes with AI assistance.
-        Integrated git operations and automated testing.
+        Shared plugin ecosystem for filesystem, databases, cloud services, web search,
+        Docker, Kubernetes, content publishing, and more.
       </>
     ),
   },
@@ -35,18 +55,8 @@ const FeatureList: FeatureItem[] = [
     emoji: '🔒',
     description: (
       <>
-        Your code stays on your machine. Run locally with full control
-        over your data and development environment.
-      </>
-    ),
-  },
-  {
-    title: 'Extensible Plugins',
-    emoji: '🧩',
-    description: (
-      <>
-        37+ plugins for filesystem, databases, cloud services, web search,
-        Docker, Kubernetes, and more.
+        Your data stays on your machine. Run locally with full control
+        over your code, content, and development environment.
       </>
     ),
   },
@@ -55,18 +65,8 @@ const FeatureList: FeatureItem[] = [
     emoji: '🎯',
     description: (
       <>
-        Different AI agents for specific tasks: frontend, backend, testing,
-        security review, and team leadership.
-      </>
-    ),
-  },
-  {
-    title: 'Cloud Integration',
-    emoji: '☁️',
-    description: (
-      <>
-        Built-in support for AWS, S3, Docker, Kubernetes, and other
-        cloud services for modern development workflows.
+        Different AI agents for specific tasks: coding, writing, editing, research,
+        testing, security review, and publishing.
       </>
     ),
   },

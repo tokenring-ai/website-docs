@@ -14,9 +14,9 @@ function HomepageHeader() {
     <header className={clsx('hero hero--primary', styles.heroBanner)}>
       <div className="container">
         <Heading as="h1" className="hero__title">
-          TokenRing Coder
+          TokenRing AI
         </Heading>
-        <p className="hero__subtitle">An AI-powered coding assistant that works with your codebase locally</p>
+        <p className="hero__subtitle">A comprehensive ecosystem of AI-powered applications for development and content creation</p>
         <div className={styles.buttons}>
           <Link
             className="button button--secondary button--lg"
@@ -40,7 +40,7 @@ export default function Home(): ReactNode {
   return (
     <Layout
       title="Home"
-      description="TokenRing Coder - AI-powered coding assistant for local development with multiple AI providers, code operations, and cloud integration">
+      description="TokenRing AI - Ecosystem of AI-powered applications including TokenRing Coder for software development and TokenRing Writer for content creation, built on 40+ extensible plugins">
       <HomepageHeader />
       <main>
         <HomepageFeatures />

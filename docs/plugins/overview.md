@@ -24,6 +24,7 @@ Plugins for data persistence and database operations.
 | [MySQL](./mysql.md) | MySQL database integration with connection pooling |
 | [SQLite Storage](./sqlite-storage.md) | SQLite-based checkpoint storage for agent state |
 | [Checkpoint](./checkpoint.md) | Checkpoint management system for saving agent states |
+| [Vault](./vault.md) | Secure encrypted vault for managing secrets and credentials |
 
 ## 📁 Filesystem
 
@@ -48,6 +49,7 @@ Plugins for code development and testing.
 | [JavaScript](./javascript.md) | JavaScript/TypeScript utilities and operations |
 | [Codebase](./codebase.md) | Codebase analysis and indexing capabilities |
 | [Scripting](./scripting.md) | Scripting engine integration for custom workflows |
+| [Template](./template.md) | Reusable AI-powered prompt templates for common tasks |
 
 ## ☁️ Cloud & Infrastructure
 
@@ -72,6 +74,8 @@ Web scraping, search, and browser automation.
 | [ScraperAPI](./scraperapi.md) | ScraperAPI integration for web scraping and SERP |
 | [Wikipedia](./wikipedia.md) | Wikipedia API integration for knowledge retrieval |
 | [Chrome](./chrome.md) | Chrome browser automation via Puppeteer |
+| [Reddit](./reddit.md) | Reddit integration for searching posts and retrieving content |
+| [Research](./research.md) | Web-enabled AI research using Gemini models |
 
 ## 🎵 Audio & Media
 
@@ -93,6 +97,25 @@ General-purpose helper plugins.
 | [Tasks](./tasks.md) | Task scheduling and execution framework |
 | [Feedback](./feedback.md) | User feedback collection and management |
 | [Iterables](./iterables.md) | Iterable utilities and providers |
+
+## 📝 Content & Publishing
+
+Plugins for content creation and publishing.
+
+| Plugin | Description |
+|--------|-------------|
+| [Blog](./blog.md) | Abstract blog service interface for multiple platforms |
+| [WordPress](./wordpress.md) | WordPress integration via REST API |
+| [Ghost.io](./ghost-io.md) | Ghost.io integration via Admin and Content APIs |
+| [NewsRPM](./newsrpm.md) | NewsRPM API integration for news article management |
+
+## 💰 Financial & Data
+
+Plugins for financial data and market information.
+
+| Plugin | Description |
+|--------|-------------|
+| [CloudQuote](./cloudquote.md) | Financial data tools for market quotes and news |
 
 ## 🔌 Integration
 
