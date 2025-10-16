@@ -63,6 +63,7 @@ const sidebars: SidebarsConfig = {
       items: [
         'plugins/overview',
         'plugins/agent',
+        'plugins/agent-api',
         'plugins/ai-client',
         'plugins/audio',
         'plugins/aws',
@@ -107,6 +108,8 @@ const sidebars: SidebarsConfig = {
         'plugins/testing',
         'plugins/utility',
         'plugins/vault',
+        'plugins/web-host',
+        'plugins/web-frontend',
         'plugins/websearch',
         'plugins/wikipedia',
         'plugins/wordpress',
