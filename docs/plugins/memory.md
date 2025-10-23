@@ -1,85 +1,77 @@
 # Memory Plugin
 
-Short-term memory and attention storage for agents, with tools and commands for adding and retrieving items.
+Short-term memory storage for agents, with tools and commands for adding and retrieving items during a session.
 
 ## Overview
 
-The `@tokenring-ai/memory` package provides memory management functionality for AI agents within the TokenRing framework. It handles short-term, ephemeral storage of memories (simple facts or information) and attention items (categorized lists like goals or focus areas). This allows agents to maintain context across interactions without persistent storage.
+The `@tokenring-ai/memory` package provides short-term memory management for AI agents within the TokenRing framework. It enables agents to store and recall simple facts or information during a session, maintaining context across interactions without persistent storage. Memories are automatically injected into agent context for all future interactions within that session.
 
 ## Key Features
 
 - **Memory Storage**: Store and retrieve memories as strings
-- **Attention Management**: Manage categorized attention items (goals, focus)
-- **Async Generators**: Yield memories and attention in agent contexts
-- **Tools and Commands**: Interactive management via chat
-- **Ephemeral Storage**: In-memory implementation included
+- **Context Injection**: Memories automatically included in agent context
+- **Session-Scoped**: Memories persist within a session and reset on chat reset
+- **Sub-Agent Persistence**: Memories automatically persist to sub-agents
+- **Tools and Commands**: Programmatic and interactive management via tools and chat commands
+- **Scripting Integration**: Global functions for scripting workflows
 
 ## Core Components
 
-### MemoryService (Abstract Base Class)
+### ShortTermMemoryService
 
-Defines the interface for memory services.
+The primary service class implementing memory management for agents, implementing `TokenRingService`.
 
 **Key Methods:**
-- `addMemory(memory: string)`: Adds a memory string
-- `clearMemory()`: Clears all memories
-- `spliceMemory(index, count?, ...items)`: Modifies memory array
-- `pushAttentionItem(type, item)`: Adds item to typed attention list
-- `clearAttentionItems(type?)`: Clears attention items
-- `spliceAttentionItems(type, index, count?, ...items)`: Modifies attention list
-- `async *getMemories(agent)`: Yields memories as chat messages
-- `async *getAttentionItems(agent)`: Yields formatted attention items
+- `async attach(agent)`: Initializes the `MemoryState` on agent attachment
+- `addMemory(memory, agent)`: Adds a memory string to the agent's state
+- `clearMemory(agent)`: Clears all memories from the agent's state
+- `spliceMemory(index, count, agent, ...items)`: Modifies the memory array (remove/replace/insert)
+- `async *getContextItems(agent)`: Yields memories as context items for agent context injection
 
-### EphemeralMemoryService
+### MemoryState
 
-In-memory storage for memories and attention, extends `MemoryService`.
+An agent state slice for storing memories with serialization support, implementing `AgentStateSlice`.
 
-**Internal State:**
+**Properties:**
 - `memories: string[]`: Array of memory strings
-- `attentionItems: Record<string, string[]>`: Map of type to items
+- `persistToSubAgents: boolean`: Set to `true`; memories persist to sub-agents automatically
 
-**Additional Methods:**
-- `unshiftAttentionItem(type, item)`: Adds to front of list
+**Key Methods:**
+- `reset(what)`: Clears memories when chat resets
+- `serialize()`: Serializes memories for persistence
+- `deserialize(data)`: Deserializes memories from stored data
 
 ### Tools
 
-**memory/add-memory**: Adds to memories
+**memory/add**: Adds a memory item to the agent's memory state
 - Input: `{ memory: string }`
-
-**memory/add-goal**: Adds to attention type "goals"
-- Limits to last 20 items
-- Input: `{ item: string }`
-
-**memory/add-focus**: Adds to attention type "focus"
-- Limits to last 10 items
-- Input: `{ item: string }`
+- Description: "Add an item to the memory list. The item will be presented in future chats to help keep important information in the back of your mind."
 
 ### Chat Commands
 
 **/memory [op] [args]**: Memory management
-- `list`: Shows indexed memories
-- `add <text>`: Add memory
-- `clear`: Clear all
-- `remove <index>`: Remove specific
-- `set <index> <text>`: Update specific
+- No arguments: Shows help
+- `list`: Shows all memory items with indices
+- `add <text>`: Adds a new memory item
+- `clear`: Clears all memory items
+- `remove <index>`: Removes memory item at specified index
+- `set <index> <text>`: Updates memory item at specified index
 
-**/attention [op] [args]**: Attention management
-- `add <type> <text>`: Add attention item
-- `clear [type]`: Clear items
-- `remove <type> <index>`: Remove specific
-- `set <type> <index> <text>`: Update specific
+Output is provided via `agent.infoLine()` and `agent.errorLine()` methods.
 
 ### Global Scripting Functions
 
-When `@tokenring-ai/scripting` is available:
+When `@tokenring-ai/scripting` is available, the memory package automatically registers:
 
-**addMemory(memory)**: Adds a memory to short-term storage
+**addMemory(memory: string): string** - Adds a memory to short-term storage
+- Returns: `"Added memory: <first 50 chars of memory>..."`
 ```bash
 /var $result = addMemory("Remember this important fact")
 /call addMemory("User prefers dark mode")
 ```
 
-**clearMemory()**: Clears all memories
+**clearMemory(): string** - Clears all memories
+- Returns: `"Memory cleared"`
 ```bash
 /var $result = clearMemory()
 /call clearMemory()
@@ -101,20 +93,17 @@ Example workflow:
 
 ```typescript
 import Agent from '@tokenring-ai/agent';
-import { EphemeralMemoryService } from '@tokenring-ai/memory';
+import { ShortTermMemoryService } from '@tokenring-ai/memory';
 
-const agent = new Agent({ services: [new EphemeralMemoryService()] });
-const memoryService = agent.getFirstServiceByType(EphemeralMemoryService);
+const agent = new Agent({ services: [new ShortTermMemoryService()] });
+const memoryService = agent.requireServiceByType(ShortTermMemoryService);
 
 // Add memory
-memoryService.addMemory('I like coffee.');
+memoryService.addMemory('I like coffee.', agent);
 
-// Add attention
-memoryService.pushAttentionItem('goals', 'Finish documentation');
-
-// Yield in context
-for await (const mem of memoryService.getMemories(agent)) {
-  console.log(mem.content); // "I like coffee."
+// Retrieve context items
+for await (const contextItem of memoryService.getContextItems(agent)) {
+  console.log(contextItem.content); // "I like coffee."
 }
 ```
 
@@ -122,7 +111,7 @@ for await (const mem of memoryService.getMemories(agent)) {
 
 ```typescript
 // Assuming agent is configured with tools
-await agent.executeTool('memory/add-memory', { memory: 'Remember this fact.' });
+await agent.executeTool('memory/add', { memory: 'Remember this fact.' });
 ```
 
 ### Chat Command
@@ -130,17 +119,26 @@ await agent.executeTool('memory/add-memory', { memory: 'Remember this fact.' });
 ```bash
 /memory add Remember to check emails
 # Agent outputs: Added new memory: Remember to check emails
+# Then lists updated memories
+```
+
+### Using Scripting Functions
+
+```bash
+/call addMemory("User prefers detailed explanations")
+/var $count = 5
+/call addMemory(`Need to process ${$count} items`)
 ```
 
 ## Configuration Options
 
-- No runtime configs or env vars in ephemeral implementation
-- Limits in tools: Goals (20 items), Focus (10 items)
-- For custom limits or persistence, extend `EphemeralMemoryService`
+- No runtime configuration or environment variables required
+- Memories are session-scoped and reset when the chat resets
+- Memories automatically persist to sub-agents via the `persistToSubAgents` flag
+- No item limits; all memories are retained until explicitly cleared or the session resets
 
 ## Dependencies
 
-- `@tokenring-ai/agent@0.1.0`: Core agent framework and types
-- `@tokenring-ai/utility@0.1.0`: Utilities
-- `@tokenring-ai/scripting@0.1.0`: Optional, for global functions
-- `zod`: Tool input schemas
+- `@tokenring-ai/agent@0.1.0`: Core agent framework, types, and service integration
+- `@tokenring-ai/utility@0.1.0`: Utilities package
+- `@tokenring-ai/scripting` (optional): For global scripting function registration (e.g., `addMemory()`, `clearMemory()`). Automatically integrated when available

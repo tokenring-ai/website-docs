@@ -17,35 +17,15 @@ The `@tokenring-ai/drizzle-storage` package provides a production-ready, multi-d
 
 ## Core Components
 
-### DrizzleAgentStateStorage
+### Storage Factory Functions
 
-Implements `AgentCheckpointProvider` with support for multiple database backends.
+The package provides separate factory functions for each database type, all implementing the `AgentCheckpointProvider` interface.
 
-**Constructor:**
+**Factory Functions:**
 ```typescript
-new DrizzleAgentStateStorage(config)
-```
-
-**Config Options (discriminated union):**
-
-```typescript
-// SQLite
-{
-  type: "sqlite",
-  databasePath: string
-}
-
-// MySQL
-{
-  type: "mysql",
-  connectionString: string
-}
-
-// PostgreSQL
-{
-  type: "postgres",
-  connectionString: string
-}
+createSQLiteStorage(config: { type: "sqlite", databasePath: string })
+createMySQLStorage(config: { type: "mysql", connectionString: string })
+createPostgresStorage(config: { type: "postgres", connectionString: string })
 ```
 
 **Key Methods:**
@@ -111,9 +91,9 @@ Follows Drizzle's codebase-first approach:
 ### SQLite
 
 ```typescript
-import DrizzleAgentStateStorage from '@tokenring-ai/drizzle-storage';
+import { createSQLiteStorage } from '@tokenring-ai/drizzle-storage/sqlite/createSQLiteStorage';
 
-const storage = new DrizzleAgentStateStorage({
+const storage = createSQLiteStorage({
   type: "sqlite",
   databasePath: "./agent_state.db"
 });
@@ -132,7 +112,9 @@ const retrieved = await storage.retrieveCheckpoint(id);
 ### MySQL
 
 ```typescript
-const storage = new DrizzleAgentStateStorage({
+import { createMySQLStorage } from '@tokenring-ai/drizzle-storage/mysql/createMySQLStorage';
+
+const storage = createMySQLStorage({
   type: "mysql",
   connectionString: "mysql://user:pass@localhost:3306/dbname"
 });
@@ -144,7 +126,9 @@ const id = await storage.storeCheckpoint(checkpoint);
 ### PostgreSQL
 
 ```typescript
-const storage = new DrizzleAgentStateStorage({
+import { createPostgresStorage } from '@tokenring-ai/drizzle-storage/postgres/createPostgresStorage';
+
+const storage = createPostgresStorage({
   type: "postgres",
   connectionString: "postgres://user:pass@localhost:5432/dbname"
 });
@@ -172,10 +156,10 @@ export default {
 ### Full Workflow
 
 ```typescript
-import DrizzleAgentStateStorage from '@tokenring-ai/drizzle-storage';
+import { createPostgresStorage } from '@tokenring-ai/drizzle-storage/postgres/createPostgresStorage';
 
 async function agentWorkflow() {
-  const storage = new DrizzleAgentStateStorage({
+  const storage = createPostgresStorage({
     type: "postgres",
     connectionString: process.env.DATABASE_URL
   });
@@ -221,8 +205,12 @@ async function agentWorkflow() {
 
 ## API Reference
 
-### DrizzleAgentStateStorage (implements AgentCheckpointProvider)
-- `constructor(config: DrizzleAgentStateStorageConfigSchema)`
+### Factory Functions
+- `createSQLiteStorage(config: { type: "sqlite", databasePath: string }): AgentCheckpointProvider`
+- `createMySQLStorage(config: { type: "mysql", connectionString: string }): AgentCheckpointProvider`
+- `createPostgresStorage(config: { type: "postgres", connectionString: string }): AgentCheckpointProvider`
+
+### AgentCheckpointProvider Interface
 - `storeCheckpoint(checkpoint: NamedAgentCheckpoint): Promise<string>`
 - `retrieveCheckpoint(id: string): Promise<StoredAgentCheckpoint | null>`
 - `listCheckpoints(): Promise<AgentCheckpointListItem[]>`
