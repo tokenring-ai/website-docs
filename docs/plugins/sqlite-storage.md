@@ -1,10 +1,50 @@
 # SQLite Storage Plugin
 
+> **DEPRECATED**: This package is deprecated and will be removed in a future release. Please
+> use [@tokenring-ai/drizzle-storage](./drizzle-storage.md) instead, which provides enhanced database support including
+> SQLite, MySQL, and PostgreSQL.
+
 SQLite-based storage for agent state checkpoints with persistent local database.
 
 ## Overview
 
-The `@tokenring-ai/sqlite-storage` package provides a lightweight SQLite-based storage solution for managing agent state checkpoints in the Token Ring AI system. It implements the `AgentCheckpointProvider` interface to handle storing, retrieving, and listing named checkpoints for agents, enabling persistent storage of agent states in a local SQLite database.
+The `@tokenring-ai/sqlite-storage` package is deprecated. It previously provided SQLite-based storage for agent state
+checkpoints, but this functionality has been superseded by the more feature-rich `@tokenring-ai/drizzle-storage` package
+which supports multiple database backends including SQLite.
+
+## Migration Guide
+
+To migrate from sqlite-storage to drizzle-storage:
+
+1. Install the new package:
+   ```bash
+   bun add @tokenring-ai/drizzle-storage
+   ```
+
+2. Update your imports:
+   ```typescript
+   // Old
+   import SQLiteAgentStateStorage from '@tokenring-ai/sqlite-storage';
+
+   // New
+   import DrizzleAgentStateStorage from '@tokenring-ai/drizzle-storage';
+   ```
+
+3. Update initialization:
+   ```typescript
+   // Old
+   const storage = new SQLiteAgentStateStorage({ 
+     databasePath: './agent_state.db' 
+   });
+
+   // New
+   const storage = new DrizzleAgentStateStorage({ 
+     type: 'sqlite',
+     databasePath: './agent_state.db'
+   });
+   ```
+
+The rest of your code using the AgentCheckpointProvider interface should work without changes.
 
 ## Key Features
 
