@@ -14,6 +14,20 @@ The `@tokenring-ai/feedback` package provides tools that enable AI agents to sol
 - Temporary file handling with automatic cleanup
 - Browser-based UI for interactive feedback
 
+## Package Structure
+
+```
+pkg/feedback/
+├── index.ts              # Package entry point
+├── plugin.ts             # Plugin registration
+├── package.json          # Dependencies and metadata
+├── tools.ts              # Tool exports
+└── tools/                # Tool implementations
+   ├── askHuman.js        # Human question tool
+   ├── getFileFeedback.js # File review tool
+   └── react-feedback.js  # React component preview
+```
+
 ## Core Components
 
 ### Tools
@@ -108,10 +122,33 @@ const result = await reactFeedback.execute(
 
 ## Dependencies
 
-- `@tokenring-ai/agent@0.1.0`: Core agent framework
-- `@tokenring-ai/filesystem@0.1.0`: File operations
-- `esbuild@^0.25.9`: Bundling for React
-- `express@^5.1.0`: Server for UI
-- `open@^10.2.0`: Browser launching
-- `marked@^16.1.2`: Markdown rendering
+- `@tokenring-ai/app`: Application framework
+- `@tokenring-ai/chat`: Chat service integration
+- `@tokenring-ai/agent`: Core agent framework
+- `@tokenring-ai/filesystem`: File operations
+- `esbuild@^0.27.1`: Bundling for React
+- `express@^5.2.1`: Server for UI
+- `open@^11.0.0`: Browser launching
+- `marked@^17.0.1`: Markdown rendering
 - `react@^19.1.1`, `react-dom@^19.1.1`: React support
+
+## Integration
+
+The plugin registers tools with the chat service during application initialization:
+
+```typescript
+export default {
+  name: packageJSON.name,
+  version: packageJSON.version,
+  description: packageJSON.description,
+  install(app: TokenRingApp) {
+    app.waitForService(ChatService, chatService => 
+      chatService.addTools(packageJSON.name, tools)
+    );
+  },
+} satisfies TokenRingPlugin;
+```
+
+## License
+
+MIT License

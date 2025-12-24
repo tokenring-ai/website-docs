@@ -20,9 +20,9 @@ Plugins for data persistence and database operations.
 
 | Plugin | Description |
 |--------|-------------|
-| [Database](./database.md) | Abstract database interface for multiple providers |
+| [Database](./database.md) | Abstract database interface for multiple providers (PostgreSQL, MySQL, etc.) |
 | [MySQL](./mysql.md) | MySQL database integration with connection pooling |
-| [SQLite Storage](./sqlite-storage.md) | SQLite-based checkpoint storage for agent state |
+| [Drizzle Storage](./drizzle-storage.md) | Multi-database storage (SQLite, MySQL, PostgreSQL) for agent state checkpoints |
 | [Checkpoint](./checkpoint.md) | Checkpoint management system for saving agent states |
 | [Vault](./vault.md) | Secure encrypted vault for managing secrets and credentials |
 

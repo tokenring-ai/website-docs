@@ -14,6 +14,8 @@ The `@tokenring-ai/wikipedia` package provides seamless integration with the Wik
 - **Input Validation**: Zod schemas for tool input validation
 - **Configurable**: Custom base URL support for different language Wikipedias
 - **Agent Tools**: Pre-built tools for easy agent integration
+- **TypeScript Support**: Full TypeScript definitions and type safety
+- **Error Handling**: Comprehensive error handling with descriptive messages
 
 ## Core Components
 
@@ -25,6 +27,7 @@ Core service class for Wikipedia API interactions, implements `TokenRingService`
 ```typescript
 new WikipediaService(config?: { baseUrl?: string })
 ```
+
 - `baseUrl`: Custom Wikipedia API base (default: 'https://en.wikipedia.org')
 
 **Key Methods:**
@@ -34,15 +37,13 @@ new WikipediaService(config?: { baseUrl?: string })
   - Options: `limit` (default 10, max 500), `namespace` (default 0), `offset` (default 0)
   - Returns Wikipedia's JSON response with search results
   - Uses `action=query&list=search`
+  - Throws error for invalid inputs or API failures
 
 - `getPage(title: string): Promise<string>`
   - Fetches raw wiki markup text of a page
   - Uses `action=raw` endpoint
   - Returns page content as string
   - Throws on 404 or fetch failure
-
-**Internal Methods:**
-- `parseJsonOrThrow(res, context)`: Parses responses with enhanced error handling
 
 ### Tools
 
@@ -131,6 +132,7 @@ const results = await frWiki.search('Intelligence artificielle');
 
 ### Retry Logic
 - Handled internally by `doFetchWithRetry` from `@tokenring-ai/utility`
+- Automatic retry for transient failures
 
 ## API Reference
 
@@ -142,6 +144,9 @@ const results = await frWiki.search('Intelligence artificielle');
 ### Tools
 - `wikipedia/search`: `execute({ query, limit?, offset? }, agent): Promise<{ results }>`
 - `wikipedia/getPage`: `execute({ title }, agent): Promise<{ content }>`
+- Tool input schemas:
+  - `wikipedia/search`: `z.object({ query: z.string(), limit?: z.number(), offset?: z.number() })`
+  - `wikipedia/getPage`: `z.object({ title: z.string() })`
 
 ### Exports
 - `packageInfo: TokenRingPackage` (includes tools)
@@ -149,9 +154,10 @@ const results = await frWiki.search('Intelligence artificielle');
 
 ## Dependencies
 
-- `@tokenring-ai/ai-client@0.1.0`: AI client integration
-- `@tokenring-ai/agent@0.1.0`: Core agent framework
-- `@tokenring-ai/utility`: For `doFetchWithRetry`
+- `@tokenring-ai/app`: Core application framework
+- `@tokenring-ai/chat`: Chat and tool management
+- `@tokenring-ai/agent`: Agent framework
+- `@tokenring-ai/utility`: HTTP utilities and retry logic
 - `zod@^4.0.17`: Schema validation
 
 ## Notes
@@ -162,3 +168,57 @@ const results = await frWiki.search('Intelligence artificielle');
 - No built-in caching; repeated calls may hit rate limits
 - English Wikipedia by default; adjust `baseUrl` for other languages
 - Raw wiki markup returned; parse as needed for formatted content
+- Error handling includes:
+  - Invalid inputs (missing query/title)
+  - HTTP errors (404, 500, etc.)
+  - Network failures with retry logic
+
+## Integration with Token Ring
+
+### As a Plugin
+
+The package integrates seamlessly with the Token Ring application framework:
+
+```typescript
+import TokenRingApp from "@tokenring-ai/app";
+import wikipediaPlugin from "@tokenring-ai/wikipedia";
+
+const app = new TokenRingApp();
+app.install(wikipediaPlugin);
+```
+
+### Service Registration
+
+The plugin automatically registers the WikipediaService when configured:
+
+```typescript
+// Configuration in app setup
+app.addServices(new WikipediaService({ baseUrl: "https://es.wikipedia.org" }));
+```
+
+### Tool Registration
+
+Tools are automatically registered with the chat service:
+
+```typescript
+// Tools available: wikipedia_search and wikipedia_getPage
+chatService.addTools("wikipedia", tools);
+```
+
+## Package Structure
+
+```
+pkg/wikipedia/
+├── index.ts                 # Main entry point and plugin export
+├── WikipediaService.ts      # Core Wikipedia API service
+├── plugin.ts               # Token Ring plugin integration
+├── tools.ts                # Tool exports
+├── tools/
+│   ├── search.ts           # Wikipedia search tool
+│   └── getPage.ts          # Wikipedia page retrieval tool
+├── test/
+│   └── WikipediaService.integration.test.js  # Integration tests
+├── package.json            # Package metadata and dependencies
+├── vitest.config.ts        # Vitest configuration
+└── README.md              # Package documentation
+```

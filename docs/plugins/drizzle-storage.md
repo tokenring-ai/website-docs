@@ -14,6 +14,7 @@ The `@tokenring-ai/drizzle-storage` package provides a production-ready, multi-d
 - **Connection Pooling**: Built-in pooling for MySQL and PostgreSQL
 - **Unified Interface**: Same API across all database types
 - **Production Ready**: Comprehensive testing with Docker containers
+- **Token Ring Integration**: Seamless integration with Token Ring's checkpoint system
 
 ## Core Components
 
@@ -23,9 +24,9 @@ The package provides separate factory functions for each database type, all impl
 
 **Factory Functions:**
 ```typescript
-createSQLiteStorage(config: { type: "sqlite", databasePath: string })
-createMySQLStorage(config: { type: "mysql", connectionString: string })
-createPostgresStorage(config: { type: "postgres", connectionString: string })
+createSQLiteStorage(config: SQLiteConfig): AgentCheckpointProvider
+createMySQLStorage(config: MySQLConfig): AgentCheckpointProvider
+createPostgresStorage(config: PostgresConfig): AgentCheckpointProvider
 ```
 
 **Key Methods:**
@@ -43,6 +44,10 @@ createPostgresStorage(config: { type: "postgres", connectionString: string })
 - `listCheckpoints(): Promise<AgentCheckpointListItem[]>`
   - Lists all checkpoints ordered by creation time (descending)
   - Returns array with ID, name, agentId, createdAt (excludes state)
+
+- `start(): Promise<void>`
+  - Initializes database connection and applies migrations
+  - Must be called before using storage methods
 
 ### Database Schema
 
@@ -98,6 +103,9 @@ const storage = createSQLiteStorage({
   databasePath: "./agent_state.db"
 });
 
+// Initialize the storage
+await storage.start();
+
 const checkpoint = {
   agentId: "agent-123",
   name: "session-1",
@@ -119,7 +127,9 @@ const storage = createMySQLStorage({
   connectionString: "mysql://user:pass@localhost:3306/dbname"
 });
 
-// Same API as SQLite
+// Initialize the storage
+await storage.start();
+
 const id = await storage.storeCheckpoint(checkpoint);
 ```
 
@@ -133,7 +143,9 @@ const storage = createPostgresStorage({
   connectionString: "postgres://user:pass@localhost:5432/dbname"
 });
 
-// Same API as SQLite
+// Initialize the storage
+await storage.start();
+
 const id = await storage.storeCheckpoint(checkpoint);
 ```
 
@@ -164,6 +176,9 @@ async function agentWorkflow() {
     connectionString: process.env.DATABASE_URL
   });
 
+  // Initialize the storage
+  await storage.start();
+
   // Store initial state
   const id = await storage.storeCheckpoint({
     agentId: 'my-agent',
@@ -188,17 +203,17 @@ async function agentWorkflow() {
 ## Configuration Options
 
 ### SQLite Configuration
-- **type**: `"sqlite"` (required)
+- **type**: `\"sqlite\"` (required)
 - **databasePath**: `string` (required) – Path to SQLite file
 
 ### MySQL Configuration
-- **type**: `"mysql"` (required)
+- **type**: `\"mysql\"` (required)
 - **connectionString**: `string` (required) – MySQL connection string
   - Format: `mysql://user:password@host:port/database`
   - Supports connection pooling automatically
 
 ### PostgreSQL Configuration
-- **type**: `"postgres"` (required)
+- **type**: `\"postgres\"` (required)
 - **connectionString**: `string` (required) – PostgreSQL connection string
   - Format: `postgres://user:password@host:port/database`
   - Supports connection pooling automatically
@@ -206,11 +221,12 @@ async function agentWorkflow() {
 ## API Reference
 
 ### Factory Functions
-- `createSQLiteStorage(config: { type: "sqlite", databasePath: string }): AgentCheckpointProvider`
-- `createMySQLStorage(config: { type: "mysql", connectionString: string }): AgentCheckpointProvider`
-- `createPostgresStorage(config: { type: "postgres", connectionString: string }): AgentCheckpointProvider`
+- `createSQLiteStorage(config: { type: \"sqlite\", databasePath: string }): AgentCheckpointProvider`
+- `createMySQLStorage(config: { type: \"mysql\", connectionString: string }): AgentCheckpointProvider`
+- `createPostgresStorage(config: { type: \"postgres\", connectionString: string }): AgentCheckpointProvider`
 
 ### AgentCheckpointProvider Interface
+- `start(): Promise<void>` - Initialize database connection and apply migrations
 - `storeCheckpoint(checkpoint: NamedAgentCheckpoint): Promise<string>`
 - `retrieveCheckpoint(id: string): Promise<StoredAgentCheckpoint | null>`
 - `listCheckpoints(): Promise<AgentCheckpointListItem[]>`
@@ -226,7 +242,7 @@ async function agentWorkflow() {
 - `drizzle-orm`: Type-safe ORM
 - `mysql2`: MySQL driver
 - `postgres`: PostgreSQL driver
-- `@tokenring-ai/ai-client`: Token Ring integration
+- `@tokenring-ai/checkpoint`: Token Ring checkpoint system integration
 - `bun:sqlite`: SQLite runtime (Bun)
 
 **Development:**

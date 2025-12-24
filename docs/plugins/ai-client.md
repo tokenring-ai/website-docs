@@ -1,104 +1,345 @@
 # AI Client Plugin
 
-Unified AI client for chat, embeddings, and images via Vercel AI SDK, with model registry and request builders.
+Multi-provider AI integration with model registries for chat, embeddings, image generation, speech, and transcription.
 
 ## Overview
 
-The `@tokenring-ai/ai-client` package provides a unified interface for interacting with various AI providers (e.g., OpenAI, Anthropic, Google, Groq) using the Vercel AI SDK. It supports chat completions (including streaming), embeddings, and image generation, integrating seamlessly with the `@tokenring-ai/agent` framework.
+The `@tokenring-ai/ai-client` package provides comprehensive AI client integration for the Token Ring ecosystem. It offers a unified interface to multiple AI providers including OpenAI, Anthropic, Google, Groq, and others through the Vercel AI SDK. The package registers different model registries for various AI capabilities and manages provider configurations.
 
 ## Key Features
 
-- **Model Registry**: Automatically selects and routes requests to appropriate models based on requirements (context length, cost, capabilities)
-- **Multi-Provider Support**: Pre-configured specs for OpenAI, Anthropic, Google, Groq, Cerebras, DeepSeek, and more
-- **Request Building**: Constructs chat requests with system prompts, prior messages, tools, and memories
-- **Chat Management**: Handles conversation history, streaming responses, and cost/timing calculations
-- **Error Handling**: Includes retries, availability checks, and abort signals
-
-## Supported Providers
-
-- OpenAI (GPT-3.5, GPT-4, GPT-4o series)
-- Anthropic (Claude 3 series)
-- Google (Gemini models)
-- Groq
-- Cerebras
-- DeepSeek
-- Azure OpenAI
-- Perplexity
-- XAI
-- OpenRouter
-- Ollama
-- Qwen
+- **Multi-Provider Support**: Integrates with 12+ AI providers through the Vercel AI SDK
+- **Model Registries**: Separate registries for chat, embeddings, image generation, speech, and transcription
+- **Cost Tracking**: Automatic cost calculation and tracking for AI usage
+- **Feature Flags**: Runtime feature configuration per model
+- **Provider Registration**: Dynamic provider registration through configuration
+- **Type-Safe Models**: Strong TypeScript types for all AI operations
 
 ## Core Components
 
-### ModelRegistry
+### Model Registries
 
-Central service for managing AI models with chat, embedding, and image generation registries.
+The package registers five primary model registries that extend the base `ModelTypeRegistry`:
+
+#### ChatModelRegistry
+- Manages chat models with comprehensive features
+- Supports streaming and non-streaming chat completion
+- Includes tool calling capabilities
+- Cost tracking and usage metrics
+- Reranking functionality
+
+#### EmbeddingModelRegistry  
+- Handles text embedding generation
+- Batch processing for multiple inputs
+- Provider-specific request mangling
+- Feature flag support
+
+#### ImageGenerationModelRegistry
+- Image generation with provider-specific options
+- Quality and size configuration
+- Cost calculation per generation
+- Uint8Array output format
+
+#### SpeechModelRegistry
+- Text-to-speech conversion
+- Voice and speed configuration
+- Audio output in Uint8Array format
+- Provider-specific options
+
+#### TranscriptionModelRegistry
+- Audio transcription with language support
+- Prompt-based transcription
+- URL and DataContent input support
+- Text output format
+
+### Client Implementations
+
+#### AIChatClient
+Primary chat client with the following capabilities:
 
 **Key Methods:**
-- `initializeModels(providers, config)`: Registers providers with API keys and display names
-- `chat.getFirstOnlineClient(requirements)`: Selects the cheapest online model matching criteria
-- `getAllModelsWithOnlineStatus()`: Lists all models with availability status
+- `streamChat(request, agent)`: Streams chat completion responses
+- `textChat(request, agent)`: Returns full text chat completion
+- `generateObject(request, agent)`: Generates structured objects with Zod schema
+- `rerank(request, agent)`: Reranks documents based on relevance
+- `calculateCost(usage)`: Calculates AI usage costs
+- `calculateTiming(elapsedMs, usage)`: Computes timing metrics
 
-### AIChatClient
+**Request Types:**
+- `ChatRequest`: Standard chat completion request with messages, tools, and parameters
+- `GenerateRequest<T extends ZodObject>`: Structured object generation request
+- `RerankRequest`: Document reranking request
 
-Handles chat interactions using AI SDK's `streamText`, `generateText`, `generateObject`.
-
-**Key Methods:**
-- `streamChat(request, agent)`: Streams response, relays deltas to Agent
-- `textChat(request, agent)`: Non-streaming text generation
-- `generateObject(request, agent)`: Structured output via Zod schema
-- `calculateCost(usage)`: Computes USD cost based on tokens
-- `calculateTiming(elapsedMs, usage)`: Tokens/sec and totals
-
-### AIService
-
-Manages AI state in Agent.
+#### AIEmbeddingClient
+Handles text embedding generation:
 
 **Key Methods:**
-- `getAIConfig(agent)`: Returns AI configuration
-- `updateAIConfig(partial, agent)`: Updates config
-- `pushChatMessage(message, agent)`: Adds to history
-- `getCurrentMessage(agent)`: Latest message
-- `clearChatMessages(agent)`: Reset history
+- `getEmbeddings({ input })`: Generates embeddings for array of strings
+- `setFeatures(features)`: Configures runtime feature flags
+- `getFeatures()`: Retrieves current feature configuration
+- `getModelId()`: Returns model identifier
 
-## Usage Example
+#### AIImageGenerationClient
+Manages image generation:
+
+**Key Methods:**
+- `generateImage(request, agent)`: Generates images from prompts
+- `setFeatures(features)`: Configures feature flags
+- `getFeatures()`: Retrieves feature configuration
+- `getModelId()`: Returns model identifier
+
+#### AISpeechClient
+Handles text-to-speech conversion:
+
+**Key Methods:**
+- `generateSpeech(request, agent)`: Converts text to speech
+- `setFeatures(features)`: Configures feature flags
+- `getFeatures()`: Retrieves feature configuration
+- `getModelId()`: Returns model identifier
+
+#### AITranscriptionClient
+Manages audio transcription:
+
+**Key Methods:**
+- `transcribe(request, agent)`: Transcribes audio to text
+- `setFeatures(features)`: Configures feature flags
+- `getFeatures()`: Retrieves feature configuration
+- `getModelId()`: Returns model identifier
+
+## Usage Examples
+
+### Basic Chat Completion
 
 ```typescript
-import Agent from '@tokenring-ai/agent/Agent';
-import ModelRegistry from '@tokenring-ai/ai-client/ModelRegistry';
-import { init as initOpenAI } from '@tokenring-ai/ai-client/models/openai';
-import runChat from '@tokenring-ai/ai-client/runChat';
+import { Agent } from '@tokenring-ai/agent';
+import { ChatModelRegistry } from '@tokenring-ai/ai-client';
 
-const agent = new Agent({
-  ai: { systemPrompt: 'You are a helpful assistant.', temperature: 0.7 }
+const agent = new Agent();
+const chatRegistry = new ChatModelRegistry();
+agent.registerService(chatRegistry);
+
+// Get chat client for a specific model
+const chatClient = await chatRegistry.getFirstOnlineClient('openai/gpt-4');
+
+// Stream chat completion
+const [text, response] = await chatClient.streamChat({
+  messages: [
+    { role: 'system', content: 'You are a helpful assistant.' },
+    { role: 'user', content: 'Hello, how are you?' }
+  ],
+  tools: {}, // Optional tool definitions
+}, agent);
+
+console.log('Chat response:', text);
+console.log('Cost:', response.cost.total);
+```
+
+### Image Generation
+
+```typescript
+import { ImageGenerationModelRegistry } from '@tokenring-ai/ai-client';
+
+const imageRegistry = new ImageGenerationModelRegistry();
+agent.registerService(imageRegistry);
+const imageClient = await imageRegistry.getFirstOnlineClient('dall-e-3');
+
+const [image, result] = await imageClient.generateImage({
+  prompt: 'A beautiful sunset over mountains',
+  size: '1024x1024',
+  quality: 'standard',
+  n: 1
+}, agent);
+
+// Image is available as a GeneratedFile object
+console.log('Generated image:', image);
+```
+
+### Text Embedding
+
+```typescript
+import { EmbeddingModelRegistry } from '@tokenring-ai/ai-client';
+
+const embeddingRegistry = new EmbeddingModelRegistry();
+agent.registerService(embeddingRegistry);
+const embeddingClient = await embeddingRegistry.getFirstOnlineClient('text-embedding-3-large');
+
+const embeddings = await embeddingClient.getEmbeddings({
+  input: ['Token Ring AI is a framework for building AI applications']
 });
+```
 
-const modelRegistry = new ModelRegistry();
-await modelRegistry.initializeModels(
-  { openai: { init: initOpenAI } },
-  { openai: { providerDisplayName: 'OpenAI', apiKey: process.env.OPENAI_API_KEY } }
-);
-agent.addService(modelRegistry);
+### Speech Generation
 
-const [output, response] = await runChat(
-  { input: 'Hello, world!', model: 'gpt-4o-mini' },
-  agent
-);
-console.log(output);
-console.log(response.cost);
+```typescript
+import { SpeechModelRegistry } from '@tokenring-ai/ai-client';
+
+const speechRegistry = new SpeechModelRegistry();
+agent.registerService(speechRegistry);
+const speechClient = await speechRegistry.getFirstOnlineClient('tts-1');
+
+const [audio, result] = await speechClient.generateSpeech({
+  text: 'Hello, welcome to Token Ring AI!',
+  voice: 'alloy',
+  speed: 1.0
+}, agent);
+
+// Audio available as Uint8Array
+console.log('Generated audio:', audio);
+```
+
+### Audio Transcription
+
+```typescript
+import { TranscriptionModelRegistry } from '@tokenring-ai/ai-client';
+
+const transcriptionRegistry = new TranscriptionModelRegistry();
+agent.registerService(transcriptionRegistry);
+const transcriptionClient = await transcriptionRegistry.getFirstOnlineClient('whisper-1');
+
+const [text, result] = await transcriptionClient.transcribe({
+  audio: new URL('audio.mp3'),
+  language: 'en',
+  prompt: 'Context for better transcription'
+}, agent);
+
+console.log('Transcribed text:', text);
 ```
 
 ## Configuration Options
 
-- **Provider Config**: `{ apiKey: string, providerDisplayName: string }` per provider
-- **AIConfig**: `systemPrompt`, `forceModel`, `temperature`, `maxTokens`, `topP`, `stopSequences`
-- **Model Requirements**: Filter with `{ provider?, contextLength?, reasoningText? }`
+### Provider Configuration
+
+Configure multiple providers in the app configuration:
+
+```json
+{
+  "ai": {
+    "providers": {
+      "openai": {
+        "apiKey": "your-openai-key",
+        "modelId": "gpt-4"
+      },
+      "anthropic": {
+        "apiKey": "your-anthropic-key",
+        "modelId": "claude-3-5-sonnet"
+      },
+      "google": {
+        "apiKey": "your-google-key",
+        "modelId": "gemini-2.0-flash"
+      }
+    }
+  }
+}
+```
+
+### Feature Flags
+
+Enable specific features for individual models:
+
+```typescript
+// Get model with web search feature enabled
+const chatClient = await chatRegistry.getFirstOnlineClient('openai/gpt-4?websearch=1');
+
+// Get model with reasoning text enabled
+const chatClient = await chatRegistry.getFirstOnlineClient('openai/gpt-4?reasoningText=1');
+```
+
+### Model Specifications
+
+Each model can have provider-specific configurations:
+
+```typescript
+type ChatModelSpec = ModelSpec & {
+  impl: Exclude<LanguageModel, string>;
+  mangleRequest?: (req: ChatRequest, features: FeatureOptions) => void;
+  speed?: number;
+  research?: number;
+  reasoningText?: number;
+  tools?: number;
+  intelligence?: number;
+  maxCompletionTokens?: number;
+  contextLength: number;
+  costPerMillionInputTokens: number;
+  costPerMillionOutputTokens: number;
+  costPerMillionCachedInputTokens?: number;
+  costPerMillionReasoningTokens?: number;
+};
+```
+
+## Provider Integration
+
+The package integrates with multiple AI providers through the Vercel AI SDK:
+
+- **OpenAI**: Full support for all models
+- **Anthropic**: Claude models with tool calling
+- **Google**: Gemini models with web search
+- **Groq**: Fast inference models
+- **DeepSeek**: Open-source models
+- **Perplexity**: Web search optimized models
+- **Cerebras**: High-performance models
+- **Azure**: Azure AI services
+- **Fal**: Image generation providers
+- **XAI**: Elon Musk's AI models
+- **OpenRouter**: Multi-provider access
+- **Ollama**: Local model hosting
+- **OpenAI-Compatible**: Custom endpoint support
+
+## Cost Tracking
+
+The AI client automatically tracks and calculates costs for all operations:
+
+```typescript
+interface AIResponseCost {
+  input?: number;
+  cachedInput?: number;
+  output?: number;
+  reasoning?: number;
+  total?: number;
+}
+
+interface AIResponseTiming {
+  elapsedMs: number;
+  tokensPerSec?: number;
+  totalTokens?: number;
+}
+```
+
+Cost calculations are based on provider-specific pricing and usage metrics.
+
+## Error Handling
+
+The package includes comprehensive error handling:
+
+- **Abort Signals**: Integration with agent abort signals
+- **Retry Logic**: Built-in retry mechanisms
+- **Error Propagation**: Errors are properly propagated with context
+- **Status Monitoring**: Model availability and hot/cold status tracking
 
 ## Dependencies
 
-- `ai@^5.0.15` (Vercel AI SDK)
-- `@tokenring-ai/agent@0.1.0`
-- Provider SDKs: `@ai-sdk/openai`, `@ai-sdk/anthropic`, `@ai-sdk/google`, etc.
-- `zod@^4.0.17` (schemas)
-- `axios@^1.11.0` (API calls)
+- `@tokenring-ai/agent`: Core agent framework
+- `@tokenring-ai/app`: Application framework
+- `@tokenring-ai/utility`: Shared utilities
+- `ai@5.0.113`: Vercel AI SDK
+- `zod`: Schema validation
+- Multiple AI provider packages
+
+## Development
+
+### Testing
+
+Run tests with:
+
+```bash
+bun run test
+```
+
+### Building
+
+Compile TypeScript with:
+
+```bash
+bun run build
+```
+
+The package uses Vitest for testing and Bun as the package manager.

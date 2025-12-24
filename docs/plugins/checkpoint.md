@@ -4,7 +4,7 @@ Checkpoint service for storing Agent Checkpoints with a storage provider.
 
 ## Overview
 
-The `@tokenring-ai/checkpoint` package provides persistent state management for agents within the Token Ring Agent framework. It enables agents to save snapshots of their current state and restore them later, supporting workflow interruption, experimentation, and session recovery.
+The `@tokenring-ai/checkpoint` package provides persistent state management for agents within the Token Ring Agent framework. It enables agents to save snapshots of their current state and restore them later, supporting workflow interruption, experimentation, and session recovery. The package includes interactive chat commands, auto-checkpointing hooks, and RPC endpoints for programmatic access.
 
 ## Key Features
 
@@ -14,6 +14,8 @@ The `@tokenring-ai/checkpoint` package provides persistent state management for 
 - **Auto-Checkpointing**: Automatic checkpoint creation after agent input processing
 - **Session History**: Browse checkpoints grouped by agent session
 - **Named Checkpoints**: Label checkpoints for easy identification
+- **RPC Endpoints**: Programmatic access to checkpoint operations via JSON-RPC
+- **Agent Launching**: Create new agents from saved checkpoints
 
 ## Core Components
 
@@ -30,6 +32,7 @@ Service for managing agent checkpoints. Automatically installed when the package
 - `saveAgentCheckpoint(name, agent)` - Save agent state to a checkpoint
 - `restoreAgentCheckpoint(id, agent)` - Restore agent from checkpoint
 - `listCheckpoints()` - List all available checkpoints
+- `launchAgentFromCheckpoint(app, checkpoint, options)` - Create new agent from checkpoint
 
 ### AgentCheckpointProvider
 
@@ -116,7 +119,7 @@ Shows an interactive tree selection where checkpoints are grouped by agent ID an
 
 Automatically creates a checkpoint after each agent input is processed.
 
-- **Hook Point**: `afterAgentInputComplete`
+- **Hook Point**: `afterAgentInputComplete` and `beforeChatCompletion`
 - **Behavior**: Triggered after agent successfully processes input, uses input message as checkpoint label
 - **Enabled by default** when the package is installed
 
@@ -129,6 +132,30 @@ agent.hooks.disableItems("@tokenring-ai/checkpoint/autoCheckpoint");
 ```typescript
 agent.hooks.enableItems("@tokenring-ai/checkpoint/autoCheckpoint");
 ```
+
+## RPC Endpoints
+
+The plugin provides JSON-RPC endpoints for programmatic access to checkpoint operations.
+
+**Endpoints:**
+- `/rpc/checkpoint` - Main checkpoint RPC endpoint
+
+**Available Methods:**
+
+#### `listCheckpoints()`
+- **Input**: Empty object
+- **Output**: Array of checkpoint metadata (id, name, agentId, createdAt)
+- **Description**: List all available checkpoints
+
+#### `getCheckpoint({ id })`
+- **Input**: `{ id: string }`
+- **Output**: Checkpoint data or null
+- **Description**: Retrieve full checkpoint data by ID
+
+#### `launchAgentFromCheckpoint({ checkpointId, headless })`
+- **Input**: `{ checkpointId: string, headless: boolean }` (headless defaults to false)
+- **Output**: `{ agentId, agentName, agentType }`
+- **Description**: Launch a new agent from a saved checkpoint
 
 ## Usage Examples
 
@@ -155,10 +182,44 @@ const all = await checkpointService.listCheckpoints();
 await checkpointService.restoreAgentCheckpoint(id1, agent);
 ```
 
+### Launching Agent from Checkpoint via RPC
+
+```typescript
+import TokenRingApp from '@tokenring-ai/app';
+import { createJsonRPCEndpoint } from '@tokenring-ai/web-host/jsonrpc/createJsonRPCEndpoint';
+
+// In your web application:
+const app = new TokenRingApp(config);
+const checkpointRpc = createJsonRPCEndpoint(CheckpointRpcSchema, {
+  async launchAgentFromCheckpoint(args, app) {
+    const checkpointService = app.requireService(AgentCheckpointService);
+    const agentManager = app.requireService(AgentManager);
+    
+    const checkpoint = await checkpointService.getActiveProvider().retrieveCheckpoint(args.checkpointId);
+    if (!checkpoint) {
+      throw new Error(`Checkpoint ${args.checkpointId} not found`);
+    }
+    
+    const agent = await agentManager.spawnAgentFromCheckpoint(app, checkpoint, { headless: args.headless });
+    return {
+      agentId: agent.id,
+      agentName: agent.name,
+      agentType: agent.config.type,
+    };
+  }
+});
+
+// Call via RPC:
+const result = await app.rpcClient.call('checkpoint.launchAgentFromCheckpoint', {
+  checkpointId: 'abc123',
+  headless: true
+});
+```
+
 ### Custom Storage Provider
 
 ```typescript
-import type { AgentCheckpointProvider } from '@tokenring-ai/checkpoint/AgentCheckpointProvider';
+import type { AgentCheckpointProvider } from '@tokenring-ai/checkpoint';
 
 class CustomProvider implements AgentCheckpointProvider {
   private checkpoints = new Map();
@@ -192,4 +253,7 @@ checkpointService.setActiveProviderName('custom');
 ## Dependencies
 
 - `@tokenring-ai/agent`: Core agent framework
+- `@tokenring-ai/app`: Application framework
+- `@tokenring-ai/web-host`: Web hosting and RPC infrastructure
+- `@tokenring-ai/chat`: Chat command system
 - Storage provider implementations (built-in and custom)
