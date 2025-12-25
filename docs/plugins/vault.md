@@ -17,6 +17,7 @@ The `@tokenring-ai/vault` package provides a secure, encrypted vault for managin
 - **Interactive CLI**: Full featured command-line interface with password masking
 - **TokenRing Integration**: Seamless integration with TokenRing application framework
 - **Service Architecture**: Plugin-based service registration and configuration
+- **Automatic Relocking**: Vault automatically locks after 5 minutes of inactivity
 
 ## CLI Usage
 
@@ -196,6 +197,7 @@ await vault.save({ API_KEY: 'new-key', DB_PASSWORD: 'new-pass' }, agent);
 - **Agent Integration**: Uses Agent's human interaction for password prompts
 - **Error Handling**: Comprehensive error handling with descriptive messages
 - **Configuration Validation**: Zod schema validation for configuration
+- **Human Interface**: Integrates with Agent's `askForPassword` request type
 
 ## Plugin Integration
 
