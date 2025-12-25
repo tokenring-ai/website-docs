@@ -1,4 +1,4 @@
-# Scripting Plugin
+# TokenRing Scripting Plugin
 
 Comprehensive scripting language with variables, functions, and LLM integration for automating workflows and chat command sequences.
 
@@ -17,6 +17,7 @@ The TokenRing AI Scripting package provides a powerful scripting language for au
 - **State Management**: Persistent variables, lists, and functions across chat sessions
 - **Global Functions**: Register functions available to all scripting contexts
 - **Context Handlers**: Available scripts context for AI assistance
+- **Native Agent Integration**: Built-in `runAgent` function for subagent execution
 
 ## Core Components
 
@@ -35,7 +36,7 @@ Manages and executes scripts, variables, functions, and scripting language featu
 - `static`: Returns fixed text
 - `js`: JavaScript functions
 - `llm`: LLM-powered functions with prompts
-- `native`: Native function implementations
+- `native`: Native function implementations (e.g., `runAgent`)
 
 ### ScriptingContext
 
@@ -71,7 +72,6 @@ Manages state for scripting including:
 - `/list @name = ["item1", "item2"]` - Define a list
 - `/lists [@name]` - List all lists or show specific
 - `/lists clear` - Clear all lists
-- `/lists delete @name` - Delete a list
 
 #### Output and Control
 - `/echo <text|$var>` - Display text or variable
@@ -90,6 +90,35 @@ Manages state for scripting including:
 ### Context Handlers
 
 - `available-scripts`: Provides context about available scripts for AI assistance
+
+## Native Functions
+
+### runAgent
+
+The scripting package provides a built-in `runAgent` function for running subagents:
+
+```typescript
+scriptingService.registerFunction("runAgent", {
+  type: 'native',
+  params: ['agentType', 'message', 'context'],
+  async execute(this: ScriptingThis, agentType: string, message: string, context: string): Promise<string> {
+    const res = await runSubAgent({
+      agentType: agentType,
+      headless: this.agent.headless,
+      command: `/work ${message}\n\nImportant Context:\n${context}`,
+      forwardChatOutput: true,
+      forwardSystemOutput: true,
+      forwardHumanRequests: true,
+    }, this.agent, true);
+
+    if (res.status === 'success') {
+      return res.response;
+    } else {
+      throw new Error(res.response);
+    }
+  }
+});
+```
 
 ## Usage Examples
 
@@ -247,7 +276,7 @@ async attach(agent: Agent): Promise<void> {
         const res = await runSubAgent({
           agentType: agentType,
           headless: this.agent.headless,
-          command: `/work ${message}\\n\\nImportant Context:\\n${context}`,
+          command: `/work ${message}\n\nImportant Context:\n${context}`,
           forwardChatOutput: true,
           forwardSystemOutput: true,
           forwardHumanRequests: true,
@@ -335,7 +364,10 @@ pkg/scripting/
 ├── state/                 # State management
 │   └── ScriptingContext.ts
 └── utils/                # Utility functions
-    └── parseScript.ts
+    ├── parseScript.ts
+    ├── parseArguments.ts
+    ├── executeBlock.ts
+    └── blockParser.ts
 ```
 
 ## Inspiration

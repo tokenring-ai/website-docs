@@ -16,6 +16,9 @@ The `@tokenring-ai/slack` package integrates Slack with TokenRing agents, enabli
 - **Agent Cleanup**: Automatic cleanup when service stops
 - **Message Routing**: Handles chat, info, warning, and error messages
 - **Timeout Handling**: Configurable response timeouts per agent
+- **Plugin Architecture**: Automatically integrates with TokenRing applications
+- **Event Handling**: Comprehensive handling of different message types
+- **Slash Command Forwarding**: Commands are forwarded to agent's command system
 
 ## Prerequisites
 
@@ -38,6 +41,7 @@ Visit [https://api.slack.com/apps](https://api.slack.com/apps) and create a new 
 ### 2. Add Bot Token Scopes
 
 Configure the following OAuth scopes:
+
 - `chat:write` - Send messages
 - `app_mentions:read` - Receive @mentions
 - `im:history`, `im:read`, `im:write` - Direct messages
@@ -106,7 +110,7 @@ Use slash commands to interact with the agent's command system:
 
 ## Core Components
 
-### SlackBotService
+### SlackService
 
 Main service class implementing TokenRingService for Slack integration.
 
@@ -144,9 +148,9 @@ Main service class implementing TokenRingService for Slack integration.
 The Slack service handles different types of messages:
 
 - **Chat Messages**: Regular conversational responses
-- **Info Messages**: System information with `[INFO]` prefix
-- **Warning Messages**: Warning information with `[WARNING]` prefix
-- **Error Messages**: Error information with `[ERROR]` prefix
+- **Info Messages**: System information with `[INFO]:` prefix
+- **Warning Messages**: Warning information with `[WARNING]:` prefix
+- **Error Messages**: Error information with `[ERROR]:` prefix
 
 ## Authorization
 
@@ -285,3 +289,95 @@ constructor(app: TokenRingApp, config: z.output<typeof SlackServiceConfigSchema>
 **handleSystemOutput(say: any, message: string, level: string): Promise<void>**
 - Formats and sends system messages
 - Adds appropriate prefix based on level
+
+**handleSlashCommands(command: any, respond: any): Promise<void>**
+- Handles slash commands
+- Forwards to agent's command system
+- Provides acknowledgment
+
+**handleAppMentions(event: any, say: any): Promise<void>**
+- Handles @mentions in channels
+- Creates or retrieves user's agent
+- Processes and responds to mentions
+
+**handleDirectMessages(event: any, say: any): Promise<void>**
+- Handles direct messages
+- Creates or retrieves user's agent
+- Processes and responds to DMs
+
+### Event Processing
+
+The service processes three main event types:
+
+1. **Slash Commands**: `/command text`
+2. **App Mentions**: Bot mentioned in channels
+3. **Direct Messages**: Private messages to the bot
+
+Each event type is handled with appropriate authorization checks and agent interaction.
+
+### Response Handling
+
+The service handles different response types with proper formatting:
+
+- **Chat responses**: Sent directly to the user
+- **System messages**: Formatted with appropriate prefixes
+- **Timeout handling**: Configurable per agent
+- **Error handling**: Graceful error reporting
+
+## Integration Examples
+
+### Basic Integration
+
+```typescript
+import TokenRingApp from "@tokenring-ai/app";
+import { SlackService } from "@tokenring-ai/slack";
+
+const app = new TokenRingApp({
+  // app configuration
+});
+
+const slackService = new SlackService(app, {
+  botToken: process.env.SLACK_BOT_TOKEN!,
+  signingSecret: process.env.SLACK_SIGNING_SECRET!,
+  appToken: process.env.SLACK_APP_TOKEN,
+  channelId: process.env.SLACK_CHANNEL_ID,
+  authorizedUserIds: ['U06T1LWJG', 'UABCDEF123'],
+  defaultAgentType: 'teamLeader'
+});
+
+app.addServices(slackService);
+await app.start();
+```
+
+### Plugin Usage
+
+```typescript
+import TokenRingApp from "@tokenring-ai/app";
+import SlackPlugin from "@tokenring-ai/slack";
+
+const app = new TokenRingApp({
+  plugins: ["@tokenring-ai/slack"]
+});
+
+app.config({
+  slack: {
+    botToken: process.env.SLACK_BOT_TOKEN!,
+    signingSecret: process.env.SLACK_SIGNING_SECRET!,
+    appToken: process.env.SLACK_APP_TOKEN,
+    channelId: process.env.SLACK_CHANNEL_ID,
+    authorizedUserIds: ['U06T1LWJG', 'UABCDEF123'],
+    defaultAgentType: 'teamLeader'
+  }
+});
+
+await app.start();
+```
+
+## Development Notes
+
+- **Socket Mode**: Recommended for local development as it doesn't require public endpoints
+- **Agent Persistence**: Each user's agent maintains state across multiple interactions
+- **Memory Management**: Agents are automatically cleaned up when the service stops
+- **Concurrency**: Multiple users can interact simultaneously with their own agents
+- **Error Recovery**: The service handles agent creation failures gracefully
+- **Testing**: Unit tests available in the package for verification of functionality

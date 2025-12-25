@@ -216,7 +216,7 @@ Recommended setup using environment variables:
 ```bash
 export TELEGRAM_BOT_TOKEN="1234567890:ABCdefGHIjklMNOpqrsTUVwxyz"
 export TELEGRAM_CHAT_ID="-1001234567890"  # Optional
-export TELEGRAM_AUTHORIZED_USER_IDS="123456789,987654321"  # Optional
+export TELEGRAM_AUTHORIZED_USERS="123456789,987654321"  # Optional
 export TELEGRAM_DEFAULT_AGENT_TYPE="teamLeader"  # Optional
 ```
 
