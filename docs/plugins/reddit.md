@@ -4,7 +4,7 @@ Reddit integration for searching subreddit posts, retrieving post content, and m
 
 ## Overview
 
-The `@tokenring-ai/reddit` package provides comprehensive Reddit integration through a robust service layer and comprehensive tool suite. It enables AI agents to search Reddit posts, retrieve full post content with comments, and monitor latest posts from subreddits - all with built-in error handling, retry logic, and proper API compliance.
+The `@tokenring-ai/reddit` package (version 0.2.0) provides comprehensive Reddit integration through a robust service layer and comprehensive tool suite. It enables AI agents to search Reddit posts, retrieve full post content with comments, and monitor latest posts from subreddits - all with built-in error handling, retry logic, and proper API compliance.
 
 ## Key Features
 
@@ -15,6 +15,8 @@ The `@tokenring-ai/reddit` package provides comprehensive Reddit integration thr
 - **Retry Logic**: Built-in retry mechanism for API requests
 - **Scripting Functions**: Global functions when `@tokenring-ai/scripting` is available
 - **Tool Integration**: Three built-in tools for chat and agent integration
+- **User-Agent Compliance**: Automatic User-Agent header for API compliance
+- **Error Handling**: Comprehensive error handling and validation
 
 ## Core Components
 
@@ -371,6 +373,7 @@ try {
 - **Pagination**: Supports cursor-based pagination for large datasets
 - **Retry Logic**: Built-in retry mechanism for improved reliability
 - **User-Agent Compliance**: Fixed User-Agent for API compliance
+- **Automatic URL Handling**: Automatically appends .json to post URLs
 
 ## Dependencies
 

@@ -4,6 +4,14 @@
 
 The `@tokenring-ai/sandbox` package provides an abstract interface for managing sandboxed environments within the Token Ring AI agent system. It enables the creation, execution, and management of isolated containers (e.g., via Docker or similar providers) to safely run commands or code. The package acts as a service layer that abstracts provider-specific details, allowing multiple sandbox providers to be registered and switched dynamically.
 
+Key features include:
+- Abstract provider interface for extensibility (e.g., Docker, Kubernetes)
+- Service management for active providers and containers with label mapping
+- Integration with Token Ring agents via tools and chat commands
+- Error handling for missing providers/containers and command failures
+- Support for environment variables and working directory configuration
+- Timeout support for command execution
+
 ## Key Features
 
 - **Abstract Provider Interface**: Extensible for multiple sandbox backends (Docker, Kubernetes, etc.)
@@ -14,6 +22,8 @@ The `@tokenring-ai/sandbox` package provides an abstract interface for managing 
 - **Agent Integration**: Tools and chat commands for interactive control
 - **Label Mapping**: Use labels instead of container IDs for easier reference
 - **Error Handling**: Comprehensive error handling for missing providers/containers
+- **Environment Configuration**: Support for environment variables and working directories
+- **Timeout Support**: Configurable timeouts for command execution
 
 ## Core Components
 
@@ -125,7 +135,7 @@ The `/sandbox` command provides interactive control in agent chats.
 
 **Actions:**
 
-- `create [image]`: Create a new container
+- `create [label] [image]`: Create a new container
 - `exec <command>`: Execute command in active container
 - `stop [containerId]`: Stop container
 - `logs [containerId]`: Get container logs
@@ -137,7 +147,7 @@ The `/sandbox` command provides interactive control in agent chats.
 
 ```
 /sandbox provider docker
-/sandbox create ubuntu:latest
+/sandbox create myapp ubuntu:latest
 /sandbox exec echo "Hello Sandbox"
 /sandbox logs
 /sandbox remove
@@ -229,7 +239,7 @@ await agent.executeTool('sandbox/executeCommand', {
 
 ```bash
 /sandbox provider docker
-/sandbox create ubuntu:latest
+/sandbox create myapp ubuntu:latest
 /sandbox exec echo "Hello Sandbox"
 /sandbox logs
 /sandbox remove

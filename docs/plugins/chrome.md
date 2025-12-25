@@ -4,46 +4,20 @@ Chrome browser automation and web search integration for Token Ring.
 
 ## Overview
 
-The `@tokenring-ai/chrome` package provides comprehensive Chrome browser automation capabilities for the Token Ring ecosystem. It includes two primary tools for web scraping and script execution, plus a web search provider that integrates with the Token Ring websearch service.
+The `@tokenring-ai/chrome` package provides Chrome browser automation capabilities for the Token Ring ecosystem. It includes a page scraping tool and integrates with the Token Ring web search service through a Chrome-based search provider.
 
 ## Key Features
 
-- **Puppeteer Integration**: Run JavaScript functions in a live Puppeteer session
-- **Console Capture**: Collect page console output and custom logs
-- **Navigation Support**: Optionally navigate to URLs before script execution
-- **Web Search Provider**: Google search integration with news and web search capabilities
-- **Page Scrape Tool**: Extract text content from web pages with intelligent selector prioritization
-- **HTML to Markdown**: Convert web pages to markdown format
-- **Timeout Control**: Configurable execution timeouts (5-180 seconds)
-- **Result Reporting**: Returns function results, logs, and error status
+- **Page Scrape Tool**: Extract text content from web pages using Puppeteer with intelligent selector prioritization
+- **Web Search Provider**: Google search integration with the Token Ring websearch service
+- **Smart Content Detection**: Prioritizes `article`, `main`, or `body` selectors when scraping content
+- **Configurable Timeouts**: Control scraping and script execution timeouts (5-180 seconds)
+- **Clean Text Extraction**: Automatically cleans and formats extracted text content
+- **Seamless Plugin Integration**: Automatically registers with Token Ring chat and websearch services
 
 ## Core Components
 
 ### Tools
-
-#### Tool: `chrome_runPuppeteerScript`
-
-Runs a Puppeteer script with access to a browser and page.
-
-**Parameters:**
-- `script`: string - JavaScript code string that evaluates to an async function taking `({ page, browser, consoleLog })`
-- `navigateTo?`: string - Optional URL to load before running the script
-- `timeoutSeconds?`: number - Maximum execution time (min 5, max 180, default 30)
-
-**Returns:**
-```typescript
-{
-  result: unknown;  // value your function resolves to
-  logs: string[];   // collected console output and custom consoleLog messages
-}
-```
-
-**Behavior:**
-- Launches Chromium instance via Puppeteer with `headless: false`
-- Evaluates script using `new Function` and immediately invokes it
-- Captures page console messages with `[browser]` prefix
-- Provides `consoleLog` helper for custom log lines
-- Cleans up browser instance after execution
 
 #### Tool: `chrome_scrapePageText`
 
@@ -86,31 +60,6 @@ Provides Google search capabilities integrated with the Token Ring websearch ser
 - `launch`: boolean - Launch new browser instance (true) or connect to existing (false)
 
 ## Usage Examples
-
-### Running Puppeteer Scripts
-
-```typescript
-import { ServiceRegistry } from '@tokenring-ai/registry';
-import * as chromeTools from '@tokenring-ai/chrome/tools';
-import ChatService from '@tokenring-ai/chat/ChatService';
-
-const registry = new ServiceRegistry();
-registry.registerService(new ChatService());
-
-// Define script as a string that evaluates to an async function
-const script = `async ({ page, browser, consoleLog }) => {
-  await page.goto('https://example.com', { waitUntil: 'load' });
-  const title = await page.title();
-  consoleLog('Page title is:', title);
-  return { title };
-}`;
-
-const res = await chromeTools.runPuppeteerScript.execute({ script }, registry);
-if (res.ok) {
-  console.log('Result:', res.result);
-  console.log('Logs:', res.logs);
-}
-```
 
 ### Scraping Web Page Text
 
@@ -163,10 +112,9 @@ console.log('Search results:', results.organic);
 
 ### Tool Configuration
 
-- **script**: JavaScript function as string with signature `async ({ page, browser, consoleLog }) => any`
-- **navigateTo**: Optional URL to navigate to before execution
-- **timeoutSeconds**: Execution timeout (5-180 seconds, default 30)
-- **headless**: Currently set to `false` by default for debugging
+- **url**: string - Required URL to scrape text from
+- **timeoutSeconds**: number - Execution timeout (5-180 seconds, default 30)
+- **selector**: string - Optional custom CSS selector
 
 ### Web Search Provider Configuration
 
@@ -176,26 +124,18 @@ console.log('Search results:', results.organic);
 ## Dependencies
 
 - `@tokenring-ai/agent`: Agent integration
-- `@tokenring-ai/chat`: Chat service for tool execution
+- `@tokenring-ai/chat`: Chat service for tool registration
 - `@tokenring-ai/websearch`: Web search service integration
 - `@tokenring-ai/app`: Application framework
 - `puppeteer@^24.33.0`: Browser automation
 - `turndown@^7.2.2`: HTML to markdown conversion
 - `zod`: Schema validation
 
-## Security Notes
-
-- Scripts are evaluated using `new Function` and run with process privileges
-- Only run trusted code as it executes with full system access
-- Console messages from the page are collected and returned
-- Use the provided `consoleLog` function for guaranteed log capture
-- Scraping tool uses headless mode by default for security
-
 ## Browser Management
 
 The package automatically manages browser lifecycle:
 - Launches browser instances as needed
-- Closes browsers after script execution
+- Closes browsers after operations complete
 - Provides both local browser launch and connection options
 - Handles timeout enforcement and cleanup
 
@@ -205,3 +145,36 @@ The package automatically manages browser lifecycle:
 - Provides web search provider for the Token Ring websearch service
 - Follows the standard Token Ring plugin architecture
 - Supports both tool execution and service provider patterns
+
+## Package Structure
+
+- `index.ts`: Main export file
+- `ChromeWebSearchProvider.ts`: Core web search provider implementation  
+- `tools.ts`: Tool exports and definitions
+- `tools/scrapePageText.ts`: Page scraping tool implementation
+- `plugin.ts`: Plugin integration for Token Ring applications
+
+## Development
+
+### Build
+
+```bash
+bun run build
+```
+
+### Testing
+
+```bash
+bun run test
+```
+
+### Scripts
+
+- `build`: Compile TypeScript with `tsc --noEmit`
+- `test`: Run Vitest tests
+- `test:watch`: Watch mode for testing
+- `test:coverage`: Run tests with coverage report
+
+## License
+
+MIT License - see LICENSE file for details.

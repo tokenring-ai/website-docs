@@ -15,6 +15,8 @@ The `@tokenring-ai/research` package provides a research tool that dispatches we
 - **Scripting function**: Global `research()` function for programmatic access
 - **Service integration**: Integrates with Token Ring agent and AI client systems
 - **Error handling**: Comprehensive error handling and validation
+- **Model flexibility**: Supports any AI model with web search capability
+- **Type-safe APIs**: Strongly-typed parameters and results using Zod validation
 
 ## Core Components
 
@@ -50,7 +52,21 @@ interface ResearchArgs {
   prompt: string;     // Detailed research questions to investigate
 }
 
-type ResearchResult = string; // Returns the generated research text directly
+export interface ResearchSuccessResult {
+  status: "completed";
+  topic: string;
+  research: string;
+  message: string;
+}
+
+export interface ResearchErrorResult {
+  status: "error";
+  topic: string;
+  error: string;
+  message: string;
+}
+
+export type ResearchResult = ResearchSuccessResult | ResearchErrorResult;
 ```
 
 ### Global Scripting Function
@@ -72,8 +88,12 @@ const result = await chatService.executeTool("research", {
   prompt: "Compare safety techniques and cite recent sources"
 });
 
-// Result handling - returns the research text directly
-console.log(result); // Contains the generated research
+// Result handling with proper status checking
+if (result.status === "completed") {
+  console.log(result.research);
+} else {
+  console.error(result.error);
+}
 ```
 
 ### Direct Service Usage
@@ -119,6 +139,7 @@ The research package requires configuration through the Token Ring application's
 ```
 
 ### Required Configuration:
+
 - `researchModel`: String identifier for the AI model that supports web search (e.g., "gemini-2.5-flash-web-search")
 
 ## Integration with Token Ring Ecosystem
@@ -131,6 +152,7 @@ The research package automatically integrates with Token Ring applications throu
 export default {
   name: "@tokenring-ai/research",
   version: "0.2.0",
+  description: "Research tools for Token Ring",
   install(app: TokenRingApp) {
     // 1. Register scripting function when ScriptingService is available
     app.services.waitForItemByType(ScriptingService, (scriptingService) => {
@@ -198,6 +220,33 @@ async runResearch(topic: string, prompt: string, agent: Agent): Promise<string>
 5. Records analytics data
 6. Returns generated research text
 
+### Research Tool Execute
+
+```typescript
+async function execute(
+  {topic, prompt}: z.infer<typeof inputSchema>,
+  agent: Agent
+): Promise<ResearchResult>
+```
+
+**Input Schema:**
+```typescript
+const inputSchema = z.object({
+  topic: z.string().describe("The main topic or subject to research"),
+  prompt: z
+    .string()
+    .describe(
+      "The detailed research prompt or specific questions to investigate about the topic",
+    ),
+});
+```
+
+**Error Handling:**
+- Validates that `topic` is provided
+- Validates that `prompt` is provided
+- Throws descriptive errors for missing parameters
+- Returns error result object on execution failures
+
 ## Dependencies
 
 - `@tokenring-ai/app`: Application framework
@@ -226,10 +275,10 @@ async runResearch(topic: string, prompt: string, agent: Agent): Promise<string>
   "dependencies": {
     "@tokenring-ai/app": "0.2.0",
     "@tokenring-ai/ai-client": "0.2.0",
+    "zod": "catalog:",
     "@tokenring-ai/chat": "0.2.0",
     "@tokenring-ai/agent": "0.2.0",
-    "@tokenring-ai/scripting": "0.2.0",
-    "zod": "catalog:"
+    "@tokenring-ai/scripting": "0.2.0"
   },
   "devDependencies": {
     "vitest": "catalog:",
@@ -242,18 +291,15 @@ async runResearch(topic: string, prompt: string, agent: Agent): Promise<string>
 
 The package includes Vitest configuration for testing:
 
-```typescript
-// vitest.config.ts
-import {defineConfig} from "vitest/config";
+```bash
+# Run tests
+bun run test
 
-export default defineConfig({
-  test: {
-    include: ["**/*.test.ts"],
-    environment: "node",
-    globals: true,
-    isolate: true,
-  },
-});
+# Run tests in watch mode
+bun run test:watch
+
+# Run tests with coverage
+bun run test:coverage
 ```
 
 ## Error Handling
@@ -275,4 +321,4 @@ The research package provides comprehensive error handling:
 
 ## License
 
-MIT (see LICENSE file)
+MIT License - See LICENSE file for details.

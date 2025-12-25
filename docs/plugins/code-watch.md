@@ -1,22 +1,23 @@
 # Code Watch Plugin
 
-Service for watching code changes and triggering AI-powered actions based on special comments.
+Service for watching code changes and triggering AI-powered actions based on special comments in code files.
 
 ## Overview
 
 The `@tokenring-ai/code-watch` package provides a file monitoring service that detects and processes special AI comments (`# AI!`, `# AI?`, `# AI`) in code files. When a file containing an AI comment is modified, the service automatically spawns AI agents to process the instructions.
 
-This enables developers to use natural language comments to request code modifications, questions, or notes directly within their codebase.
+This enables developers to use natural language comments to request code modifications, questions, or notes directly within their codebase, making it easy to get AI assistance while coding.
 
 ## Key Features
 
-- **File Watching**: Monitors the root directory for file additions, changes, and deletions
+- **Multi-Filesystem Support**: Watches multiple file systems with configurable polling intervals
 - **AI Comment Detection**: Scans files for special AI comments (`# AI!`, `# AI?`, `# AI`)
 - **Code Modification**: Spawns code modification agents to process `AI!` comments
 - **Question Answering**: Notes `AI?` comments for future implementation
 - **AI Notes**: Records `AI` comments for future reference
 - **TokenRing Integration**: Seamless integration with the TokenRing application framework
-- **Configurable Agents**: Customizable agent types for different AI actions
+- **Configurable Watchers**: Customizable polling intervals and stability thresholds per filesystem
+- **Concurrent Processing**: Handles file processing with configurable concurrency
 - **Error Handling**: Comprehensive error handling and service output logging
 
 ## Core Components
@@ -27,23 +28,23 @@ The main class implementing the file watching and AI comment processing function
 
 **Key Methods:**
 - `run(signal: AbortSignal)`: Start the service and begin watching files
-- `startWatching()`: Start watching the directory for file changes
-- `stopWatching()`: Stop watching for file changes
-- `onFileChanged(eventType: string, filePath: string)`: Handle file change events
-- `processNextFile()`: Process the next file in the queue
-- `processFileForAIComments(filePath: string)`: Process a file for AI comments
-- `checkAndTriggerAIAction(line: string, filePath: string, lineNumber: number)`: Check for AI triggers
-- `handleAIComment(commentLine: string, filePath: string, lineNumber: number)`: Handle AI comments based on type
-- `triggerCodeModification(content: string, filePath: string, lineNumber: number)`: Process code modification requests
-- `triggerQuestionAnswer(content: string, filePath: string, lineNumber: number)`: Handle question requests
-- `noteAIComment(content: string, filePath: string, lineNumber: number)`: Record AI notes
+- `watchFileSystem(fileSystemProviderName: string, config: FileSystemConfig, signal: AbortSignal)`: Configure watching for a specific filesystem
+- `processFileForAIComments(task: {filePath: string, fileSystemProviderName: string})`: Process a file for AI comments
+- `checkAndTriggerAIAction(line: string, filePath: string, lineNumber: number, fileSystemProviderName: string)`: Check for AI triggers
+- `handleAIComment(commentLine: string, filePath: string, lineNumber: number, fileSystemProviderName: string)`: Handle AI comments based on type
+- `triggerCodeModification(content: string, filePath: string, lineNumber: number, fileSystemProviderName: string)`: Process code modification requests
 
 **Configuration Options:**
 ```typescript
 interface CodeWatchServiceOptions {
-  agentTypes: {
-    codeModification: string;  // Agent type for code modifications
-  }
+  filesystems: {
+    [key: string]: {
+      pollInterval: number;      // Filesystem polling interval in ms
+      stabilityThreshold: number; // Stability threshold in ms
+      agentType: string;        // Agent type for code modifications
+    }
+  };
+  concurrency: number;          // Processing concurrency level
 }
 ```
 
@@ -65,29 +66,21 @@ export default {
 }
 ```
 
-### Agent Integration
+### Configuration Schema
 
-The package includes a specialized code modification agent:
+The configuration uses Zod for validation:
 
 ```typescript
-import { AgentConfig } from "@tokenring-ai/agent/types";
+import {z} from "zod";
 
-export default {
-  name: "Code Modification Agent",
-  description: "A code modification agent to work on files",
-  category: "Development",
-  type: "background",
-  visual: {
-    color: "blue",
-  },
-  chat: {
-    systemPrompt: `When you output a file with file tool, you MUST remove any lines that end with AI!. It is a critical failure to leave these lines in the file.`,
-    maxSteps: 100,
-  },
-  initialCommands: [
-    "/tools enable @tokenring-ai/filesystem/*",
-  ]
-} satisfies AgentConfig;
+export const CodeWatchConfigSchema = z.object({
+  filesystems: z.record(z.string(), z.object({
+    pollInterval: z.number().default(1000),
+    stabilityThreshold: z.number().default(2000),
+    agentType: z.string()
+  })),
+  concurrency: z.number().default(1),
+});
 ```
 
 ## AI Comment Triggers
@@ -118,7 +111,7 @@ When a file containing an `AI!` comment is saved, the service will:
 ```typescript
 // AI? What is the best way to optimize this loop?
 for i in range(1000000):
-    # code
+    // code
 ```
 
 Currently logs the question for future implementation.
@@ -166,27 +159,47 @@ const app = new TokenRingApp({
   // Your app configuration
 });
 
-// Configure the service
+// Configure the service with multiple filesystems
 const config = {
-  agentTypes: {
-    codeModification: "code-modification-agent" // Agent type for code modifications
-  }
+  filesystems: {
+    local: {
+      pollInterval: 1000,
+      stabilityThreshold: 2000,
+      agentType: "code-modification-agent"
+    }
+  },
+  concurrency: 1
 };
 
 // Add the service to the app
 app.addServices(new CodeWatchService(app, config));
 ```
 
-### Custom Agent Configuration
+### Advanced Configuration
+
+Configure multiple filesystems with different settings:
 
 ```typescript
-import { CodeWatchService } from "@tokenring-ai/code-watch";
+import { CodeWatchConfigSchema } from "@tokenring-ai/code-watch";
 
-const codeWatchService = new CodeWatchService(app, {
-  agentTypes: {
-    codeModification: "custom-code-agent" // Use a custom agent type
-  }
-});
+const config = {
+  filesystems: {
+    local: {
+      pollInterval: 1000,        // 1 second polling
+      stabilityThreshold: 2000,  // 2 second stability
+      agentType: "code-modification-agent"
+    },
+    remote: {
+      pollInterval: 5000,       // 5 second polling
+      stabilityThreshold: 10000, // 10 second stability
+      agentType: "remote-code-agent"
+    }
+  },
+  concurrency: 2               // Process 2 files simultaneously
+};
+
+// Add the service to the app
+app.addServices(new CodeWatchService(app, config));
 ```
 
 ## Configuration Options
@@ -196,14 +209,26 @@ const codeWatchService = new CodeWatchService(app, {
 ```typescript
 import { z } from "zod";
 
-export const CodeWatchConfigSchema = z.any().optional();
+export const CodeWatchConfigSchema = z.object({
+  filesystems: z.record(z.string(), z.object({
+    pollInterval: z.number().default(1000),
+    stabilityThreshold: z.number().default(2000),
+    agentType: z.string()
+  })),
+  concurrency: z.number().default(1),
+});
 ```
 
 ### Watcher Configuration
 
-The file watcher uses the following settings:
+The file watcher uses the following settings (per filesystem):
+
 - `pollInterval`: 1000ms (polling frequency)
 - `stabilityThreshold`: 2000ms (stability threshold for change detection)
+
+### Concurrency Settings
+
+- `concurrency`: Number of files to process simultaneously (default: 1)
 
 ### Agent Configuration
 
@@ -211,8 +236,10 @@ Configure the agent type used for code modifications:
 
 ```typescript
 const config = {
-  agentTypes: {
-    codeModification: "code-modification-agent" // Default agent type
+  filesystems: {
+    local: {
+      agentType: "code-modification-agent" // Default agent type
+    }
   }
 };
 ```
@@ -224,20 +251,20 @@ pkg/code-watch/
 ├── index.ts                 # Entry point and schema definition
 ├── CodeWatchService.ts      # Main service implementation
 ├── plugin.ts               # TokenRing plugin interface
-├── agents/
-│   └── codeModificationAgent.ts  # Agent configuration for code modifications
 ├── package.json            # Package configuration and dependencies
 ├── README.md               # Package documentation
 ├── LICENSE                 # MIT license
+├── vitest.config.ts        # Test configuration
 └── vitest.config.ts        # Test configuration
 ```
 
 ## Dependencies
 
-- `@tokenring-ai/app`: Base application framework
-- `@tokenring-ai/agent`: Agent management system
-- `@tokenring-ai/chat`: AI chat functionality
-- `@tokenring-ai/filesystem`: Filesystem operations
+- `@tokenring-ai/app@0.2.0`: Base application framework
+- `@tokenring-ai/agent@0.2.0`: Agent management system
+- `@tokenring-ai/filesystem@0.2.0`: Filesystem operations
+- `zod`: Schema validation
+- `@tokenring-ai/utility`: Utility functions
 - `ignore@^7.0.5`: File ignoring patterns
 
 ## Testing
@@ -263,6 +290,7 @@ bun run test:coverage
 - No support for file deletion processing
 - Only processes files on add/change events
 - Limited to single-line comment detection
+- No support for multi-line comment formats (/* ... */)
 
 ## Contributing
 

@@ -1,43 +1,43 @@
 # Database Plugin
 
-Abstract layer for managing database resources with SQL execution, schema inspection, and secure write operations.
-
 ## Overview
 
-The `@tokenring-ai/database` package provides an abstract layer for managing database resources within TokenRing AI agents. It enables the registration, activation, and interaction with multiple database connections through a unified `DatabaseService`, supporting read-only and read-write operations with built-in security features.
+The `@tokenring-ai/database` package provides an abstract database layer for managing database resources within TokenRing AI agents. It enables the registration and interaction with multiple database connections through a unified `DatabaseService` that integrates with the TokenRing agent framework.
 
-## Database Ecosystem
+The package focuses on abstraction, requiring implementers to extend `DatabaseProvider` for specific database types (e.g., PostgreSQL, MySQL). It supports read-only and read-write operations, with tools for safe querying and schema exploration, making it particularly useful for AI-driven applications that need to interact with databases dynamically.
 
-The TokenRing database ecosystem consists of three main packages:
+## Package Structure
 
-1. **`@tokenring-ai/database`** - Abstract base layer for database resources and interfaces
-2. **`@tokenring-ai/mysql`** - MySQL-specific implementation with connection pooling
-3. **`@tokenring-ai/drizzle-storage`** - Multi-database storage for agent state checkpoints (SQLite, MySQL, PostgreSQL)
-
-## Key Features
-
-- **Multi-database resource management** with KeyedRegistry
-- **Abstract SQL execution and schema retrieval** through provider implementations
-- **Integration with TokenRing tools** for agent access
-- **Write protection** configurable per database resource
-- **Context awareness** for available databases
-- **Human approval required** for write operations
-- **Support for multiple database types** (PostgreSQL, MySQL, SQLite, etc.)
+```
+pkg/database/
+├── index.ts                          # Package entry point and configuration schema
+├── DatabaseService.ts                # Core service for managing database providers
+├── DatabaseProvider.ts               # Abstract base class for database implementations
+├── plugin.ts                         # TokenRing plugin integration
+├── tools.ts                          # Tool exports
+├── tools/
+│   ├── executeSql.ts                 # SQL execution tool
+│   └── showSchema.ts                 # Schema inspection tool
+├── contextHandlers.ts                # Context handler exports
+├── contextHandlers/
+│   └── availableDatabases.ts         # Database availability context handler
+└── package.json                      # Package metadata and dependencies
+```
 
 ## Core Components
 
 ### DatabaseService
 
-Central manager for database providers using KeyedRegistry.
+The `DatabaseService` is the central manager for database providers, implementing the `TokenRingService` interface. It uses a `KeyedRegistry` for managing registered database providers.
 
 **Key Methods:**
-- `registerDatabase(name, provider)`: Registers a database provider by name
-- `getDatabaseByName(name)`: Retrieves a registered provider
-- `getAvailableDatabases()`: Lists all registered database names
+- `registerDatabase(name: string, provider: DatabaseProvider)`: Registers a database provider by name
+- `getDatabaseByName(name: string): DatabaseProvider`: Retrieves a registered provider
+- `getAvailableDatabases(): string[]`: Lists all registered database names
 
-### DatabaseProvider (Abstract Base Class)
+### DatabaseProvider
 
-Abstract base class for concrete database implementations.
+Abstract base class for concrete database implementations. Extend this to connect to specific databases.
 
 **Constructor Options:**
 ```typescript
@@ -58,15 +58,14 @@ interface ExecuteSqlResult {
 }
 ```
 
-### Tools
+## Tools
 
-#### database_executeSql
+The package provides two agent tools that integrate with the TokenRing chat system:
 
-Executes an arbitrary SQL query on a database with write protection.
+### executeSql
 
-**Tool Details:**
 - **Name**: `database_executeSql`
-- **Description**: Executes an SQL query with automatic write protection
+- **Description**: Executes an arbitrary SQL query on a database with built-in safety protections
 - **Input Schema**:
   ```typescript
   {
@@ -80,21 +79,25 @@ Executes an arbitrary SQL query on a database with write protection.
   - Provides detailed error messages for missing databases
   - Requires `available-databases` context handler
 
-**Usage:**
+**Usage Example:**
 ```typescript
+// Execute a SELECT query
 await agent.callTool('database_executeSql', {
   databaseName: 'myPostgres',
   sqlQuery: 'SELECT * FROM users WHERE active = true'
 });
+
+// Execute a write operation (requires human confirmation)
+await agent.callTool('database_executeSql', {
+  databaseName: 'myPostgres',
+  sqlQuery: 'UPDATE users SET last_login = NOW() WHERE id = 123'
+});
 ```
 
-#### database_showSchema
+### showSchema
 
-Shows the 'CREATE TABLE' statements for all tables in the specified database.
-
-**Tool Details:**
 - **Name**: `database_showSchema`
-- **Description**: Shows database schema information
+- **Description**: Shows the 'CREATE TABLE' statements for all tables in the specified database
 - **Input Schema**:
   ```typescript
   {
@@ -106,9 +109,10 @@ Shows the 'CREATE TABLE' statements for all tables in the specified database.
   - Returns structured schema information
   - Requires `available-databases` context handler
 
-**Usage:**
+**Usage Example:**
 ```typescript
-await agent.callTool('database_showSchema', {
+// Show database schema
+const schema = await agent.callTool('database_showSchema', {
   databaseName: 'myPostgres'
 });
 ```
@@ -123,6 +127,14 @@ Automatically provides agents with information about available databases through
 - Yields database names as context items
 - Returns empty if no databases are registered
 - Provides formatted list of available databases for agent awareness
+
+**Example Output:**
+```
+/* These are the databases available for the database tool */:
+- myPostgres
+- analytics
+- reporting
+```
 
 ## Plugin Integration
 
@@ -323,14 +335,6 @@ if (!databaseResource) {
 }
 ```
 
-## Related Packages
-
-### @tokenring-ai/mysql
-Provides MySQL-specific implementation with connection pooling. See [MySQL Plugin Documentation](./mysql.md).
-
-### @tokenring-ai/drizzle-storage
-Provides multi-database storage for agent state checkpoints (SQLite, MySQL, PostgreSQL). See [Drizzle Storage Documentation](./drizzle-storage.md).
-
 ## Dependencies
 
 - `@tokenring-ai/app` (v0.2.0): Core application framework and TokenRingService interface
@@ -357,3 +361,7 @@ The package provides comprehensive error handling:
 - **Invalid Parameters**: Zod validation for all tool inputs
 - **Write Confirmation**: Human approval required for non-SELECT queries
 - **Provider Errors**: Propagates errors from underlying database implementations
+
+## License
+
+MIT

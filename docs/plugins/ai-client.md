@@ -14,6 +14,10 @@ The `@tokenring-ai/ai-client` package provides comprehensive AI client integrati
 - **Feature Flags**: Runtime feature configuration per model
 - **Provider Registration**: Dynamic provider registration through configuration
 - **Type-Safe Models**: Strong TypeScript types for all AI operations
+- **Streaming Support**: Full streaming capabilities for chat completions
+- **Context Compaction**: Automatic conversation summarization to manage token usage
+- **Reranking**: Document ranking and relevance scoring
+- **Multiple Modalities**: Support for chat, embeddings, images, speech, and transcription
 
 ## Core Components
 
@@ -27,6 +31,7 @@ The package registers five primary model registries that extend the base `ModelT
 - Includes tool calling capabilities
 - Cost tracking and usage metrics
 - Reranking functionality
+- Context compaction for long conversations
 
 #### EmbeddingModelRegistry  
 - Handles text embedding generation
@@ -64,6 +69,7 @@ Primary chat client with the following capabilities:
 - `rerank(request, agent)`: Reranks documents based on relevance
 - `calculateCost(usage)`: Calculates AI usage costs
 - `calculateTiming(elapsedMs, usage)`: Computes timing metrics
+- `setFeatures(features)`: Configures runtime feature flags
 
 **Request Types:**
 - `ChatRequest`: Standard chat completion request with messages, tools, and parameters
@@ -75,7 +81,7 @@ Handles text embedding generation:
 
 **Key Methods:**
 - `getEmbeddings({ input })`: Generates embeddings for array of strings
-- `setFeatures(features)`: Configures runtime feature flags
+- `setFeatures(features)`: Configures feature flags
 - `getFeatures()`: Retrieves current feature configuration
 - `getModelId()`: Returns model identifier
 
@@ -205,6 +211,23 @@ const [text, result] = await transcriptionClient.transcribe({
 console.log('Transcribed text:', text);
 ```
 
+### Reranking Documents
+
+```typescript
+const client = await chatRegistry.getFirstOnlineClient('gpt-4');
+const rankings = await client.rerank({
+  query: 'What is artificial intelligence?',
+  documents: [
+    'Artificial intelligence is the simulation of human intelligence in machines.',
+    'Machine learning is a subset of artificial intelligence.',
+    'Deep learning is a type of machine learning.'
+  ],
+  topK: 2
+}, agent);
+
+console.log('Ranked documents:', rankings.rankings);
+```
+
 ## Configuration Options
 
 ### Provider Configuration
@@ -306,19 +329,123 @@ interface AIResponseTiming {
 
 Cost calculations are based on provider-specific pricing and usage metrics.
 
-## Error Handling
+## Context Compaction
 
-The package includes comprehensive error handling:
+The AI client includes automatic context compaction for long conversations:
 
-- **Abort Signals**: Integration with agent abort signals
-- **Retry Logic**: Built-in retry mechanisms
-- **Error Propagation**: Errors are properly propagated with context
-- **Status Monitoring**: Model availability and hot/cold status tracking
+```typescript
+// Enable auto-compact
+aiService.updateAIConfig({ autoCompact: true }, agent);
+
+// Manual compact
+import { compactContext } from '@tokenring-ai/ai-client/util/compactContext';
+await compactContext(agent);
+```
+
+Compaction creates a summary of the conversation, reducing token usage while preserving important context.
+
+## Commands
+
+The package provides chat commands for interactive use:
+
+### `/chat [message]`
+
+Send a message to the AI using the current model and configuration.
+
+```
+/chat Explain how async/await works in JavaScript
+```
+
+### `/model [model_name]`
+
+Set or show the current model. Without arguments, shows an interactive tree selection.
+
+```
+/model gpt-4.1
+/model                    # Interactive selection
+```
+
+### `/ai settings key=value [...]`
+
+Update AI configuration settings.
+
+```
+/ai settings temperature=0.7 maxTokens=4000
+/ai settings autoCompact=true
+/ai                       # Show current settings
+```
+
+### `/ai context`
+
+Show all context items that would be included in the next chat request.
+
+```
+/ai context
+```
+
+### `/compact`
+
+Manually compact the conversation context by summarizing prior messages.
+
+```
+/compact
+```
+
+### `/rerank query=\"...\" documents=\"...\"`
+
+Rank documents by relevance to a query.
+
+```
+/rerank query=\"best programming languages\" documents=\"JavaScript,Python,Rust\"
+```
+
+## Supported Providers
+
+| Provider          | Chat | Embeddings | Images | Speech | Transcription | Reranking | Notes                                     |
+|-------------------|------|------------|--------|--------|---------------|-----------|-------------------------------------------|
+| OpenAI            | ✅    | ✅          | ✅      | ✅      | ✅             | ✅        | GPT-4.1, GPT-5, O3, O4-mini, TTS, Whisper   |
+| Anthropic         | ✅    | ❌          | ❌      | ❌      | ❌             | ❌        | Claude 3.5, 4, 4.1                        |
+| Google            | ✅    | ❌          | ✅      | ❌      | ❌             | ❌        | Gemini 2.5 Pro/Flash, web search          |
+| xAI               | ✅    | ❌          | ✅      | ❌      | ❌             | ❌        | Grok 3, 4, code models                    |
+| DeepSeek          | ✅    | ❌          | ❌      | ❌      | ❌             | ❌        | DeepSeek Chat, Reasoner                   |
+| Groq              | ✅    | ❌          | ❌      | ❌      | ❌             | ❌        | Fast inference, Llama models              |
+| Cerebras          | ✅    | ❌          | ❌      | ❌      | ❌             | ❌        | Ultra-fast inference                      |
+| Perplexity        | ✅    | ❌          | ❌      | ❌      | ❌             | ❌        | Sonar models with web search              |
+| Azure             | ✅    | ❌          | ❌      | ❌      | ❌             | ❌        | Azure OpenAI Service                      |
+| Ollama            | ✅    | ✅          | ❌      | ❌      | ❌             | ❌        | Local models                              |
+| OpenRouter        | ✅    | ❌          | ❌      | ❌      | ❌             | ❌        | Access to many providers                  |
+| Fal               | ❌    | ❌          | ✅      | ❌      | ❌             | ❌        | Image generation                          |
+| OpenAI-Compatible | ✅    | ✅          | ❌      | ❌      | ❌             | ❌        | Custom endpoints                          |
+
+## Model Features
+
+Models can have various features that can be enabled/disabled:
+
+- **websearch**: Enables web search capability
+- **reasoningEffort**: Reasoning effort level (none, minimal, low, medium, high)
+- **reasoningSummary**: Reasoning summary mode (auto, detailed)
+- **serviceTier**: Service tier (auto, flex, priority, default)
+- **textVerbosity**: Text verbosity (low, medium, high)
+- **strictJsonSchema**: Use strict JSON schema validation
+
+**Example:**
+
+```typescript
+// Select model with web search enabled
+const client = await chatRegistry.getFirstOnlineClient('openai/gpt-5?websearch=1');
+
+// Set features on a client
+client.setFeatures({
+  websearch: true,
+  reasoningEffort: 'high',
+  serviceTier: 'priority'
+});
+```
 
 ## Dependencies
 
-- `@tokenring-ai/agent`: Core agent framework
 - `@tokenring-ai/app`: Application framework
+- `@tokenring-ai/agent`: Core agent system
 - `@tokenring-ai/utility`: Shared utilities
 - `ai@5.0.113`: Vercel AI SDK
 - `zod`: Schema validation
@@ -343,3 +470,7 @@ bun run build
 ```
 
 The package uses Vitest for testing and Bun as the package manager.
+
+## License
+
+MIT License - See LICENSE file for details.

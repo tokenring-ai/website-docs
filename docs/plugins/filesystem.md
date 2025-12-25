@@ -1,10 +1,10 @@
 # Filesystem Plugin
 
-Abstract filesystem with operations for reading, writing, searching, and globbing files with ignore filters and dirty tracking.
+Provides an abstract filesystem interface for AI agents with file operations, search capabilities, shell execution, and multi-provider support.
 
 ## Overview
 
-The `@tokenring-ai/filesystem` package provides an abstract filesystem interface designed for integration with AI agents in the Token Ring framework. It enables virtual filesystem operations such as reading/writing files, directory traversal, globbing, searching, and executing shell commands. The package supports multiple filesystem providers (e.g., local FS, S3) and integrates seamlessly with the `@tokenring-ai/agent` for state management, including file selection for chat sessions and memory injection.
+The `@tokenring-ai/filesystem` package provides a unified filesystem interface designed for integration with AI agents in the Token Ring framework. It enables virtual filesystem operations such as reading/writing files, directory traversal, globbing, searching, and executing shell commands. The package supports multiple filesystem providers (local, virtual, etc.) and integrates seamlessly with the `@tokenring-ai/agent` for state management, including file selection for chat sessions and memory injection.
 
 Key features:
 - **Unified API**: Create, read, update, delete, rename, permissions
@@ -25,7 +25,7 @@ Key features:
 
 Main service class implementing `TokenRingService` that manages filesystem providers and state.
 
-**Key Methods:**
+**Key Properties/Methods:**
 - `registerFileSystemProvider(provider)`: Registers a filesystem provider
 - `getActiveFileSystemProviderName()`: Gets the current active provider
 - `setActiveFileSystemProviderName(name)`: Sets the active provider
@@ -49,7 +49,7 @@ Main service class implementing `TokenRingService` that manages filesystem provi
 
 ### FileSystemProvider
 
-Abstract base class for concrete implementations (e.g., local FS, S3).
+Abstract base class for concrete implementations (e.g., local FS).
 
 **Required Methods:**
 - `getDirectoryTree(path, params?)`: Async generator for directory contents
@@ -73,16 +73,15 @@ Abstract base class for concrete implementations (e.g., local FS, S3).
 
 Write, append, delete, rename, or adjust file permissions.
 
-- **Actions**: `write`, `append`, `delete`, `rename`, `adjust`
-- **Parameters**:
-  - `path`: File path (relative to root)
-  - `action`: Operation to perform
-  - `content`: File content (required for write/append)
-  - `is_base64`: Whether content is base64 encoded (optional)
-  - `fail_if_exists`: Fail if file exists (optional)
-  - `permissions`: Octal permissions (e.g., '644') (optional)
-  - `toPath`: Destination path for rename/copy (optional)
-  - `check_exists`: Check file existence before operation (optional)
+**Parameters:**
+- `path`: File path (relative to root)
+- `action`: Operation to perform (`write`, `append`, `delete`, `rename`, `adjust`)
+- `content`: File content (required for write/append)
+- `is_base64`: Whether content is base64 encoded (optional)
+- `fail_if_exists`: Fail if file exists (optional)
+- `permissions`: Octal permissions (e.g., '644') (optional)
+- `toPath`: Destination path for rename/copy (optional)
+- `check_exists`: Check file existence before operation (optional)
 
 **Example:**
 ```typescript
@@ -131,14 +130,13 @@ await agent.useTool({
 
 Retrieve files by paths/globs or search text across files.
 
-- **Modes**: `names` (paths only), `content` (full file contents), `matches` (lines with context)
-- **Parameters**:
-  - `files`: File paths or glob patterns (optional)
-  - `searches`: Search patterns (optional)
-  - `returnType`: Result format (default: 'content')
-  - `linesBefore/After`: Context lines around matches (default: 10 for matches)
-  - `caseSensitive`: Search case sensitivity (default: true)
-  - `matchType`: Matching type ('substring', 'whole-word', 'regex')
+**Parameters:**
+- `files`: File paths or glob patterns (optional)
+- `searches`: Search patterns (optional)
+- `returnType`: Result format (`names`, `content`, `matches`)
+- `linesBefore/After`: Context lines around matches (default: 10 for matches)
+- `caseSensitive`: Search case sensitivity (default: true)
+- `matchType`: Matching type (`substring`, `whole-word`, `regex`)
 
 **Example:**
 ```typescript
@@ -176,10 +174,10 @@ await agent.useTool({
 
 Execute shell commands with safety validation and timeout.
 
-- **Parameters**:
-  - `command`: Shell command to execute
-  - `timeoutSeconds`: Timeout in seconds (default: 60, max: 90)
-  - `workingDirectory`: Working directory (default: './')
+**Parameters:**
+- `command`: Shell command to execute
+- `timeoutSeconds`: Timeout in seconds (default: 60, max: 90)
+- `workingDirectory`: Working directory (default: './')
 
 **Example:**
 ```typescript
@@ -333,10 +331,10 @@ for await (const memory of fs.getMemories(agent)) {
 ```typescript
 // Register multiple providers
 fs.registerFileSystemProvider(localFSProvider);
-fs.registerFileSystemProvider(s3Provider);
+fs.registerFileSystemProvider(virtualFSProvider);
 
 // Switch between providers
-fs.setActiveFileSystemProviderName('s3');
+fs.setActiveFileSystemProviderName('virtual');
 ```
 
 ### Scripting Integration
@@ -355,7 +353,7 @@ createFile('new.js', 'console.log("Hi");');
 ```typescript
 const fs = new FileSystemService({
   defaultSelectedFiles: ['src/index.ts', 'README.md'], // Default files for chat
-  dangerousCommands: [/^rm\b/, /^chmod\b/, /^chown\b/, /^sudo\b/], // Dangerous commands
+  dangerousCommands: [/^rm\\b/, /^chmod\\b/, /^chown\\b/, /^sudo\\b/], // Dangerous commands
   safeCommands: ['ls', 'cat', 'grep', 'git', 'npm', 'bun', 'node'] // Safe commands
 });
 ```

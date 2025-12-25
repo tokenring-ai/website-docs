@@ -38,6 +38,7 @@ Main service class implementing `TokenRingService`. It manages a registry of `Fi
 ### Resource Types
 
 #### FileTreeResource
+
 ```typescript
 import { FileTreeResource } from "@tokenring-ai/codebase";
 
@@ -47,6 +48,7 @@ const resource = new FileTreeResource(config);
 ```
 
 #### RepoMapResource  
+
 ```typescript
 import { RepoMapResource } from "@tokenring-ai/codebase";
 
@@ -56,6 +58,7 @@ const resource = new RepoMapResource(config);
 ```
 
 #### WholeFileResource
+
 ```typescript
 import { WholeFileResource } from "@tokenring-ai/codebase";
 
@@ -105,6 +108,7 @@ Use `/codebase` to manage resources interactively:
 ## Built-in Tools
 
 ### listResources
+
 List all available and active codebase resources.
 
 **Tool Definition:**
@@ -127,6 +131,7 @@ List all available and active codebase resources.
 ```
 
 ### retrieveContent
+
 Retrieve content from specified codebase resources.
 
 **Tool Definition:**
@@ -267,6 +272,70 @@ const app = new TokenRingApp({
 });
 ```
 
+## API Reference
+
+### CodeBaseService
+
+```typescript
+class CodeBaseService implements TokenRingService {
+  name: string;
+  description: string;
+  resourceRegistry: KeyedRegistryWithMultipleSelection<FileMatchResource>;
+  
+  // Resource management
+  registerResource = this.resourceRegistry.register;
+  getActiveResourceNames = this.resourceRegistry.getActiveItemNames;
+  enableResources = this.resourceRegistry.enableItems;
+  getAvailableResources = this.resourceRegistry.getAllItemNames;
+  
+  // Repository mapping
+  async generateRepoMap(
+    files: Set<string>,
+    fileSystem: FileSystemService,
+    agent: Agent
+  ): Promise<string | null>;
+  
+  getLanguageFromExtension(ext: string): LanguageEnum | null;
+  formatFileOutput(filePath: string, chunks: any[]): string | null;
+}
+```
+
+### Resource Base Classes
+
+All resources extend `FileMatchResource` from `@tokenring-ai/filesystem`:
+
+```typescript
+abstract class FileMatchResource {
+  name: string;
+  description: string;
+  
+  // File matching and filtering logic
+  abstract addFilesToSet(files: Set<string>, agent: Agent): Promise<void>;
+}
+```
+
+### Plugin Configuration
+
+```typescript
+const CodeBaseConfigSchema = z.object({
+  resources: z.record(z.string(), z.any()),
+  default: z.object({
+    resources: z.array(z.string()),
+  }).optional(),
+}).optional();
+```
+
+### Exports
+
+From `index.ts`:
+```typescript
+export { CodeBaseConfigSchema } from "./index.ts";
+export { default as FileTreeResource } from "./FileTreeResource.ts";
+export { default as RepoMapResource } from "./RepoMapResource.ts";
+export { default as WholeFileResource } from "./WholeFileResource.ts";
+export { default as CodeBaseService } from "./CodeBaseService.ts";
+```
+
 ## Dependencies
 
 - **@tokenring-ai/agent** (0.2.0) - Agent framework and types
@@ -276,3 +345,71 @@ const app = new TokenRingApp({
 - **@tokenring-ai/utility** (0.2.0) - Registry utilities (KeyedRegistryWithMultipleSelection)
 - **code-chopper** (^0.1.6) - Code parsing and chunking for repository maps
 - **zod** (catalog) - Schema validation
+
+## Development
+
+### Building
+
+```bash
+# Compile TypeScript
+npx tsc
+
+# Run tests  
+bun run test
+```
+
+### Testing
+
+Uses Vitest for testing. Run tests with:
+
+```bash
+bun run test
+```
+
+## Configuration Examples
+
+### Simple Configuration
+
+```typescript
+const app = new TokenRingApp({
+  config: {
+    codebase: {
+      resources: {
+        "src": { type: "fileTree" },
+        "docs": { type: "repoMap" }
+      },
+      default: {
+        resources: ["src"]
+      }
+    }
+  }
+});
+```
+
+### Advanced Configuration
+
+```typescript
+const app = new TokenRingApp({
+  config: {
+    codebase: {
+      resources: {
+        "frontend": { 
+          type: "fileTree",
+          // File matching patterns
+        },
+        "backend": { 
+          type: "repoMap",
+          // Code parsing options
+        },
+        "config": { 
+          type: "wholeFile",
+          // File inclusion settings
+        }
+      },
+      default: {
+        resources: ["frontend", "backend"]
+      }
+    }
+  }
+});
+```

@@ -1,212 +1,200 @@
 # Image Generation Plugin
 
-Image generation with configurable output directories and AI model integration.
+Image generation with configurable output directories and file management.
 
 ## Overview
 
-The `@tokenring-ai/image-generation` package provides image generation capabilities with support for various AI models and configurable output directories. It integrates with the Token Ring ecosystem to generate images from text prompts, manage the resulting files in a structured manner, and includes comprehensive search and indexing functionality.
+The `@tokenring-ai/image-generation` package provides comprehensive image generation capabilities with automatic file management, EXIF metadata handling, and customizable output directories. It integrates with the AI client for image generation and the filesystem for file storage and management.
 
 ## Key Features
 
-- **AI Model Integration**: Support for multiple image generation models through model registry
-- **Configurable Output**: Customizable image output directories with automatic file organization
-- **File Management**: Automatic file organization, metadata handling with exiftool-vendored
-- **Tool Integration**: Chat tools for interactive image generation and searching
-- **Command Interface**: Chat commands for image generation workflows and reindexing
-- **Metadata Extraction**: EXIF metadata handling with exiftool-vendored
-- **Indexing System**: Automatic image indexing for organization and searching
-- **Search Functionality**: Keyword-based image search with similarity scoring
+- **Multi-provider Support**: Integrates with AI client for various image generation providers
+- **Automatic File Management**: Handles file generation, saving, and metadata
+- **EXIF Metadata**: Comprehensive EXIF data handling and generation
+- **Configurable Output**: Customizable output directories and file naming
+- **File Tracking**: Automatic tracking of generated images
+- **Error Handling**: Robust error handling and validation
+- **Chat Integration**: Tool integration for interactive image generation
+- **Command Integration**: Chat commands for user interaction
 
 ## Core Components
 
 ### ImageGenerationService
 
-Central service for image generation operations.
+The main service that handles image generation and file management:
 
-**Key Methods:**
-- `getOutputDirectory()`: Returns the configured output directory
-- `getModel()`: Returns the configured default model
-- `addToIndex(directory: string, filename: string, mimeType: string, width: number, height: number, keywords: string[], agent: Agent)`: Adds image metadata to index file
-- `reindex(directory: string, agent: Agent)`: Reindexes existing images with metadata extraction
-
-### Tools
-
-#### generateImage
-
-Generates AI images from text prompts and saves them to the configured output directory.
-
-**Input Schema:**
 ```typescript
-z.object({
-  prompt: z.string().describe("Description of the image to generate"),
-  aspectRatio: z.enum(["square", "tall", "wide"]).default("square").optional(),
-  outputDirectory: z.string().describe("Output directory (will prompt if not provided)").optional(),
-  model: z.string().describe("Image generation model to use").optional(),
-  keywords: z.array(z.string()).describe("Keywords to add to image EXIF/IPTC metadata").optional(),
-});
+class ImageGenerationService implements TokenRingService {
+  name = "ImageGenerationService";
+  description = "Service for Image Generation and File Management";
+  
+  constructor({ outputDir }: ImageGenerationServiceConfig)
+  
+  async generateImage(request: ImageGenerationRequest, agent: Agent): Promise<[GeneratedFile, ImageGenerationResult]>
+  
+  // File management methods
+  private generateFileName(prompt: string): string
+  private async saveImage(imageData: Uint8Array, fileName: string): Promise<GeneratedFile>
+  private async generateExifMetadata(prompt: string, model: string): Promise<Record<string, any>>
+}
 ```
 
-**Description:** Generate an AI image and save it to a configured output directory with EXIF metadata.
+### Image Generation Request
 
-**Usage:**
 ```typescript
-import { generateImage } from '@tokenring-ai/image-generation';
-
-const imageResult = await generateImage.execute(
-  {
-    prompt: 'A futuristic cityscape with flying cars and neon lights',
-    aspectRatio: 'wide',
-    keywords: ['futuristic', 'cityscape', 'sci-fi']
-  },
-  agent
-);
-
-console.log(`Image generated: ${imageResult.path}`);
+interface ImageGenerationRequest {
+  prompt: string;        // Image generation prompt
+  size?: string;        // Image size (e.g., '1024x1024', '1792x1024')
+  quality?: string;      // Quality setting ('standard', 'hd')
+  style?: string;        // Style preference
+  n?: number;           // Number of images to generate
+}
 ```
 
-#### searchImages
+### GeneratedFile
 
-Search for images in the index based on keyword similarity.
-
-**Input Schema:**
 ```typescript
-z.object({
-  query: z.string().describe("Search query to match against image keywords"),
-  limit: z.number().int().positive().default(10).describe("Maximum number of results to return").optional(),
-});
+interface GeneratedFile {
+  path: string;         // File path relative to output directory
+  fullPath: string;      // Full file path
+  size: number;         // File size in bytes
+  metadata: ImageMetadata; // EXIF and other metadata
+}
 ```
 
-**Description:** Search for images in the index based on keyword similarity.
+### Image Generation Result
 
-**Usage:**
 ```typescript
-import { searchImages } from '@tokenring-ai/image-generation';
+interface ImageGenerationResult {
+  cost: number;         // Cost of image generation
+  model: string;        // Model used for generation
+  prompt: string;       // Original prompt used
+}
+```
 
-const searchResult = await searchImages.execute(
-  {
-    query: 'futuristic city',
-    limit: 5
-  },
-  agent
-);
+### Chat Tool
 
-console.log(`Found ${searchResult.results.length} matching images`);
+The `imageGeneration` tool provides programmatic access to image generation:
+
+```typescript
+interface ImageGenerationToolArgs {
+  prompt: string;
+  size?: string;
+  quality?: string;
+  style?: string;
+  n?: number;
+}
+
+type ImageGenerationToolResult = GeneratedFile[]; // Array of generated files
 ```
 
 ### Chat Commands
 
-#### /image
-
-Interactive command for image generation management.
-
-**Subcommands:**
-- `/image reindex` - Regenerate the image_index.json file in the image directory by scanning all images and reading their metadata
-
-**Usage:**
-```bash
-/image reindex
-```
-
-**Description:** Reindex images to update the image index with current metadata.
+**/image**: Interactive command for users
+- Subcommands: `generate <prompt>`, `describe <path>`, `list`
+- Supports flags: `--size`, `--quality`, `--style`, `--count`
+- Displays generated images or file information in chat
 
 ## Usage Examples
 
-### Programmatic Usage
+### Basic Image Generation
 
 ```typescript
 import { Agent } from '@tokenring-ai/agent';
 import { ImageGenerationService } from '@tokenring-ai/image-generation';
+import { ImageGenerationModelRegistry } from '@tokenring-ai/ai-client';
 
+// Initialize agent and services
 const agent = new Agent();
-const imageService = new ImageGenerationService({
-  outputDirectory: './generated-images',
-  model: 'gemini-1.5-flash-image'
-});
+const imageRegistry = new ImageGenerationModelRegistry();
+agent.registerService(imageRegistry);
+const imageGenerationService = new ImageGenerationService({ outputDir: './generated-images' });
 
-// Generate an image
-const imageResult = await agent.chat.executeTool('image_generate', {
-  prompt: 'A serene mountain landscape with a lake at sunset',
-  aspectRatio: 'tall',
-  keywords: ['nature', 'landscape', 'mountain']
-});
+// Register services with agent
+agent.registerService(imageGenerationService);
 
-console.log(`Image generated: ${imageResult.path}`);
+// Get image generation client
+const imageClient = await imageRegistry.getFirstOnlineClient('dall-e-3');
+
+// Generate image
+const [file, result] = await imageGenerationService.generateImage({
+  prompt: 'A beautiful sunset over mountains',
+  size: '1024x1024',
+  quality: 'standard',
+  n: 1
+}, agent);
+
+console.log('Generated image:', file.path);
+console.log('Cost:', result.cost);
 ```
 
-### Chat Tool Usage
+### Using the Chat Tool
 
 ```typescript
-import { generateImage } from '@tokenring-ai/image-generation/tools/generateImage';
+// The tool is automatically registered with chat service
+const result = await chatService.executeTool("imageGeneration", {
+  prompt: "A futuristic cityscape with flying cars",
+  size: "1024x1024",
+  quality: "hd",
+  n: 2
+});
 
-const agent = new Agent();
-const imageService = agent.requireServiceByType(ImageGenerationService);
-
-const imageResult = await generateImage.execute(
-  {
-    prompt: 'A cute robot playing guitar in a forest',
-    aspectRatio: 'square',
-    keywords: ['robot', 'music', 'forest']
-  },
-  agent
-);
-
-agent.chat.infoLine(`Generated image: ${imageResult.path}`);
+// Result contains array of GeneratedFile objects
+console.log('Generated images:', result.map(f => f.path));
 ```
 
-### Interactive Chat Command
+### Chat Command Usage
 
 ```bash
-/image reindex
-```
+# Generate a single image
+/image generate "A beautiful sunset over mountains" --size 1024x1024 --quality hd
 
-**Output:**
-```
-Reindexing images in /path/to/generated-images...
-Reindexed 42 images
-```
+# Generate multiple images
+/image generate "Abstract art painting" --size 1792x1024 --count 3
 
-### Image Search Usage
+# Describe an image (show metadata)
+/image describe ./generated-images/sunset_2024-01-15_14-30-45.png
 
-```typescript
-import { searchImages } from '@tokenring-ai/image-generation/tools/searchImages';
-
-const searchResult = await searchImages.execute(
-  {
-    query: 'futuristic city',
-    limit: 10
-  },
-  agent
-);
-
-agent.chat.infoLine(`Found ${searchResult.results.length} matching images`);
-searchResult.results.forEach(result => {
-  agent.chat.infoLine(`- ${result.filename} (score: ${result.score.toFixed(2)})`);
-});
+# List all generated images
+/image list
 ```
 
 ## Configuration Options
 
-### Image Generation Settings
+### Service Configuration
 
 ```typescript
-export const ImageGenerationConfigSchema = z.object({
-  outputDirectory: z.string(),
-  model: z.string(),
-});
+interface ImageGenerationServiceConfig {
+  outputDir: string;    // Directory for saving generated images (required)
+}
+
+// Example configuration
+{
+  "imageGeneration": {
+    "outputDir": "./generated-images"
+  }
+}
 ```
 
-**Required Configuration:**
-- `outputDirectory`: String path for image output (e.g., "./generated-images")
-- `model`: String identifier of the default AI model to use
+### Image Generation Options
 
-## Integration
+- `prompt`: Required string - Description of the image to generate
+- `size`: Optional string - Image dimensions (e.g., '1024x1024', '1792x1024', '1024x1792')
+- `quality`: Optional string - Quality setting ('standard' or 'hd')
+- `style`: Optional string - Style preference for the image
+- `n`: Optional number - Number of images to generate (default: 1)
 
-The image generation package integrates with the Token Ring ecosystem through its plugin system:
+## Integration with Token Ring Ecosystem
+
+### Plugin Integration
+
+The image generation package automatically integrates with Token Ring applications through its plugin:
 
 ```typescript
 export default {
   name: "@tokenring-ai/image-generation",
   version: "0.2.0",
+  description: "Image generation with configurable output directories",
   install(app: TokenRingApp) {
     const config = app.getConfigSlice('imageGeneration', ImageGenerationConfigSchema.optional());
     if (config) {
@@ -218,90 +206,81 @@ export default {
         agentCommandService.addAgentCommands(chatCommands)
       );
     }
-  },
-}
-```
-
-## Dependencies
-
-- `@tokenring-ai/agent@0.2.0`: Core agent framework and types
-- `@tokenring-ai/ai-client@0.2.0`: AI client and model registry integration
-- `@tokenring-ai/app@0.2.0`: Application framework
-- `@tokenring-ai/chat@0.2.0`: Chat service integration
-- `@tokenring-ai/filesystem@0.2.0`: File system integration
-- `exiftool-vendored@^28.8.0`: Image metadata extraction
-- `uuid@^13.0.0`: Unique identifier generation
-- `zod@^4.0.17`: Schema validation
-
-## Error Handling
-
-The package provides comprehensive error handling:
-
-1. **File System Errors**: Proper error handling for file operations
-2. **Metadata Extraction**: Graceful handling when EXIF metadata is unavailable
-3. **API Errors**: Proper error handling for AI model API calls
-4. **Configuration Validation**: Zod schema validation for all parameters
-5. **Index File Issues**: Graceful handling when index files are missing or corrupted
-
-## Performance Considerations
-
-- **Batch Generation**: Consider batching multiple image requests
-- **Metadata Processing**: Efficient metadata extraction and indexing
-- **Storage Management**: Monitor storage usage for generated images
-- **Search Performance**: Optimized similarity scoring for image search
-- **Memory Usage**: Proper resource management during image processing
-
-## Development
-
-### Package Structure
-
-```
-pkg/image-generation/
-├── index.ts                           # Package exports and configuration schema
-├── ImageGenerationService.ts          # Core service implementation
-├── plugin.ts                          # Token Ring plugin integration
-├── tools.ts                           # Tool exports
-├── tools/generateImage.ts            # Generate image tool implementation
-├── tools/searchImages.ts             # Image search tool implementation
-├── chatCommands.ts                   # Chat command definitions
-└── package.json                       # Package configuration
-```
-
-### Dependencies
-
-```json
-{
-  "dependencies": {
-    "@tokenring-ai/agent": "0.2.0",
-    "@tokenring-ai/ai-client": "0.2.0", 
-    "@tokenring-ai/app": "0.2.0",
-    "@tokenring-ai/chat": "0.2.0",
-    "@tokenring-ai/filesystem": "0.2.0",
-    "exiftool-vendored": "^28.8.0",
-    "uuid": "^13.0.0",
-    "zod": "catalog:"
-  },
-  "devDependencies": {
-    "vitest": "catalog:",
-    "typescript": "catalog:"
   }
 }
 ```
 
-### Testing
+### Service Dependencies
 
-The package uses Vitest for testing with proper configuration:
+The image generation package requires these services to be available:
 
-```typescript
-// vitest.config.ts
-import {defineConfig} from "vitest/config";
+1. **ChatModelRegistry** (via agent): For accessing image generation models
+2. **Agent**: For accessing services and system messages
+3. **ChatService**: For tool integration
+4. **AgentCommandService**: For chat command integration
+5. **Filesystem**: For file storage and management
 
-export default defineConfig({
-  test: {
-    include: ["**/*.test.ts"],
-    environment: "node",
-    globals: true,
-    isolate: true,
-  },
-});
+### Filesystem Integration
+
+The service automatically handles:
+
+- File creation and saving
+- EXIF metadata generation and embedding
+- File path management
+- File size tracking
+- Error handling for file operations
+
+## Error Handling
+
+The package includes comprehensive error handling:
+
+- **Input Validation**: Zod schemas validate all input parameters
+- **File Operations**: Graceful handling of file system errors
+- **Model Availability**: Proper error handling when image generation models are unavailable
+- **EXIF Processing**: Error handling for EXIF metadata operations
+- **Resource Management**: Proper cleanup of resources
+
+## Performance Considerations
+
+- **File Storage**: Efficient file storage with proper metadata
+- **Batch Generation**: Support for generating multiple images
+- **Metadata Generation**: Efficient EXIF metadata creation
+- **Error Recovery**: Robust error handling without data loss
+- **Resource Management**: Proper cleanup of generated files
+
+## Dependencies
+
+### Package Dependencies
+
+- `@tokenring-ai/agent`: Core agent framework
+- `@tokenring-ai/ai-client`: AI client with image generation capabilities
+- `@tokenring-ai/app`: Application framework
+- `@tokenring-ai/chat`: Chat service integration
+- `@tokenring-ai/filesystem`: File system utilities
+- `zod`: Schema validation
+- `exiftool-vendored`: EXIF metadata handling
+- `uuid`: Unique file naming
+
+### Development Dependencies
+
+- `vitest`: Testing framework
+- `typescript`: TypeScript support
+
+## Testing
+
+The package includes Vitest configuration for testing:
+
+```bash
+# Run tests
+bun run test
+
+# Run tests in watch mode
+bun run test:watch
+
+# Run tests with coverage
+bun run test:coverage
 ```
+
+## License
+
+MIT License - See LICENSE file for details.

@@ -1,10 +1,8 @@
-# Utility Plugin
-
-General-purpose utility functions and classes for the Token Ring ecosystem.
+# @tokenring-ai/utility Plugin
 
 ## Overview
 
-The `@tokenring-ai/utility` package provides a comprehensive collection of general-purpose utility functions and classes used across the Token Ring ecosystem. This package serves as the foundation for many other packages, offering reusable helpers for common programming tasks including object manipulation, string processing, HTTP operations, promise handling, registry management, and more.
+The `@tokenring-ai/utility` package provides a comprehensive collection of general-purpose utility functions and classes used across the Token Ring ecosystem. This package serves as the foundation for many other packages, offering reusable helpers for common programming tasks including object manipulation, string processing, HTTP operations, promise handling, registry management, and timer utilities.
 
 ## Key Features
 
@@ -13,6 +11,7 @@ The `@tokenring-ai/utility` package provides a comprehensive collection of gener
 - **HTTP Utilities**: Robust HTTP client with retry logic
 - **Promise Utilities**: Advanced promise handling and management
 - **Registry Utilities**: Flexible registry patterns for service management
+- **Timer Utilities**: Throttle and debounce functions
 - **Type Safety**: Comprehensive TypeScript definitions
 - **Error Handling**: Built-in error handling and validation
 
@@ -21,6 +20,7 @@ The `@tokenring-ai/utility` package provides a comprehensive collection of gener
 ### Object Utilities
 
 #### `pick<T, K>(obj: T, keys: K[]): Pick<T, K>`
+
 Creates an object composed of the picked object properties.
 
 ```typescript
@@ -32,6 +32,7 @@ const userInfo = pick(user, ['id', 'name']);
 ```
 
 #### `omit<T, K>(obj: T, keys: K[]): Omit<T, K>`
+
 Creates an object composed of the properties not included in the given keys array.
 
 ```typescript
@@ -43,6 +44,7 @@ const publicInfo = omit(user, ['email']);
 ```
 
 #### `transform<T, R>(obj: T, transformer: (value: T[keyof T], key: keyof T) => R): { [K in keyof T]: R}`
+
 Transforms an object's values using a transformer function.
 
 ```typescript
@@ -54,6 +56,7 @@ const stringConfig = transform(config, (value) => String(value));
 ```
 
 #### `requireFields<T>(obj: T, required: (keyof T)[], context?: string): void`
+
 Validates that required fields exist in an object, throwing an error if any are missing.
 
 ```typescript
@@ -65,6 +68,7 @@ requireFields(config, ['port', 'host'], 'ServerConfig');
 ```
 
 #### `pickValue<T, K extends keyof T>(obj: T, key: K): T[K] | undefined`
+
 Safely picks a single value from an object.
 
 ```typescript
@@ -78,6 +82,7 @@ const id = pickValue(user, 'id');
 ### String Utilities
 
 #### `convertBoolean(text: string | null | undefined): boolean`
+
 Converts string representations to boolean values.
 
 ```typescript
@@ -92,6 +97,7 @@ convertBoolean('0');      // false
 ```
 
 #### `trimMiddle(str: string, startLength: number, endLength: number): string`
+
 Truncates the middle of a string, keeping the beginning and end.
 
 ```typescript
@@ -102,6 +108,7 @@ trimMiddle('abcdefghijklmnopqrstuvwxyz', 5, 5);
 ```
 
 #### `shellEscape(arg: string): string`
+
 Safely escapes a string for use in shell commands.
 
 ```typescript
@@ -113,6 +120,7 @@ const command = `cat ${shellEscape(filename)}`;
 ```
 
 #### `joinDefault<T>(separator: string, iterable: Iterable<string> | null | undefined, defaultValue?: T): string | T`
+
 Joins strings with a separator, providing a default value if the iterable is empty.
 
 ```typescript
@@ -123,13 +131,14 @@ joinDefault(', ', null, 'default');       // 'default'
 joinDefault(', ', ['single']);            // 'single'
 ```
 
-#### `formatLogMessage(msgs: (string | Error)[]): string`
+#### `formatLogMessages(msgs: (string | Error)[]): string`
+
 Formats log messages similar to console.log with special handling for errors.
 
 ```typescript
-import formatLogMessage from '@tokenring-ai/utility/string/formatLogMessage';
+import formatLogMessages from '@tokenring-ai/utility/string/formatLogMessages';
 
-const output = formatLogMessage([
+const output = formatLogMessages([
   'User loaded',
   { id: 1, name: 'Alice' },
   new Error('Connection failed')
@@ -137,6 +146,7 @@ const output = formatLogMessage([
 ```
 
 #### `asciiTable(rows: string[][], headers?: string[]): string`
+
 Creates an ASCII table from array data.
 
 ```typescript
@@ -149,18 +159,20 @@ const table = asciiTable([
 ]);
 ```
 
-#### `wrapText(text: string, width: number, indent: string = ''): string`
-Wraps text to a specific width with optional indentation.
+#### `wrapText(text: string, width: number): string[]`
+
+Wraps text into an array of strings based on max width.
 
 ```typescript
 import wrapText from '@tokenring-ai/utility/string/wrapText';
 
-const wrapped = wrapText('This is a long line of text that needs to be wrapped', 20);
+const lines = wrapText('This is a long line of text that needs to be wrapped', 20);
 ```
 
 ### HTTP Utilities
 
 #### `HttpService` (abstract base class)
+
 Base class for HTTP services with automatic JSON parsing and error handling.
 
 ```typescript
@@ -177,6 +189,7 @@ export class MyApiService extends HttpService {
 ```
 
 #### `doFetchWithRetry(url: string, init?: RequestInit): Promise<Response>`
+
 Fetch with automatic retry logic for network errors and rate limiting.
 
 ```typescript
@@ -190,6 +203,7 @@ const response = await doFetchWithRetry('https://api.example.com/data', {
 ### Promise Utilities
 
 #### `abandon<T>(promise: Promise<T>): void`
+
 Intentionally abandons a promise to prevent unhandled rejection warnings.
 
 ```typescript
@@ -199,7 +213,8 @@ const fetchPromise = fetch('https://api.example.com/data');
 abandon(fetchPromise); // Consume resolution/rejection quietly
 ```
 
-#### `waitForAbort(signal: AbortSignal, callback: (ev: Event) => Promise<T>): Promise<T>`
+#### `waitForAbort<T>(signal: AbortSignal, callback: (ev: Event) => Promise<T>): Promise<T>`
+
 Waits for an AbortSignal to be triggered and resolves a promise with the callback result.
 
 ```typescript
@@ -212,9 +227,26 @@ const signal = controller.signal;
 await waitForAbort(signal, (ev) => Promise.resolve('aborted'));
 ```
 
+#### `backoff<T>(options: BackoffOptions, fn: ({ attempt }: { attempt: number }) => Promise<T | null | undefined>): Promise<T>`
+
+Retries an async function with exponential backoff.
+
+```typescript
+import { backoff } from '@tokenring-ai/utility/promise/backoff';
+
+await backoff(
+  { times: 3, interval: 1000, multiplier: 2 },
+  async ({ attempt }) => {
+    // Your async operation
+    return attempt < 3 ? null : 'result';
+  }
+);
+```
+
 ### Registry Utilities
 
 #### `KeyedRegistry<T>`
+
 A generic registry for storing and retrieving items by string keys.
 
 ```typescript
@@ -229,6 +261,7 @@ const dbUrl = registry.getItemByName('db');
 ```
 
 #### `TypedRegistry<T extends NamedClass>`
+
 Registry for classes with a `name` property.
 
 ```typescript
@@ -251,6 +284,7 @@ const db = registry.getItemByType(Database);
 ```
 
 #### `RegistrySingleSelector<T>`
+
 Registry selector for managing single active items with change notifications.
 
 ```typescript
@@ -265,6 +299,7 @@ singleSelector.setEnabledItem('database');
 ```
 
 #### `RegistryMultiSelector<T>`
+
 Registry selector for managing multiple active items.
 
 ```typescript
@@ -279,6 +314,7 @@ multiSelector.enableItems('database', 'cache');
 ```
 
 #### `KeyedRegistryWithSingleSelection<T>`
+
 Combined registry with single selection support.
 
 ```typescript
@@ -292,6 +328,7 @@ const selected = registry.getSelected();
 ```
 
 #### `KeyedRegistryWithMultipleSelection<T>`
+
 Combined registry with multiple selection support.
 
 ```typescript
@@ -306,9 +343,44 @@ registry.selectItems('db', 'cache');
 const selected = registry.getSelected();
 ```
 
+### Timer Utilities
+
+#### `throttle<T extends (...args: any[]) => any>(func: T): (minWait: number, ...args: Parameters<T>) => void`
+
+Creates a throttled function that only invokes the provided function if at least `minWait` milliseconds have elapsed since the last invocation.
+
+```typescript
+import throttle from '@tokenring-ai/utility/timer/throttle';
+
+const throttledLog = throttle((message: string) => console.log(message));
+
+// Will only log the first and last calls within 1 second
+throttledLog(1000, 'Log 1');
+throttledLog(1000, 'Log 2');
+throttledLog(1000, 'Log 3');
+```
+
+#### `debounce<T extends (...args: any[]) => any>(func: T, delay: number): (...args: Parameters<T>) => void`
+
+Creates a debounced function that delays invoking the provided function until after `delay` milliseconds have elapsed since the last time the debounced function was invoked.
+
+```typescript
+import debounce from '@tokenring-ai/utility/timer/debounce';
+
+const debouncedSearch = debounce((query: string) => {
+  console.log('Searching for:', query);
+}, 300);
+
+// Will only call the search function once after 300ms of inactivity
+debouncedSearch('react');
+debouncedSearch('react hooks');
+debouncedSearch('react components');
+```
+
 ### Type Definitions
 
 #### `PrimitiveType`
+
 Type representing primitive JavaScript types.
 
 ```typescript
@@ -356,7 +428,7 @@ import {
   joinDefault, 
   asciiTable, 
   wrapText,
-  formatLogMessage 
+  formatLogMessages 
 } from '@tokenring-ai/utility/string';
 
 // Shell escape example
@@ -411,16 +483,70 @@ combinedRegistry.selectItem('postgres');
 const activeDb = combinedRegistry.getSelected();
 ```
 
+### Timer Utilities
+
+```typescript
+import { throttle, debounce } from '@tokenring-ai/utility/timer';
+
+// Throttle example - limit function calls to once per second
+const throttledApiCall = throttle(async (param: string) => {
+  console.log('API call with:', param);
+});
+
+throttledApiCall(1000, 'param1');
+throttledApiCall(1000, 'param2'); // Will be ignored
+throttledApiCall(1000, 'param3'); // Will be ignored
+
+// Debounce example - delay execution until user stops typing
+const debouncedSearch = debounce(async (query: string) => {
+  console.log('Performing search for:', query);
+  // Call search API
+}, 300);
+
+debouncedSearch('react');
+debouncedSearch('react hooks'); // Will cancel previous call
+debouncedSearch('react components'); // Will cancel previous call
+```
+
+## Integration
+
+The utility package is designed to be used as a foundational dependency across the Token Ring ecosystem. It can be integrated into any package or application that requires common utility functions.
+
+### Service Integration
+
+```typescript
+import { HttpService } from '@tokenring-ai/utility/http/HttpService';
+import { KeyedRegistry } from '@tokenring-ai/utility/registry/KeyedRegistry';
+
+// Create a service that combines HTTP and registry functionality
+class DataService extends HttpService {
+  private registry = new KeyedRegistry<string>();
+  
+  constructor() {
+    super();
+    // Register database connections
+    this.registry.register('db', 'postgresql://localhost:5432');
+  }
+  
+  async fetchData() {
+    const dbUrl = this.registry.getItemByName('db');
+    const response = await this.fetchJson('/data', {}, 'fetchData');
+    return { data: response, dbUrl };
+  }
+}
+```
+
 ## Dependencies
 
-- `@tokenring-ai/agent`: Core agent framework
+- `@tokenring-ai/agent`: Core agent framework for the Token Ring ecosystem
 
 ## Notes
 
 - This package is designed to be dependency-free except for core Token Ring packages
-- All utilities are type-safe and tested
+- All utilities are type-safe and tested with vitest
 - The package follows the Token Ring documentation standards
 - Utilities are organized into logical modules for easy import
 - Consider the specific needs of your application when choosing utilities
 - Error handling is built into most utilities for robustness
 - The registry pattern is particularly useful for service management in the Token Ring ecosystem
+- Timer utilities help manage performance and prevent excessive API calls

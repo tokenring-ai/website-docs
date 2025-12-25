@@ -13,6 +13,7 @@ This package extends the `WebSearchProvider` from `@tokenring-ai/websearch`, off
 - **HTML Fetching**: Retrieve page content with optional JavaScript rendering and geotargeting
 - **Error Handling**: Robust error management with retry logic via `doFetchWithRetry`
 - **Geotargeting**: Support for country-specific searches and custom TLDs
+- **Plugin Integration**: Automatic registration with Token Ring applications
 
 ## Key Features
 
@@ -24,6 +25,8 @@ This package extends the `WebSearchProvider` from `@tokenring-ai/websearch`, off
 - **Geotargeting**: Country-specific searches with support for 20+ Google TLDs
 - **Pagination**: Support for result pagination and continuation
 - **Structured Data**: JSON responses with consistent response formats
+- **Chat Command**: Built-in `/scraper` command for direct user interaction
+- **Tools**: Integration with agent tools for programmatic access
 
 ### Configuration Options
 
@@ -155,6 +158,21 @@ const renderedContent = await provider.fetchPage('https://example.com', {
   render: true,
   countryCode: 'gb'
 });
+```
+
+### Chat Command Usage
+
+The package provides a built-in `/scraper` chat command for direct interaction:
+
+```text
+/scraper url <url> [--render] [--country <code>] [--header "K:V"]
+/scraper serp <query> [--country <code>] [--tld <tld>] [--tbs <range>] [--num <n>] [--output json|csv]
+/scraper news <query> [--country <code>] [--tld <tld>] [--tbs <range>] [--output json|csv]
+```
+
+Example:
+```text
+/scraper serp "cherry tomatoes" --country gb --tld co.uk --tbs d --num 20
 ```
 
 ## API Reference

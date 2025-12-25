@@ -1,116 +1,153 @@
-# Javascript Plugin
-
-JavaScript development and execution tools including npm management, ESLint integration, and script execution.
+# JavaScript Plugin for TokenRing AI
 
 ## Overview
 
-The `@tokenring-ai/javascript` package provides comprehensive JavaScript/TypeScript development tools for the TokenRing AI agent ecosystem. It enables AI agents to perform tasks such as running JavaScript scripts in a sandboxed environment, installing and removing npm packages, and automatically fixing code style issues with ESLint. This plugin integrates seamlessly with the TokenRing agent system to provide development capabilities directly within chat interfaces.
+The JavaScript plugin provides comprehensive JavaScript/TypeScript development tools for TokenRing AI agents. It integrates with the TokenRing framework to enable code linting, package management, and script execution capabilities. This plugin serves as a specialized toolkit for JavaScript development workflows within the TokenRing ecosystem.
 
 ## Key Features
 
-- **Script Execution**: Run JavaScript code in ESM or CommonJS format with timeout control
-- **Package Management**: Install and remove npm packages using detected package managers (npm, yarn, pnpm)
-- **Code Quality**: Automatically fix code style issues with ESLint
-- **Secure Execution**: Sandbox environment with configurable timeouts
-- **Package Manager Detection**: Auto-detect from lockfiles (pnpm-lock.yaml, yarn.lock, package-lock.json)
+- **Automated Code Linting**: Run ESLint with auto-fix capabilities on JavaScript/TypeScript files
+- **Package Management**: Install and remove packages using detected package managers (npm, yarn, pnpm)
+- **Script Execution**: Execute JavaScript code in both ESM and CommonJS formats with timeout controls
+- **Cross-Platform Compatibility**: Works with multiple package managers and module formats
+- **Temporary File Management**: Automatically handles temporary script files with cleanup
+- **Error Handling**: Comprehensive error reporting and logging with agent integration
 
 ## Core Components
 
-### Tools
+### Plugin Registration
 
-#### `eslint` (javascript_eslint)
+The plugin registers tools with the TokenRing chat service during installation:
 
-**Description**: Runs ESLint with auto-fix on JavaScript/TypeScript files to automatically fix code style issues.
-
-**Input Schema**:
 ```typescript
-interface EslintInput {
-  files: string[]; // List of JS/TS file paths to apply ESLint fixes to
-}
+import TokenRingApp from "@tokenring-ai/app";
+import {ChatService} from "@tokenring-ai/chat";
+import {TokenRingPlugin} from "@tokenring-ai/app";
+import packageJSON from './package.json' with {type: 'json'};
+import tools from "./tools.ts";
+
+export default {
+  name: packageJSON.name,
+  version: packageJSON.version,
+  description: packageJSON.description,
+  install(app: TokenRingApp) {
+    app.waitForService(ChatService, chatService =>
+      chatService.addTools(packageJSON.name, tools)
+    );
+  }
+} satisfies TokenRingPlugin;
 ```
 
-**Output**: Array of `{ file: string; output?: string; error?: string }`
+### Available Tools
 
-**Features**:
-- Automatically fixes code style issues
-- Writes fixed code back to files
-- Supports both .js and .ts files
-- Provides detailed success/error feedback
+#### 1. eslint (`javascript_eslint`)
 
-#### `installPackages` (javascript_installPackages)
+**Description**: Runs ESLint with `--fix` option on JavaScript/TypeScript files to automatically fix code style issues.
 
-**Description**: Installs packages using the detected package manager.
+**Parameters**:
+- `files` (string[]): Array of file paths to apply ESLint fixes to
 
-**Input Schema**:
-```typescript
-interface InstallPackagesInput {
-  packageName: string; // Package name(s) to install (space-separated)
-  isDev?: boolean;     // Install as dev dependency (default: false)
-}
-```
+**Returns**: Array of `{ file: string; output?: string; error?: string }` objects
 
-**Output**: Command execution result with stdout, stderr, and exit code
+**Functionality**:
+- Reads source files from the filesystem
+- Runs ESLint with fix enabled
+- Writes fixed code back to files when changes are detected
+- Provides detailed logging through the agent system
+- Handles errors on a per-file basis
+
+#### 2. installPackages (`javascript_installPackages`)
+
+**Description**: Installs packages using the detected package manager (npm, yarn, or pnpm).
+
+**Parameters**:
+- `packageName` (string): Package name(s) to install (space-separated for multiple packages)
+- `isDev` (boolean, optional): Install as dev dependency (default: false)
+
+**Returns**: Command execution result with stdout, stderr, and exit code
 
 **Package Manager Detection**:
-- `pnpm-lock.yaml` → pnpm
-- `yarn.lock` → yarn  
-- `package-lock.json` → npm
+- Automatically detects package manager based on lockfile presence
+- Supports pnpm, yarn, and npm
+- Throws error if no supported lockfile is found
 
-#### `removePackages` (javascript_removePackages)
+#### 3. removePackages (`javascript_removePackages`)
 
 **Description**: Removes packages using the detected package manager.
 
-**Input Schema**:
-```typescript
-interface RemovePackagesInput {
-  packageName: string; // Package name(s) to remove (space-separated)
-}
-```
+**Parameters**:
+- `packageName` (string): Package name(s) to remove (space-separated for multiple packages)
 
-**Output**: Command execution result with stdout, stderr, and exit code
+**Returns**: Command execution result with stdout, stderr, and exit code
 
-#### `runJavaScriptScript` (javascript_runJavaScriptScript)
+**Functionality**:
+- Detects package manager from lockfiles
+- Executes appropriate removal command
+- Provides error handling for missing lockfiles
+
+#### 4. runJavaScriptScript (`javascript_runJavaScriptScript`)
 
 **Description**: Executes JavaScript code in a temporary file using Node.js with timeout control.
 
-**Input Schema**:
-```typescript
-interface RunJavaScriptScriptInput {
-  script: string;            // JavaScript code to execute
-  format?: 'esm' | 'commonjs'; // Module format (default: 'esm')
-  timeoutSeconds?: number;    // Timeout in seconds (default: 30, min: 5, max: 300)
-}
-```
+**Parameters**:
+- `script` (string): JavaScript code to execute
+- `format` ('esm' | 'commonjs', optional): Module format (default: 'esm')
+- `timeoutSeconds` (number, optional): Timeout in seconds (default: 30, min: 5, max: 300)
 
-**Output**: `{ ok: boolean; exitCode?: number; stdout?: string; stderr?: string; format: string }`
+**Returns**: `{ ok: boolean; exitCode?: number; stdout?: string; stderr?: string; format: string }`
 
 **Features**:
+- Creates temporary files for script execution
 - Supports both ESM and CommonJS formats
-- Creates temporary files that are automatically cleaned up
-- Configurable timeout (5-300 seconds)
-- Returns execution results with exit codes and output
+- Implements timeout controls
+- Automatically cleans up temporary files
+- Provides execution results with exit codes
 
-## Usage Examples
+## API Reference
 
-### Running a JavaScript Script
+### Tool: eslint (`javascript_eslint`)
 
 ```typescript
-const result = await agent.tools.javascript.runJavaScriptScript.execute({
-  script: 'console.log("Hello from JS!"); console.log(2 + 2);',
-  format: 'esm',
-  timeoutSeconds: 10
+interface EslintResult {
+  file: string;
+  output?: string;
+  error?: string;
+}
+
+async function eslint(
+  { files }: { files: string[] },
+  agent: Agent
+): Promise<EslintResult[]>;
+
+// Example usage
+const results = await agent.tools.javascript_eslint.execute({
+  files: ['src/main.ts', 'utils/helper.js']
 }, agent);
 
-console.log(result.stdout); // "Hello from JS!\n4"
-if (result.stderr) {
-  console.error('Error:', result.stderr);
-}
+results.forEach(result => {
+  if (result.output) {
+    console.log(`${result.file}: ${result.output}`);
+  } else if (result.error) {
+    console.error(`${result.file}: ${result.error}`);
+  }
+});
 ```
 
-### Installing a Package
+### Tool: installPackages (`javascript_installPackages`)
 
 ```typescript
-const result = await agent.tools.javascript.installPackages.execute({
+interface InstallPackagesArgs {
+  packageName: string;
+  isDev?: boolean;
+}
+
+async function installPackages(
+  { packageName, isDev }: InstallPackagesArgs,
+  agent: Agent
+): Promise<ExecuteCommandResult>;
+
+// Example usage
+const result = await agent.tools.javascript_installPackages.execute({
   packageName: 'lodash',
   isDev: false
 }, agent);
@@ -120,26 +157,20 @@ if (result.ok) {
 }
 ```
 
-### Fixing Code with ESLint
+### Tool: removePackages (`javascript_removePackages`)
 
 ```typescript
-const results = await agent.tools.javascript.eslint.execute({
-  files: ['src/main.ts', 'utils/helper.js']
-}, agent);
+interface RemovePackagesArgs {
+  packageName: string;
+}
 
-results.forEach(r => {
-  if (r.output) {
-    console.log(`${r.file}: ${r.output}`);
-  } else if (r.error) {
-    console.error(`${r.file}: ${r.error}`);
-  }
-});
-```
+async function removePackages(
+  { packageName }: RemovePackagesArgs,
+  agent: Agent
+): Promise<ExecuteCommandResult>;
 
-### Removing a Package
-
-```typescript
-const result = await agent.tools.javascript.removePackages.execute({
+// Example usage
+const result = await agent.tools.javascript_removePackages.execute({
   packageName: 'lodash'
 }, agent);
 
@@ -148,54 +179,187 @@ if (result.ok) {
 }
 ```
 
-## Configuration Options
+### Tool: runJavaScriptScript (`javascript_runJavaScriptScript`)
 
-### Script Execution
-- **Timeout**: Default 30 seconds, configurable between 5-300 seconds
-- **Format**: Defaults to ESM, supports CommonJS
-- **Working Directory**: Executes in the project root directory
+```typescript
+interface RunJavaScriptResult {
+  ok: boolean;
+  exitCode?: number;
+  stdout?: string;
+  stderr?: string;
+  format: 'esm' | 'commonjs';
+}
 
-### Package Management
-- **Auto-detection**: Automatically detects package manager from lockfiles
-- **Dev Dependencies**: Optional flag to install as dev dependency
-- **Multiple Packages**: Supports space-separated package names
+async function runJavaScriptScript(
+  { script, format, timeoutSeconds }: {
+    script: string;
+    format?: 'esm' | 'commonjs';
+    timeoutSeconds?: number;
+  },
+  agent: Agent
+): Promise<RunJavaScriptResult>;
 
-### ESLint
-- **Fix Mode**: Enabled by default to automatically fix issues
-- **File Types**: Supports .js, .ts, .jsx, .tsx files
-- **Configuration**: Uses standard ESLint configuration from project
+// Example usage
+const result = await agent.tools.javascript_runJavaScriptScript.execute({
+  script: 'console.log("Hello from JavaScript!"); console.log(2 + 2);',
+  format: 'esm',
+  timeoutSeconds: 10
+}, agent);
 
-## Package Manager Detection
+console.log('Exit code:', result.exitCode);
+console.log('Output:', result.stdout);
+if (result.stderr) {
+  console.error('Error:', result.stderr);
+}
+```
 
-The package automatically detects the appropriate package manager based on lockfile presence:
+## Usage Examples
 
-| Lockfile | Package Manager | Command Example |
-|----------|----------------|----------------|
-| `pnpm-lock.yaml` | pnpm | `pnpm add lodash` |
-| `yarn.lock` | yarn | `yarn add lodash` |
-| `package-lock.json` | npm | `npm install lodash` |
+### Basic JavaScript Execution
 
-If no supported lockfile is found, an error will be thrown indicating that the package manager cannot be determined.
+```typescript
+// Run a simple JavaScript script
+const result = await agent.tools.javascript_runJavaScriptScript.execute({
+  script: 'console.log("Hello, World!"); console.log(2 * 2);',
+  format: 'esm',
+  timeoutSeconds: 5
+}, agent);
 
-## Dependencies
+if (result.ok) {
+  console.log('Script executed successfully');
+  console.log('Output:', result.stdout);
+}
+```
 
-- `@tokenring-ai/agent` (^0.2.0): Agent framework integration
-- `@tokenring-ai/filesystem` (^0.2.0): Filesystem operations
-- `@tokenring-ai/chat` (^0.2.0): Chat service integration
-- `eslint` (^9.39.2): Code linting and fixing
-- `execa` (^9.6.1): Command execution
-- `jiti` (^2.6.1): Runtime transpilation
-- `jscodeshift` (^17.3.0): Code transformation utilities
+### Package Installation
+
+```typescript
+// Install a production package
+const installResult = await agent.tools.javascript_installPackages.execute({
+  packageName: 'lodash',
+  isDev: false
+}, agent);
+
+if (installResult.ok) {
+  console.log('Package installed successfully');
+  console.log('Output:', installResult.stdout);
+}
+
+// Install a dev dependency
+const devInstallResult = await agent.tools.javascript_installPackages.execute({
+  packageName: 'typescript',
+  isDev: true
+}, agent);
+```
+
+### Package Removal
+
+```typescript
+// Remove a package
+const removeResult = await agent.tools.javascript_removePackages.execute({
+  packageName: 'lodash'
+}, agent);
+
+if (removeResult.ok) {
+  console.log('Package removed successfully');
+  console.log('Output:', removeResult.stdout);
+}
+```
+
+### Code Linting and Fixing
+
+```typescript
+// Run ESLint with auto-fix on multiple files
+const lintResults = await agent.tools.javascript_eslint.execute({
+  files: ['src/main.ts', 'utils/helper.js', 'components/button.tsx']
+}, agent);
+
+lintResults.forEach(result => {
+  if (result.output) {
+    console.log(`${result.file}: ${result.output}`);
+  } else if (result.error) {
+    console.error(`${result.file}: ${result.error}`);
+  }
+});
+```
+
+## Configuration
+
+The plugin automatically detects package managers based on lockfile presence:
+
+- **pnpm**: Detected from `pnpm-lock.yaml`
+- **yarn**: Detected from `yarn.lock`
+- **npm**: Detected from `package-lock.json`
+
+### Timeout Configuration
+
+The `runJavaScriptScript` tool has configurable timeout:
+
+- **Default**: 30 seconds
+- **Minimum**: 5 seconds
+- **Maximum**: 300 seconds
+
+## Integration
+
+### With TokenRing Agent System
+
+The plugin integrates with TokenRing agents by registering tools that can be called through the agent's tool system:
+
+```typescript
+// Agent can access all JavaScript tools
+const javascriptTools = agent.tools;
+
+// Execute any of the available tools
+await javascriptTools.javascript_eslint.execute({ files: ['file.ts'] }, agent);
+await javascriptTools.javascript_installPackages.execute({ packageName: 'lodash' }, agent);
+await javascriptTools.javascript_removePackages.execute({ packageName: 'lodash' }, agent);
+await javascriptTools.javascript_runJavaScriptScript.execute({ script: 'console.log("test")' }, agent);
+```
+
+### With Filesystem Service
+
+The plugin relies on the TokenRing filesystem service for:
+
+- Reading and writing files
+- Executing commands
+- Managing temporary files
+- Detecting package manager lockfiles
+
+### Error Handling
+
+All tools provide comprehensive error handling:
+
+- Per-file error reporting for ESLint
+- Package manager detection errors
+- Timeout handling for script execution
+- Input validation and error messages
+
+## Development
+
+### Dependencies
+
+- `@tokenring-ai/app`: Application framework (0.2.0)
+- `@tokenring-ai/chat`: Chat service integration (0.2.0)
+- `@tokenring-ai/agent`: Agent framework (0.2.0)
+- `@tokenring-ai/filesystem`: Filesystem operations (0.2.0)
+- `eslint`: Code linting (9.39.2)
+- `execa`: Command execution (9.6.1)
+- `jiti`: Runtime transpilation (2.6.1)
+- `jscodeshift`: Code transformation utilities (17.3.0)
 - `zod`: Schema validation
 
-## Testing
-
-The package includes comprehensive tests using Vitest:
+### Testing
 
 ```bash
-bun run test                 # Run all tests
-bun run test:watch       # Run tests in watch mode
-bun run test:coverage    # Generate coverage report
+bun run test        # Run tests
+bun run test:watch  # Watch mode
+bun run test:coverage  # Coverage report
+```
+
+### Build
+
+```bash
+bun run build  # Type checking
 ```
 
 ## Package Structure
@@ -213,26 +377,6 @@ pkg/javascript/
 │   ├── removePackages.ts # Package removal tool
 │   └── runJavaScriptScript.ts # Script execution tool
 └── vitest.config.ts      # Test configuration
-```
-
-## Integration
-
-This package integrates with the TokenRing application framework by registering tools with the ChatService:
-
-```typescript
-import TokenRingApp from "@tokenring-ai/app";
-import {ChatService} from "@tokenring-ai/chat";
-
-export default {
-  name: "@tokenring-ai/javascript",
-  version: "0.2.0",
-  description: "TokenRing Coder Javascript Integration",
-  install(app: TokenRingApp) {
-    app.waitForService(ChatService, chatService => 
-      chatService.addTools("@tokenring-ai/javascript", tools)
-    );
-  }
-} satisfies TokenRingPlugin;
 ```
 
 ## License

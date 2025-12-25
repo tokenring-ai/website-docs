@@ -487,3 +487,4 @@ const result = await service.uploadArticle(article);
 - Rate limiting: 429 responses are automatically retried with exponential backoff
 - Timeout: Default timeout is 30 seconds; adjust based on your needs
 - Authentication: Choose appropriate authMode for your deployment (headers preferred for server-side)
+- The article upload schema requires specific fields including provider, headline, slug, date, and quality

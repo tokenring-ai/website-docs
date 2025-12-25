@@ -10,7 +10,7 @@ The `@tokenring-ai/websearch` package provides an abstract interface for web sea
 
 - **Pluggable Provider Architecture**: Support for multiple search engines and providers
 - **Web Search**: General web search with localized results
-- **News Search**: News-specific search functionality
+- **News Search**: News-specific search functionality  
 - **Page Fetching**: Retrieve and extract web page content with JavaScript rendering
 - **Deep Search**: Comprehensive search combining web results, news, and full page content
 - **Localization**: Support for country codes, languages, and locations
@@ -18,6 +18,7 @@ The `@tokenring-ai/websearch` package provides an abstract interface for web sea
 - **Scripting Integration**: Global functions for programmatic access
 - **Interactive Commands**: Comprehensive chat commands with help documentation
 - **Provider Management**: Switch between different search providers
+- **Result Formatting**: Clean markdown output for fetched pages
 
 ## Providers
 
@@ -26,8 +27,6 @@ The package includes support for multiple search providers:
 - **Serper** (Google search via Serper.dev) - [Documentation](./serper.md)
 - **ScraperAPI** (Web scraping and SERP) - [Documentation](./scraperapi.md)
 - **Chrome** (Puppeteer-based automation) - [Documentation](./chrome.md)
-- **Tavily** (Advanced AI search)
-- **DuckDuckGo** (Privacy-focused search)
 
 ## Core Components
 
@@ -45,7 +44,7 @@ class WebSearchService implements TokenRingService {
   setActiveProvider(name: string): void
   getActiveProvider(): WebSearchProvider
   getAvailableProviders(): string[]
-  
+
   // Search operations
   async searchWeb(query: string, options?: WebSearchProviderOptions): Promise<WebSearchResult>
   async searchNews(query: string, options?: WebSearchProviderOptions): Promise<NewsSearchResult>
@@ -60,7 +59,7 @@ class WebSearchService implements TokenRingService {
 - Input schema validates query and options
 - Returns web search results
 
-**searchNews**: Executes a news search
+**searchNews**: Executes a news search  
 - Similar to searchWeb but for news results
 
 **fetchPage**: Fetches page HTML
@@ -90,7 +89,7 @@ When `@tokenring-ai/scripting` is available:
 
 **searchNews(query)**: Searches for news articles
 ```bash
-/var $news = searchNews("climate change")
+/var $news = searchNews("climate change") 
 /call searchNews("stock market")
 ```
 
@@ -114,7 +113,6 @@ When `@tokenring-ai/scripting` is available:
 import { Agent } from '@tokenring-ai/agent';
 import { WebSearchService } from '@tokenring-ai/websearch';
 import { SerperWebSearchProvider } from './providers/SerperWebSearchProvider';
-import { GoogleSearchProvider } from './providers/GoogleSearchProvider';
 
 const agent = new Agent();
 const webSearchService = new WebSearchService();
@@ -124,15 +122,11 @@ agent.registerService(webSearchService);
 const serperProvider = new SerperWebSearchProvider({ apiKey: 'your-serper-key' });
 webSearchService.registerProvider(serperProvider, 'serper');
 
-// Register Google provider  
-const googleProvider = new GoogleSearchProvider({ apiKey: 'your-google-key' });
-webSearchService.registerProvider(googleProvider, 'google');
-
-// Set active provider
+// Set active provider  
 webSearchService.setActiveProvider('serper');
 
 // Perform a search
-const results = await webSearchService.searchWeb('Token Ring AI', { num: 5 });
+const results = await webSearchService.searchWeb('Token Ring AI', { num: 5});
 console.log(results.results);
 ```
 
@@ -194,6 +188,7 @@ agent.chat.infoLine(`Deep search results: ${deepResults.results.length} web resu
 ## Configuration Options
 
 ### Search Options (WebSearchProviderOptions)
+
 - `countryCode`: e.g., 'US'
 - `language`: e.g., 'en' 
 - `location`: e.g., 'New York,US'
@@ -202,11 +197,13 @@ agent.chat.infoLine(`Deep search results: ${deepResults.results.length} web resu
 - `timeout`: Milliseconds
 
 ### Page Fetch Options (WebPageOptions)
+
 - `render`: Boolean, for JS-heavy sites
 - `countryCode`: Country code
 - `timeout`: Milliseconds
 
 ### Deep Search Options (DeepSearchOptions)
+
 - `searchCount`: Number of web search results (default: 10)
 - `newsCount`: Number of news results (default: 0) 
 - `fetchCount`: Number of pages to fetch (default: 5)
@@ -251,6 +248,7 @@ The websearch package automatically integrates with Token Ring applications thro
 export default {
   name: "@tokenring-ai/websearch",
   version: "0.2.0",
+  description: "Abstract web search interface for Token Ring",
   install(app: TokenRingApp) {
     const config = app.getConfigSlice('websearch', WebSearchConfigSchema);
     if (config) {
@@ -315,7 +313,7 @@ export default {
       app.requireService(WebSearchService).setActiveProvider(config.defaultProvider);
     }
   }
-}
+} satisfies TokenRingPlugin;
 ```
 
 ## Service Lifecycle
@@ -352,3 +350,7 @@ export default {
 - **Pagination Handling**: Efficient handling of multiple result pages
 - **Concurrent Operations**: Proper handling of concurrent search operations
 - **Resource Management**: Proper cleanup of provider resources
+
+## License
+
+MIT License - See LICENSE file for details.

@@ -1,29 +1,28 @@
-# Git Plugin
+# @tokenring-ai/git Plugin Documentation
 
-Git integration for commits, rollbacks, branch management, with auto-commit hook after tests.
+Git integration package for TokenRing AI agents, providing automated Git operations within the agent framework.
 
 ## Overview
 
-The `@tokenring-ai/git` package provides comprehensive Git integration for TokenRing AI agents. It enables automated Git operations within the agent framework, including committing changes, rolling back commits, and managing branches. Key features include AI-generated commit messages, automatic commits after successful tests, and interactive slash commands for Git management. The package integrates seamlessly with the TokenRing ecosystem, providing both programmatic tools and user-friendly chat commands.
+The `@tokenring-ai/git` package enables AI-driven Git operations for TokenRing agents, including automated commits, rollbacks, branch management, and AI-generated commit messages. This package is designed to work seamlessly with the TokenRing ecosystem, providing both programmatic tools and interactive slash commands for Git operations.
 
-## Key Features
-
-- **Commit Operations**: Add all changes and commit with AI-generated or custom messages
-- **Rollback**: Hard reset to previous commits with safety validation
-- **Branch Management**: List, create, switch, and delete branches with validation
-- **Auto-Commit Hook**: Automatically commit changes after successful tests
-- **AI-Generated Messages**: Create intelligent commit messages from chat context
-- **Git Status Checks**: Detect and handle uncommitted changes
-- **Interactive Commands**: Slash commands for easy Git management in chat interfaces
+Key features include:
+- AI-powered commit message generation based on chat context
+- Automated commits after successful testing
+- Interactive slash commands for Git operations
+- Branch management capabilities
+- Safe rollback operations with validation
+- Git status checks and dirty file detection
+- Integrated with TokenRing's filesystem and testing services
 
 ## Core Components
 
 ### GitService
 
-The core service class that provides Git functionality through the TokenRing service architecture.
+The main service class that provides Git functionality.
 
 ```typescript
-import GitService from '@tokenring-ai/git/GitService';
+import { GitService } from '@tokenring-ai/git';
 
 // Access via dependency injection
 const gitService = agent.requireServiceByType(GitService);
@@ -42,11 +41,8 @@ Commits changes to the Git repository with optional AI-generated commit messages
 ```typescript
 import { commitTool } from '@tokenring-ai/git/tools';
 
-// Manual commit with custom message
-await commitTool.execute({ message: 'Fix authentication bug' }, agent);
-
-// Auto-generated commit message from chat context
-await commitTool.execute({}, agent);
+// Usage in agent code
+await commitTool.execute({ message: "Fix authentication bug" }, agent);
 ```
 
 **Parameters:**
@@ -62,7 +58,7 @@ await commitTool.execute({}, agent);
 
 #### rollbackTool
 
-Rolls back to a previous commit state with safety checks.
+Rolls back to a previous commit state.
 
 ```typescript
 import { rollbackTool } from '@tokenring-ai/git/tools';
@@ -242,6 +238,7 @@ pkg/git/
 │   └── autoCommit.ts    # Auto-commit hook implementation
 ├── package.json         # Package metadata and dependencies
 ├── tsconfig.json        # TypeScript configuration
+├── vitest.config.ts     # Test configuration
 └── LICENSE              # MIT license
 ```
 

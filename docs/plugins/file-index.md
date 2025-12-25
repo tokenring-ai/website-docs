@@ -1,19 +1,18 @@
 # File Index Plugin
 
-File indexing and search functionality for project code and text files.
-
 ## Overview
 
-The `@tokenring-ai/file-index` package provides file indexing and search functionality for AI agents within the TokenRing AI ecosystem. It enables agents to index project files, perform full-text searches across file contents, and retrieve relevant code or text snippets.
+The `@tokenring-ai/file-index` package provides comprehensive file indexing and search functionality for AI agents within the TokenRing AI ecosystem. It enables agents to index project files, perform full-text searches across file contents, and retrieve relevant code or text snippets using both simple and advanced hybrid search methods.
 
 ## Key Features
 
-- Full-text search across indexed files
-- Automatic file watching and re-indexing
-- In-memory (ephemeral) indexing for quick setup
-- Chunk-based content indexing (1000-character chunks)
-- Case-insensitive search with relevance scoring
-- File path tracking and current file context
+- **Real-time File Indexing**: Automatically indexes files as they change using watchers
+- **Full-Text Search**: Fast text-based search across all indexed files
+- **Hybrid Search**: Combines semantic, full-text, and token overlap searching for better results
+- **File Monitoring**: Uses chokidar to monitor file system changes
+- **Memory Management**: Ephemeral in-memory index that can be cleared
+- **Chat Integration**: Provides `/search` chat command and `hybridSearchFileIndex` tool
+- **Chunk-Based Indexing**: Files are broken into ~1000-character chunks for efficient searching
 
 ## Core Components
 
@@ -21,13 +20,32 @@ The `@tokenring-ai/file-index` package provides file indexing and search functio
 
 Defines the core interface for file indexing providers.
 
-**Key Methods:**
-- `search(query, limit?)`: Semantic or hybrid search for relevant chunks
-- `fullTextSearch(query, limit?)`: Keyword-based full-text search
-- `processFile(filePath)`: Index a single file
-- `onFileChanged(type, filePath)`: Handle file events
-- `waitReady()`: Await initialization
-- `setCurrentFile(filePath)` / `clearCurrentFile()`: Track active file context
+```typescript
+export interface SearchResult {
+  path: string           // File path
+  chunk_index: number    // Index of the matching chunk
+  content: string        // Content of the matching chunk
+  relevance?: number     // Relevance score (for full-text search)
+  distance?: number      // Distance score (for semantic search)
+}
+
+abstract class FileIndexProvider {
+  // Core search methods
+  abstract search(query: string, limit?: number): Promise<SearchResult[]>
+  abstract fullTextSearch(query: string, limit?: number): Promise<SearchResult[]>
+
+  // Lifecycle methods
+  abstract waitReady(): Promise<void>
+  abstract processFile(filePath: string): Promise<void>
+  abstract onFileChanged(type: string, filePath: string): void
+  abstract close(): Promise<void>
+
+  // Current file context
+  abstract setCurrentFile(filePath: string): void
+  abstract clearCurrentFile(): void
+  abstract getCurrentFile(): string | null
+}
+```
 
 ### EphemeralFileIndexProvider
 
@@ -67,7 +85,6 @@ Registry for multiple providers, allowing dynamic switching.
 
 ```typescript
 import AgentTeam from '@tokenring-ai/agent/AgentTeam';
-import StringSearchFileIndexService from '@tokenring-ai/file-index/StringSearchFileIndexService';
 import { FileIndexService } from '@tokenring-ai/file-index';
 
 const agentTeam = new AgentTeam();
@@ -117,7 +134,7 @@ const config = {
 - `@tokenring-ai/filesystem` (^0.2.0): File system operations
 - `chokidar` (^5.0.0): File system watcher
 - `glob-gitignore` (^1.0.15): Git-aware file matching
-- `sentencex` (^1.0.13): Sentence segmentation
+- `sentencex` (^1.2.0): Sentence segmentation
 - `gpt-tokenizer` (^3.4.0): Token counting
 - `fs-extra` (^11.3.2): File system utilities
 

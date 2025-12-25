@@ -15,6 +15,8 @@ The `@tokenring-ai/wordpress` package provides comprehensive WordPress integrati
 - **State Preservation**: Maintain current post context across interactions
 - **Media Handling**: Upload images to WordPress media library
 - **AI Image Generation**: Generate featured images for posts (requires AI image client)
+- **Post Status Management**: Support for publish, future, draft, pending, and private statuses
+- **Current Post Tracking**: Maintain selected post context across agent sessions
 
 ## Core Components
 
@@ -36,10 +38,10 @@ The main blog provider that implements the `BlogProvider` interface.
 
 **Key Methods:**
 - `getAllPosts(): Promise<BlogPost[]>` - Get all posts with statuses (publish, future, draft, pending, private)
+- `getCurrentPost(agent: Agent): BlogPost | null` - Get currently selected post
 - `createPost(data: CreatePostData, agent: Agent): Promise<BlogPost>` - Create new draft post
 - `updatePost(data: UpdatePostData, agent: Agent): Promise<BlogPost>` - Update selected post
 - `selectPostById(id: string, agent: Agent): Promise<BlogPost>` - Select post by ID
-- `getCurrentPost(agent: Agent): BlogPost | null` - Get currently selected post
 - `clearCurrentPost(agent: Agent): Promise<void>` - Clear current post selection
 
 ### WordPressCDNProvider
@@ -57,6 +59,8 @@ CDN provider that uses WordPress media library for file storage.
 
 **Key Methods:**
 - `upload(data: Buffer, options?: UploadOptions): Promise<UploadResult>` - Upload file to WordPress media library
+- `name: string = "WordPressCDN"` - Provider name
+- `description: string = "CDN backed by a WordPress media library"` - Provider description
 
 ### WordPressBlogState
 
@@ -64,6 +68,48 @@ State management for tracking the currently selected post.
 
 **Properties:**
 - `currentPost: WPPost | null` - Currently selected WordPress post
+
+**Methods:**
+- `reset(what: ResetWhat[]): void` - Reset state based on reset type
+- `serialize(): object` - Serialize state for persistence
+- `deserialize(data: any): void` - Deserialize state from persistence
+- `show(): string[]` - Show current state information
+
+### Data Models
+
+#### BlogPost
+```typescript
+interface BlogPost {
+  id: string;
+  title: string;
+  content: string;
+  status: "published" | "scheduled" | "draft" | "pending" | "private";
+  created_at: Date;
+  updated_at: Date;
+  published_at: Date;
+}
+```
+
+#### CreatePostData
+```typescript
+interface CreatePostData {
+  title: string;
+  content?: string;
+  tags?: string[];
+  feature_image?: { id: string };
+}
+```
+
+#### UpdatePostData
+```typescript
+interface UpdatePostData {
+  title?: string;
+  content?: string;
+  tags?: string[];
+  feature_image?: { id: string };
+  status?: "published" | "scheduled" | "draft" | "pending" | "private";
+}
+```
 
 ### Tools
 
@@ -132,7 +178,7 @@ app.services.waitForItemByType(CDNService, cdnService => {
 // Create a post
 const result = await agent.executeTool('wordpress/createPost', {
   title: 'Hello WordPress from Token Ring',
-  content: '# Hello World\\n\\nThis is a test post created by an agent.',
+  content: '# Hello World\n\nThis is a test post created by an agent.',
   tags: ['tokenring', 'wordpress', 'test']
 });
 
@@ -189,29 +235,52 @@ await agent.executeTool('wordpress/generateImageForPost', {
 
 ## Dependencies
 
+### Runtime Dependencies
+
+- `@tokenring-ai/app`: Core application framework
 - `@tokenring-ai/agent`: Core agent framework
 - `@tokenring-ai/blog`: Blog abstraction layer
 - `@tokenring-ai/cdn`: CDN abstraction layer
-- `@tokenring-ai/app`: Application framework
 - `wordpress-api-client@0.4.9`: WordPress REST API client
 - `marked@17.0.1`: Markdown to HTML converter
 - `zod`: Schema validation
 - `uuid`: UUID generation
 
-## Notes
+### Development Dependencies
 
-- Requires WordPress application password (generated in WordPress admin dashboard)
-- generateImageForPost requires AI image model configuration
-- Posts are created as drafts by default
-- Markdown content is automatically converted to HTML
-- Tags are created if they don't exist, or reused if they do
-- CDN service stores files in WordPress media library with proper MIME type handling
-- Status mapping: WordPress status → Blog status
-  - `publish` → `published`
-  - `future` → `scheduled`
-  - `draft` → `draft`
-  - `pending` → `pending`
-  - `private` → `private`
+- `vitest`: Testing framework
+- `@vitest/coverage-v8`: Coverage reporting
+
+## WordPress REST API Integration
+
+The package integrates with WordPress REST API endpoints:
+
+### Posts API
+- `GET /wp/v2/posts` - List posts
+- `POST /wp/v2/posts` - Create post
+- `GET /wp/v2/posts/{id}` - Get post
+- `POST /wp/v2/posts/{id}` - Update post
+- `DELETE /wp/v2/posts/{id}` - Delete post
+
+### Media API
+- `GET /wp/v2/media` - List media
+- `POST /wp/v2/media` - Upload media
+- `GET /wp/v2/media/{id}` - Get media item
+- `POST /wp/v2/media/{id}` - Update media
+- `DELETE /wp/v2/media/{id}` - Delete media
+
+### Tags API
+- `GET /wp/v2/tags` - List tags
+- `POST /wp/v2/tags` - Create tag
+
+## Status Mapping
+
+WordPress status → Blog status:
+- `publish` → `published`
+- `future` → `scheduled`
+- `draft` → `draft`
+- `pending` → `pending`
+- `private` → `private`
 
 ## Error Handling
 
@@ -221,3 +290,26 @@ Common error scenarios:
 - **No post selected**: Select a post before attempting updates
 - **Invalid media ID**: Ensure CDN is properly configured for WordPress
 - **Tag creation failure**: Check WordPress permissions for tag management
+- **Post not found**: Verify post ID is correct and post exists
+
+## Development
+
+### Building
+
+```bash
+bun run build
+```
+
+### Testing
+
+```bash
+bun run test
+```
+
+### Plugin Integration
+
+The package automatically integrates with Token Ring applications through the plugin system. No additional setup is required for standard usage.
+
+## License
+
+MIT License - see repository LICENSE file for details.

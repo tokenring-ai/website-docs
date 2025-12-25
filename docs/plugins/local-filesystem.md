@@ -1,10 +1,10 @@
-# Local Filesystem Plugin
+# @tokenring-ai/local-filesystem
 
-Concrete filesystem implementation for local disk access with root-scoped operations, ignore filters, and shell execution.
+A concrete implementation of the FileSystemProvider abstraction that provides safe, root-scoped access to your local filesystem for Token Ring apps and agents.
 
 ## Overview
 
-The `@tokenring-ai/local-filesystem` package provides a concrete implementation of the FileSystemService abstraction that provides safe access to your local disk for Token Ring apps and agents. All operations are confined to a configured root directory with ignore-aware listing and searching.
+The `@tokenring-ai/local-filesystem` package provides a concrete implementation of the FileSystemService abstraction that provides safe access to your local disk for Token Ring apps and agents. All operations are confined to a configured base directory with comprehensive error handling, security boundaries, and advanced features like file watching and text searching.
 
 ## Package Structure
 
@@ -12,7 +12,10 @@ The `@tokenring-ai/local-filesystem` package provides a concrete implementation 
 pkg/local-filesystem/
 ├── plugin.ts          # Plugin registration and integration
 ├── LocalFileSystemProvider.ts  # Core filesystem provider implementation
-└── package.json      # Package metadata and dependencies
+├── index.ts          # Package exports
+├── package.json      # Package metadata and dependencies
+├── README.md         # Package documentation
+└── test/             # Test suite
 ```
 
 ## Key Features
@@ -24,6 +27,8 @@ pkg/local-filesystem/
 - **Comprehensive API**: Read, write, delete, rename, copy, stat, chmod operations
 - **Directory Operations**: Create, list, glob, grep, tree traversal
 - **Command Execution**: Safe shell command execution with timeouts and working directory support
+- **MCP Protocol**: Implements Model Context Protocol for AI integration
+- **Type-safe**: Built with TypeScript and Zod for configuration validation
 
 ## Installation
 
@@ -57,19 +62,19 @@ const provider = new LocalFileSystemProvider({
 - `deleteFile(filePath): Promise<boolean>`: Delete file
 - `rename(oldPath, newPath): Promise<boolean>`: Rename/move file
 - `exists(filePath): Promise<boolean>`: Check existence
-- `stat(filePath): Promise<StatInfo>`: Get file stats
+- `stat(filePath): Promise<StatLike>`: Get file stats
 - `chmod(filePath, mode): Promise<boolean>`: Change permissions
 - `copy(source, destination, options?): Promise<boolean>`: Copy file with overwrite option
 
 **Directory Operations:**
 - `createDirectory(dirPath, options?): Promise<boolean>`: Create directory with recursive option
 - `glob(pattern, options?): Promise<string[]>`: Pattern matching with ignore filters
-- `grep(searchString, options?): Promise<SearchResult[]>`: Text search across files
+- `grep(searchString, options?): Promise<GrepResult[]>`: Text search across files
 - `getDirectoryTree(dir, options?): AsyncGenerator<string>`: Tree traversal
 - `watch(dir, options?): Promise<FSWatcher>`: File watching with stability threshold
 
 **Process Execution:**
-- `executeCommand(command, options?): Promise<ExecuteResult>`: Run shell commands
+- `executeCommand(command, options?): Promise<ExecuteCommandResult>`: Run shell commands
   - Options: `timeoutSeconds`, `env`, `workingDirectory`
   - Returns: `{ ok, stdout, stderr, exitCode, error? }`
 
@@ -78,7 +83,7 @@ const provider = new LocalFileSystemProvider({
 ### Basic File Operations
 
 ```typescript
-import { LocalFileSystemProvider, LocalFileSystemProviderOptionsSchema } from '@tokenring-ai/local-filesystem';
+import { LocalFileSystemProvider } from '@tokenring-ai/local-filesystem';
 import { TokenRingApp } from '@tokenring-ai/app';
 import { FileSystemService } from '@tokenring-ai/filesystem';
 
@@ -233,7 +238,19 @@ The plugin automatically registers with the TokenRing app when configured in the
 - `fs-extra@^11.3.2`: File utilities
 - `glob@^13.0.0`: Pattern matching
 - `glob-gitignore@^1.0.15`: Ignore pattern handling
+- `zod`: Type-safe schema validation
+
+## Testing
+
+Run the test suite:
+
+```bash
+bun run test
+```
+
+The test suite includes integration tests covering file operations, error handling, and edge cases.
+
 
 ## License
 
-MIT License - see LICENSE file for details.
+MIT License - see [LICENSE](LICENSE) file for details.

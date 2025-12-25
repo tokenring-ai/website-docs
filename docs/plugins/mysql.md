@@ -1,18 +1,16 @@
 # MySQL Plugin
 
-MySQL database integration with connection pooling, SQL execution, and schema inspection.
-
 ## Overview
 
-The `@tokenring-ai/mysql` package provides MySQL database integration for the TokenRing AI platform. It extends the base `DatabaseResource` from `@tokenring-ai/database` to offer connection pooling, SQL query execution, and schema inspection capabilities specifically for MySQL databases. The plugin registers MySQL providers with the DatabaseService based on configuration, enabling seamless database access within the TokenRing ecosystem.
+The `@tokenring-ai/mysql` package provides MySQL database integration for the TokenRing AI platform. It extends the base `DatabaseProvider` from `@tokenring-ai/database` to offer connection pooling, SQL query execution, and schema inspection capabilities specifically for MySQL databases. The plugin automatically registers MySQL providers with the DatabaseService based on configuration, enabling seamless database access within the TokenRing ecosystem.
 
-## Key Features
+### Key Features
 
 - **Connection Pooling**: Efficient, reusable connections using mysql2 with automatic management
 - **SQL Execution**: Asynchronous query execution with result handling for SELECT, INSERT, UPDATE, DELETE operations
 - **Schema Inspection**: Retrieve table schemas via SHOW TABLES and SHOW CREATE TABLE commands
 - **Read/Write Control**: Optional write permission enforcement to prevent unauthorized modifications
-- **Agent Integration**: Designed for use in AI agents requiring database interactions through the DatabaseService
+- **Plugin Integration**: Designed as a TokenRing plugin for automatic registration with the DatabaseService
 - **Configuration-driven**: Automatically registers configured MySQL providers during application startup
 
 ## Core Components
@@ -93,61 +91,60 @@ const result = await resource.executeSql('SELECT * FROM users');
 
 ## Usage Examples
 
-### Basic Connection and Query via DatabaseService
+### Basic Plugin Integration
 
 ```typescript
-import { DatabaseService } from '@tokenring-ai/database';
-import { MySQLProvider } from '@tokenring-ai/mysql';
+import TokenRingApp from '@tokenring-ai/app';
+import { DatabaseConfigSchema } from '@tokenring-ai/database';
 
-// Create and register MySQL provider
-const databaseService = new DatabaseService();
-databaseService.registerDatabase('mysql-db', new MySQLProvider({
+const app = new TokenRingApp();
+
+// Configure MySQL provider
+const databaseConfig = {
+  providers: {
+    'mysql-db': {
+      type: 'mysql',
+      host: 'localhost',
+      port: 3306,
+      user: 'root',
+      password: 'password',
+      databaseName: 'myapp',
+      allowWrites: true
+    }
+  }
+};
+
+app.useDatabaseConfig(databaseConfig);
+
+// The plugin automatically registers MySQL providers
+app.registerService(new DatabaseService());
+app.registerPlugin(MySQLProvider);
+
+await app.start();
+```
+
+### Direct MySQLProvider Usage
+
+```typescript
+import MySQLProvider from '@tokenring-ai/mysql';
+
+const mysqlProvider = new MySQLProvider({
   host: 'localhost',
   user: 'root',
   password: 'password',
   databaseName: 'myapp',
-  allowWrites: true
-}));
+  connectionLimit: 10,
+  allowWrites: false
+});
 
 // Execute SQL query
-async function queryUsers() {
-  const resource = databaseService.getResource('mysql-db');
-  try {
-    const result = await resource.executeSql('SELECT * FROM users');
-    console.log('Users:', result.rows);
-    console.log('Fields:', result.fields);
-  } catch (error) {
-    console.error('Query failed:', error);
-  }
-}
+const result = await mysqlProvider.executeSql('SELECT * FROM users');
+console.log('Users:', result.rows);
+console.log('Fields:', result.fields);
 
-queryUsers();
-```
-
-### Schema Inspection
-
-```typescript
-import { DatabaseService } from '@tokenring-ai/database';
-import { MySQLProvider } from '@tokenring-ai/mysql';
-
-const databaseService = new DatabaseService();
-databaseService.registerDatabase('mysql-db', new MySQLProvider({
-  host: 'localhost',
-  user: 'root',
-  password: 'password',
-  databaseName: 'myapp'
-}));
-
-async function inspectSchema() {
-  const resource = databaseService.getResource('mysql-db');
-  const schema = await resource.showSchema();
-  Object.entries(schema).forEach(([table, createSql]) => {
-    console.log(`Table: ${table}`);
-    console.log(`Schema: ${createSql}`);
-  });
-}
-
-inspectSchema();
+// Inspect database schema
+const schema = await mysqlProvider.showSchema();
+console.log('Table schemas:', schema);
 ```
 
 ### Integration with TokenRing Agent
@@ -175,8 +172,6 @@ const agent = new TokenRingAgent({
 ```typescript
 import TokenRingApp from '@tokenring-ai/app';
 import { DatabaseConfigSchema } from '@tokenring-ai/database';
-import DatabaseService from '@tokenring-ai/database/DatabaseService';
-import MySQLProvider from '@tokenring-ai/mysql';
 
 const app = new TokenRingApp({
   config: {
@@ -228,7 +223,7 @@ await app.start();
 
 ## Dependencies
 
-- `@tokenring-ai/database@^0.2.0`: Base DatabaseResource class and types
+- `@tokenring-ai/database@^0.2.0`: Base DatabaseProvider class and types
 - `@tokenring-ai/app@^0.2.0`: Application framework and plugin system
 - `mysql2@^3.15.3`: Promise-based MySQL client for Node.js
 
@@ -282,3 +277,33 @@ Common error scenarios and troubleshooting:
 - Consider using read-only users for agents that only need to query data
 - Validate and sanitize all SQL input to prevent injection attacks
 - Limit database access to necessary tables and operations based on agent requirements
+
+## Development and Testing
+
+### Testing
+
+Run the test suite:
+
+```bash
+bun run test
+```
+
+### Test Coverage
+
+Generate test coverage report:
+
+```bash
+bun run test:coverage
+```
+
+### Building
+
+The package uses TypeScript with ES modules. Build with:
+
+```bash
+bun run build
+```
+
+## License
+
+MIT License - see [LICENSE](LICENSE) file for details.

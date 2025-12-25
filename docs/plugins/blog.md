@@ -19,43 +19,12 @@ The `@tokenring-ai/blog` package provides a powerful abstraction layer for manag
 
 ## Core Components
 
-### BlogProvider (Abstract Base Class)
+### BlogProvider Interface
 
-The abstract `BlogProvider` class defines the standardized interface for all blog operations.
-
-**Core Properties:**
-- `description: string` - Description of the provider
-- `imageGenerationModel: string` - Default AI model for image generation
-- `cdnName: string` - CDN configuration name
-
-**Key Methods:**
-- `attach(agent: Agent): Promise<void>` - Initialize provider with agent
-- `getAllPosts(agent: Agent): Promise<BlogPost[]>` - Get all posts with filtering
-- `createPost(data: CreatePostData, agent: Agent): Promise<BlogPost>` - Create new post
-- `updatePost(data: UpdatePostData, agent: Agent): Promise<BlogPost>` - Update existing post
-- `selectPostById(id: string, agent: Agent): Promise<BlogPost>` - Select post by ID
-- `getCurrentPost(agent: Agent): BlogPost | null` - Get currently selected post
-- `clearCurrentPost(agent: Agent): Promise<void>` - Clear current post selection
-
-### BlogService
-
-Manages multiple blog providers and provides a unified interface for blog operations.
-
-**Key Methods:**
-- `registerBlog(name, provider)` - Register a blog provider
-- `getAvailableBlogs()` - Get names of all registered providers
-- `getAllPosts(agent)` - Get all posts from active blog with filtering
-- `createPost(data, agent)` - Create new post
-- `updatePost(data, agent)` - Update current post
-- `publishPost(agent)` - Publish selected post
-- `getCurrentPost(agent)` - Get currently selected post
-- `selectPostById(id, agent)` - Select post by ID
-- `clearCurrentPost(agent)` - Clear current post selection
-
-## BlogPost Data Model
+The `BlogProvider` interface defines the standardized contract for blog operations across different platforms:
 
 ```typescript
-interface BlogPost {
+export interface BlogPost {
   id: string;
   title: string;
   content?: string;
@@ -69,6 +38,56 @@ interface BlogPost {
     url?: string;
   };
   url?: string;
+}
+
+export type CreatePostData = Omit<BlogPost, 'id' | 'created_at' | 'updated_at' | 'published_at' | 'status'>;
+export type UpdatePostData = Partial<Omit<BlogPost, 'id' | 'created_at' | 'updated_at'>>;
+
+export interface BlogProvider {
+  description: string;
+  
+  imageGenerationModel: string;
+  cdnName: string;
+
+  attach(agent: Agent): Promise<void>;
+
+  getAllPosts(agent: Agent): Promise<BlogPost[]>;
+
+  createPost(data: CreatePostData, agent: Agent): Promise<BlogPost>;
+
+  updatePost(data: UpdatePostData, agent: Agent): Promise<BlogPost>;
+
+  selectPostById(id: string, agent: Agent): Promise<BlogPost>;
+
+  getCurrentPost(agent: Agent): BlogPost | null;
+
+  clearCurrentPost(agent: Agent): Promise<void>;
+}
+```
+
+### BlogService
+
+Manages multiple blog providers and provides a unified interface for blog operations:
+
+```typescript
+export default class BlogService implements TokenRingService {
+  name = "BlogService";
+  description = "Abstract interface for blog operations";
+
+  // Register and manage blog providers
+  registerBlog(provider: BlogProvider): void;
+  getAvailableBlogs(): string[];
+
+  // Post operations
+  createPost(data: CreatePostData, agent: Agent): Promise<BlogPost>;
+  updatePost(data: UpdatePostData, agent: Agent): Promise<BlogPost>;
+  getAllPosts(agent: Agent): Promise<BlogPost[]>;
+  
+  // Post selection and management
+  selectPostById(id: string, agent: Agent): Promise<BlogPost>;
+  getCurrentPost(agent: Agent): BlogPost | null;
+  clearCurrentPost(agent: Agent): Promise<void>;
+  publishPost(agent: Agent): Promise<void>;
 }
 ```
 
@@ -227,7 +246,7 @@ When `@tokenring-ai/scripting` is available, the following functions are automat
 import { BlogService } from '@tokenring-ai/blog';
 
 // Concrete implementations extend BlogProvider
-class MyBlogProvider extends BlogProvider {
+class MyBlogProvider implements BlogProvider {
   async getAllPosts(agent: Agent): Promise<BlogPost[]> {
     // Platform-specific implementation
   }
@@ -283,7 +302,9 @@ const posts = await blogService.getAllPosts(agent);
 ### Blog Configuration Schema
 
 ```typescript
-const BlogConfigSchema = z.object({
+import {z} from "zod";
+
+export const BlogConfigSchema = z.object({
   providers: z.record(z.string(), z.any()).optional()
 });
 ```
@@ -302,6 +323,8 @@ const BlogConfigSchema = z.object({
 - `@tokenring-ai/scripting`: Scripting function registration
 - `@tokenring-ai/cdn`: CDN service for image uploads
 - `@tokenring-ai/ai-client`: AI client for image generation
+- `marked`: Markdown parsing and conversion
+- `uuid`: Unique identifier generation
 
 ## Provider Implementations
 
@@ -322,4 +345,47 @@ The plugin includes comprehensive testing with:
 Run tests with:
 ```bash
 bun run test
+```
+
+## Development
+
+### Package Structure
+
+```
+pkg/blog/
+├── BlogProvider.ts          # Interface definitions
+├── BlogService.ts           # Main service implementation
+├── state/BlogState.ts       # State management
+├── tools/                   # Tool implementations
+│   ├── createPost.ts
+│   ├── updatePost.ts
+│   ├── getAllPosts.ts
+│   ├── getCurrentPost.ts
+│   └── generateImageForPost.ts
+├── commands/blog.ts         # Chat commands
+├── chatCommands.ts          # Command registration
+└── plugin.ts                # Plugin installation
+```
+
+### Package.json Dependencies
+
+```json
+{
+  "dependencies": {
+    "@tokenring-ai/ai-client": "0.2.0",
+    "@tokenring-ai/app": "0.2.0", 
+    "@tokenring-ai/cdn": "0.2.0",
+    "zod": "catalog:",
+    "@tokenring-ai/agent": "0.2.0",
+    "@tokenring-ai/chat": "0.2.0",
+    "@tokenring-ai/utility": "0.2.0",
+    "@tokenring-ai/scripting": "0.2.0",
+    "marked": "^17.0.1",
+    "uuid": "^13.0.0"
+  },
+  "devDependencies": {
+    "vitest": "catalog:",
+    "typescript": "catalog:"
+  }
+}
 ```
