@@ -127,7 +127,7 @@ await agent.useTool({
 });
 ```
 
-#### file/search
+#### file_search
 
 Retrieve files by paths/globs or search text across files.
 
@@ -144,7 +144,7 @@ Retrieve files by paths/globs or search text across files.
 ```typescript
 // Search for files matching patterns
 await agent.useTool({
-  name: 'file/search',
+  name: 'file_search',
   params: {
     searches: ['TODO', 'FIXME'],
     returnType: 'matches',
@@ -155,7 +155,7 @@ await agent.useTool({
 
 // Get file contents
 await agent.useTool({
-  name: 'file/search',
+  name: 'file_search',
   params: {
     files: ['src/**/*.ts'],
     returnType: 'content'
@@ -164,7 +164,7 @@ await agent.useTool({
 
 // Get file names matching glob
 await agent.useTool({
-  name: 'file/search',
+  name: 'file_search',
   params: {
     files: ['**/*.md'],
     returnType: 'names'
@@ -449,7 +449,7 @@ const fileWriteSchema = z.object({
 });
 ```
 
-#### file/search
+#### file_search
 
 ```typescript
 const fileSearchSchema = z.object({
