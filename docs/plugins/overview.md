@@ -1,6 +1,6 @@
 # Plugin Overview
 
-TokenRing Coder provides 37+ extensible plugins that add powerful capabilities to your AI-powered development workflow. Each plugin integrates seamlessly with the agent framework to provide specialized functionality.
+TokenRing provides 58+ extensible plugins that add powerful capabilities to your AI-powered workflows. Each plugin integrates seamlessly with the agent framework to provide specialized functionality.
 
 ## 🎯 Core Plugins
 
@@ -187,7 +187,7 @@ All plugins follow a consistent architecture:
 
 Most plugins depend on:
 
-- `@tokenring-ai/agent@0.1.0` - Core agent framework
+- `@tokenring-ai/agent@0.2.0` - Core agent framework
 - `zod@^4.0.17` - Schema validation
 
 Check individual plugin documentation for specific dependencies.

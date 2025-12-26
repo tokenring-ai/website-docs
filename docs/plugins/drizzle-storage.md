@@ -15,6 +15,7 @@ The `@tokenring-ai/drizzle-storage` package provides a production-ready, multi-d
 - **Unified Interface**: Same API across all database types
 - **Production Ready**: Comprehensive testing with Docker containers
 - **Token Ring Integration**: Seamless integration with Token Ring's checkpoint system
+- **JSON State Management**: Automatic JSON serialization/deserialization
 
 ## Core Components
 
@@ -203,17 +204,17 @@ async function agentWorkflow() {
 ## Configuration Options
 
 ### SQLite Configuration
-- **type**: `\"sqlite\"` (required)
+- **type**: `"sqlite"` (required)
 - **databasePath**: `string` (required) – Path to SQLite file
 
 ### MySQL Configuration
-- **type**: `\"mysql\"` (required)
+- **type**: `"mysql"` (required)
 - **connectionString**: `string` (required) – MySQL connection string
   - Format: `mysql://user:password@host:port/database`
   - Supports connection pooling automatically
 
 ### PostgreSQL Configuration
-- **type**: `\"postgres\"` (required)
+- **type**: `"postgres"` (required)
 - **connectionString**: `string` (required) – PostgreSQL connection string
   - Format: `postgres://user:password@host:port/database`
   - Supports connection pooling automatically
@@ -221,9 +222,9 @@ async function agentWorkflow() {
 ## API Reference
 
 ### Factory Functions
-- `createSQLiteStorage(config: { type: \"sqlite\", databasePath: string }): AgentCheckpointProvider`
-- `createMySQLStorage(config: { type: \"mysql\", connectionString: string }): AgentCheckpointProvider`
-- `createPostgresStorage(config: { type: \"postgres\", connectionString: string }): AgentCheckpointProvider`
+- `createSQLiteStorage(config: { type: "sqlite", databasePath: string }): AgentCheckpointProvider`
+- `createMySQLStorage(config: { type: "mysql", connectionString: string }): AgentCheckpointProvider`
+- `createPostgresStorage(config: { type: "postgres", connectionString: string }): AgentCheckpointProvider`
 
 ### AgentCheckpointProvider Interface
 - `start(): Promise<void>` - Initialize database connection and apply migrations
@@ -301,4 +302,8 @@ Migrations are automatically applied at runtime when the storage is initialized.
 - Connection pooling enabled for MySQL/PostgreSQL
 - SQLite requires Bun runtime
 - Suitable for production workloads with MySQL/PostgreSQL
-- Drop-in replacement for `@tokenring-ai/sqlite-storage`
+- Drop-in replacement for `@tokenring-ai/sqlite-storage`</think>
+</tool_call></tool_call>
+<tool_call>@tokenring-ai/filesystem/search
+<arg_key>files</arg_key>
+<arg_value>[".tokenring/knowledge/documentation.md"]

@@ -11,13 +11,15 @@ The `@tokenring-ai/cli-ink` package serves as the primary CLI entry point for th
 - **Interactive Terminal Interface**: Built with Ink framework for responsive terminal applications
 - **Agent Management**: Select from running agents, create new ones, or connect to web applications
 - **Real-time Event Processing**: Stream agent outputs (chat, reasoning, system messages) with proper formatting
-- **Comprehensive Command Support**: Built-in commands like `/help`, `/markdown`, `/quit`, `/exit`
+- **Comprehensive Command Support**: Built-in commands like `/help`, `/switch`, `/markdown`
 - **Human Interface Requests**: Handle confirmations, selections, password prompts, web page opening
 - **Dynamic Screen Management**: Switch between agent selection, chat, and interactive request handling
 - **Code Block Syntax Highlighting**: Render markdown with syntax highlighting for various programming languages
 - **Responsive Layout**: Automatically adjusts to terminal window size
 - **Workflow Integration**: Support for spawning workflow-based agents
 - **Web Application Integration**: Connect to web applications via SPA resources
+- **Command History**: Input history with up/down arrow navigation
+- **Auto-completion**: Command auto-completion with tab key support
 
 ## Installation
 
@@ -25,13 +27,10 @@ This package is part of the TokenRing AI monorepo. To install and use:
 
 ```bash
 # Install dependencies
-npm install
-
-# Build the package
-npm run build
+bun install
 
 # Run tests
-npm test
+vitest run
 ```
 
 ### Dependencies
@@ -67,16 +66,16 @@ await app.start();
 The CLI is designed as a TokenRing plugin that integrates seamlessly with the main application:
 
 ```typescript
-import {AgentCommandService} from "@tokenring-ai/agent";
+import TokenRingApp, {TokenRingPlugin} from "@tokenring-ai/app";
+import AgentInkCLI, {InkCLIConfigSchema} from "./AgentInkCLI.ts";
+
+import packageJSON from './package.json' with {type: 'json'};
 
 export default {
-  name: "@tokenring-ai/cli-ink",
-  version: "0.2.0",
-  description: "Ink-based CLI for TokenRing apps",
-  install(app) {
-    app.waitForService(AgentCommandService, agentCommandService => 
-      agentCommandService.addAgentCommands(chatCommands)
-    );
+  name: packageJSON.name,
+  version: packageJSON.version,
+  description: packageJSON.description,
+  install(app: TokenRingApp) {
     const config = app.getConfigSlice('inkCLI', InkCLIConfigSchema);
     app.addServices(new AgentInkCLI(app, config));
   },
@@ -109,7 +108,7 @@ export const InkCLIConfigSchema = z.object({
 
 - Connect to existing running agents
 - Create new agents of various types
-- Switch between running agents
+- Switch between running agents using `/switch` command
 - Exit or detach from agents
 - Connect to web applications
 - Spawn workflow-based agents
@@ -119,21 +118,27 @@ export const InkCLIConfigSchema = z.object({
 | Command | Description | Usage |
 |---------|-------------|-------|
 | `/help` | Show available commands | `/help` |
-| `/markdown` | Outputs a sample of markdown | `/markdown` |
-| `/quit` | Quit current agent | `/quit` |
-| `/exit` | Exit current agent | `/exit` |
 | `/switch` | Return to agent selection | `/switch` |
+| `/markdown` | Outputs a sample of markdown | `/markdown` |
 
 ### Keyboard Shortcuts
 
 **Ctrl-C Actions:**
 - `Ctrl-C` - Exit the application when in agent selection, return to agent selection when in chat
 
+**Navigation:**
+- `Up/Down Arrow` - Navigate lists and command history
+- `Tab` - Auto-complete commands
+- `Left/Right Arrow` - Expand/collapse tree nodes
+- `Space` - Toggle selections (multiple choice)
+- `Enter` - Select/submit
+- `Esc` - Cancel/cancel selection
+
 ### Human Interface Requests
 
 The CLI handles various types of human interface requests:
 
-- **Ask for Text**: Open editor for multi-line responses
+- **Ask for Text**: Open editor for multi-line responses (Ctrl+D to submit)
 - **Confirm**: Yes/no prompts with timeout support
 - **Selection**: Single choice from list
 - **Tree Selection**: Navigate hierarchical structures (agent types, categories)
@@ -174,7 +179,7 @@ type Screen =
   | { name: 'chat'; agentId: string }
   | { name: 'askForConfirmation'; request: HumanInterfaceRequestFor<"askForConfirmation">, onResponse: (response: HumanInterfaceResponseFor<'askForConfirmation'>) => void }
   | { name: 'askForPassword'; request: HumanInterfaceRequestFor<"askForPassword">, onResponse: (response: HumanInterfaceResponseFor<'askForPassword'>) => void }
-  | { name: 'openWebPage'; request: HumanInterfaceRequestFor<"openWebPage">, onResponse: (response: HumanInterfaceResponseFor<"openWebPage">) => void }
+  | { name: 'openWebPage'; request: HumanInterfaceRequestFor<"openWebPage">, onResponse: (response: HumanInterfaceResponseFor<'openWebPage'>) => void }
   | { name: 'askForSingleTreeSelection'; request: HumanInterfaceRequestFor<"askForSingleTreeSelection">, onResponse: (response: HumanInterfaceResponseFor<'askForSingleTreeSelection'>) => void }
   | { name: 'askForMultipleTreeSelection'; request: HumanInterfaceRequestFor<"askForMultipleTreeSelection">, onResponse: (response: HumanInterfaceResponseFor<'askForMultipleTreeSelection'>) => void }
   | { name: 'askForText'; request: HumanInterfaceRequestFor<"askForText">, onResponse: (response: HumanInterfaceResponseFor<'askForText'>) => void };
@@ -208,9 +213,18 @@ await app.start();
 // Type your questions and press Enter
 
 // 4. Use commands
-/help          # Show available commands
-/markdown      # Output markdown sample
-/switch        # Return to agent selection
+/help          // Show available commands
+/switch        // Return to agent selection
+```
+
+### Command History and Auto-completion
+
+```typescript
+// The CLI maintains command history
+// Use up/down arrows to navigate through previous commands
+
+// Tab completion for commands
+agent.handleInput({ message: "/swi" });  // Tab to complete to "/switch"
 ```
 
 ### Web Application Integration
@@ -232,7 +246,6 @@ await app.start();
 ### Service Dependencies
 
 - `@tokenring-ai/agent`: Core agent framework
-- `@tokenring-ai/agent/AgentCommandService`: Command registration
 - `@tokenring-ai/app`: Application framework
 - `@tokenring-ai/web-host`: Web resource hosting
 - `@tokenring-ai/utility`: Shared utilities
@@ -266,35 +279,28 @@ The CLI handles various human interface request types:
 ### Building
 
 ```bash
-npm run build
+bun run build
 ```
 
 ### Testing
 
 ```bash
-npm test
-npm test:watch
-npm test:coverage
+vitest run
+vitest run:watch
+vitest run:coverage
 ```
-
-### Adding New Commands
-
-1. Create a new file in `commands/` directory
-2. Implement the command interface:
-   ```typescript
-   export default {
-     description: string,
-     execute(args: string, agent: Agent): Promise<void>,
-     help(): string[]
-   } satisfies TokenRingAgentCommand;
-   ```
-3. Export the command in `chatCommands.ts`
 
 ### Adding New Screens
 
 1. Create a new file in `screens/` directory
 2. Implement the screen component following the existing patterns
 3. Add support in `AgentCLI.tsx` for handling the new screen type
+
+### Adding Custom Components
+
+1. Create a new file in `components/` directory
+2. Implement the component with proper TypeScript types
+3. Use Ink components for consistent styling
 
 ## Package Structure
 
@@ -304,7 +310,6 @@ pkg/cli-ink/
 ├── plugin.ts                # Plugin definition for TokenRing app integration
 ├── AgentInkCLI.ts           # Main service class
 ├── AgentCLI.tsx             # Core component managing screen state
-├── chatCommands.ts          # Command exports
 ├── components/              # Reusable components
 │   ├── Markdown.tsx         # Markdown rendering with syntax highlighting
 │   ├── CommandInput.tsx     # Command input with history and auto-completion
@@ -321,10 +326,6 @@ pkg/cli-ink/
 │   ├── PasswordScreen.tsx   # Password input screen
 │   ├── TreeSelectionScreen.tsx # Tree-based selection
 │   └── WebPageScreen.tsx    # Web page opening screen
-├── commands/               # Individual command implementations
-│   ├── markdown.ts         # /markdown command
-│   ├── quit.ts             # /quit command
-│   └── exit.ts             # /exit command
 ├── package.json
 ├── tsconfig.json
 ├── vitest.config.ts

@@ -11,6 +11,7 @@ Provides browser-based agent state storage for the TokenRing ecosystem using loc
 - **Isolation Support**: Configurable storage key prefix for isolation between different applications
 - **No Server Dependency**: Fully client-side implementation with no backend requirements
 - **Standard API**: Implements the AgentCheckpointProvider interface for seamless integration
+- **Error Handling**: Graceful error handling for storage failures and data corruption
 
 ## Integration Architecture
 The browser-agent-storage plugin integrates with the TokenRing checkpoint system as a provider implementation. It registers with the AgentCheckpointService when the checkpoint configuration specifies the "browser" provider type.
@@ -218,6 +219,134 @@ await storage.deleteCheckpoint(checkpointId);
 await storage.clearAllCheckpoints();
 ```
 
+### Real-world Development Workflow
+```typescript
+import { BrowserAgentStateStorage } from '@tokenring-ai/browser-agent-storage';
+
+const storage = new BrowserAgentStateStorage({});
+
+// Simulate a typical development workflow
+const initialCheckpoint = {
+  agentId: 'dev-agent-001',
+  name: 'initial-development',
+  config: { model: 'gpt-4', temperature: 0.7 },
+  state: { messages: [], context: { project: 'todo-app' } },
+  createdAt: Date.now() - 3600000,
+};
+
+const featureCheckpoint = {
+  agentId: 'dev-agent-001',
+  name: 'feature-implementation',
+  config: { model: 'gpt-4', temperature: 0.8 },
+  state: { 
+    messages: [{ role: 'user', content: 'Implement todo feature' }],
+    context: { project: 'todo-app', phase: 'feature-development' }
+  },
+  createdAt: Date.now() - 1800000,
+};
+
+// Store checkpoints
+await storage.storeCheckpoint(initialCheckpoint);
+await storage.storeCheckpoint(featureCheckpoint);
+
+// List checkpoints (newest first)
+const checkpoints = await storage.listCheckpoints();
+console.log('Development checkpoints:', checkpoints);
+```
+
+### Content Creation Workflow
+```typescript
+import { BrowserAgentStateStorage } from '@tokenring-ai/browser-agent-storage';
+
+const storage = new BrowserAgentStateStorage({});
+
+// Simulate content creation workflow
+const planningCheckpoint = {
+  agentId: 'content-agent-001',
+  name: 'content-planning',
+  config: { model: 'gpt-4', temperature: 0.9 },
+  state: { messages: [], context: { project: 'blog-series', topic: 'AI development' } },
+  createdAt: Date.now() - 7200000,
+};
+
+const draftingCheckpoint = {
+  agentId: 'content-agent-001',
+  name: 'drafting-article-1',
+  config: { model: 'gpt-4', temperature: 0.8 },
+  state: { 
+    messages: [{ role: 'user', content: 'Write introduction' }],
+    context: { project: 'blog-series', article: 'getting-started-with-ai', status: 'draft' }
+  },
+  createdAt: Date.now() - 3600000,
+};
+
+const finalizingCheckpoint = {
+  agentId: 'content-agent-001',
+  name: 'finalizing-article',
+  config: { model: 'gpt-4', temperature: 0.6 },
+  state: { 
+    messages: [{ role: 'user', content: 'Review and finalize' }],
+    context: { project: 'blog-series', article: 'getting-started-with-ai', status: 'final', reviewed: true }
+  },
+  createdAt: Date.now() - 600000,
+};
+
+// Store checkpoints
+await storage.storeCheckpoint(planningCheckpoint);
+await storage.storeCheckpoint(draftingCheckpoint);
+await storage.storeCheckpoint(finalizingCheckpoint);
+
+// List checkpoints to see workflow progression
+const checkpoints = await storage.listCheckpoints();
+console.log('Content creation checkpoints:', checkpoints);
+```
+
+### Multiple Agents with Different Prefixes
+```typescript
+// Create isolated storage instances for different agents
+const devStorage = new BrowserAgentStateStorage({
+  storageKeyPrefix: 'dev_agents_',
+});
+
+const contentStorage = new BrowserAgentStateStorage({
+  storageKeyPrefix: 'content_agents_',
+});
+
+// Store checkpoints for different agents
+const devCheckpoint = {
+  agentId: 'dev-001',
+  name: 'dev-checkpoint',
+  config: { model: 'gpt-4' },
+  state: { messages: [], context: { project: 'api' } },
+  createdAt: Date.now() - 1800000,
+};
+
+const contentCheckpoint = {
+  agentId: 'content-001',
+  name: 'content-checkpoint',
+  config: { model: 'gpt-4' },
+  state: { messages: [], context: { project: 'blog' } },
+  createdAt: Date.now() - 900000,
+};
+
+await devStorage.storeCheckpoint(devCheckpoint);
+await contentStorage.storeCheckpoint(contentCheckpoint);
+
+// Verify isolation
+const devCheckpoints = await devStorage.listCheckpoints();
+const contentCheckpoints = await contentStorage.listCheckpoints();
+
+console.log('Dev checkpoints:', devCheckpoints);
+console.log('Content checkpoints:', contentCheckpoints);
+
+// Verify cross-storage retrieval returns null
+const devInContent = await contentStorage.retrieveCheckpoint('dev-checkpoint-id');
+const contentInDev = await devStorage.retrieveCheckpoint('content-checkpoint-id');
+
+console.log('Dev checkpoint in content storage:', devInContent); // null
+console.log('Content checkpoint in dev storage:', contentInDev); // null
+```
+
 ## Limitations and Considerations
 
 ### Storage Constraints
@@ -229,12 +358,15 @@ await storage.clearAllCheckpoints();
 - Use meaningful prefix names to avoid conflicts with other applications
 - Monitor storage usage to prevent exceeding localStorage limits
 - Consider alternative storage solutions for large datasets or cross-device needs
+- Implement checkpoint cleanup strategies for long-running applications
 
 ### Error Handling
 The storage automatically handles:
 - localStorage read/write errors
 - JSON parsing errors
 - Graceful fallback to empty state on errors
+- Quota exceeded scenarios
+- Data corruption recovery
 
 ## Dependencies
 
@@ -243,13 +375,14 @@ The storage automatically handles:
 - `@tokenring-ai/app`: Application framework
 - `@tokenring-ai/checkpoint`: Checkpoint service and schema definitions
 - `zod`: Schema validation
+- `uuid`: UUID generation for checkpoint IDs
 
 ### Development Dependencies
 - `vitest`: Testing framework
 - `typescript`: TypeScript support
 
 ## Testing
-The package includes comprehensive unit tests using Vitest:
+The package includes comprehensive unit and integration tests using Vitest:
 
 ```bash
 # Run tests
@@ -260,6 +393,42 @@ bun run test:watch
 
 # Run tests with coverage
 bun run test:coverage
+```
+
+### Test Coverage
+- **Unit Tests**: `BrowserAgentStateStorage.test.ts` - Tests individual methods and edge cases
+- **Integration Tests**: `integration.test.ts` - Tests real-world usage scenarios and workflows
+- **Mocking**: localStorage is mocked for testing to ensure isolation
+
+## Development
+
+### Package Structure
+```
+pkg/browser-agent-storage/
+├── BrowserAgentStateStorage.ts      # Core storage implementation
+├── BrowserAgentStateStorage.test.ts # Unit tests
+├── integration.test.ts            # Integration tests
+├── plugin.ts                      # TokenRing plugin integration
+├── index.ts                       # Module exports
+├── package.json                   # Package configuration
+├── vitest.config.ts              # Test configuration
+└── README.md                      # Package documentation
+```
+
+### Building and Testing
+
+```bash
+# Install dependencies
+bun install
+
+# Run tests
+bun run test
+
+# Run tests with coverage
+bun run test:coverage
+
+# Build (TypeScript compilation)
+bun run build
 ```
 
 ## License
