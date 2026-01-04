@@ -18,204 +18,17 @@ The `@tokenring-ai/wikipedia` package provides a service for interacting with th
 - **Configurable**: Support for different Wikipedia language editions
 - **Plugin Architecture**: Integrates seamlessly with Token Ring app ecosystem
 
-## Core Components
+## Installation
 
-### WikipediaService
-
-The core service class for Wikipedia API interactions.
-
-**Constructor:**
-```typescript
-constructor(config?: WikipediaConfig)
+```bash
+bun install @tokenring-ai/wikipedia
 ```
 
-**Parameters:**
-- `config.baseUrl` (string, optional): Base URL for Wikipedia API (defaults to "https://en.wikipedia.org")
+## Usage
 
-**Key Methods:**
+### As a Token Ring Plugin
 
-- `search(query: string, opts?: WikipediaSearchOptions): Promise<any>`
-  - Performs search query using MediaWiki API
-  - Options: `limit` (default 10, max 500), `namespace` (default 0), `offset` (default 0)
-  - Returns Wikipedia's JSON response with search results
-  - Uses `action=query&list=search`
-  - Throws error for invalid inputs or API failures
-
-- `getPage(title: string): Promise<string>`
-  - Fetches raw wiki markup text of a page
-  - Uses `action=raw` endpoint
-  - Returns page content as string
-  - Throws on 404 or fetch failure
-
-### Tools
-
-**wikipedia_search** (`wikipedia_search`): Search Wikipedia articles
-- Input: `{ query: string, limit?: number, offset?: number }`
-- Returns: `{ results?: any }` with search hits
-- Logs search query via agent chat
-
-**wikipedia_getPage** (`wikipedia_getPage`): Retrieve page content
-- Input: `{ title: string }`
-- Returns: `{ content?: string }` with raw wiki markup
-- Logs title being fetched
-
-## Services and APIs
-
-### WikipediaService API
-
-The WikipediaService provides direct access to the Wikipedia API:
-
-```typescript
-import WikipediaService from '@tokenring-ai/wikipedia';
-
-const wikipedia = new WikipediaService({
-  baseUrl: 'https://en.wikipedia.org' // Optional, defaults to English Wikipedia
-});
-
-// Search for articles
-const searchResults = await wikipedia.search('artificial intelligence', {
-  limit: 10,
-  namespace: 0,
-  offset: 0
-});
-
-// Get page content
-const pageContent = await wikipedia.getPage('Artificial intelligence');
-```
-
-### Tool API
-
-The package provides two tools that can be used by Token Ring agents:
-
-#### wikipedia_search
-
-Search Wikipedia articles and return structured results.
-
-**Input Schema:**
-```typescript
-z.object({
-  query: z.string().min(1).describe("Search query"),
-  limit: z.number().int().positive().max(500).optional().describe("Number of results (1-500, default: 10)"),
-  offset: z.number().int().min(0).optional().describe("Offset for pagination (default: 0)")
-})
-```
-
-**Example Usage:**
-```typescript
-const result = await agent.executeTool("wikipedia_search", {
-  query: "machine learning",
-  limit: 5
-});
-```
-
-#### wikipedia_getPage
-
-Retrieve the raw wiki markup content of a Wikipedia page by title.
-
-**Input Schema:**
-```typescript
-z.object({
-  title: z.string().min(1).describe("Wikipedia page title")
-})
-```
-
-**Example Usage:**
-```typescript
-const result = await agent.executeTool("wikipedia_getPage", {
-  title: "Machine learning"
-});
-```
-
-## Commands and Tools
-
-### Available Tools
-
-- **wikipedia_search**: Search Wikipedia articles
-- **wikipedia_getPage**: Retrieve Wikipedia page content
-
-### Tool Execution Patterns
-
-The tools can be used individually or chained:
-
-```typescript
-// Individual tool usage
-const searchResult = await agent.executeTool("wikipedia_search", {
-  query: "Token Ring",
-  limit: 3
-});
-
-const pageContent = await agent.executeTool("wikipedia_getPage", {
-  title: "Token Ring (networking)"
-});
-```
-
-```typescript
-// Chained tool usage - search then retrieve content
-const searchRes = await agent.executeTool("wikipedia_search", {
-  query: "Python programming"
-});
-
-if (searchRes.results?.query?.search?.length > 0) {
-  const topResult = searchRes.results.query.search[0];
-  const content = await agent.executeTool("wikipedia_getPage", {
-    title: topResult.title
-  });
-}
-```
-
-## Event System
-
-The WikipediaService uses the Token Ring event system for logging and monitoring:
-
-- **Tool Execution Events**: Logs search queries and page retrievals
-- **Error Events**: Emits error events for failed operations
-- **Service Events**: Lifecycle events for the service instance
-
-## State Management
-
-The WikipediaService maintains its state through:
-
-- **Configuration**: Custom base URL and headers
-- **API State**: Active API connections and requests
-- **Error State**: Retry logic and error tracking
-
-## Human Interface
-
-The tools provide human-readable feedback:
-
-- **Search Queries**: Logs search queries being executed
-- **Page Retrievals**: Logs page titles being fetched
-- **Error Messages**: Clear error messages for failures
-
-## Configuration
-
-### Service Configuration
-
-```typescript
-const wikipedia = new WikipediaService({
-  baseUrl: 'https://en.wikipedia.org' // English Wikipedia (default)
-  // baseUrl: 'https://fr.wikipedia.org' // French Wikipedia
-  // baseUrl: 'https://es.wikipedia.org' // Spanish Wikipedia
-});
-```
-
-### Search Options
-
-- `limit`: Number of results (1-500, default: 10)
-- `namespace`: Search namespace (default: 0 for main articles)
-- `offset`: Pagination offset (default: 0)
-
-### Request Headers
-
-- Fixed User-Agent: "TokenRing-Writer/1.0 (https://github.com/tokenring/writer)"
-
-### Retry Logic
-
-The service includes built-in retry logic for transient failures using `doFetchWithRetry` from `@tokenring-ai/utility`.
-
-## Usage Examples
-
-### Basic Integration
+The package is designed to work as a Token Ring plugin. Import and install it in your app:
 
 ```typescript
 import TokenRingApp from "@tokenring-ai/app";
@@ -231,73 +44,63 @@ app.install(wikipediaPlugin);
 import WikipediaService from "@tokenring-ai/wikipedia";
 
 const wikipedia = new WikipediaService({
-  baseUrl: "https://en.wikipedia.org"
+  baseUrl: "https://en.wikipedia.org" // Optional, defaults to English Wikipedia
 });
 
 // Search for articles
-const searchResults = await wikipedia.search("quantum computing", {
-  limit: 3
+const searchResults = await wikipedia.search("artificial intelligence", {
+  limit: 10,
+  offset: 0
 });
 
-console.log("Search results:", searchResults.query.search);
-
-// Get content from the first result
-if (searchResults.query.search.length > 0) {
-  const firstResult = searchResults.query.search[0];
-  const content = await wikipedia.getPage(firstResult.title);
-  console.log("Page content length:", content.length);
-}
+// Get page content
+const pageContent = await wikipedia.getPage("Artificial intelligence");
 ```
 
-### Agent Workflow Example
+### Agent Tool Usage
+
+The package provides two tools that can be used by Token Ring agents:
+
+#### wikipedia_search
+
+Search Wikipedia articles and return structured results.
 
 ```typescript
-// In a Token Ring agent
-async function researchTopic(query: string) {
-  // Search for relevant articles
-  const searchResult = await agent.executeTool("wikipedia_search", {
-    query,
-    limit: 5
-  });
-  
-  // Get content from the most relevant article
-  if (searchResult.results?.query?.search?.length > 0) {
-    const topArticle = searchResult.results.query.search[0];
-    const pageContent = await agent.executeTool("wikipedia_getPage", {
-      title: topArticle.title
-    });
-    
-    return {
-      title: topArticle.title,
-      snippet: topArticle.snippet,
-      content: pageContent.content
-    };
-  }
-  
-  throw new Error("No relevant articles found");
+// Tool input schema:
+{
+  query: string,           // Required search term
+  limit?: number,          // Number of results (1-500, default: 10)
+  offset?: number          // Pagination offset (default: 0)
 }
-```
 
-### Multi-language Wikipedia
-
-```typescript
-// English Wikipedia (default)
-const englishWiki = new WikipediaService();
-
-// Spanish Wikipedia
-const spanishWiki = new WikipediaService({
-  baseUrl: "https://es.wikipedia.org"
+// Example usage:
+const result = await agent.executeTool("wikipedia_search", {
+  query: "machine learning",
+  limit: 5
 });
+```
 
-// French Wikipedia
-const frenchWiki = new WikipediaService({
-  baseUrl: "https://fr.wikipedia.org"
+#### wikipedia_getPage
+
+Retrieve the raw wiki markup content of a Wikipedia page by title.
+
+```typescript
+// Tool input schema:
+{
+  title: string           // Required page title
+}
+
+// Example usage:
+const result = await agent.executeTool("wikipedia_getPage", {
+  title: "Machine learning"
 });
 ```
 
 ## API Reference
 
 ### WikipediaService
+
+The core service class for Wikipedia API interactions.
 
 #### Constructor
 
@@ -306,18 +109,18 @@ constructor(config?: WikipediaConfig)
 ```
 
 **Parameters:**
-- `config.baseUrl` (string, optional): Custom Wikipedia API base URL
+- `config.baseUrl` (string, optional): Base URL for Wikipedia API (defaults to "https://en.wikipedia.org")
 
 #### Methods
 
-##### search(query: string, opts?: WikipediaSearchOptions): Promise<any>
+##### search(query: string, options?: WikipediaSearchOptions): Promise<any>
 
 Search Wikipedia articles.
 
 **Parameters:**
 - `query` (string): Search term (required)
-- `opts` (object, optional):
-  - `limit` (number): Maximum number of results (1-500, default: 10)
+- `options` (object, optional):
+  - `limit` (number): Maximum number of results (default: 10)
   - `namespace` (number): Search namespace (default: 0)
   - `offset` (number): Pagination offset (default: 0)
 
@@ -371,7 +174,7 @@ export const WikipediaConfigSchema = z.object({
   inputSchema: z.object({
     query: z.string().min(1).describe("Search query"),
     limit: z.number().int().positive().max(500).optional().describe("Number of results (1-500, default: 10)"),
-    offset: z.number().int().min(0).optional().describe("Offset for pagination (default: 0)")
+    offset: z.number().int().min(0).optional().describe("Offset for pagination (default: 0)"),
   }),
   execute: async function({ query, limit, offset }, agent) {
     const wikipedia = agent.requireServiceByType(WikipediaService);
@@ -443,11 +246,9 @@ pkg/wikipedia/
 ├── tools/
 │   ├── search.ts           # Wikipedia search tool
 │   └── getPage.ts          # Wikipedia page retrieval tool
-├── test/
-│   └── WikipediaService.integration.test.js  # Integration tests
 ├── package.json            # Package metadata and dependencies
 ├── vitest.config.ts        # Vitest configuration
-└── README.md              # Package documentation
+└── README.md              # This documentation
 ```
 
 ## Testing
@@ -463,6 +264,34 @@ The package includes integration tests that verify:
 - Page content retrieval
 - Error handling for invalid inputs
 - Support for different language editions
+
+## Configuration
+
+### Base URL Configuration
+
+You can configure the service to use different Wikipedia language editions:
+
+```typescript
+// English Wikipedia (default)
+const englishWiki = new WikipediaService();
+
+// Spanish Wikipedia
+const spanishWiki = new WikipediaService({
+  baseUrl: "https://es.wikipedia.org"
+});
+
+// French Wikipedia
+const frenchWiki = new WikipediaService({
+  baseUrl: "https://fr.wikipedia.org"
+});
+```
+
+### User-Agent
+
+The service uses a custom User-Agent header for API requests:
+```
+TokenRing-Writer/1.0 (https://github.com/tokenring/writer)
+```
 
 ## Error Handling
 

@@ -1,58 +1,37 @@
-# Sandbox Plugin
+# Sandbox
 
 ## Overview
 
 The `@tokenring-ai/sandbox` package provides an abstract interface for managing sandboxed environments within the Token Ring AI agent system. It enables the creation, execution, and management of isolated containers (e.g., via Docker or similar providers) to safely run commands or code. The package acts as a service layer that abstracts provider-specific details, allowing multiple sandbox providers to be registered and switched dynamically.
 
-Key features include:
-- Abstract provider interface for extensibility (e.g., Docker, Kubernetes)
-- Service management for active providers and containers with label mapping
-- Integration with Token Ring agents via tools and chat commands
-- Error handling for missing providers/containers and command failures
-- Support for environment variables and working directory configuration
-- Timeout support for command execution
-
 ## Key Features
 
-- **Abstract Provider Interface**: Extensible for multiple sandbox backends (Docker, Kubernetes, etc.)
-- **Container Lifecycle Management**: Create, stop, remove containers with label mapping
-- **Command Execution**: Run commands in isolated environments with timeout support
-- **Log Retrieval**: Access container logs
-- **Service Management**: Dynamic provider registration and switching
-- **Agent Integration**: Tools and chat commands for interactive control
-- **Label Mapping**: Use labels instead of container IDs for easier reference
-- **Error Handling**: Comprehensive error handling for missing providers/containers
-- **Environment Configuration**: Support for environment variables and working directories
-- **Timeout Support**: Configurable timeouts for command execution
+- **Abstract Provider Interface**: Extensible interface for implementing different sandbox providers (Docker, Kubernetes, etc.)
+- **Multi-Provider Support**: Register and switch between multiple sandbox providers dynamically
+- **Label-Based Container Management**: Reference containers by user-defined labels instead of container IDs
+- **Agent State Integration**: Seamless integration with Token Ring agents via tools and chat commands
+- **State Persistence**: Agent state management with persistence and transfer capabilities for agent teams
+- **Service Architecture**: Implements `TokenRingService` for clean integration with the Token Ring application framework
 
 ## Core Components
 
-### SandboxProvider (Abstract Class)
+### SandboxProvider (Interface)
 
-The `SandboxProvider` is the foundational interface for any concrete sandbox implementation. It defines methods for container lifecycle and execution.
+The `SandboxProvider` interface defines the contract for any concrete sandbox implementation. It defines methods for container lifecycle and execution.
 
-**Key Methods:**
+**Interface Definition:**
 
-- `createContainer(options?: SandboxOptions): Promise<SandboxResult>`
-  - Creates a new container
-  - Parameters: `SandboxOptions` (label, image, workingDir, environment, timeout)
-  - Returns: `{ containerId: string; status: string }`
+```typescript
+interface SandboxProvider {
+  createContainer(options?: SandboxOptions): Promise<SandboxResult>;
+  executeCommand(containerId: string, command: string): Promise<ExecuteResult>;
+  stopContainer(containerId: string): Promise<void>;
+  getLogs(containerId: string): Promise<LogsResult>;
+  removeContainer(containerId: string): Promise<void>;
+}
+```
 
-- `executeCommand(containerId: string, command: string): Promise<ExecuteResult>`
-  - Runs a command in the specified container
-  - Returns: `{ stdout: string; stderr: string; exitCode: number }`
-
-- `stopContainer(containerId: string): Promise<void>`
-  - Stops the container
-
-- `getLogs(containerId: string): Promise<LogsResult>`
-  - Retrieves logs
-  - Returns: `{ logs: string }`
-
-- `removeContainer(containerId: string): Promise<void>`
-  - Removes the container
-
-**Interfaces:**
+**Type Definitions:**
 
 ```typescript
 interface SandboxOptions {
@@ -81,110 +60,205 @@ interface LogsResult {
 
 ### SandboxService
 
-The `SandboxService` manages multiple providers and tracks the active container with label mapping. It implements `TokenRingService` for integration with agents.
+The `SandboxService` manages multiple providers and tracks the active container with label-to-container ID mapping. It implements `TokenRingService` for integration with agents.
 
 **Key Methods:**
 
-- `registerSandboxProvider(name: string, resource: SandboxProvider): void`
-  - Registers a provider; sets as active if none exists
+- `registerProvider(name: string, resource: SandboxProvider): void`
+  - Registers a provider in the internal registry
 
-- `setActiveSandboxProviderName(name: string): void`
-  - Switches the active provider (throws if not found)
+- `attach(agent: Agent): Promise<void>`
+  - Attaches the service to an agent and initializes agent state
 
-- `getActiveSandboxProviderName(): string | null`
-  - Returns the current active provider
+- `requireActiveProvider(agent: Agent): SandboxProvider`
+  - Gets the active provider or throws an error if none is set
 
-- `getAvailableSandboxProviders(): string[]`
-  - Lists registered providers
+- `getActiveProvider(agent: Agent): SandboxProvider | null`
+  - Gets the active provider or returns null
 
-- `setActiveContainer(containerId: string): void` / `getActiveContainer(): string | null`
-  - Manages the active container ID with label support
+- `setActiveProvider(name: string, agent: Agent): void`
+  - Sets the active provider by name
 
-- `createContainer(options?: SandboxOptions): Promise<SandboxResult>`
-  - Delegates to active provider; sets active container with label mapping
+- `getActiveContainer(agent: Agent): string | null`
+  - Gets the active container label or ID
 
-- `executeCommand(label: string, command: string): Promise<ExecuteResult>`
-  - Executes via active provider using label-to-container mapping
+- `setActiveContainer(containerId: string, agent: Agent): void`
+  - Sets the active container
 
-- `stopContainer(label: string): Promise<void>`
-  - Stops and clears active if matching
+- `createContainer(options: SandboxOptions | undefined, agent: Agent): Promise<SandboxResult>`
+  - Creates a container using the active provider
+  - Sets the created container as active with label mapping
 
-- `getLogs(label: string): Promise<LogsResult>`
-  - Retrieves logs via active provider using label-to-container mapping
+- `executeCommand(label: string, command: string, agent: Agent): Promise<ExecuteResult>`
+  - Executes a command in the specified container
+  - Uses label-to-container ID mapping
 
-- `removeContainer(label: string): Promise<void>`
-  - Removes and clears active if matching
+- `stopContainer(label: string, agent: Agent): Promise<void>`
+  - Stops the specified container
+  - Clears active container if it matches
 
-### Tools
+- `getLogs(label: string, agent: Agent): Promise<LogsResult>`
+  - Retrieves logs from the specified container
 
-Tools are agent-executable functions that wrap service methods, providing logging and validation via Zod schemas. Exported from `tools.ts`.
+- `removeContainer(label: string, agent: Agent): Promise<void>`
+  - Removes the specified container and its label mapping
 
-**Available Tools:**
+### SandboxState
 
-- `sandbox/createContainer`: Creates a container with optional parameters
-- `sandbox/executeCommand`: Executes a command (uses active container if unspecified)
-- `sandbox/stopContainer`: Stops a container (uses active container if unspecified)
-- `sandbox/getLogs`: Gets container logs (uses active container if unspecified)
-- `sandbox/removeContainer`: Removes a container (uses active container if unspecified)
+The `SandboxState` class manages agent state for sandbox operations, implementing `AgentStateSlice`.
 
-Each tool logs actions via the agent's chat service and handles errors (e.g., no active container, provider not found).
+**State Properties:**
+
+- `provider: string | null` - Current active provider name
+- `activeContainer: string | null` - Current active container label
+- `labelToContainerId: Map<string, string>` - Maps labels to container IDs
+
+**State Methods:**
+
+- `transferStateFromParent(parent: Agent): void`
+  - Transfers state from a parent agent (for agent teams)
+
+- `serialize(): object`
+  - Serializes state for persistence
+
+- `deserialize(data: any): void`
+  - Deserializes persisted state
+
+- `show(): string[]`
+  - Returns state summary strings
+
+## Services and APIs
+
+The `SandboxService` provides a unified interface for sandbox operations across different providers. It manages container state and provider selection, ensuring seamless integration with Token Ring agents.
+
+The service uses the agent-based pattern where all operations require an `Agent` instance to access state and services.
+
+## Commands and Tools
 
 ### Chat Commands
 
 The `/sandbox` command provides interactive control in agent chats.
 
-**Actions:**
+**Syntax:**
 
-- `create [label] [image]`: Create a new container
-- `exec <command>`: Execute command in active container
-- `stop [containerId]`: Stop container
-- `logs [containerId]`: Get container logs
-- `remove [containerId]`: Remove container
-- `status`: Show active container and provider
-- `provider [name]`: Show/set active provider
+```
+/sandbox <action> [arguments]
+```
+
+**Available Actions:**
+
+| Action | Description |
+|--------|-------------|
+| `create <label> [image]` | Create a new container with label and optional image |
+| `exec <command>` | Execute command in active container |
+| `stop [label]` | Stop container (uses active if unspecified) |
+| `logs [label]` | Get container logs (uses active if unspecified) |
+| `remove [label]` | Remove container (uses active if unspecified) |
+| `status` | Show active container and provider |
+| `provider get` | Show current provider |
+| `provider set <name>` | Set provider by name |
+| `provider reset` | Reset provider to initial configuration |
+| `provider select` | Interactively select provider from available list |
 
 **Usage Examples:**
 
 ```
-/sandbox provider docker
-/sandbox create myapp ubuntu:latest
-/sandbox exec echo "Hello Sandbox"
+/sandbox create myapp ubuntu:22.04
+/sandbox exec ls -la /app
 /sandbox logs
-/sandbox remove
+/sandbox stop
+/sandbox status
+/sandbox provider set docker
+/sandbox provider select
 ```
 
-## Configuration
+### Tools
+
+Available tools for agent execution:
+
+| Tool Name | Description | Input Schema |
+|-----------|-------------|--------------|
+| `sandbox_createContainer` | Creates a new sandbox container with optional parameters | `label`, `image`, `workingDir`, `environment`, `timeout` |
+| `sandbox_executeCommand` | Executes a command in a container (uses active if unspecified) | `label` (optional), `command` |
+| `sandbox_stopContainer` | Stops a container (uses active if unspecified) | `label` (optional) |
+| `sandbox_getLogs` | Gets container logs (uses active if unspecified) | `label` (optional) |
+| `sandbox_removeContainer` | Removes a container (uses active if unspecified) | `label` (optional) |
+
+Each tool logs actions via the agent's infoLine and errorLine methods and handles errors (e.g., no active container, provider not found).
+
+## Plugin Configuration
+
+The sandbox plugin uses a configuration schema defined in `schema.ts` for validating plugin options.
+
+**Configuration Schema:**
+
+```typescript
+const packageConfigSchema = z.object({
+  sandbox: SandboxServiceConfigSchema
+});
+
+const SandboxServiceConfigSchema = z.object({
+  providers: z.record(z.string(), z.any()).optional(),
+  agentDefaults: z.object({
+    provider: z.string()
+  })
+});
+
+const SandboxAgentConfigSchema = z.object({
+  provider: z.string().optional()
+}).default({});
+```
+
+### Example Configuration
+
+```json
+{
+  "sandbox": {
+    "providers": {
+      "docker": {
+        "type": "docker"
+      }
+    },
+    "agentDefaults": {
+      "provider": "docker"
+    }
+  }
+}
+```
+
+## Configuration Options
+
+### SandboxOptions
+
+| Property | Type | Description |
+|----------|------|-------------|
+| `label` | `string` | Optional label for container reference |
+| `image` | `string` | Container image to use (e.g., 'ubuntu:latest') |
+| `workingDir` | `string` | Working directory in container |
+| `environment` | `Record<string, string>` | Environment variables |
+| `timeout` | `number` | Timeout in seconds for operations |
 
 ### Provider Configuration
 
-Configure sandbox providers in your app configuration:
+Providers are configured through the app's sandbox configuration. The package currently supports Docker providers out of the box, with the ability to extend for other providers.
+
+**Configuration Schema:**
 
 ```typescript
-// Example configuration
 const config = {
   sandbox: {
     providers: {
-      docker: {
+      [providerName]: {
         type: "docker",
-        // Docker-specific configuration
+        // Provider-specific configuration
       }
     },
-    default: {
+    agentDefaults: {
       provider: "docker"
     }
   }
 };
 ```
-
-### Sandbox Options
-
-When creating containers, you can specify:
-
-- `label`: Container label for easier reference (defaults to container ID)
-- `image`: Container image to use (e.g., 'ubuntu:latest')
-- `workingDir`: Working directory in container
-- `environment`: Environment variables as key-value pairs
-- `timeout`: Timeout in seconds for operations
 
 ## Usage Examples
 
@@ -197,28 +271,41 @@ import TokenRingApp from "@tokenring-ai/app";
 import sandboxPlugin from "@tokenring-ai/sandbox";
 
 const app = new TokenRingApp();
-app.install(sandboxPlugin);
+app.install(sandboxPlugin, {
+  providers: {
+    docker: { type: "docker" }
+  },
+  agentDefaults: {
+    provider: "docker"
+  }
+});
 ```
 
 ### 2. Using the Service Directly
 
 ```typescript
 import { SandboxService } from "@tokenring-ai/sandbox";
+import { DockerSandboxProvider } from "@tokenring-ai/docker";
 
-const sandboxService = new SandboxService();
+const sandboxService = new SandboxService({
+  providers: {},
+  agentDefaults: { provider: "docker" }
+});
 
 // Register a provider
-sandboxService.registerSandboxProvider('docker', dockerProvider);
+sandboxService.registerProvider('docker', new DockerSandboxProvider());
 
 // Create and use container
 const result = await sandboxService.createContainer({ 
+  label: 'myapp',
   image: 'ubuntu:latest' 
-});
+}, agent);
 console.log(`Created: ${result.containerId}`);
 
 const execResult = await sandboxService.executeCommand(
   result.containerId, 
-  'ls -la'
+  'ls -la',
+  agent
 );
 console.log(`Stdout: ${execResult.stdout}`);
 ```
@@ -227,80 +314,61 @@ console.log(`Stdout: ${execResult.stdout}`);
 
 ```typescript
 // Agent invokes tool
-await agent.executeTool('sandbox/createContainer', { 
+await agent.executeTool('sandbox_createContainer', { 
+  label: 'myapp',
   image: 'node:18' 
 });
-await agent.executeTool('sandbox/executeCommand', { 
-  command: 'node --version' 
+await agent.executeTool('sandbox_executeCommand', { 
+  command: 'node --version'
 });
-```
-
-### 4. Chat Command Interaction
-
-```bash
-/sandbox provider docker
-/sandbox create myapp ubuntu:latest
-/sandbox exec echo "Hello Sandbox"
-/sandbox logs
-/sandbox remove
 ```
 
 ## API Reference
 
 ### SandboxService
 
-```typescript
-class SandboxService implements TokenRingService {
-  registerSandboxProvider(name: string, resource: SandboxProvider): void
-  setActiveSandboxProviderName(name: string): void
-  getActiveSandboxProviderName(): string | null
-  getAvailableSandboxProviders(): string[]
-  createContainer(options?: SandboxOptions): Promise<SandboxResult>
-  executeCommand(label: string, command: string): Promise<ExecuteResult>
-  stopContainer(label: string): Promise<void>
-  getLogs(label: string): Promise<LogsResult>
-  removeContainer(label: string): Promise<void>
-  getActiveContainer(): string | null
-  setActiveContainer(containerId: string): void
-}
-```
+| Method | Parameters | Returns | Description |
+|--------|------------|---------|-------------|
+| `registerProvider(name, resource)` | `name`, `resource` | `void` | Registers a provider |
+| `getAvailableProviders()` | - | `string[]` | Lists registered providers |
+| `attach(agent)` | `agent` | `Promise<void>` | Attaches service to agent |
+| `requireActiveProvider(agent)` | `agent` | `SandboxProvider` | Gets active provider or throws |
+| `getActiveProvider(agent)` | `agent` | `SandboxProvider \| null` | Returns the active provider |
+| `setActiveProvider(name, agent)` | `name`, `agent` | `void` | Sets the active provider |
+| `getActiveContainer(agent)` | `agent` | `string \| null` | Returns active container |
+| `setActiveContainer(containerId, agent)` | `containerId`, `agent` | `void` | Sets the active container |
+| `createContainer(options, agent)` | `options`, `agent` | `Promise<SandboxResult>` | Creates a container |
+| `executeCommand(label, command, agent)` | `label`, `command`, `agent` | `Promise<ExecuteResult>` | Executes a command |
+| `stopContainer(label, agent)` | `label`, `agent` | `Promise<void>` | Stops a container |
+| `getLogs(label, agent)` | `label`, `agent` | `Promise<LogsResult>` | Retrieves logs |
+| `removeContainer(label, agent)` | `label`, `agent` | `Promise<void>` | Removes a container |
 
-### SandboxProvider (Abstract)
+### SandboxProvider Interface
 
-```typescript
-abstract class SandboxProvider {
-  abstract createContainer(options?: SandboxOptions): Promise<SandboxResult>
-  abstract executeCommand(containerId: string, command: string): Promise<ExecuteResult>
-  abstract stopContainer(containerId: string): Promise<void>
-  abstract getLogs(containerId: string): Promise<LogsResult>
-  abstract removeContainer(containerId: string): Promise<void>
-}
-```
+| Method | Parameters | Returns | Description |
+|--------|------------|---------|-------------|
+| `createContainer(options)` | `options` | `Promise<SandboxResult>` | Creates a container |
+| `executeCommand(containerId, command)` | `containerId`, `command` | `Promise<ExecuteResult>` | Executes a command |
+| `stopContainer(containerId)` | `containerId` | `Promise<void>` | Stops a container |
+| `getLogs(containerId)` | `containerId` | `Promise<LogsResult>` | Retrieves logs |
+| `removeContainer(containerId)` | `containerId` | `Promise<void>` | Removes a container |
 
-### Exports
+## Integration
 
-```typescript
-// Main exports
-export default sandboxPlugin satisfies TokenRingPlugin
-export { SandboxService }
+The sandbox plugin integrates with the Token Ring agent system through the following patterns:
 
-// Configuration schema
-export const SandboxConfigSchema: z.ZodType
+- **Service Registration**: The plugin registers as a `TokenRingPlugin`, adding services and tools.
+- **Chat Commands**: The `/sandbox` command is added to the agent's command list via `AgentCommandService`.
+- **Tool Registration**: Tools are registered via the `ChatService` for agent execution.
+- **State Management**: The `SandboxState` slice manages active container and provider state with persistence.
+- **Agent Integration**: Agents can interact with sandbox services via tools and chat commands using the `attach` method pattern.
 
-// Tools
-export * from './tools'
+## Monitoring and Debugging
 
-// Chat commands
-export * from './chatCommands'
-```
-
-## Dependencies
-
-- `@tokenring-ai/agent` - For agent integration and service management
-- `@tokenring-ai/app` - For service management and plugin architecture
-- `@tokenring-ai/chat` - For chat command integration
-- `@tokenring-ai/docker` - Docker provider implementation
-- `zod@^4.1.12` - For schema validation in tools
+- **Error Handling**: Tools and commands throw errors when required resources are missing (e.g., no active container).
+- **Logging**: Actions are logged via agent's `infoLine` and `errorLine`.
+- **Status Command**: `/sandbox status` shows current provider and container information.
+- **Provider Commands**: Use `/sandbox provider get`, `/sandbox provider set`, and `/sandbox provider reset` to manage providers.
 
 ## Development
 
@@ -312,8 +380,6 @@ bun run build
 
 ### Testing
 
-Unit tests for the service and tools should mock providers. Integration tests require concrete implementations (e.g., Docker).
-
 ```bash
 bun run test
 ```
@@ -322,19 +388,35 @@ bun run test
 
 To add new sandbox providers:
 
-1. Create a class that extends `SandboxProvider`
-2. Implement all required abstract methods
-3. Register the provider with `SandboxService.registerSandboxProvider()`
+1. Create a class that implements `SandboxProvider` interface
+2. Implement all required methods
+3. Register the provider with `SandboxService.registerProvider()`
 
-Example:
+**Example:**
 
 ```typescript
-class MyCustomProvider extends SandboxProvider {
+import { SandboxProvider } from "@tokenring-ai/sandbox";
+
+class MyCustomProvider implements SandboxProvider {
   async createContainer(options?: SandboxOptions): Promise<SandboxResult> {
     // Implementation
   }
   
-  // Implement other methods...
+  async executeCommand(containerId: string, command: string): Promise<ExecuteResult> {
+    // Implementation
+  }
+  
+  async stopContainer(containerId: string): Promise<void> {
+    // Implementation
+  }
+  
+  async getLogs(containerId: string): Promise<LogsResult> {
+    // Implementation
+  }
+  
+  async removeContainer(containerId: string): Promise<void> {
+    // Implementation
+  }
 }
 ```
 

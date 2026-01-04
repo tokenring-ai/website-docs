@@ -37,15 +37,15 @@ Each task is defined with the following properties:
 {
   name: string;                    // Task identifier
   agentType: string;               // Agent type to spawn
-  every: string | undefined;       // Interval (e.g., "1 hour", "15 minutes")
-  spaced: string | undefined;      // Spaced interval for immediate scheduling
-  once: boolean | undefined;       // Run once per day
+  every: string | undefined;       // Fixed interval between task starts (e.g., "1 hour" means the task starts every hour regardless of duration)
+  spaced: string | undefined;      // Time between task completions (e.g., "1 hour" means next run starts one hour after previous task finishes)
+  once: boolean | undefined;       // Run once per day (executed once when conditions are met)
   from: string | undefined;        // Start time (e.g., "09:00")
   to: string | undefined;          // End time (e.g., "17:00")
-  on: string | undefined;          // Days of week (e.g., "mon,tue,wed,thu,fri")
+  on: string | undefined;          // Days of week (space-separated, e.g., "mon tue wed thu fri")
   dayOfMonth: number | undefined;  // Specific day of month (1-31)
-  noLongerThan: string | undefined; // Maximum runtime (e.g., "1 hour")
-  several: boolean | undefined;    // Allow multiple concurrent runs
+  noLongerThan: string | undefined; // Maximum runtime duration (e.g., "1 hour")
+  several: boolean | undefined;    // Allow multiple concurrent runs (default: false)
   message: string;                // Message to send to the agent
 }
 ```
@@ -132,14 +132,14 @@ const config = {
         every: "1 hour",
         from: "09:00",
         to: "17:00",
-        on: "mon,tue,wed,thu,fri",
+        on: "mon tue wed thu fri",
         message: "generate hourly business report"
       },
       {
         name: "end-of-day-summary", 
         agentType: "summary-agent",
         once: true,
-        on: "mon,tue,wed,thu,fri",
+        on: "mon tue wed thu fri",
         from: "17:00",
         to: "17:30",
         message: "generate end-of-day summary"
@@ -147,7 +147,7 @@ const config = {
       {
         name: "monthly-statistics",
         agentType: "analytics-agent",
-        every: "1 month",
+        once: true,
         dayOfMonth: 1,
         message: "generate monthly statistics report"
       }
@@ -228,12 +228,6 @@ Examples:
 - `"15 minutes"` - Every 15 minutes
 - `"2 hours"` - Every 2 hours
 - `"1 day"` - Daily
-
-## Dependencies
-
-- `@tokenring-ai/app@0.2.0`: Application framework
-- `@tokenring-ai/agent@0.2.0`: Core agent system
-- `zod@^4.0.17`: Schema validation
 
 ## Integration
 

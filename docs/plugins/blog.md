@@ -1,27 +1,31 @@
 # Blog Plugin
 
-Abstract blog service interface for managing blog posts across different platforms with comprehensive post creation, management, and publishing capabilities.
-
 ## Overview
 
-The `@tokenring-ai/blog` package provides a powerful abstraction layer for managing blog posts across multiple platforms. It offers a unified API for blog operations, state management, and tool integration that works with concrete implementations like WordPress and Ghost.io.
+The Blog plugin provides an abstract blog service interface for managing blog posts across different platforms. It offers a unified API for creating, updating, and managing blog posts with support for multiple blog providers, enabling seamless integration with the TokenRing AI ecosystem.
+
+## Installation
+
+```bash
+bun install @tokenring-ai/blog
+```
 
 ## Key Features
 
-- **Unified API Interface**: Abstract interface for multiple blog platforms with consistent methods
-- **Post Lifecycle Management**: Create, update, publish, and manage posts with full status tracking
-- **State Management**: Active provider and post selection with persistent state
-- **Tool Integration**: Complete set of tools for chat-based blog management
-- **Command Interface**: Interactive command system for provider and post management
-- **Image Generation**: AI-powered featured image generation and CDN integration
-- **Filtering and Search**: Advanced post filtering by status and tags
-- **Provider Registry**: Multi-provider support with easy switching
+- **Unified API**: Standardized interface across multiple blog platforms
+- **Multi-Provider Support**: Works with WordPress, Medium, Ghost, and custom blog providers
+- **AI Image Generation**: Generate featured images using AI models
+- **State Management**: Persistent post selection and provider state
+- **Chat Command Integration**: Interactive commands for blog management
+- **Scripting Support**: Global functions for programmatic access
+- **CDN Integration**: Automatic image uploads to configured CDN service
+- **Type-Safe Configuration**: Zod-based schema validation
 
 ## Core Components
 
 ### BlogProvider Interface
 
-The `BlogProvider` interface defines the standardized contract for blog operations across different platforms:
+The `BlogProvider` interface defines the contract for blog provider implementations:
 
 ```typescript
 export interface BlogPost {
@@ -36,356 +40,431 @@ export interface BlogPost {
   feature_image?: {
     id?: string;
     url?: string;
-  };
+  }
   url?: string;
 }
 
 export type CreatePostData = Omit<BlogPost, 'id' | 'created_at' | 'updated_at' | 'published_at' | 'status'>;
+
 export type UpdatePostData = Partial<Omit<BlogPost, 'id' | 'created_at' | 'updated_at'>>;
 
 export interface BlogProvider {
   description: string;
-  
   imageGenerationModel: string;
   cdnName: string;
 
   attach(agent: Agent): Promise<void>;
-
   getAllPosts(agent: Agent): Promise<BlogPost[]>;
-
   createPost(data: CreatePostData, agent: Agent): Promise<BlogPost>;
-
   updatePost(data: UpdatePostData, agent: Agent): Promise<BlogPost>;
-
   selectPostById(id: string, agent: Agent): Promise<BlogPost>;
-
   getCurrentPost(agent: Agent): BlogPost | null;
-
-  clearCurrentPost(agent: Agent): Promise<void>;
+  clearCurrentPost(agent: Agent): Promise<void;
 }
 ```
 
 ### BlogService
 
-Manages multiple blog providers and provides a unified interface for blog operations:
+The `BlogService` class manages blog providers and post operations:
 
 ```typescript
 export default class BlogService implements TokenRingService {
   name = "BlogService";
   description = "Abstract interface for blog operations";
 
-  // Register and manage blog providers
   registerBlog(provider: BlogProvider): void;
   getAvailableBlogs(): string[];
-
-  // Post operations
-  createPost(data: CreatePostData, agent: Agent): Promise<BlogPost>;
-  updatePost(data: UpdatePostData, agent: Agent): Promise<BlogPost>;
-  getAllPosts(agent: Agent): Promise<BlogPost[]>;
-  
-  // Post selection and management
-  selectPostById(id: string, agent: Agent): Promise<BlogPost>;
+  async attach(agent: Agent): Promise<void>;
+  setActiveProvider(name: string, agent: Agent): void;
+  async getAllPosts(agent: Agent): Promise<BlogPost[]>;
+  async createPost(data: CreatePostData, agent: Agent): Promise<BlogPost>;
+  async updatePost(data: UpdatePostData, agent: Agent): Promise<BlogPost>;
   getCurrentPost(agent: Agent): BlogPost | null;
-  clearCurrentPost(agent: Agent): Promise<void>;
-  publishPost(agent: Agent): Promise<void>;
+  async selectPostById(id: string, agent: Agent): Promise<BlogPost>;
+  async clearCurrentPost(agent: Agent): Promise<void>;
+  async publishPost(agent: Agent): Promise<void>;
 }
 ```
 
-## Available Tools
+### BlogState
 
-### createPost
+The `BlogState` class manages state for blog operations:
 
-Create a new blog post with title and content.
+```typescript
+export class BlogState implements AgentStateSlice {
+  name = "BlogState";
+  activeProvider: string | null;
 
-- **Input Schema**: 
-  ```typescript
-  {
-    title: string,
-    contentInMarkdown: string,
-    tags?: string[]
-  }
-  ```
-- **Description**: Creates a new blog post using Markdown content
-- **Returns**: Created BlogPost object
-- **Example**:
-  ```typescript
-  await agent.useTool('blog_createPost', {
-    title: 'My New Post',
-    contentInMarkdown: '# My New Post\\n\\nThis is the content of my post.',
-    tags: ['technology', 'ai']
-  });
-  ```
+  constructor(readonly initialConfig: z.output<typeof BlogAgentConfigSchema>);
+  transferStateFromParent(parent: Agent): void;
+  reset(what: ResetWhat[]): void;
+  serialize(): object;
+  deserialize(data: any): void;
+  show(): string[];
+}
+```
 
-### updatePost
+## Chat Commands
 
-Update the currently selected blog post.
-
-- **Input Schema**: 
-  ```typescript
-  {
-    title?: string,
-    contentInMarkdown?: string,
-    tags?: string[]
-  }
-  ```
-- **Description**: Updates the currently selected post with new content or metadata
-- **Returns**: Updated BlogPost object
-- **Example**:
-  ```typescript
-  await agent.useTool('blog_updatePost', {
-    title: 'Updated Title',
-    contentInMarkdown: '## Updated Content\\n\\nNew content here.',
-    tags: ['updated', 'blog']
-  });
-  ```
-
-### getAllPosts
-
-Get all posts from the active blog with filtering options.
-
-- **Input Schema**: 
-  ```typescript
-  {
-    status?: 'draft' | 'published' | 'all',
-    tag?: string,
-    limit?: number
-  }
-  ```
-- **Description**: Retrieves posts with optional filtering by status and tags
-- **Returns**: Array of BlogPost objects with metadata
-- **Example**:
-  ```typescript
-  await agent.useTool('blog_getAllPosts', {
-    status: 'published',
-    limit: 10
-  });
-  ```
-
-### getCurrentPost
-
-Get the currently selected post.
-
-- **Input Schema**: `{}` (no parameters)
-- **Description**: Retrieves the currently selected post or indicates no selection
-- **Returns**: BlogPost object or error if no post selected
-- **Example**:
-  ```typescript
-  await agent.useTool('blog_getCurrentPost', {});
-  ```
-
-### generateImageForPost
-
-Generate an AI image and set it as the featured image for the current post.
-
-- **Input Schema**: 
-  ```typescript
-  {
-    prompt: string,
-    aspectRatio?: 'square' | 'tall' | 'wide'
-  }
-  ```
-- **Description**: Generates an AI image using configured model and uploads to CDN
-- **Returns**: Image upload result with URL
-- **Example**:
-  ```typescript
-  await agent.useTool('blog_generateImageForPost', {
-    prompt: 'A beautiful sunset over mountains',
-    aspectRatio: 'wide'
-  });
-  ```
-
-## Command Interface
-
-The plugin provides an interactive `/blog` command system for managing blogs and posts.
+The plugin provides the following chat commands through the AgentCommandService:
 
 ### Provider Management
 
-- `/blog provider select` - Interactively select an active blog provider
-- `/blog provider set <name>` - Directly set an active provider by name
+- `/blog provider get` - Display the currently active blog provider
+- `/blog provider select` - Select an active blog provider interactively
+- `/blog provider set <name>` - Set a specific blog provider by name
+- `/blog provider reset` - Reset to the initial configured blog provider
 
 ### Post Management
 
-- `/blog post select` - Select an existing post or clear selection
+- `/blog post get` - Display the currently selected post title
+- `/blog post select` - Select an existing article or clear selection
 - `/blog post info` - Display information about the currently selected post
-- `/blog post new` - Clear selection and start new post
+- `/blog post clear` - Clears the current post selection
 - `/blog post publish` - Publish the currently selected post
 
 ### Testing
 
-- `/blog test` - Run comprehensive connection test with post creation and image upload
+- `/blog test` - Test blog connection by creating a post and uploading an image
 
-## Global Scripting Functions
+## Tools
 
-When `@tokenring-ai/scripting` is available, the following functions are automatically registered:
+The plugin provides the following tools through the ChatService:
 
-- **createPost(title, content)**: Creates a new blog post
-  ```bash
-  /var $result = createPost("My Title", "Post content here")
-  ```
+### blog_createPost
 
-- **updatePost(title, content)**: Updates the currently selected post
-  ```bash
-  /var $result = updatePost("New Title", "Updated content")
-  ```
+Creates a new blog post with title, content, and tags.
 
-- **getCurrentPost()**: Gets the currently selected post as JSON
-  ```bash
-  /var $post = getCurrentPost()
-  ```
-
-- **getAllPosts()**: Gets all posts as JSON
-  ```bash
-  /var $posts = getAllPosts()
-  ```
-
-## Usage Examples
-
-### Basic Integration
-
+**Input Schema:**
 ```typescript
-import { BlogService } from '@tokenring-ai/blog';
-
-// Concrete implementations extend BlogProvider
-class MyBlogProvider implements BlogProvider {
-  async getAllPosts(agent: Agent): Promise<BlogPost[]> {
-    // Platform-specific implementation
-  }
-  
-  async createPost(data: CreatePostData, agent: Agent): Promise<BlogPost> {
-    // Platform-specific implementation
-  }
+{
+  title: z.string().describe("Title of the blog post"),
+  contentInMarkdown: z.string().describe("The content of the post in Markdown format. The title of the post goes in the title tag, NOT inside the content"),
+  tags: z.array(z.string()).describe("Tags for the post").optional()
 }
-
-// Use with agent
-const blogService = new BlogService();
-blogService.registerBlog('myBlog', new MyBlogProvider());
-agent.addService(blogService);
 ```
 
-### Using the Command Interface
+### blog_updatePost
 
+Updates the currently selected blog post.
+
+**Input Schema:**
 ```typescript
-// In chat interface
-/blog provider select  // Choose from available providers
-/blog post select     // Select a post to work with
-/blog post info       // View post details
-/blog post new        // Start creating a new post
-/blog post publish    // Publish the selected post
+{
+  title: z.string().describe("New title for the post").optional(),
+  contentInMarkdown: z.string().describe("The content of the post in Markdown format. The title of the post goes in the title tag, NOT inside the content").optional(),
+  tags: z.array(z.string()).describe("New tags for the post").optional()
+}
 ```
 
-### Using Tools Programmatically
+### blog_getAllPosts
 
+Gets all posts from a blog service with filtering options.
+
+**Input Schema:**
 ```typescript
-import { BlogService } from '@tokenring-ai/blog';
+{
+  status: z.enum(['draft', 'published', 'all']).default('all').optional(),
+  tag: z.string().describe("Filter by tag").optional(),
+  limit: z.number().int().positive().default(10).optional()
+}
+```
 
-const blogService = agent.requireServiceByType(BlogService);
+### blog_getCurrentPost
 
-// Create a new post
-const newPost = await blogService.createPost({
-  title: 'AI Blog Post',
-  content: 'Content in HTML format',
-  tags: ['ai', 'technology']
-}, agent);
+Gets the currently selected post.
 
-// Update the current post
-const updatedPost = await blogService.updatePost({
-  title: 'Updated Title',
-  content: 'Updated content'
-}, agent);
+**Input Schema:**
+```typescript
+{}
+```
 
-// Get all posts with filtering
-const posts = await blogService.getAllPosts(agent);
+### blog_generateImageForPost
+
+Generates an AI image and sets it as the featured image for the currently selected post.
+
+**Input Schema:**
+```typescript
+{
+  prompt: z.string().describe("Description of the image to generate"),
+  aspectRatio: z.enum(['square', 'tall', 'wide']).default('square').optional()
+}
+```
+
+## Scripting Functions
+
+The plugin registers the following global scripting functions:
+
+### createPost(title: string, content: string)
+
+Creates a new blog post with the given title and content.
+
+**Parameters:**
+- `title` (string): Title of the blog post (required)
+- `content` (string): Markdown-formatted content (required)
+
+**Returns:** String containing the ID of the created post
+
+**Example:**
+```typescript
+await scriptingService.createPost("My First Post", "## Hello World\nThis is a test post.");
+```
+
+### updatePost(title: string, content: string)
+
+Updates an existing blog post or creates a new one if not found.
+
+**Parameters:**
+- `title` (string): Title of the blog post to update (required)
+- `content` (string): New content in Markdown format (required)
+
+**Returns:** String containing the ID of the updated post
+
+**Example:**
+```typescript
+await scriptingService.updatePost("My First Post", "Updated content here.");
+```
+
+### getCurrentPost()
+
+Retrieves the currently selected post.
+
+**Returns:** JSON string of the current post or "No post selected" if none selected
+
+**Example:**
+```typescript
+const currentPost = await scriptingService.getCurrentPost();
+```
+
+### getAllPosts()
+
+Returns all available posts.
+
+**Returns:** JSON string containing an array of blog posts
+
+**Example:**
+```typescript
+const posts = await scriptingService.getAllPosts();
 ```
 
 ## Configuration
 
-### Blog Configuration Schema
+The plugin is configured through the `blog` section in the Token Ring configuration.
+
+**Configuration Schema:**
 
 ```typescript
-import {z} from "zod";
+const BlogAgentConfigSchema = z.object({
+  provider: z.string().optional()
+}).default({});
 
-export const BlogConfigSchema = z.object({
-  providers: z.record(z.string(), z.any()).optional()
+const BlogConfigSchema = z.object({
+  providers: z.record(z.string(), z.any()),
+  agentDefaults: BlogAgentConfigSchema,
 });
 ```
 
-### Environment Setup
-
-- Ensure `@tokenring-ai/app` is installed and configured
-- Register the BlogService with your application
-- Configure providers in the app configuration
-
-## Dependencies
-
-- `@tokenring-ai/agent`: Core agent framework and state management
-- `@tokenring-ai/app`: Application service management
-- `@tokenring-ai/chat`: Chat service integration
-- `@tokenring-ai/scripting`: Scripting function registration
-- `@tokenring-ai/cdn`: CDN service for image uploads
-- `@tokenring-ai/ai-client`: AI client for image generation
-- `marked`: Markdown parsing and conversion
-- `uuid`: Unique identifier generation
-
-## Provider Implementations
-
-See the following implementations for concrete blog platform support:
-
-- `@tokenring-ai/wordpress`: WordPress integration
-- `@tokenring-ai/ghost-io`: Ghost.io integration
-
-## Testing
-
-The plugin includes comprehensive testing with:
-
-- Unit tests using vitest
-- Integration tests for tool functionality
-- Command interface testing
-- Provider connection testing
-
-Run tests with:
-```bash
-bun run test
-```
-
-## Development
-
-### Package Structure
-
-```
-pkg/blog/
-├── BlogProvider.ts          # Interface definitions
-├── BlogService.ts           # Main service implementation
-├── state/BlogState.ts       # State management
-├── tools/                   # Tool implementations
-│   ├── createPost.ts
-│   ├── updatePost.ts
-│   ├── getAllPosts.ts
-│   ├── getCurrentPost.ts
-│   └── generateImageForPost.ts
-├── commands/blog.ts         # Chat commands
-├── chatCommands.ts          # Command registration
-└── plugin.ts                # Plugin installation
-```
-
-### Package.json Dependencies
+**Example Configuration:**
 
 ```json
 {
-  "dependencies": {
-    "@tokenring-ai/ai-client": "0.2.0",
-    "@tokenring-ai/app": "0.2.0", 
-    "@tokenring-ai/cdn": "0.2.0",
-    "zod": "catalog:",
-    "@tokenring-ai/agent": "0.2.0",
-    "@tokenring-ai/chat": "0.2.0",
-    "@tokenring-ai/utility": "0.2.0",
-    "@tokenring-ai/scripting": "0.2.0",
-    "marked": "^17.0.1",
-    "uuid": "^13.0.0"
-  },
-  "devDependencies": {
-    "vitest": "catalog:",
-    "typescript": "catalog:"
+  "blog": {
+    "providers": {
+      "wordpress": {
+        "url": "https://example.com/wp-json",
+        "username": "admin",
+        "password": "secret"
+      }
+    },
+    "agentDefaults": {
+      "provider": "wordpress"
+    }
   }
 }
 ```
+
+## Usage Examples
+
+### Basic Setup
+
+```typescript
+import { BlogService } from '@tokenring-ai/blog';
+
+const blogService = new BlogService({
+  providers: {
+    wordpress: wordpressProvider,
+    // other providers
+  },
+  agentDefaults: {
+    provider: 'wordpress'
+  }
+});
+
+await blogService.attach(agent);
+```
+
+### Creating a Post
+
+```typescript
+const blogService = agent.requireServiceByType(BlogService);
+const newPost = await blogService.createPost({
+  title: 'My New Post',
+  content: 'This is the content in **Markdown** format.',
+  tags: ['technology', 'ai']
+}, agent);
+```
+
+### Using Chat Commands
+
+```bash
+# Provider management
+/blog provider get
+/blog provider select
+/blog provider set wordpress
+/blog provider reset
+
+# Post management
+/blog post get
+/blog post select
+/blog post info
+/blog post clear
+/blog post publish
+
+# Testing
+/blog test
+```
+
+### Using Tools
+
+```typescript
+// Using tools directly
+await tools.createPost({
+  title: "My New Post",
+  contentInMarkdown: "## Introduction\n\nThis is my new post content.",
+  tags: ["technology", "ai"]
+});
+
+await tools.updatePost({
+  title: "Updated Title",
+  contentInMarkdown: "Updated content here.",
+  tags: ["updated"]
+});
+
+const result = await tools.getAllPosts({
+  status: "draft",
+  limit: 10
+});
+
+await tools.generateImageForPost({
+  prompt: "A beautiful sunset over the ocean",
+  aspectRatio: "wide"
+});
+```
+
+### Using Scripting Functions
+
+```typescript
+// Create a new post
+await scriptingService.createPost("My Blog Post", "This is the content in **Markdown** format.");
+
+// Update the post
+await scriptingService.updatePost("My Blog Post", "Updated content with **bold text**.");
+
+// Get all posts
+const posts = await scriptingService.getAllPosts();
+console.log(posts);
+
+// Get current post
+const currentPost = await scriptingService.getCurrentPost();
+```
+
+## Integration
+
+### Agent System
+
+- Registers commands via `AgentCommandService`
+- Registers tools via `ChatService`
+- Uses `BlogState` for persisting active provider and post selection
+
+### Scripting Service
+
+Registers global functions:
+- `createPost(title, content)`
+- `updatePost(title, content)`
+- `getCurrentPost()`
+- `getAllPosts()`
+
+### CDN Integration
+
+- Automatically uploads generated images to the configured CDN service
+- Uses the CDN name specified by the active blog provider
+
+### AI Client Integration
+
+- Uses the image generation model specified by the blog provider
+- Supports various AI models for generating featured images
+
+## Best Practices
+
+- Always validate input before creating or updating posts
+- Use `/blog provider select` to ensure correct provider is active
+- For image generation, provide detailed prompts for better results
+- Handle errors in scripting functions to ensure robustness
+- Clear post selection after publishing with `/blog post clear`
+- Use the `/blog test` command to verify blog connection
+
+## Error Handling
+
+The package provides comprehensive error handling:
+
+- **Provider Errors**: Clear messages when providers are not registered
+- **Validation Errors**: Zod validation for all inputs
+- **State Errors**: Handling invalid post selections
+- **Service Errors**: Proper handling of missing dependencies
+- **API Errors**: Descriptive messages for provider API failures
+
+## Testing and Development
+
+### Running Tests
+
+```bash
+# Run tests
+vitest run
+
+# Run tests with coverage
+vitest run --coverage
+
+# Run tests in watch mode
+vitest
+```
+
+### Test Coverage
+
+Test cases cover:
+- Post creation and update
+- Provider selection and switching
+- Image generation workflow
+- Error handling scenarios
+- State management and persistence
+
+### Development Setup
+
+1. Install dependencies: `bun install`
+2. Run type checking: `bun run build`
+3. Run tests: `vitest run`
+
+## Related Components
+
+- `@tokenring-ai/agent`: Core agent orchestration system
+- `@tokenring-ai/chat`: Chat interface and command handling
+- `@tokenring-ai/scripting`: Scripting service for programmatic access
+- `@tokenring-ai/cdn`: Content delivery network for media uploads
+- `@tokenring-ai/ai-client`: AI model integration for image generation
+- `@tokenring-ai/utility`: Shared utilities and helpers
+- `zod`: Schema validation for configuration
+- `marked`: Markdown rendering library
+- `uuid`: Unique identifier generation for posts
+
+## License
+
+MIT License - see [LICENSE](https://github.com/tokenring-ai/tokenring/blob/main/pkg/blog/LICENSE) file for details.

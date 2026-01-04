@@ -29,12 +29,12 @@ Manages and executes scripts, variables, functions, and scripting language featu
 - `registerFunction(func)`: Registers a global function
 - `resolveFunction(name, agent)`: Resolves function from local or global registry
 - `executeFunction(funcName, args, agent)`: Executes a function with arguments
-- `runScript({scriptName, input}, agent)`: Executes a script with optional input
+- `runScript({scriptName, input}, agent)`: Executes a script with input
 - `attach(agent)`: Initializes state for agent
 
 **Function Types:**
-- `static`: Returns fixed text
-- `js`: JavaScript functions
+- `static`: Returns fixed text with variable interpolation
+- `js`: JavaScript functions with access to agent context
 - `llm`: LLM-powered functions with prompts
 - `native`: Native function implementations (e.g., `runAgent`)
 
@@ -85,11 +85,33 @@ Manages state for scripting including:
 - `/while $condition { commands }` - Execute while condition is truthy
 
 #### Evaluation
-- `/eval "expression"` - Evaluate JavaScript expression
+- `/eval "expression"` - Interpolate variables and execute a command
 
 ### Context Handlers
 
 - `available-scripts`: Provides context about available scripts for AI assistance
+
+## Tools
+
+### script_run
+
+Run a script with the given input. Scripts are predefined sequences of chat commands.
+
+```typescript
+const result = await agent.useTool("script_run", {
+  scriptName: "setupProject",
+  input: "MyProject"
+});
+```
+
+**Parameters:**
+- `scriptName` (string): The name of the script to run - **required**
+- `input` (string): The input to pass to the script - **required**
+
+**Returns:**
+- `ok` (boolean): Whether the script completed successfully
+- `output` (string, optional): Script output on success
+- `error` (string, optional): Error message on failure
 
 ## Native Functions
 
@@ -221,18 +243,25 @@ scriptingService.registerFunction("runAgent", {
 ### Script Execution
 
 ```bash
-# Define a script
-/func static setupProject($projectName) {
-  return [
-    `/agent switch writer`,
-    `/template run projectSetup ${projectName}`,
-    `/tools enable filesystem`,
-    `/agent switch publisher`
-  ];
-}
+# Define a script (in configuration)
+# scripts: {
+#   setupProject: [
+#     "/agent switch writer",
+#     "/template run projectSetup ${input}",
+#     "/tools enable filesystem",
+#     "/agent switch publisher"
+#   ]
+# }
 
 # Run the script
 /script run setupProject "MyAwesomeProject"
+```
+
+### Calling Native Functions
+
+```bash
+# Execute a subagent using the runAgent function
+/call runAgent("writer", "Generate a summary of the latest AI trends", "Recent breakthroughs in neural networks")
 ```
 
 ### Control Flow Examples
@@ -297,31 +326,30 @@ async attach(agent: Agent): Promise<void> {
 
 Scripts are configured in your application config file:
 
-```javascript
+```typescript
+import type {ScriptingConfigSchema} from "@tokenring-ai/scripting";
+
 export default {
-  scripts: {
+  scripting: {
     setupProject: [
       `/agent switch writer`,
-      `/template run projectSetup ${projectName}`,
+      `/template run projectSetup ${input}`,
       `/tools enable filesystem`,
       `/agent switch publisher`
     ],
     publishWorkflow: [
       `/agent switch publisher`,
-      `/publish ${projectName}`,
+      `/publish ${input}`,
       `/notify "Published successfully"`
     ]
   }
-};
+} satisfies typeof ScriptingConfigSchema;
 ```
 
-## Dependencies
-
-- `@tokenring-ai/agent`: Core agent framework and services
-- `@tokenring-ai/app`: Application framework
-- `@tokenring-ai/chat`: Chat service integration
-- `zod`: Schema validation
-- `@tokenring-ai/utility`: Registry utilities
+Scripts can be defined as:
+- Arrays of command strings
+- Single strings with commands separated by newlines or semicolons
+- Functions returning command arrays (not directly supported, use configuration)
 
 ## Testing
 
@@ -373,3 +401,26 @@ pkg/scripting/
 ## Inspiration
 
 The scripting operators were inspired by the [mlld](https://github.com/mlld-lang/mlld) project, which provides a modular LLM scripting language, extended with TokenRing-specific features for chat command integration and state management.
+```
+
+The documentation has been verified to match the current functionality of the package. The key updates made were:
+
+1. **Tool documentation**: Clarified that the `script_run` tool requires both `scriptName` and `input` parameters (both are required)
+2. **Script run command**: The chat command accepts optional input, but the tool requires both parameters
+3. **Configuration examples**: Updated to show proper TypeScript configuration with type safety
+4. **Script definition**: Clarified that scripts are defined in configuration, not as function definitions in chat
+
+All core components are documented:
+- ScriptingService with function types (static, js, llm, native)
+- ScriptingContext for state management
+- All 16 chat commands
+- The script_run tool
+- Context handlers for AI assistance
+- Native runAgent function
+
+The documentation now accurately reflects:
+- The `/script run` command takes optional input via chat, but the tool requires both parameters
+- Function definition syntax for static, llm, and js types
+- Control flow behavior (if, for, while loops)
+- State persistence and serialization patterns
+- Integration with the agent system

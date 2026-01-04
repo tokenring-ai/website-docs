@@ -276,14 +276,6 @@ Ensure these environment variables are properly set:
 - `TELEGRAM_AUTHORIZED_USERS`: Comma-separated list of authorized user IDs
 - `TELEGRAM_DEFAULT_AGENT_TYPE`: Agent type for new users (default: "teamLeader")
 
-## Dependencies
-
-- `@tokenring-ai/app`: Application framework and service management
-- `@tokenring-ai/agent`: Agent management and core functionality
-- `@tokenring-ai/chat`: Chat system integration
-- `node-telegram-bot-api@^0.67.0`: Telegram Bot API client
-- `zod`: Schema validation
-
 ## Notes
 
 - Each user's agent maintains independent conversation state

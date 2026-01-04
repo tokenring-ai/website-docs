@@ -62,29 +62,28 @@ Install the app to your workspace and invite the bot to channels:
 
 ## Configuration
 
-The Slack plugin integrates with the TokenRing application framework via the plugin system:
-
 ```typescript
-import { TokenRingApp } from '@tokenring-ai/app';
-import SlackPlugin from '@tokenring-ai/slack';
+import TokenRingApp from "@tokenring-ai/app";
+import SlackPlugin from "@tokenring-ai/slack";
 
-// Create TokenRing app
 const app = new TokenRingApp({
-  // app configuration
+  plugins: [SlackPlugin] // or ["@tokenring-ai/slack"]
 });
 
-// Configure Slack service
 const slackConfig = {
   botToken: process.env.SLACK_BOT_TOKEN!,
   signingSecret: process.env.SLACK_SIGNING_SECRET!,
-  appToken: process.env.SLACK_APP_TOKEN, // Optional, enables Socket Mode
-  channelId: process.env.SLACK_CHANNEL_ID, // Optional
-  authorizedUserIds: ['U06T1LWJG', 'UABCDEF123'], // Optional
-  defaultAgentType: 'teamLeader' // Optional
+  appToken: process.env.SLACK_APP_TOKEN,
+  channelId: process.env.SLACK_CHANNEL_ID,
+  authorizedUserIds: ['U06T1LWJG', 'UABCDEF123'],
+  defaultAgentType: 'teamLeader'
 };
 
-// Install the plugin
-app.installPlugin(SlackPlugin, slackConfig);
+app.config({
+  slack: slackConfig
+});
+
+await app.start();
 ```
 
 ## Usage
@@ -202,16 +201,6 @@ export SLACK_SIGNING_SECRET="your-signing-secret"
 export SLACK_APP_TOKEN="xapp-your-app-token"  # Optional
 export SLACK_CHANNEL_ID="C1234567890"  # Optional
 ```
-
-## Dependencies
-
-- `@tokenring-ai/app`: TokenRing application framework
-- `@tokenring-ai/agent`: Core agent framework
-- `@slack/bolt@^4.6.0`: Slack Bolt framework
-- `@slack/web-api@^7.13.0`: Slack Web API client
-- `zod`: Validation library
-- `@tokenring-ai/utility`: Utility functions
-- `@tokenring-ai/chat`: Chat service
 
 ## Notes
 

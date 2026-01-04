@@ -223,12 +223,6 @@ The `SQLiteAgentStateStorage` constructor accepts the following configuration:
 - `StoredAgentCheckpoint`: `{ id: string; name: string; agentId: string; state: any; createdAt: number }`
 - `AgentCheckpointListItem`: `{ id: string; name: string; agentId: string; createdAt: number }`
 
-## Dependencies
-
-- `@tokenring-ai/ai-client@0.1.0`: AI client integration
-- `@tokenring-ai/history@0.1.0`: History management
-- `bun:sqlite`: Runtime dependency (provided by Bun)
-
 ## Notes
 
 - Requires Bun runtime for `bun:sqlite`

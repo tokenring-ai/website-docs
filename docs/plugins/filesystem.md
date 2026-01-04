@@ -1,573 +1,547 @@
 # Filesystem Plugin
 
-Provides an abstract filesystem interface for AI agents with file operations, search capabilities, shell execution, and multi-provider support.
-
 ## Overview
 
-The `@tokenring-ai/filesystem` package provides a unified filesystem interface designed for integration with AI agents in the Token Ring framework. It enables virtual filesystem operations such as reading/writing files, directory traversal, globbing, searching, and executing shell commands. The package supports multiple filesystem providers (local, virtual, etc.) and integrates seamlessly with the `@tokenring-ai/agent` for state management, including file selection for chat sessions and memory injection.
+The Filesystem plugin provides a comprehensive filesystem abstraction service for Token Ring AI agents. It enables file operations including reading, writing, searching, and executing shell commands through a provider-based architecture. The package integrates with the agent system for chat-based file management and state tracking, providing safety mechanisms for shell commands and support for multiple filesystem providers.
 
-Key features:
-- **Unified API**: Create, read, update, delete, rename, permissions
-- **Ignore Filters**: Based on `.gitignore` and `.aiignore`
-- **Agent Tools**: File modification, patching, searching, and shell execution
-- **Chat Commands**: Managing files in agent conversations (`/file`, `/foreach`)
-- **Async Generators**: Directory trees and memories from selected files
-- **Dirty Tracking**: Track changes for auto-commit workflows
-- **Command Safety**: Validate shell commands with user confirmation for dangerous operations
-- **Multi-Provider Support**: Register and switch between different filesystem providers
-- **Scripting Integration**: Global functions for scripting environments
-- **Context Handlers**: Provide file contents as chat context with fuzzy matching
-- **JSON-RPC Endpoints**: Remote filesystem access
+## Key Features
+
+- **Unified File Operations**: Read, write, delete, rename, copy, and append to files
+- **Directory Traversal**: Walk directory trees with recursive and filtered listing
+- **Glob Pattern Matching**: Find files using wildcard patterns (e.g., `**/*.ts`)
+- **Text Search**: Search across files for patterns with context lines
+- **Shell Command Execution**: Execute shell commands with safety validation
+- **Command Safety Levels**: Classifies commands as safe, unknown, or dangerous
+- **Provider Architecture**: Support multiple filesystem implementations
+- **Chat Integration**: Tools for file operations within chat contexts
+- **Context Handlers**: Provide file contents and search results to agents
+- **State Management**: Track selected files, dirty state, and read-before-write policies
+- **JSON-RPC Endpoints**: Remote filesystem access via RPC
+- **Ignore Filters**: Respect `.gitignore` and `.aiignore` patterns
 
 ## Core Components
 
 ### FileSystemService
 
-Main service class implementing `TokenRingService` that manages filesystem providers and state.
+The main service class implementing `TokenRingService`. It manages filesystem providers, state (selected files for chat), and delegates operations.
 
-**Key Properties/Methods:**
+**Key Methods:**
+
 - `registerFileSystemProvider(provider)`: Registers a filesystem provider
-- `getActiveFileSystemProviderName()`: Gets the current active provider
-- `setActiveFileSystemProviderName(name)`: Sets the active provider
-- `getAvailableFileSystemProviders()`: Lists all registered providers
-- `writeFile(path, content)`: Writes/overwrites file
-- `readFile(path, encoding?)`: Raw read (supports buffer encoding)
-- `getFile(path)`: Reads as UTF-8 string (convenience wrapper)
-- `deleteFile(path)`, `rename(oldPath, newPath)`, `copy(source, dest)`: Standard ops
-- `exists(path)`, `stat(path)`: File info and metadata
-- `createDirectory(path, options?)`: Creates directory
-- `glob(pattern, options?)`: Pattern matching with ignore filters
-- `grep(searchString, options?)`: Text search across files
-- `executeCommand(command, options?)`: Shell execution with safety validation
-- `watch(dir, options?)`: File watching with ignore filters
-- `addFileToChat(file, agent)`: Add file to agent context
-- `getMemories(agent)`: Yields file contents as agent memories
+- `setActiveFileSystem(providerName, agent)`: Sets the active provider
+- `attach(agent)`: Initializes state with FileSystemState
+- `getDirectoryTree(path, options, agent)`: Async generator for directory contents
+- `writeFile(path, content, agent)`: Writes/overwrites file
+- `appendFile(path, content, agent)`: Appends to file
+- `deleteFile(path, agent)`: Deletes a file
+- `getFile(path, agent)`: Reads file as UTF-8 string
+- `readFile(path, encoding, agent)`: Raw file read
+- `exists(path, agent)`: Checks if file exists
+- `stat(path, agent)`: Returns file stat information
+- `rename(oldPath, newPath, agent)`: Renames a file
+- `createDirectory(path, options, agent)`: Creates a directory
+- `copy(source, dest, options, agent)`: Copies a file
+- `glob(pattern, options, agent)`: Returns matches for glob pattern
+- `grep(searchString, options, agent)`: Searches for text patterns
+- `executeCommand(command, options, agent)`: Executes shell command
+- `getCommandSafetyLevel(command)`: Returns 'safe', 'unknown', or 'dangerous'
+- `parseCompoundCommand(command)`: Parses compound shell commands
+
+**Chat-specific Methods:**
+
+- `addFileToChat(file, agent)`: Adds file to chat context
+- `removeFileFromChat(file, agent)`: Removes file from chat context
+- `getFilesInChat(agent)`: Returns set of files in chat
+- `setFilesInChat(files, agent)`: Sets files in chat
 - `askForFileSelection(options, agent)`: Interactive tree-based file selection
-- `setDirty(dirty)`: Mark filesystem as dirty for auto-commit
-- `getDirty()`: Get dirty status
-- `getCommandSafetyLevel(command)`: Validate command safety level
+- `setDirty(dirty, agent) / isDirty(agent)`: Tracks modifications
 
 ### FileSystemProvider
 
-Abstract base class for concrete implementations (e.g., local FS).
+Abstract interface for filesystem implementations.
 
-**Required Methods:**
-- `getDirectoryTree(path, params?)`: Async generator for directory contents
+**Key Methods:**
+
+- `getDirectoryTree(path, options)`: Async generator for directory traversal
 - `writeFile(path, content)`: Write file
-- `appendFile(filePath, content)`: Append to file
+- `appendFile(path, content)`: Append to file
 - `deleteFile(path)`: Delete file
-- `readFile(path, encoding?)`: Read file
+- `readFile(path, encoding)`: Read file
 - `rename(oldPath, newPath)`: Rename file
 - `exists(path)`: Check existence
 - `stat(path)`: Get file stats
-- `createDirectory(path, options?)`: Create directory
-- `copy(source, dest, options?)`: Copy file
-- `glob(pattern, options?)`: Pattern matching
-- `watch(dir, options?)`: File watching
-- `executeCommand(command, options?)`: Shell execution
-- `grep(searchString, options?)`: Text search
+- `createDirectory(path, options)`: Create directory
+- `copy(source, dest, options)`: Copy file
+- `glob(pattern, options)`: Glob pattern matching
+- `watch(dir, options)`: Watch for changes
+- `executeCommand(command, options)`: Execute shell command
+- `grep(searchString, options)`: Text search
 
-### Tools
+### FileMatchResource
 
-#### file/write
+Utility for pattern-based file selection.
 
-Write, append, delete, rename, or adjust file permissions.
+**Interface:**
 
-**Parameters:**
-- `path`: File path (relative to root)
-- `action`: Operation to perform (`write`, `append`, `delete`, `rename`, `adjust`)
-- `content`: File content (required for write/append)
-- `is_base64`: Whether content is base64 encoded (optional)
-- `fail_if_exists`: Fail if file exists (optional)
-- `permissions`: Octal permissions (e.g., '644') (optional)
-- `toPath`: Destination path for rename/copy (optional)
-- `check_exists`: Check file existence before operation (optional)
-
-**Example:**
 ```typescript
-// Write a file
-await agent.useTool({
-  name: 'file/write',
-  params: {
-    path: 'example.txt',
-    action: 'write',
-    content: 'Hello, world!'
-  }
-});
-
-// Append to a file
-await agent.useTool({
-  name: 'file/write',
-  params: {
-    path: 'log.txt',
-    action: 'append',
-    content: 'New log entry'
-  }
-});
-
-// Rename a file
-await agent.useTool({
-  name: 'file/write',
-  params: {
-    path: 'old.txt',
-    action: 'rename',
-    toPath: 'new.txt'
-  }
-});
-
-// Adjust permissions
-await agent.useTool({
-  name: 'file/write',
-  params: {
-    path: 'config.json',
-    action: 'adjust',
-    permissions: '600'
-  }
-});
+interface MatchItem {
+  path: string;
+  include?: RegExp;
+  exclude?: RegExp;
+}
 ```
 
-#### file_search
+**Key Methods:**
 
-Retrieve files by paths/globs or search text across files.
+- `getMatchedFiles(agent)`: Async generator yielding matching paths
+- `addFilesToSet(set, agent)`: Populates a Set with matches
+
+## Tools
+
+The plugin provides several tools for AI agent file operations.
+
+### file_write
+
+Writes a file to the filesystem.
 
 **Parameters:**
-- `files`: File paths or glob patterns (optional)
-- `searches`: Search patterns (optional)
-- `returnType`: Result format (`names`, `content`, `matches`)
-- `linesBefore/After`: Context lines around matches (default: 10 for matches)
-- `caseSensitive`: Search case sensitivity (default: true)
-- `matchType`: Matching type (`substring`, `whole-word`, `regex`)
 
-**Example:**
+- `path`: Relative path of the file to write (e.g., 'src/main.ts')
+- `content`: Content to write to the file (must include ENTIRE content)
+
+**Behavior:**
+
+- Automatically creates parent directories if needed
+- Enforces read-before-write policy if configured
+- Marks filesystem as dirty on success
+
+### file_search
+
+Retrieves files by paths/globs or searches text within files.
+
+**Parameters:**
+
+| Parameter | Description | Default |
+|-----------|-------------|---------|
+| `files` | List of file paths or glob patterns | Optional |
+| `searches` | List of search patterns | Optional |
+| `returnType` | 'names' | 'content' | 'matches' | 'content' |
+| `linesBefore` | Lines before each match | 0 (10 for matches) |
+| `linesAfter` | Lines after each match | 0 (10 for matches) |
+| `caseSensitive` | Whether searches are case-sensitive | true |
+| `matchType` | 'substring' | 'whole-word' | 'regex' | 'substring' |
+
+**Returns:**
+
 ```typescript
-// Search for files matching patterns
-await agent.useTool({
-  name: 'file_search',
-  params: {
-    searches: ['TODO', 'FIXME'],
-    returnType: 'matches',
-    linesBefore: 3,
-    linesAfter: 3
+{
+  files: FileInfo[],
+  matches: MatchInfo[],
+  summary: {
+    totalFiles: number,
+    totalMatches: number,
+    searchPatterns?: string[],
+    returnType: ReturnType,
+    limitExceeded: boolean
   }
-});
-
-// Get file contents
-await agent.useTool({
-  name: 'file_search',
-  params: {
-    files: ['src/**/*.ts'],
-    returnType: 'content'
-  }
-});
-
-// Get file names matching glob
-await agent.useTool({
-  name: 'file_search',
-  params: {
-    files: ['**/*.md'],
-    returnType: 'names'
-  }
-});
+}
 ```
 
-#### terminal_bash
+### terminal_bash
 
-Execute shell commands with safety validation and timeout.
+Executes shell commands with safety validation.
 
 **Parameters:**
-- `command`: Shell command to execute
+
+- `command`: The shell command to execute
 - `timeoutSeconds`: Timeout in seconds (default: 60, max: 90)
-- `workingDirectory`: Working directory (default: './')
+- `workingDirectory`: Working directory relative to filesystem root
 
-**Example:**
+**Returns:**
+
 ```typescript
-// Execute a safe command
-await agent.useTool({
-  name: 'terminal_bash',
-  params: {
-    command: 'ls -la',
-    workingDirectory: './src'
-  }
-});
-
-// Execute with custom timeout
-await agent.useTool({
-  name: 'terminal_bash',
-  params: {
-    command: 'bun test',
-    timeoutSeconds: 120
-  }
-});
+{
+  ok: boolean,
+  stdout: string,
+  stderr: string,
+  exitCode: number,
+  error?: string
+}
 ```
 
-### Chat Commands
+**Safety Levels:**
 
-#### /file
+- `safe`: Pre-approved commands (e.g., ls, cat, git, npm, bun)
+- `unknown`: Commands not in safe/dangerous lists (requires confirmation)
+- `dangerous`: Commands matching dangerous patterns (e.g., rm, sudo, chmod)
+
+**Safe Commands:**
+
+```typescript
+["awk", "cat", "cd", "chdir", "diff", "echo", "find", "git", "grep",
+ "head", "help", "hostname", "id", "ipconfig", "tee", "ls", "netstat",
+ "ps", "pwd", "sort", "tail", "tree", "type", "uname", "uniq", "wc", "which",
+ "npm", "yarn", "bun", "tsc", "node", "npx", "bunx", "vitest"]
+```
+
+### file_append
+
+Appends content to the end of an existing file.
+
+**Parameters:**
+
+- `path`: Relative path of the file to append to
+- `content`: The content to add to the end of the file
+
+### file_patch
+
+Patches a file by replacing content between two specific lines.
+
+**Parameters:**
+
+- `file`: Path to the file to patch
+- `fromLine`: Line that marks the beginning of content to replace
+- `toLine`: Line that marks the end of content to replace
+- `contents`: The content that will replace everything from fromLine to toLine
+
+### file_regexPatch
+
+Patches a file using regular expressions.
+
+**Parameters:**
+
+- `file`: Path to the file to patch
+- `startRegex`: Regular expression to match the beginning of the code block
+- `endRegex`: Regular expression to match the end of the code block
+- `replacement`: The code that will replace the matched block
+
+### file_patchFilesNaturalLanguage
+
+Patches multiple files using a natural language description processed by an LLM.
+
+**Parameters:**
+
+- `files`: List of file paths to patch
+- `naturalLanguagePatch`: Detailed natural language description of the patch
+
+## Chat Commands
+
+### /file
 
 Manage files in the chat session.
 
-- **Actions**:
-  - `select`: Interactive tree selection
-  - `add [files...]`: Add specific files
-  - `remove [files...]`: Remove specific files
-  - `list`/`ls`: Show current files
-  - `clear`: Remove all files
-  - `default`: Reset to config defaults
+**Actions:**
 
-**Example:**
-```bash
-/file select                    # Interactive file picker
-/file add src/main.ts           # Add specific file
+- `select`: Open interactive file selector
+- `add [files...]`: Add specific files to chat
+- `remove [files...]` or `rm [files...]`: Remove specific files from chat
+- `list` or `ls`: List current files in chat
+- `clear`: Remove all files from chat
+- `default`: Reset to config defaults
+
+**Usage Examples:**
+
+```
+/file select                    # Interactive file selection
+/file add src/main.ts           # Add a specific file
 /file add src/*.ts              # Add all TypeScript files
-/file remove src/main.ts        # Remove specific file
+/file add file1.txt file2.txt   # Add multiple files
+/file remove src/main.ts        # Remove a specific file
+/file rm old-file.js            # Remove using alias
 /file list                      # Show current files
+/file ls                        # Show current files (alias)
 /file clear                     # Remove all files
 /file default                   # Reset to config defaults
 ```
 
-#### /foreach <glob> <prompt>
+## Context Handlers
 
-Run AI prompt on each matching file.
-
-**Example:**
-```bash
-/foreach src/**/*.ts "Update the copyright year to 2024"
-```
-
-### Global Scripting Functions
-
-When `@tokenring-ai/scripting` is available, the following global functions are automatically registered:
-
-- `createFile(path, content)`: Creates a file
-- `deleteFile(path)`: Deletes a file
-- `globFiles(pattern)`: Returns array of matching files
-- `searchFiles(searchString)`: Searches for text across files
-
-**Example:**
-```bash
-# Create a file
-/var $result = createFile("report.txt", "This is a report")
-/call echo $result
-
-# Search for files
-/var $todos = searchFiles("TODO")
-/call echo $todos
-```
-
-### Context Handlers
-
-#### selected-files
+### selected-files
 
 Provides contents of selected files as chat context.
 
-#### search-files
+**Behavior:**
 
-Provides file search results for keywords as chat context with fuzzy matching and keyword extraction.
+- Yields file contents for files in the chat context
+- For directories, provides directory listings
+- Marks files as read in state
+- Output format:
+  - For files: `BEGIN FILE ATTACHMENT: {path}\n{content}\nEND FILE ATTACHMENT: {path}`
+  - For directories: `BEGIN DIRECTORY LISTING:\n{path}\n- {file}\n...\nEND DIRECTORY LISTING`
 
-**Example:**
-When a user asks about a specific file or functionality, the context handler automatically extracts keywords and provides relevant files.
+### search-files
 
-### JSON-RPC Endpoints
+Provides file search results as chat context based on user input.
 
-Remote filesystem access via JSON-RPC:
+**Parameters:**
 
-- `readFile`, `exists`, `stat`, `glob`, `listDirectory`
-- `writeFile`, `appendFile`, `deleteFile`, `rename`
-- `createDirectory`, `copy`
-- `addFileToChat`, `removeFileFromChat`, `getSelectedFiles`
+- `maxResults`: Maximum number of results (default: 25)
+
+**Behavior:**
+
+- Extracts keywords from chat input (ignores stop words)
+- Performs fuzzy matching on file paths
+- Optionally searches file contents for high-value keywords
+- Returns formatted results with match types (filename/content/both)
+
+## Configuration
+
+### FileSystemConfigSchema
+
+```typescript
+const FileSystemConfigSchema = z.object({
+  agentDefaults: z.object({
+    provider: z.string(),
+    selectedFiles: z.array(z.string()).default([]),
+    requireReadBeforeWrite: z.boolean().default(true)
+  }),
+  providers: z.record(z.string(), z.any()),
+  safeCommands: z.array(z.string()).default([...]),
+  dangerousCommands: z.array(z.string()).default([...])
+});
+```
+
+**agentDefaults:**
+
+- `provider`: Name of the default filesystem provider
+- `selectedFiles`: Array of file paths initially selected for chat
+- `requireReadBeforeWrite`: Whether files must be read before writing (default: true)
+
+**safeCommands:**
+
+List of commands considered safe to execute without confirmation.
+
+**dangerousCommands:**
+
+List of regex patterns for commands that require explicit confirmation.
+
+### Package Config Schema
+
+```typescript
+const packageConfigSchema = z.object({
+  filesystem: FileSystemConfigSchema.optional(),
+});
+```
+
+## RPC Endpoints
+
+JSON-RPC endpoints available at `/rpc/filesystem`:
+
+| Method | Type | Input | Output |
+|--------|------|-------|--------|
+| readFile | query | `{agentId, path}` | `{content}` |
+| exists | query | `{agentId, path}` | `{exists}` |
+| stat | query | `{agentId, path}` | `{stats}` |
+| glob | query | `{agentId, pattern}` | `{files}` |
+| listDirectory | query | `{agentId, path, showHidden, recursive}` | `{files}` |
+| writeFile | mutation | `{agentId, path, content}` | `{success}` |
+| appendFile | mutation | `{agentId, path, content}` | `{success}` |
+| deleteFile | mutation | `{agentId, path}` | `{success}` |
+| rename | mutation | `{agentId, oldPath, newPath}` | `{success}` |
+| createDirectory | mutation | `{agentId, path, recursive}` | `{success}` |
+| copy | mutation | `{agentId, source, destination, overwrite}` | `{success}` |
+| addFileToChat | mutation | `{agentId, file}` | `{success}` |
+| removeFileFromChat | mutation | `{agentId, file}` | `{success}` |
+| getSelectedFiles | query | `{agentId}` | `{files}` |
+
+## State Management
+
+### FileSystemState
+
+Tracks filesystem-related state for agents.
+
+**Properties:**
+
+- `selectedFiles`: Set of file paths in chat context
+- `providerName`: Active filesystem provider name
+- `dirty`: Whether files have been modified
+- `requireReadBeforeWrite`: Enforces read-before-write policy
+- `readFiles`: Set of files that have been read
+
+**Methods:**
+
+- `reset(what)`: Resets state (supports 'chat' reset)
+- `serialize()`: Returns serializable state object
+- `deserialize(data)`: Restores state from object
+- `show()`: Returns human-readable state summary
 
 ## Usage Examples
 
 ### Basic File Operations
 
 ```typescript
-import { FileSystemService } from '@tokenring-ai/filesystem';
+import FileSystemService from '@tokenring-ai/filesystem/FileSystemService';
 
 const fs = new FileSystemService({
-  defaultSelectedFiles: ['src/index.ts'],
+  agentDefaults: {
+    provider: 'local',
+    selectedFiles: [],
+    requireReadBeforeWrite: true,
+  },
   safeCommands: ['ls', 'cat', 'grep', 'git', 'npm', 'bun', 'node'],
-  dangerousCommands: ['rm', 'chmod', 'chown', 'sudo']
+  dangerousCommands: ['rm', 'chmod', 'chown', 'sudo'],
+  providers: {
+    local: { /* local provider config */ }
+  }
 });
 
 // Write a file
-await fs.writeFile('example.txt', 'Hello, world!');
+await fs.writeFile('example.txt', 'Hello, world!', agent);
 
 // Read a file
-const content = await fs.getFile('example.txt'); // 'Hello, world!'
+const content = await fs.getFile('example.txt', agent);
 
-// Check if file exists
-const exists = await fs.exists('example.txt');
-
-// Execute a safe command
-const result = await fs.executeCommand('ls -la');
+// Append to a file
+await fs.appendFile('example.txt', '\nAdditional content', agent);
 ```
 
-### Directory Traversal and Glob
+### Directory Traversal
 
 ```typescript
-// List directory contents
-for await (const path of fs.getDirectoryTree('./src', {recursive: true})) {
+// Get directory tree
+for await (const path of fs.getDirectoryTree('./src', {recursive: true}, agent)) {
   console.log(path);
 }
 
-// Find all TypeScript files
-const tsFiles = await fs.glob('**/*.ts');
+// Find files with glob pattern
+const tsFiles = await fs.glob('**/*.ts', {}, agent);
 ```
 
-### Agent Integration
+### Chat File Management
 
 ```typescript
 // Add file to chat context
 await fs.addFileToChat('src/main.ts', agent);
 
-// Get memories from selected files
-for await (const memory of fs.getMemories(agent)) {
-  console.log(memory.content);
-}
+// Get all files in chat
+const files = fs.getFilesInChat(agent);
+
+// Remove file from chat
+fs.removeFileFromChat('src/main.ts', agent);
+
+// Interactive file selection
+const selected = await fs.askForFileSelection({allowDirectories: true}, agent);
 ```
 
-### Multi-Provider Support
+### File Search
 
 ```typescript
-// Register multiple providers
-fs.registerFileSystemProvider(localFSProvider);
-fs.registerFileSystemProvider(virtualFSProvider);
+// Search for text in files
+const results = await fs.grep(['TODO', 'FIXME'], {
+  includeContent: {linesBefore: 2, linesAfter: 2}
+}, agent);
 
-// Switch between providers
-fs.setActiveFileSystemProviderName('virtual');
+// Glob pattern matching
+const configs = await fs.glob('**/*.config.{js,json,ts}', {}, agent);
 ```
 
-### Scripting Integration
+### Shell Command Execution
 
 ```typescript
-// Use filesystem functions in scripting
-const files = globFiles('src/**/*.ts');
-const results = searchFiles('TODO');
-createFile('new.js', 'console.log("Hi");');
-```
+const result = await fs.executeCommand(
+  ['npm', 'install'],
+  {timeoutSeconds: 120, workingDirectory: './frontend'},
+  agent
+);
 
-## Configuration Options
-
-### Constructor
-
-```typescript
-const fs = new FileSystemService({
-  defaultSelectedFiles: ['src/index.ts', 'README.md'], // Default files for chat
-  dangerousCommands: [/^rm\\b/, /^chmod\\b/, /^chown\\b/, /^sudo\\b/], // Dangerous commands
-  safeCommands: ['ls', 'cat', 'grep', 'git', 'npm', 'bun', 'node'] // Safe commands
-});
-```
-
-### Provider Configuration
-
-- Register multiple providers via `registerFileSystemProvider()`
-- Set active provider via `setActiveFileSystemProviderName()`
-- Providers can be switched dynamically
-
-### Ignore Filters
-
-- Automatically loads `.gitignore` and `.aiignore` files
-- Custom ignore patterns can be configured
-- Filters apply to directory traversal, glob, and other operations
-
-### Permissions
-
-- Octal permission strings (e.g., '644')
-- Default permissions: 0o644 for new files
-- Permissions can be adjusted via `file/write` tool
-
-### Search
-
-- Case-sensitive by default
-- Limits: 50 results for content/matches modes
-- Supports substring, whole-word, and regex matching
-- OR-based searches across multiple patterns
-
-### Shell Commands
-
-- `timeoutSeconds`: Default 60, maximum 90 seconds
-- `workingDirectory`: Relative to filesystem root
-- Safety validation: `safe`, `unknown`, or `dangerous` commands
-- User confirmation required for dangerous commands
-
-### Scripting
-
-- Automatically registers global functions when `@tokenring-ai/scripting` is available
-- Functions: `createFile`, `deleteFile`, `globFiles`, `searchFiles`
-
-## API Reference
-
-### FileSystemService Methods
-
-```typescript
-interface FileSystemService {
-  registerFileSystemProvider(provider: FileSystemProvider): void;
-  getActiveFileSystemProviderName(): string | null;
-  setActiveFileSystemProviderName(name: string): void;
-  getAvailableFileSystemProviders(): string[];
-  writeFile(path: string, content: string | Buffer): Promise<boolean>;
-  readFile(path: string, encoding?: BufferEncoding | 'buffer'): Promise<string>;
-  getFile(path: string): Promise<string | null>;
-  deleteFile(path: string): Promise<boolean>;
-  rename(oldPath: string, newPath: string): Promise<boolean>;
-  copy(source: string, dest: string, options?: {overwrite?: boolean}): Promise<boolean>;
-  exists(path: string): Promise<boolean>;
-  stat(path: string): Promise<StatLike>;
-  createDirectory(path: string, options?: {recursive?: boolean}): Promise<boolean>;
-  glob(pattern: string, options?: GlobOptions): Promise<string[]>;
-  grep(searchString: string | string[], options?: GrepOptions): Promise<GrepResult[]>;
-  executeCommand(command: string | string[], options?: ExecuteCommandOptions): Promise<ExecuteCommandResult>;
-  watch(dir: string, options?: WatchOptions): Promise<any>;
-  addFileToChat(file: string, agent: Agent): Promise<void>;
-  getMemories(agent: Agent): AsyncGenerator<Memory>;
-  getFilesInChat(agent: Agent): Set<string>;
-  setFilesInChat(files: Iterable<string>, agent: Agent): Promise<void>;
-  askForFileSelection(options: {initialSelection?, allowDirectories?}, agent: Agent): Promise<string[] | null>;
-  setDirty(dirty: boolean): void;
-  getDirty(): boolean;
-  getCommandSafetyLevel(command: string): 'safe' | 'unknown' | 'dangerous';
-  parseCompoundCommand(command: string): string[];
+if (result.ok) {
+  console.log('Install completed:', result.stdout);
+} else {
+  console.error('Install failed:', result.stderr);
 }
 ```
 
-### Tool Schemas
+## Integration
 
-#### file/write
+### Scripting Functions
 
-```typescript
-const fileWriteSchema = z.object({
-  path: z.string().describe("Relative path of the file to write"),
-  action: z.enum(['write', 'append', 'delete', 'rename', 'adjust']),
-  content: z.string().optional().describe("Content to write (required for write/append)"),
-  is_base64: z.boolean().optional().describe("Whether content is base64 encoded"),
-  fail_if_exists: z.boolean().optional().describe("Fail if file exists"),
-  permissions: z.string().optional().describe("Octal permissions (e.g., '644')"),
-  toPath: z.string().optional().describe("Destination path for rename/copy"),
-  check_exists: z.boolean().optional().describe("Check file existence before operation")
-});
-```
+The plugin registers these functions with the ScriptingService:
 
-#### file_search
+- `createFile(path, content)`: Creates a new file
+- `deleteFile(path)`: Deletes a file
+- `globFiles(pattern)`: Returns files matching glob pattern
+- `searchFiles(searchString)`: Searches files and returns formatted results
 
-```typescript
-const fileSearchSchema = z.object({
-  files: z.array(z.string()).optional().describe("File paths or glob patterns"),
-  searches: z.array(z.string()).optional().describe("Search patterns"),
-  returnType: z.enum(['names', 'content', 'matches']).default('content'),
-  linesBefore: z.number().int().min(0).optional(),
-  linesAfter: z.number().int().min(0).optional(),
-  caseSensitive: z.boolean().default(true),
-  matchType: z.enum(['substring', 'whole-word', 'regex']).default('substring')
-});
-```
+### Chat Service Integration
 
-#### terminal_bash
+- Registers tools: `file_write`, `file_search`, `terminal_bash`
+- Registers context handlers: `selected-files`, `search-files`
 
-```typescript
-const terminalRunShellCommandSchema = z.object({
-  command: z.string().describe("Shell command to execute"),
-  timeoutSeconds: z.number().int().optional().describe("Timeout in seconds"),
-  workingDirectory: z.string().optional().describe("Working directory")
-});
-```
+### Agent Command Service Integration
 
-### Interfaces
+- Registers `/file` command for file management
 
-```typescript
-interface StatLike {
-  path: string;
-  absolutePath?: string;
-  isFile: boolean;
-  isDirectory: boolean;
-  isSymbolicLink?: boolean;
-  size?: number;
-  created?: Date;
-  modified?: Date;
-  accessed?: Date;
-}
+### WebHost Service Integration
 
-interface GrepResult {
-  file: string;
-  line: number;
-  match: string;
-  matchedString?: string;
-  content: string | null;
-}
+- Registers JSON-RPC endpoint at `/rpc/filesystem`
 
-interface ExecuteCommandResult {
-  ok: boolean;
-  stdout: string;
-  stderr: string;
-  exitCode: number;
-  error?: string;
-}
+## Testing
 
-interface FileSearchResult {
-  files: FileInfo[];
-  matches: MatchInfo[];
-  summary: SearchSummary;
-}
-
-interface FileInfo {
-  file: string;
-  exists: boolean;
-  content?: string;
-  error?: string;
-}
-
-interface MatchInfo {
-  file: string;
-  line: number;
-  match: string;
-  matchedPattern: string;
-  content?: string;
-}
-
-interface SearchSummary {
-  totalFiles: number;
-  totalMatches: number;
-  searchPatterns?: string[];
-  returnType: ReturnType;
-  limitExceeded: boolean;
-}
-```
-
-## Dependencies
-
-- `@tokenring-ai/agent`: Core agent integration
-- `@tokenring-ai/app`: Application framework
-- `@tokenring-ai/chat`: Chat and command types
-- `@tokenring-ai/scripting`: Scripting integration
-- `@tokenring-ai/web-host`: JSON-RPC endpoints
-- `@tokenring-ai/utility`: Registry utilities
-- `zod`: Schema validation
-- `ignore@^7.0.5`: Gitignore parsing
-- `path-browserify@^1.0.1`: Path utilities
-
-## Contributing
-
-### Testing
+Run tests with the following commands:
 
 ```bash
-# Run unit tests
-bun run test
+# Run all tests
+bun test
+
+# Run tests in watch mode
+bun test:watch
+
+# Run tests with coverage
+bun test:coverage
 
 # Run integration tests
-bun run test:integration
+bun test:integration
 
-# Run shell command tests
-bun run test:shell
-
-# Run all tests
-bun run test:all
+# Run end-to-end tests
+bun test:e2e
 ```
 
-### Key Implementation Notes
+## Development
 
-- **Safety**: Shell commands are not sandboxed - use with caution
-- **Binary Files**: Skipped in searches and content retrieval
-- **Performance**: Search limits prevent excessive results
-- **Path Handling**: Unix-style '/' separators, relative to root
-- **State Management**: File selection persists across agent sessions
-- **Multi-Provider**: Supports switching between different filesystem implementations
-- **Context Injection**: Selected files and search results provide relevant context to agents
+### Build
+
+```bash
+bun run build
+```
+
+### Package Structure
+
+```
+pkg/filesystem/
+├── index.ts                      # Main exports and config schemas
+├── plugin.ts                     # Plugin installation and service registration
+├── FileSystemService.ts          # Core service implementation
+├── FileSystemProvider.ts         # Provider interface definitions
+├── FileMatchResource.ts          # Pattern-based file selection utility
+├── chatCommands.ts               # Chat command exports
+├── commands/
+│   └── file.ts                   # /file command implementation
+├── contextHandlers.ts            # Context handler exports
+├── contextHandlers/
+│   ├── selectedFiles.ts          # Selected files context provider
+│   └── searchFiles.ts            # File search context provider
+├── tools.ts                      # Tool exports
+├── tools/
+│   ├── write.ts                  # file_write tool
+│   ├── search.ts                 # file_search tool
+│   ├── bash.ts                   # terminal_bash tool
+│   ├── append.ts                 # file_append tool
+│   ├── patch.ts                  # file_patch tool
+│   ├── regexPatch.ts             # file_regexPatch tool
+│   └── patchFilesNaturalLanguage.ts  # file_patchFilesNaturalLanguage tool
+├── rpc/
+│   ├── schema.ts                 # RPC method definitions
+│   └── filesystem.ts             # RPC endpoint implementation
+├── state/
+│   └── fileSystemState.ts        # State management
+├── test/
+│   ├── createTestFilesystem.ts   # Test helper
+│   └── FileSystemService.commandValidation.test.ts
+├── package.json
+├── vitest.config.ts
+└── README.md
+```
+
+## License
+
+MIT License - see [LICENSE](https://github.com/tokenring-ai/tokenring/blob/main/packages/filesystem/LICENSE) for details.

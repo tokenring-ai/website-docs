@@ -1,12 +1,8 @@
 # AWS Plugin
 
-AWS integration providing authentication status and S3 interaction capabilities.
-
 ## Overview
 
-The `@tokenring-ai/aws` package provides AWS integration within the Token Ring ecosystem. It enables secure authentication with AWS services using STS (Security Token Service) and provides tools for basic AWS operations like listing S3 buckets. The plugin integrates seamlessly with the TokenRing AI framework through services, tools, and chat commands.
-
-This package focuses on secure credential handling and client initialization for AWS SDK v3, allowing agents to perform AWS operations like querying account identity and managing S3 resources.
+The AWS Plugin for TokenRing AI provides integration with Amazon Web Services, enabling agents to authenticate, manage resources, and execute AWS-related tasks. This plugin leverages the AWS SDK v3 and integrates seamlessly with TokenRing's agent framework, offering tools for S3 operations, account information retrieval, and more.
 
 ## Key Features
 
@@ -17,96 +13,76 @@ This package focuses on secure credential handling and client initialization for
 - **Service Status**: Provides authentication status and account information
 - **Chat Commands**: Interactive AWS commands for status checking
 - **Generic Client Initialization**: Supports initialization of any AWS SDK client
+- **Type-Safe Configuration**: Zod-based schema validation for configuration
 
-## Core Components
+## Core Properties
+
+### AWSService Properties
+
+- `region` (string): The AWS region configured for the service
+- `name` (string): Always "AWSService"
+- `description` (string): Always "Provides AWS functionality"
+
+## Core Methods/API
 
 ### AWSService
 
 The main service class that handles AWS SDK clients and authentication.
 
-**Constructor Properties:**
-- `accessKeyId` (string, required): AWS Access Key ID
-- `secretAccessKey` (string, required): AWS Secret Access Key  
-- `sessionToken` (string, optional): AWS Session Token for temporary credentials
-- `region` (string, required): AWS region (e.g., 'us-east-1')
+#### Constructor
 
-**Key Methods:**
+`new AWSService(credentials: AWSCredentials)`
+
+Initializes the service with AWS credentials.
+
+#### Methods
+
 - `initializeAWSClient<T>(ClientClass, clientConfig)`: Initializes any AWS SDK client
+  - `ClientClass`: The AWS SDK client class to initialize (e.g., S3Client, SNSClient)
+  - `clientConfig`: Additional configuration for the client
+  - Returns: Initialized AWS SDK client instance
+
 - `getSTSClient()`: Returns or creates an STS client
+  - Returns: `STSClient` instance
+
 - `getS3Client()`: Returns or creates an S3 client
+  - Returns: `S3Client` instance
+
 - `isAuthenticated()`: Checks if credentials and region are configured
+  - Returns: `boolean` indicating if credentials are properly configured
+
 - `getCallerIdentity()`: Retrieves AWS account identity via STS
-- `run(signal)`: Service startup with authentication check
-- `status(agent)`: Returns service status and account information
+  - Returns: `{ Arn?: string; Account?: string; UserId?: string }`
 
-### Available Tools
+- `run(signal: AbortSignal)`: Service startup with authentication check
+  - `signal`: AbortSignal for service lifecycle management
+  - Returns: Promise that resolves when service stops
 
-#### aws_listS3Buckets
+- `status(agent: Agent)`: Returns service status and account information
+  - `agent`: The agent instance
+  - Returns: `{ active: boolean; service: string; authenticated: boolean; accountInfo?: { Arn?: string; Account?: string; UserId?: string }; error?: string }`
 
-Lists all S3 buckets in the configured AWS account and region.
+#### AWSCredentials Interface
 
-**Tool Name:** `aws_listS3Buckets`
-
-**Description:** "Lists all S3 buckets in the configured AWS account and region."
-
-**Input Schema:**
 ```typescript
-z.object({}) // No parameters required
-```
-
-**Returns:**
-```typescript
-{
-  buckets: Array<{
-    Name: string;
-    CreationDate: string;
-  }>;
+interface AWSCredentials {
+  accessKeyId: string;
+  secretAccessKey: string;
+  sessionToken?: string;
+  region: string;
 }
-```
-
-**Usage:**
-```typescript
-import { TokenRingApp } from "@tokenring-ai/app";
-import awsPlugin from "@tokenring-ai/aws";
-
-const app = new TokenRingApp({
-  plugins: [awsPlugin]
-});
-
-const agent = app.createAgent();
-const result = await agent.executeTool("aws_listS3Buckets", {});
-console.log('S3 Buckets:', result.buckets);
-```
-
-### Chat Commands
-
-#### /aws status
-
-Provides chat-based commands for AWS status checks.
-
-**Available Commands:**
-- `status`: View current AWS authentication status and account information
-
-**Usage Example:**
-```
-> aws status
-AWS Authentication Status:
-  Account: 123456789012
-  Arn: arn:aws:iam::123456789012:user/example
-  UserId: AIDAEXAMPLEUSER
-  Region: us-east-1
 ```
 
 ## Usage Examples
 
-### 1. Basic Service Usage
+### Basic Service Usage
 
 ```typescript
 import AWSService from "@tokenring-ai/aws";
 
 const awsService = new AWSService({
-  accessKeyId: process.env.AWS_ACCESS_KEY_ID!,
-  secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY!,
+  accessKeyId: process.env.AWS_ACCESS_KEY_ID,
+  secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY,
   region: process.env.AWS_REGION || 'us-east-1'
 });
 
@@ -118,16 +94,16 @@ if (awsService.isAuthenticated()) {
 }
 ```
 
-### 2. Using S3 Client
+### Using S3 Client
 
 ```typescript
 import { ListBucketsCommand } from "@aws-sdk/client-s3";
 import AWSService from "@tokenring-ai/aws";
 
 const awsService = new AWSService({
-  accessKeyId: "your-access-key",
-  secretAccessKey: "your-secret-key",
-  region: "us-east-1"
+  accessKeyId: process.env.AWS_ACCESS_KEY_ID,
+  secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY,
+  region: process.env.AWS_REGION
 });
 
 const s3Client = awsService.getS3Client();
@@ -136,29 +112,37 @@ const response = await s3Client.send(command);
 console.log('S3 Buckets:', response.Buckets);
 ```
 
-### 3. Generic AWS Client Initialization
+### Generic AWS Client Initialization
 
 ```typescript
 import { SNSClient } from "@aws-sdk/client-sns";
 import AWSService from "@tokenring-ai/aws";
 
 const awsService = new AWSService({
-  // ... credentials
+  accessKeyId: process.env.AWS_ACCESS_KEY_ID,
+  secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY,
+  region: process.env.AWS_REGION
 });
 
-const snsClient = awsService.initializeAWSClient(SNSClient, {
-  // Additional SNS-specific configuration
-});
+const snsClient = awsService.initializeAWSClient(SNSClient);
 ```
 
-### 4. Using the S3 Buckets Tool
+### Using the S3 Buckets Tool
 
 ```typescript
 import { TokenRingApp } from "@tokenring-ai/app";
 import awsPlugin from "@tokenring-ai/aws";
 
 const app = new TokenRingApp({
-  plugins: [awsPlugin]
+  plugins: [
+    awsPlugin.withConfig({
+      aws: {
+        accessKeyId: process.env.AWS_ACCESS_KEY_ID,
+        secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY,
+        region: process.env.AWS_REGION
+      }
+    })
+  ]
 });
 
 const agent = app.createAgent();
@@ -166,78 +150,35 @@ const result = await agent.executeTool("aws_listS3Buckets", {});
 console.log('S3 Buckets:', result.buckets);
 ```
 
-### 5. Using AWS Chat Commands
+### Using AWS Chat Commands
 
 ```typescript
 import { TokenRingApp } from "@tokenring-ai/app";
 import awsPlugin from "@tokenring-ai/aws";
 
 const app = new TokenRingApp({
-  plugins: [awsPlugin]
+  plugins: [
+    awsPlugin.withConfig({
+      aws: {
+        accessKeyId: process.env.AWS_ACCESS_KEY_ID,
+        secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY,
+        region: process.env.AWS_REGION
+      }
+    })
+  ]
 });
 
 const agent = app.createAgent();
 const result = await agent.executeCommand("aws status");
-// The result will be displayed in the agent's chat output
 ```
 
-## API Reference
-
-### AWSService
-
-```typescript
-class AWSService implements TokenRingService {
-  constructor(credentials: AWSCredentials)
-  initializeAWSClient<T>(ClientClass: new (config: {
-    region: string;
-    credentials: { accessKeyId: string; secretAccessKey: string; sessionToken?: string }
-  } & Record<string, unknown>) => T, clientConfig?: Record<string, unknown>): T
-  getSTSClient(): STSClient
-  getS3Client(): S3Client
-  isAuthenticated(): boolean
-  async getCallerIdentity(): Promise<{ Arn?: string; Account?: string; UserId?: string }>
-  async run(signal: AbortSignal): Promise<void>
-  async status(agent: Agent): Promise<{
-    active: boolean;
-    service: string;
-    authenticated: boolean;
-    accountInfo?: { Arn?: string; Account?: string; UserId?: string }
-    error?: string;
-  }>
-}
-```
-
-### AWSCredentials Interface
-
-```typescript
-interface AWSCredentials {
-  accessKeyId: string;
-  secretAccessKey: string;
-  sessionToken?: string;
-  region: string;
-}
-```
-
-### Plugin Configuration
-
-```typescript
-export const AWSConfigSchema = z.any().optional();
-
-export default {
-  name: "@tokenring-ai/aws",
-  version: "0.2.0",
-  description: "AWS integration providing authentication status and S3 interaction",
-  install(app: TokenRingApp): void
-} satisfies TokenRingPlugin
-```
-
-## Configuration Options
+## Configuration
 
 ### Environment Variables
 
-- `AWS_ACCESS_KEY_ID`: Your AWS Access Key ID
-- `AWS_SECRET_ACCESS_KEY`: Your AWS Secret Access Key  
-- `AWS_REGION`: Your AWS region (e.g., 'us-east-1')
+- `AWS_ACCESS_KEY_ID`: Your AWS Access Key ID (required)
+- `AWS_SECRET_ACCESS_KEY`: Your AWS Secret Access Key (required)
+- `AWS_REGION`: Your AWS region (e.g., 'us-east-1', required)
 - `AWS_SESSION_TOKEN`: Optional session token for temporary credentials
 
 ### Configuration Schema
@@ -251,12 +192,12 @@ interface AWSCredentials {
 }
 ```
 
-### Configuration Requirements
+### Setup Requirements
 
 - **Required**: `accessKeyId`, `secretAccessKey`, `region`
 - **Optional**: `sessionToken` (for temporary credentials)
 
-## Authentication Flow
+### Authentication Flow
 
 1. **Service Initialization**: AWS credentials and region are provided
 2. **Client Setup**: STS and S3 clients are initialized with credentials
@@ -264,77 +205,83 @@ interface AWSCredentials {
 4. **Status Reporting**: Caller identity is retrieved and reported
 5. **Tool Access**: Tools can only execute if authentication is successful
 
-## Dependencies
+## Integration
 
-- `@tokenring-ai/agent`: Core agent framework
-- `@tokenring-ai/app`: Application framework
-- `@tokenring-ai/chat`: Chat and tool integration
-- `@aws-sdk/client-s3@^3.952.0`: S3 client for bucket operations
-- `@aws-sdk/client-sts@^3.952.0`: STS client for authentication
-- `@tokenring-ai/filesystem`: Filesystem utilities
+### Plugin Installation
 
-## Error Handling
-
-### Common Errors
-
-- **Credentials Not Configured**: AWS credentials missing or invalid
-- **Authentication Failure**: Invalid credentials or permissions issues
-- **Service Unavailable**: AWS service temporary unavailability
-- **Region Mismatch**: Region configuration issues
-
-### Error Recovery
-
-1. Verify AWS credentials are correct
-2. Check IAM permissions for STS GetCallerIdentity and S3 ListBuckets
-3. Ensure region configuration matches the AWS account region
-4. Check network connectivity to AWS services
-
-## Integration Patterns
-
-### Service Registration
+When added to a TokenRing application, the plugin automatically registers the AWSService, tools, and chat commands:
 
 ```typescript
 import { TokenRingApp } from '@tokenring-ai/app';
 import awsPlugin from '@tokenring-ai/aws';
 
-const app = new TokenRingApp();
-app.use(awsPlugin);
+const app = new TokenRingApp({
+  plugins: [
+    awsPlugin.withConfig({
+      aws: {
+        accessKeyId: process.env.AWS_ACCESS_KEY_ID,
+        secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY,
+        region: process.env.AWS_REGION,
+        sessionToken: process.env.AWS_SESSION_TOKEN // optional
+      }
+    })
+  ]
+});
 ```
 
-### Tool Usage
+### Agent Usage
 
-Tools are automatically registered with the chat system when the AWS plugin is installed.
+Agents can access the AWSService directly to perform AWS operations:
 
-### Command Access
+```typescript
+const awsService = agent.requireServiceByType(AWSService);
+const identity = await awsService.getCallerIdentity();
+```
 
-Chat commands are available through the `/aws` prefix in interactive sessions.
+### Chat Commands
 
-## Security Considerations
+The `aws status` command can be used in chat to view authentication status.
 
-- Store AWS credentials securely using environment variables
-- Use least privilege principle for IAM permissions
-- Consider temporary credentials for enhanced security
-- Monitor API usage and set appropriate quotas
+## Best Practices
 
-## Performance Considerations
+- Store AWS credentials securely using environment variables or secret management
+- Use IAM roles with minimal required permissions for production deployments
+- Consider using temporary credentials (session tokens) for enhanced security
+- Always verify credentials before performing critical operations
+- Handle authentication failures gracefully in your application
 
-- AWS client initialization is lazy (on-demand)
-- STS and S3 clients are cached after first creation
-- Authentication checks occur during service startup
-- Tool executions use existing client connections
+## Testing
 
-## Troubleshooting
+### Unit Tests
 
-### Common Issues
+Run tests with:
 
-1. **Authentication Failed**: Check credentials and IAM permissions
-2. **No S3 Buckets Listed**: Verify S3 ListBuckets permissions
-3. **Region Mismatch**: Ensure region configuration matches AWS account
-4. **Network Issues**: Check connectivity to AWS endpoints
+```bash
+bun test
+```
 
-### Debugging Tips
+The project uses vitest for unit testing.
 
-- Enable AWS SDK debug logging for detailed error information
-- Verify IAM policy allows necessary permissions
-- Check AWS service status for temporary outages
-- Validate region configuration matches the AWS account region
+## Error Handling
+
+### Common Errors
+
+- **Credentials Not Configured**: Occurs if `accessKeyId`, `secretAccessKey`, or `region` are missing
+- **Authentication Failure**: Occurs if credentials are invalid or lack required permissions
+- **Service Unavailable**: AWS services may be temporarily unavailable
+- **Region Mismatch**: Region configuration does not match the AWS account
+
+### Troubleshooting Steps
+
+- Verify AWS credentials are correct
+- Check IAM permissions for STS GetCallerIdentity and S3 ListBuckets
+- Ensure region configuration matches the AWS account region
+- Check network connectivity to AWS services
+
+## Related Components
+
+- `@tokenring-ai/agent`: Agent orchestration system
+- `@tokenring-ai/app`: Application framework
+- `@tokenring-ai/chat`: Chat service and tool management
+- `@aws-sdk/client-s3`: AWS S3 client
+- `@aws-sdk/client-sts`: AWS STS client

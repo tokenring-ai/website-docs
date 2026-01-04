@@ -1,267 +1,378 @@
 # Queue Plugin
 
-Queue management system for Token Ring AI with state preservation, interactive commands, and programmatic task scheduling.
-
 ## Overview
 
-The `@tokenring-ai/queue` package provides a comprehensive queue management system for the Token Ring AI agent framework. It enables the queuing of work items (such as chat prompts or tasks) to be processed sequentially while preserving and restoring agent state via checkpoints. This allows for batch processing of tasks while maintaining the agent's context and state between operations.
+The Queue plugin provides a comprehensive task management system for Token Ring AI, enabling sequential processing of work items with state preservation. It integrates with the agent framework to handle both interactive chat commands and programmatic task queuing. This package enables batch processing, task management, and workflow orchestration through a FIFO queue that preserves agent state via checkpointing.
 
 ## Key Features
 
-- **FIFO Queue Structure**: First-In-First-Out processing of queued items
-- **State Preservation**: Maintains agent state via checkpoints for each queue item
-- **Interactive Chat Commands**: Comprehensive `/queue` command with subcommands
-- **Programmatic Integration**: Tool-based API for task enqueuing
-- **Sequential Processing Workflow**: Start, process, and complete queue operations
-- **Checkpoint Management**: Automatic checkpoint generation and restoration
-- **Queue Status Tracking**: Real-time queue length and processing status
+- **FIFO Queue Processing**: First-in-first-out queue with state checkpointing for reliable batch processing
+- **Interactive Command Interface**: Comprehensive `/queue` commands for user interaction and queue management
+- **Programmatic Task Addition**: Tools for adding tasks to the queue programmatically
+- **State Preservation and Restoration**: Checkpoint system ensures state consistency during queue processing
+- **Queue Size Limits**: Support for both bounded and unbounded queues to prevent memory issues
+- **Error Handling**: Robust error validation and clear error messages for invalid operations
+- **Checkpoint Integration**: Seamless integration with TokenRing's checkpoint system for state management
 
 ## Core Components
 
-### WorkQueueService
+- **WorkQueueService**: Central service for queue operations (enqueue, dequeue, state management)
+- **WorkQueueState**: State management for queue operations including items, current item, and checkpoints
+- **Chat Commands**: Comprehensive set of `/queue` commands for user interaction
+- **queue_addTaskToQueue Tool**: Programmatic tool for adding tasks to the queue
 
-Primary service for queue operations with state management.
+## Chat Commands
 
-**Constructor Options:**
-- `maxSize` (number, optional): Limits queue length (defaults to unlimited)
+### Queue Management Commands
 
-**Key Methods:**
-- `constructor({ maxSize? })`: Initializes queue with optional size limit
-- `attach(agent)`: Initializes the state slice on the agent
-- `startWork(agent)`: Sets `started = true` and creates initial checkpoint
-- `stopWork(agent)`: Sets `started = false` and clears current item
-- `started(agent)`: Checks if processing is active
-- `enqueue(item, agent)`: Adds to end of queue (returns false if full)
-- `dequeue(agent)`: Removes and returns front item
-- `get(idx, agent)`: Retrieves item by index
-- `splice(start, deleteCount, agent, ...items)`: Modifies queue
-- `size(agent)`: Current queue length
-- `isEmpty(agent)`: Checks if queue is empty
-- `clear(agent)`: Empties the queue
-- `getAll(agent)`: Returns a copy of all items
-- `getCurrentItem(agent)`: Gets currently loaded item
-- `getInitialCheckpoint(agent)`: Gets initial state checkpoint
-- `setCurrentItem(item, agent)`: Sets currently loaded item
-- `setInitialCheckpoint(checkpoint, agent)`: Sets initial state checkpoint
+| Command | Description |
+|---------|-------------|
+| `/queue add <prompt>` | Adds a new prompt to the end of the queue |
+| `/queue remove <index>` | Removes the prompt at the given zero-based index |
+| `/queue details <index>` | Shows detailed information about a specific queue item |
+| `/queue clear` | Removes all prompts from the queue |
+| `/queue list` | Displays all queued prompts with their indices |
 
-**Queue Item Structure:**
-```typescript
-interface QueueItem {
-  checkpoint: Checkpoint;  // Agent state checkpoint
-  name: string;           // Item description
-  input: string;          // Task content or prompt
-}
-```
+### Queue Processing Commands
 
-### Chat Commands
+| Command | Description |
+|---------|-------------|
+| `/queue start` | Begins queue processing (preserves current chat state) |
+| `/queue next` | Loads the next queued item (does not execute it) |
+| `/queue run` | Executes the currently loaded queued prompt |
+| `/queue skip` | Skips current item and re-adds it to end of queue |
+| `/queue done` | Ends queue processing and restores previous chat state |
 
-**/queue**: Interactive command for managing the queue with comprehensive help system.
+## Tools
 
-**Subcommands:**
-- `/queue add <prompt>`: Enqueues a new item with current agent state
-- `/queue remove <index>`: Removes item at zero-based index
-- `/queue details <index>`: Displays JSON details of queue item
-- `/queue clear`: Empties the entire queue
-- `/queue list`: Lists all items with indices
-- `/queue start`: Initializes queue session and preserves current state
-- `/queue next`: Advances to next queued item (does not execute)
-- `/queue run`: Executes the currently loaded item's input
-- `/queue skip`: Moves current item to end of queue
-- `/queue done`: Ends queue processing and restores initial state
+### queue_addTaskToQueue
 
-**Help Documentation:**
-Built-in comprehensive help with usage examples, workflow tips, and status information.
-
-### Tools
-
-**addTaskToQueue**: Programmatic tool for enqueuing tasks with state preservation.
+Adds a task to the queue for later execution by the system.
 
 **Input Schema:**
 ```typescript
-interface AddTaskInput {
-  description: string;  // Short task description
-  content: string;      // Detailed task content or prompt
+{
+  description: string;  // A short description of the task to be performed
+  content: string;      // A natural language string explaining the exact task to be performed in great detail
 }
 ```
 
-**Execution**: Captures current agent checkpoint and adds to queue.
-
-**Return Value:**
+**Output:**
 ```typescript
-interface AddTaskResult {
-  status: 'queued';     // Success status
-  message: string;      // Confirmation message
+{
+  status: "queued";
+  message: "Task has been queued for later execution.";
 }
+```
+
+**Example:**
+```typescript
+await tools.queue_addTaskToQueue.execute({
+  description: "Analyze data",
+  content: "Process the sales data and generate a summary report. Use all available data analysis tools."
+}, agent);
+// Returns: { status: "queued", message: "Task has been queued for later execution." }
+```
+
+## Configuration
+
+The plugin does not require any configuration options.
+
+```typescript
+import queuePlugin from "@tokenring-ai/queue/plugin";
+const app = new TokenRingApp();
+app.install(queuePlugin);
 ```
 
 ## Usage Examples
 
-### Programmatic Queue Management
+### Interactive Queue Processing
 
-```typescript
-import { Agent } from '@tokenring-ai/agent';
-import { WorkQueueService } from '@tokenring-ai/queue';
+```bash
+# Build queue interactively
+/queue add "Analyze user behavior patterns"
+/queue add "Generate monthly metrics"
+/queue add "Update dashboard data"
 
-// Create agent and queue service
-const agent = new Agent(/* config */);
-const queueService = new WorkQueueService({ maxSize: 10 });
-await queueService.attach(agent);
-
-// Add task to queue with current state
-const item = {
-  checkpoint: agent.generateCheckpoint(),
-  name: 'Analyze data',
-  input: 'Analyze the sales data and report trends.'
-};
-
-const added = queueService.enqueue(item, agent);
-console.log(`Added: ${added}, Queue size: ${queueService.size(agent)}`);
-
-// Process queue
-if (queueService.started(agent)) {
-  const nextItem = queueService.dequeue(agent);
-  if (nextItem) {
-    agent.restoreState(nextItem.checkpoint.state);
-    // Execute task logic here
-  }
-}
-```
-
-### Using Chat Commands
-
-```
-/queue add 'Generate monthly report'
-/queue add 'Fix authentication bug'
+# View queue contents
 /queue list
-[0] Generate monthly report
-[1] Fix authentication bug
+# Output:
+// Queue contents:
+// [0] Analyze user behavior patterns
+// [1] Generate monthly metrics
+// [2] Update dashboard data
 
-/queue start  // Preserves current chat state
-Queue started. Use /queue next to start working on the first item.
+# Start processing
+/queue start
+# Output:
+// Queue started, use /queue next to start working on the first item in the queue, or /queue done to end the queue.
 
-/queue next   // Loads first item into context
-Queue Item loaded: Generate monthly report
-Use /queue run to execute the queue item, and /queue next|skip|done to move on.
+# Process items one by one
+/queue next
+# Output:
+// Queue Item loaded: Analyze user behavior patterns. Use /queue run to run the queue item...
 
-/queue run    // Executes the loaded item
-// Task runs with preserved state
+/queue run    # Execute task 1
+/queue next
+/queue run    # Execute task 2
 
-/queue next   // Moves to second item
-Queue Item loaded: Fix authentication bug
-
-/queue done   // Ends queue processing
-Restored chat state to preserved state.
-```
-
-### Enqueuing via Tool
-
-```typescript
-import { tools } from '@tokenring-ai/queue';
-
-// Add task using the tool API
-const result = await tools.addTaskToQueue.execute(
-  {
-    description: 'Optimize query performance',
-    content: 'Review database queries, identify bottlenecks, and suggest indexes.'
-  },
-  agent
-);
-
-console.log(result.status);    // 'queued'
-console.log(result.message);  // 'Task has been queued for later execution.'
+# Complete processing
+/queue done   # Restore original state
+# Output:
+// Restored chat state to preserved state.
 ```
 
 ### Advanced Workflow Example
 
-```typescript
-// Build queue of research tasks
-/queue add 'Research AI trends 2024'
-/queue add 'Analyze market competition'
-/queue add 'Write technical documentation'
-
-/queue start  // Begin processing
-/queue next   // Load first item
-/queue run    // Execute research
-/queue next   // Load second item
-/queue skip   // Skip and re-add to end
-/queue next   // Load third item
-/queue run    // Execute documentation
-/queue done   // End and restore state
+```bash
+/queue add "Research AI trends 2024"
+/queue add "Analyze market competition"
+/queue add "Write technical documentation"
+/queue start
+/queue next
+/queue run
+/queue skip    # Skip current item and add to end of queue
+/queue next
+/queue run
+/queue done
 ```
 
-## Configuration Options
+### Programmatic Task Addition
 
-### Service Configuration
-- `maxSize` (number, optional): Maximum queue length (0 = unlimited)
-- No environment variables required
+```typescript
+import Agent from "@tokenring-ai/agent/Agent";
+import { WorkQueueService } from "@tokenring-ai/queue";
 
-### Command Options
-- None - all configuration handled via service
+const agent = new Agent(app, { config: agentConfig, headless: false });
+const queueService = new WorkQueueService({ maxSize: 10 });
 
-### Tool Options
-- None - input validation handled via Zod schema
+// Initialize queue on agent
+await queueService.attach(agent);
 
-## Dependencies
+// Add item to queue
+const item: QueueItem = {
+  checkpoint: agent.generateCheckpoint(),
+  name: "Generate report",
+  input: "Create a comprehensive sales report for Q4."
+};
 
-- `@tokenring-ai/agent`: Core agent framework and state management
-- `@tokenring-ai/app`: Application framework for plugin integration
-- `@tokenring-ai/chat`: Chat service for tool registration
-- `@tokenring-ai/checkpoint`: Checkpoint operations for state preservation
-- `@tokenring-ai/ai-client`: AI client integration
-- `zod@^3.22.4`: Schema validation for tool inputs
-- `typescript@^5.9.2`: Type definitions and development
-- `vitest@^1.6.0`: Testing framework
+const added = queueService.enqueue(item, agent);
+// Returns: true if added successfully, false if queue is full
+
+// Process queue
+queueService.startWork(agent);
+const nextItem = queueService.dequeue(agent);
+```
+
+### Removing and Inspecting Queue Items
+
+```bash
+# Add items to queue
+/queue add "Task 1: Generate report"
+/queue add "Task 2: Update metrics"
+/queue add "Task 3: Send notifications"
+
+# View queue contents
+/queue list
+# Output:
+// Queue contents:
+// [0] Task 1: Generate report
+// [1] Task 2: Update metrics
+// [2] Task 3: Send notifications
+
+# Check details of a specific item
+/queue details 1
+# Output:
+// Queue item details:
+// {
+//   "checkpoint": {...},
+//   "name": "Task 2: Update metrics",
+//   "input": "Task 2: Update metrics"
+// }
+
+# Remove an item from the queue
+/queue remove 1
+# Output:
+// Removed "Task 2: Update metrics" from queue. Remaining: 2
+```
+
+## Services and APIs
+
+### WorkQueueService
+
+The central service for queue operations with comprehensive state management.
+
+**Constructor Options:**
+```typescript
+new WorkQueueService(options: { maxSize?: number })
+```
+- `maxSize?: number` - Optional maximum queue size (default: unlimited)
+
+**Methods:**
+
+| Method | Description | Parameters | Returns |
+|--------|-------------|------------|---------|
+| `attach(agent)` | Initialize queue state on agent | `agent: Agent` | `Promise<void>` |
+| `startWork(agent)` | Start queue processing | `agent: Agent` | `void` |
+| `stopWork(agent)` | Stop processing and clear current item | `agent: Agent` | `void` |
+| `started(agent)` | Check if queue is active | `agent: Agent` | `boolean` |
+| `setInitialCheckpoint(checkpoint, agent)` | Set starting state checkpoint | `checkpoint: AgentCheckpointData`, `agent: Agent` | `void` |
+| `getInitialCheckpoint(agent)` | Get initial checkpoint | `agent: Agent` | `AgentCheckpointData \| null` |
+| `clearInitialCheckpoint(agent)` | Clear initial checkpoint | `agent: Agent` | `void` |
+| `enqueue(item, agent)` | Add item to queue | `item: QueueItem`, `agent: Agent` | `boolean` |
+| `dequeue(agent)` | Remove and return front item | `agent: Agent` | `QueueItem \| undefined` |
+| `get(idx, agent)` | Get item at index | `idx: number`, `agent: Agent` | `QueueItem` |
+| `splice(start, deleteCount, agent, ...items)` | Modify queue like Array.splice | `start: number`, `deleteCount: number`, `agent: Agent`, `...items: QueueItem[]` | `QueueItem[]` |
+| `size(agent)` | Get current queue length | `agent: Agent` | `number` |
+| `isEmpty(agent)` | Check if queue is empty | `agent: Agent` | `boolean` |
+| `clear(agent)` | Empty the queue | `agent: Agent` | `void` |
+| `getAll(agent)` | Get copy of all items | `agent: Agent` | `QueueItem[]` |
+| `getCurrentItem(agent)` | Get currently processing item | `agent: Agent` | `QueueItem \| null` |
+| `setCurrentItem(item, agent)` | Set current processing item | `item: QueueItem \| null`, `agent: Agent` | `void` |
+
+### WorkQueueState
+
+State management for queue operations.
+
+**Properties:**
+
+| Property | Type | Description |
+|----------|------|-------------|
+| `queue` | `QueueItem[]` | Array of queue items |
+| `started` | `boolean` | Whether queue processing is active |
+| `initialCheckpoint` | `AgentCheckpointData \| null` | Preserved starting state |
+| `currentItem` | `QueueItem \| null` | Currently processing item |
+
+**Methods:**
+
+| Method | Description | Parameters | Returns |
+|--------|-------------|------------|---------|
+| `reset(what)` | Reset specific state components | `what: ResetWhat[]` | `void` |
+| `serialize()` | Convert state to serializable format | None | `object` |
+| `deserialize(data)` | Restore state from data | `data: any` | `void` |
+| `show()` | Get human-readable state summary | None | `string[]` |
+
+### QueueItem Interface
+
+```typescript
+interface QueueItem {
+  checkpoint: AgentCheckpointData;
+  name: string;
+  input: string;
+}
+```
+
+## Integration
+
+### TokenRing Plugin Integration
+
+The package automatically integrates with TokenRing applications:
+
+```typescript
+import { TokenRingApp } from "@tokenring-ai/app";
+import queuePlugin from "@tokenring-ai/queue/plugin";
+
+const app = new TokenRingApp();
+app.install(queuePlugin);
+```
+
+### Agent Integration
+
+```typescript
+import Agent from "@tokenring-ai/agent";
+import { WorkQueueService } from "@tokenring-ai/queue";
+
+// Automatic state slice attachment
+await queueService.attach(agent);
+
+// Access queue service through agent
+const queueService = agent.requireServiceByType(WorkQueueService);
+
+// Queue operations available through agent
+const queueSize = queueService.size(agent);
+```
+
+### Checkpoint Integration
+
+```typescript
+// Items store checkpoints for state preservation
+const item: QueueItem = {
+  checkpoint: agent.generateCheckpoint(),  // Saves current state
+  name: "Task name",
+  input: "Task instructions"
+};
+
+// State restoration during processing
+agent.restoreState(item.checkpoint.state);
+```
+
+### Chat Service Integration
+
+```typescript
+// Chat commands automatically registered
+const chatService = agent.requireServiceByType(ChatService);
+
+// Tools automatically available
+const tools = chatService.getTools();
+
+// Commands work through chat interface
+await agent.handleInput({ message: "/queue list" });
+```
+
+## Monitoring and Debugging
+
+- Monitor queue status using `/queue list` and `/queue details`
+- Error messages provide clear guidance for invalid commands
+- Checkpoint system ensures state consistency during processing
+- Queue size can be limited to prevent memory issues
 
 ## Development
 
-### Installation
+### Testing
+
 ```bash
-bun add @tokenring-ai/queue
+bun run test
+bun run test:coverage
 ```
 
-### Building
+### Build
+
 ```bash
 bun run build
 ```
 
-### Testing
-```bash
-bun run test
-bun run test:watch
-bun run test:coverage
-```
+### Package Structure
 
-### License
-MIT License - see LICENSE file for details
+```
+pkg/queue/
+├── WorkQueueService.ts              # Core queue management service
+├── index.ts                          # Package exports and plugin integration
+├── plugin.ts                         # TokenRing plugin implementation
+├── package.json                      # Package configuration
+├── commands/                         # Chat commands
+│   └── queue.ts                      # /queue command implementation
+├── tools/                            # Built-in tools
+│   └── addTaskToQueue.ts             # Task addition tool
+├── state/                            # State management
+│   └── workQueueState.ts             # WorkQueueState implementation
+├── chatCommands.ts                   # Command exports
+├── tools.ts                          # Tool exports
+├── test/                             # Test suite
+│   └── WorkQueueService.test.js      # Unit tests
+└── vitest.config.ts                  # Test configuration
+```
 
 ## Troubleshooting
 
-### Common Issues
+| Issue | Solution |
+|-------|----------|
+| Queue not starting | Ensure `/queue start` is called before processing |
+| Index errors | Verify zero-based indexing when removing items |
+| Empty queue | Use `/queue list` to check current contents |
+| State issues | Verify checkpoint restoration using `/queue done` |
+| Queue overflow | Use `maxSize` option to limit queue size |
+| Invalid operations | Check that required parameters are provided |
 
-1. **Queue not starting**: Ensure you call `/queue start` before using `/queue next` or `/queue run`
-2. **State not preserved**: The service automatically captures checkpoints when adding items
-3. **Queue full**: Check `maxSize` configuration if set
-4. **Item not found**: Queue indices start at 0 and must be valid
+## License
 
-### Debugging Tips
-
-- Use `/queue list` to verify queue contents
-- Use `/queue details <index>` to inspect item state
-- Check agent console for checkpoint restoration messages
-- Verify queue service is properly attached to the agent
-
-## Integration
-
-### Plugin Integration
-The queue plugin integrates with the Token Ring application framework via:
-- `app.waitForService(ChatService)` for tool registration
-- `app.waitForService(AgentCommandService)` for chat commands
-- `app.addServices(new WorkQueueService())` for service registration
-
-### Service Dependencies
-The queue service depends on:
-- ChatService: For tool registration and execution
-- AgentCommandService: For chat command registration
-- Checkpoint system: For state preservation
-
-This comprehensive queue management system enables efficient batch processing of AI tasks while maintaining the integrity of agent state throughout the workflow.
+MIT License - see [LICENSE](https://github.com/tokenring-ai/tokenring/blob/main/pkg/queue/LICENSE) for details.

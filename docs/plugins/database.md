@@ -1,8 +1,7 @@
 # Database Plugin
 
 ## Overview
-
-The `@tokenring-ai/database` package provides an abstract database layer for managing database resources within TokenRing AI agents. It enables the registration and interaction with multiple database connections through a unified `DatabaseService` that integrates with the TokenRing agent framework.
+The `@tokenring-ai/database` package (v0.2.0) provides an abstract database layer for managing database resources within TokenRing AI agents. It enables the registration and interaction with multiple database connections through a unified `DatabaseService` that integrates with the TokenRing agent framework.
 
 The package focuses on abstraction, requiring implementers to extend `DatabaseProvider` for specific database types (e.g., PostgreSQL, MySQL). It supports read-only and read-write operations, with tools for safe querying and schema exploration, making it particularly useful for AI-driven applications that need to interact with databases dynamically.
 
@@ -21,6 +20,9 @@ pkg/database/
 ├── contextHandlers.ts                # Context handler exports
 ├── contextHandlers/
 │   └── availableDatabases.ts         # Database availability context handler
+├── vitest.config.ts                  # Vitest configuration
+├── README.md                         # Package-specific documentation
+├── LICENSE                           # License file
 └── package.json                      # Package metadata and dependencies
 ```
 
@@ -32,7 +34,7 @@ The `DatabaseService` is the central manager for database providers, implementin
 
 **Key Methods:**
 - `registerDatabase(name: string, provider: DatabaseProvider)`: Registers a database provider by name
-- `getDatabaseByName(name: string): DatabaseProvider`: Retrieves a registered provider
+- `getDatabaseByName(name: string): DatabaseProvider | undefined`: Retrieves a registered provider
 - `getAvailableDatabases(): string[]`: Lists all registered database names
 
 ### DatabaseProvider
@@ -89,7 +91,6 @@ await agent.callTool('database_executeSql', {
 
 // Execute a write operation (requires human confirmation)
 await agent.callTool('database_executeSql', {
-  databaseName: 'myPostgres',
   sqlQuery: 'UPDATE users SET last_login = NOW() WHERE id = 123'
 });
 ```
@@ -141,55 +142,58 @@ Automatically provides agents with information about available databases through
 The package exports a TokenRing plugin that automatically integrates with the application:
 
 ```typescript
+import { TokenRingPlugin } from "@tokenring-ai/app";
+import packageJSON from "./package.json" with { type: "json" };
+import { DatabaseConfigSchema } from "./index.ts";
+import { ChatService } from "@tokenring-ai/chat";
+import contextHandlers from "./contextHandlers.ts";
+import DatabaseService from "./DatabaseService.ts";
+import tools from "./tools.ts";
+
+const packageConfigSchema = z.object({
+  database: DatabaseConfigSchema.optional(),
+});
+
 export default {
   name: packageJSON.name,
   version: packageJSON.version,
   description: packageJSON.description,
-  install(app: TokenRingApp) {
-    const config = app.getConfigSlice('database', DatabaseConfigSchema);
-    if (config) {
+  install(app, config) {
+    if (config.database) {
       app.waitForService(ChatService, chatService => {
         chatService.addTools(packageJSON.name, tools);
         chatService.registerContextHandlers(contextHandlers);
       });
       app.addServices(new DatabaseService());
     }
-  }
-}
+  },
+  config: packageConfigSchema
+} satisfies TokenRingPlugin<typeof packageConfigSchema>;
 ```
 
 ## Configuration
 
-### DatabaseConfig Schema
-```typescript
-interface DatabaseConfig {
-  providers?: Record<string, any>;
-}
+The Database plugin is configured via the `database.providers` field in the application's configuration. Each provider is defined with specific parameters depending on the database type.
 
-export const DatabaseConfigSchema = z.object({
-  providers: z.record(z.string(), z.any())
-}).optional();
-```
+Example configuration:
 
-### Example Configuration
-```typescript
-const app = new TokenRingApp({
-  config: {
-    database: {
-      providers: {
-        myPostgres: {
-          allowWrites: true,
-          connectionString: process.env.DB_URL
-        },
-        myReadonlyDb: {
-          allowWrites: false,
-          connectionString: process.env.READONLY_DB_URL
-        }
+```json
+{
+  "database": {
+    "providers": {
+      "myPostgres": {
+        "allowWrites": true,
+        "connectionString": "postgres://user:pass@localhost:5432/db"
+      },
+      "mySqlite": {
+        "path": "data/db.sqlite"
       }
     }
   }
-});
+}
 ```
+
+Each provider's configuration varies by implementation. For example, PostgreSQL providers use `connectionString`, while SQLite providers use `path`.
 
 ## Usage Examples
 
@@ -280,88 +284,31 @@ dbService.registerDatabase('myPostgres', postgresDb);
 // Now available to agents through the tools
 ```
 
-## Agent Integration
+## Best Practices
+- Always handle database connections in a singleton pattern to prevent multiple connections.
+- Use parameterized queries to prevent SQL injection.
+- Ensure proper error handling when executing database operations.
 
-### Context Provision
-Agents automatically receive context about available databases through the `available-databases` context handler:
-
-```
-/* These are the databases available for the database tool */:
-- myPostgres
-- myReadonlyDb
-- analytics
-```
-
-### Tool Usage in Agents
-Agents can use the database tools directly:
-
-```typescript
-// Execute a SELECT query
-await agent.callTool('database_executeSql', {
-  databaseName: 'myPostgres',
-  sqlQuery: 'SELECT * FROM users WHERE active = true'
-});
-
-// Show schema
-await agent.callTool('database_showSchema', {
-  databaseName: 'myPostgres'
-});
-```
-
-## Security Features
-
-### Write Operation Protection
-The `executeSql` tool includes automatic protection for non-SELECT queries:
-
-```typescript
-if (!sqlQuery.trim().startsWith("SELECT")) {
-  const approved = await agent.askHuman({
-    type: "askForConfirmation",
-    message: `Execute SQL write operation on database '${databaseName}'?\n\nQuery: ${sqlQuery}`,
-  });
-
-  if (!approved) {
-    throw new Error("User did not approve the SQL query that was provided.");
-  }
-}
-```
-
-### Database Validation
-Both tools validate that the specified database exists before execution:
-```typescript
-const databaseResource = databaseService.getDatabaseByName(databaseName);
-if (!databaseResource) {
-  throw new Error(`[${name}] Database ${databaseName} not found`);
-}
-```
-
-## Dependencies
-
-- `@tokenring-ai/app` (v0.2.0): Core application framework and TokenRingService interface
-- `@tokenring-ai/chat` (v0.2.0): Chat service and tool definitions
-- `@tokenring-ai/agent` (v0.2.0): Agent framework and types
-- `@tokenring-ai/utility` (v0.2.0): KeyedRegistry implementation
-- `zod`: Schema validation for configuration and tool inputs
-
-## Development
+## Testing
 
 ```bash
-# Run ESLint
-bun run eslint
-
 # Run tests
 bun run test
+
+# Run tests in watch mode
+bun run test:watch
+
+# Generate coverage report
+bun run test:coverage
+
+# Run ESLint
+bun run eslint
 ```
 
-## Error Handling
-
-The package provides comprehensive error handling:
-
-- **Missing Database**: Clear error messages when database not found
-- **Invalid Parameters**: Zod validation for all tool inputs
-- **Write Confirmation**: Human approval required for non-SELECT queries
-- **Provider Errors**: Propagates errors from underlying database implementations
+## Related Components
+- `@tokenring-ai/chat`: For chat integration and context handling.
+- `@tokenring-ai/agent`: For agent-based orchestration.
+- `@tokenring-ai/utility`: Shared utility functions.
 
 ## License
-
-MIT
+MIT License. See the [LICENSE](../LICENSE) file for details.

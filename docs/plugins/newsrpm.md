@@ -1,13 +1,9 @@
 # NewsRPM Plugin
 
-Integration with NewsRPM API for storing, indexing, and retrieving news articles and metadata.
-
 ## Overview
-
 The `@tokenring-ai/newsrpm` package provides comprehensive integration with NewsRPM, a powerful Cloud News Platform for ingesting, processing, storing, indexing, and distributing news articles and textual content. This package wraps common API calls and exposes them as services, tools, and chat commands for seamless integration with TokenRing agents and interactive use in the REPL.
 
 ## Key Features
-
 - **Comprehensive Search**: Search indexed data by taxonomy keys (ticker, topic, region) and articles by publisher, provider, type, full-text, and more
 - **Article Retrieval**: Retrieve articles by slug or numeric ID with full metadata
 - **Content Management**: Fetch article bodies in native format or rendered HTML
@@ -331,16 +327,6 @@ const config = {
 ### Environment Variables
 - `NEWSRPM_API_KEY`: Set this environment variable to your NewsRPM API key
 - `NEWSRPM_BASE_URL`: Optional, defaults to 'https://api.newsrpm.com'
-
-## Dependencies
-
-- `@tokenring-ai/app`: For plugin architecture and service management
-- `@tokenring-ai/agent`: For agent integration
-- `@tokenring-ai/chat`: For tool registration and chat command handling
-- `@tokenring-ai/scripting`: For global scripting function registration (optional)
-- `@tokenring-ai/utility`: For HTTP service utilities
-- `@tokenring-ai/filesystem`: For file system operations
-- `zod`: For configuration validation
 
 ## Authentication
 

@@ -104,7 +104,9 @@ The plugin registers a `/memory` command for interactive memory management:
 
 ```typescript
 const name = "memory_add";
+
 const description = "Add an item to the memory list. The item will be presented in future chats to help keep important information in the back of your mind.";
+
 const inputSchema = z.object({
   memory: z.string().describe("The fact, idea, or info to remember."),
 });
@@ -222,19 +224,6 @@ npm test:watch
 
 # Generate coverage report
 npm test:coverage
-```
-
-### Dependencies
-
-```json
-{
-  "@tokenring-ai/app": "0.2.0",
-  "@tokenring-ai/chat": "0.2.0", 
-  "@tokenring-ai/agent": "0.2.0",
-  "@tokenring-ai/utility": "0.2.0",
-  "@tokenring-ai/scripting": "0.2.0",
-  "zod": "latest"
-}
 ```
 
 ### Package Structure

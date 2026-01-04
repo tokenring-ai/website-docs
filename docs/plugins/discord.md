@@ -1,43 +1,44 @@
 # Discord Plugin
 
-A Token Ring plugin providing Discord integration for AI-powered bot interactions. This plugin enables Discord users to interact with TokenRing agents through natural language conversations in Discord channels and direct messages.
-
 ## Overview
 
-The Discord plugin creates a Discord bot that listens for messages, creates persistent agent instances for each user, and routes conversations through the TokenRing agent system. Each user gets their own dedicated agent with conversation history and context preservation.
+The Discord Plugin integrates Discord with TokenRing agents, enabling natural conversations through Discord's messaging system. Each Discord user gets their own persistent agent instance that maintains conversation history and context. The plugin listens for messages, creates dedicated agents for authorized users, and routes AI responses back to Discord channels.
 
-## Key Features
+### Key Features
 
 - **Per-User Agents**: Each Discord user gets a dedicated agent with persistent chat history
-- **@Mentions Support**: Respond to mentions in channels with intelligent AI responses
+- **@Mentions**: Respond to mentions in channels with intelligent AI responses
 - **Direct Messages**: Private conversations with the bot in your DMs
-- **Authorization**: Optional user whitelist for restricted access control
+- **Authorization**: Optional user whitelist for restricted access
 - **Event-Driven Communication**: Handles agent events and sends responses back to Discord
 - **Automatic Agent Management**: Creates and manages agents for each user automatically
+- **Plugin Architecture**: Automatically integrates with TokenRing applications
 - **State Preservation**: Maintains agent state and conversation history across sessions
 - **Timeout Handling**: Configurable response timeouts with automatic agent cleanup
 - **Message Formatting**: System messages with proper formatting (info, warning, error levels)
 - **Multiple Output Types**: Supports chat messages, info messages, warnings, and error messages
 - **Message Chunking**: Automatically splits long messages to respect Discord's 2000 character limit
-- **Plugin Architecture**: Seamlessly integrates with TokenRing's plugin system
-- **Environment Variable Support**: Configuration via environment variables
+
+### Integration with TokenRing Ecosystem
+
+This plugin seamlessly integrates with TokenRing's agent system, allowing Discord users to interact with AI agents through Discord's messaging platform. The plugin creates a separate agent for each Discord user, maintaining individual conversation contexts.
 
 ## Core Components
 
 ### DiscordService
 
-The main service class that handles all Discord integration and agent communication.
+The primary service class responsible for managing Discord bot interactions.
 
-**Properties:**
-- `botToken`: Discord bot authentication token (required)
-- `channelId`: Optional channel for startup announcements
-- `authorizedUserIds`: Optional list of authorized user IDs for access control
-- `defaultAgentType`: Default agent type to use for new users (defaults to "teamLeader")
+- **Responsibilities**: Handles incoming messages, manages per-user agents, processes events, and sends responses to Discord channels.
+- **Configuration Schema**: Validates and processes the Discord service configuration options.
+- **Event Handling**: Processes AgentEventState events including output.chat, output.info, output.warning, output.error, and input.handled.
 
-### Configuration Schema
+### DiscordServiceConfigSchema
+
+Configuration schema for the Discord service, defined using Zod:
 
 ```typescript
-export const DiscordServiceConfigSchema = z.object({
+const DiscordServiceConfigSchema = z.object({
   botToken: z.string().min(1, "Bot token is required"),
   channelId: z.string().optional(),
   authorizedUserIds: z.array(z.string()).optional(),
@@ -45,127 +46,119 @@ export const DiscordServiceConfigSchema = z.object({
 });
 ```
 
-## API Reference
+### DiscordServiceConfig
 
-### DiscordService Class
-
-```typescript
-export default class DiscordService implements TokenRingService {
-  constructor(
-    app: TokenRingApp,
-    config: DiscordServiceConfig
-  )
-  
-  async run(signal: AbortSignal): Promise<void>
-  private async getOrCreateAgentForUser(userId: string): Promise<Agent>
-  private async handleChatOutput(message: Message, content: string): Promise<void>
-  private async handleSystemOutput(message: Message, messageText: string, level: string): Promise<void>
-  private chunkText(text: string, maxLength: number): string[]
-}
-```
-
-### DiscordServiceConfig Interface
+Type definition for the configuration:
 
 ```typescript
-interface DiscordServiceConfig {
-  botToken: string;           // Required: Discord bot token
-  channelId?: string;         // Optional: Channel for startup announcements
-  authorizedUserIds?: string[]; // Optional: List of authorized user IDs
-  defaultAgentType?: string;  // Optional: Default agent type (defaults to "teamLeader")
-}
-```
-
-## Integration Patterns
-
-### Plugin Installation
-
-The Discord plugin follows TokenRing's plugin architecture and can be installed automatically through the application configuration:
-
-```typescript
-import TokenRingApp from "@tokenring-ai/app";
-
-const app = new TokenRingApp({
-  plugins: [
-    "@tokenring-ai/discord" // Auto-installs if discord config exists
-  ]
-});
-
-// Configure in your app config
-app.config({
-  discord: {
-    botToken: process.env.DISCORD_BOT_TOKEN!,
-    channelId: process.env.DISCORD_CHANNEL_ID,
-    authorizedUserIds: ['123456789012345678'],
-    defaultAgentType: 'teamLeader'
-  }
-});
-```
-
-### Manual Service Creation
-
-For advanced use cases, you can create the service manually:
-
-```typescript
-import TokenRingApp from "@tokenring-ai/app";
-import { DiscordService } from "@tokenring-ai/discord";
-
-const app = new TokenRingApp({ /* app configuration */ });
-const discordService = new DiscordService(app, {
-  botToken: process.env.DISCORD_BOT_TOKEN!,
-  channelId: process.env.DISCORD_CHANNEL_ID,
-  authorizedUserIds: ['123456789012345678'],
-  defaultAgentType: 'teamLeader'
-});
-
-app.addServices(discordService);
-await discordService.run();
-```
-
-## Configuration Options
-
-### Environment Variables
-
-```bash
-# Required
-DISCORD_BOT_TOKEN=your-bot-token-here
-
-# Optional
-DISCORD_CHANNEL_ID=123456789012345678        # For startup announcements
-DISCORD_AUTHORIZED_USERS=123456789012345678,987654321098765432  # Comma-separated list
-DISCORD_DEFAULT_AGENT_TYPE=teamLeader        # Override default agent type
-```
-
-### Configuration Object
-
-```typescript
-const discordConfig = {
-  botToken: "your-bot-token",
-  channelId: "123456789012345678", // Optional
-  authorizedUserIds: ["123456789012345678", "987654321098765432"], // Optional
-  defaultAgentType: "teamLeader" // Optional, defaults to "teamLeader"
+type DiscordServiceConfig = {
+  botToken: string;
+  channelId?: string;
+  authorizedUserIds?: string[];
+  defaultAgentType?: string;
 };
 ```
 
-## Usage Examples
+## Services and APIs
 
-### Basic Interaction
+### DiscordService Class
 
-Discord users can interact with the bot in two ways:
+The main service class that implements TokenRingService interface.
 
-1. **@Mention in channel**: `@BotName what is the weather today?`
-2. **Direct message**: Send a message directly to the bot in DMs
-
-### Advanced Configuration
+#### Constructor
 
 ```typescript
-// Environment variables
-DISCORD_BOT_TOKEN=your-bot-token-here
-DISCORD_CHANNEL_ID=123456789012345678        // Optional for startup announcements
-DISCORD_AUTHORIZED_USERS=123456789012345678,987654321098765432  // Optional comma-separated list
-DISCORD_DEFAULT_AGENT_TYPE=teamLeader        // Optional: defaults to "teamLeader"
+constructor(app: TokenRingApp, config: DiscordServiceConfig)
 ```
 
-### Custom Agent Type
+**Parameters:**
+
+- `app`: TokenRingApp instance
+- `config`: DiscordServiceConfig object containing:
+  - `botToken`: Discord bot token (required)
+  - `channelId`: Optional channel ID for startup announcement
+  - `authorizedUserIds`: Optional list of authorized user IDs
+  - `defaultAgentType`: Optional default agent type (defaults to "teamLeader")
+
+#### Methods
+
+| Method | Signature | Description |
+|--------|-----------|-------------|
+| `run` | `run(signal: AbortSignal): Promise<void>` | Starts the Discord bot and begins listening for messages. The service will automatically handle cleanup when the signal is aborted. |
+| `handleChatOutput` | `handleChatOutput(message: Message, content: string): Promise<void>` | Formats and sends chat messages to Discord, splitting long messages into chunks to respect Discord's character limits. |
+| `handleSystemOutput` | `handleSystemOutput(message: Message, messageText: string, level: string): Promise<void>` | Formats system messages (info, warning, error) with appropriate labels. |
+| `chunkText` | `chunkText(text: string, maxLength: number): string[]` | Splits text into chunks of specified maximum length. |
+| `getOrCreateAgentForUser` | `getOrCreateAgentForUser(userId: string): Promise<Agent>` | Gets or creates an agent for the specified user. |
+
+#### Properties
+
+| Property | Type | Description |
+|----------|------|-------------|
+| `name` | `string` | Service name, always "DiscordService" |
+| `description` | `string` | Service description |
+| `running` | `boolean` | Indicates if the service is currently running |
+
+### Plugin Interface
+
+The plugin provides a TokenRingPlugin that:
+
+```typescript
+export default {
+  name: packageJSON.name,
+  version: packageJSON.version,
+  description: packageJSON.description,
+  install(app, config) {
+    if (config.discord) {
+      app.addServices(new DiscordService(app, config.discord));
+    }
+  },
+  config: packageConfigSchema
+} satisfies TokenRingPlugin<typeof packageConfigSchema>;
+```
+
+## Commands and Tools
+
+### Chat Commands
+
+The Discord plugin supports interaction via Discord messages:
+
+- **Mentions in Channels**: When mentioned in a channel (e.g., `@BotName what is the weather today?`), the bot processes the message and responds with agent-generated content.
+- **Direct Messages**: Users can send private messages to the bot for conversations without channel context.
+
+#### Message Processing Flow
+
+1. Bot receives a message (via mention or DM)
+2. Message is cleaned by removing the bot mention
+3. Agent waits for idle state before processing
+4. Message is sent to the agent via `handleInput`
+5. Agent events are subscribed to for output handling
+6. Responses are sent back to Discord
+
+#### Output Formats
+
+- **Chat Messages**: Normal messages sent as Discord replies.
+- **System Messages**: Formatted as `[LEVEL]: message` where LEVEL is INFO, WARNING, or ERROR.
+- **Timeout Messages**: Sent when agent exceeds maxRunTime configuration.
+
+### Event Types
+
+The service handles the following AgentEventState events:
+
+| Event Type | Format | Description |
+|------------|--------|-------------|
+| `output.chat` | Direct response | Regular chat messages from the agent |
+| `output.info` | `[INFO]: message` | Informational messages |
+| `output.warning` | `[WARNING]: message` | Warning messages |
+| `output.error` | `[ERROR]: message` | Error messages |
+| `input.handled` | N/A | Indicates agent processing completion |
+
+## Configuration
+
+### Plugin Configuration
+
+The Discord service can be configured via the TokenRing app configuration or manually.
+
+#### Plugin Usage (Recommended)
 
 ```typescript
 import TokenRingApp from "@tokenring-ai/app";
@@ -177,99 +170,248 @@ const app = new TokenRingApp({
 app.config({
   discord: {
     botToken: process.env.DISCORD_BOT_TOKEN!,
-    defaultAgentType: "customAgentType" // Use a custom agent type
+    channelId: process.env.DISCORD_CHANNEL_ID,
+    authorizedUserIds: ['123456789012345678'],
+    defaultAgentType: 'teamLeader'
   }
 });
 ```
 
-## Event System Integration
+#### Manual Usage
 
-The Discord service handles multiple event types from the agent system:
+```typescript
+import TokenRingApp from "@tokenring-ai/app";
+import { DiscordService } from "@tokenring-ai/discord";
 
-### Event Types Handled
+const app = new TokenRingApp();
+const discordService = new DiscordService(app, {
+  botToken: process.env.DISCORD_BOT_TOKEN!,
+  channelId: process.env.DISCORD_CHANNEL_ID,
+  authorizedUserIds: ['123456789012345678'],
+  defaultAgentType: 'teamLeader'
+});
 
-- `output.chat`: Regular chat messages from the agent
-- `output.info`: Informational messages
-- `output.warning`: Warning messages  
-- `output.error`: Error messages
-- `input.handled`: Indicates that the agent has finished processing the input
+app.addServices(discordService);
+await app.start();
+```
 
-### Message Formatting
+#### Configuration Options
 
-The service formats messages differently based on type:
+| Option | Type | Required | Default | Description |
+|--------|------|----------|---------|-------------|
+| `botToken` | `string` | Yes | - | Discord bot token from Discord Developer Portal |
+| `channelId` | `string` | No | - | Optional channel ID for startup announcement message |
+| `authorizedUserIds` | `string[]` | No | `[]` | List of user IDs authorized to interact with the bot |
+| `defaultAgentType` | `string` | No | `"teamLeader"` | Default agent type to spawn for users |
 
-- **Chat messages**: Sent as normal Discord messages
-- **System messages**: Formatted as `[TYPE]: message` where TYPE is INFO, WARNING, or ERROR
+#### Environment Variables
 
-## Dependencies
+- `DISCORD_BOT_TOKEN` (required): Discord bot token.
+- `DISCORD_CHANNEL_ID` (optional): Channel ID for startup announcements.
+- `DISCORD_AUTHORIZED_USERS` (optional): Comma-separated list of authorized user IDs.
+- `DISCORD_DEFAULT_AGENT_TYPE` (optional): Default agent type (default: `teamLeader`).
 
-- `discord.js` ^14.25.1 - Discord API library
-- `@tokenring-ai/app` ^0.2.0 - TokenRing application framework
-- `@tokenring-ai/agent` ^0.2.0 - TokenRing agent system
-- `@tokenring-ai/chat` ^0.2.0 - TokenRing chat functionality
-- `zod` ^4.1.13 - Schema validation
+## Usage Examples
 
-## Prerequisites
+### Basic Interaction
 
-### Discord Developer Portal Setup
+- **Mention in channel**: `@BotName what is the weather today?`
+- **Direct message**: Send a message directly to the bot.
 
-1. **Create Discord Application**: [https://discord.com/developers/applications](https://discord.com/developers/applications)
-2. **Create Bot**:
-   - Go to "Bot" section
-   - Click "Add Bot"
-   - Enable "Message Content Intent" under Privileged Gateway Intents
-   - Copy the bot token
-3. **Set Bot Permissions**:
-   - Go to "OAuth2" > "URL Generator"
-   - Select scopes: `bot`
-   - Select permissions: `Send Messages`, `Read Messages/View Channels`, `Read Message History`
-   - Use generated URL to invite bot to your server
-4. **Get Channel ID** (optional):
-   - Enable Developer Mode in Discord (User Settings > Advanced)
-   - Right-click channel and select "Copy ID"
-5. **Get User IDs** (optional):
-   - Right-click user and select "Copy ID"
+### Environment Variables Setup
 
-## Best Practices
+```bash
+DISCORD_BOT_TOKEN=your-bot-token-here
+DISCORD_CHANNEL_ID=123456789012345678
+DISCORD_AUTHORIZED_USERS=123456789012345678,987654321098765432
+DISCORD_DEFAULT_AGENT_TYPE=teamLeader
+```
 
-### Security Considerations
+### Complete App Configuration
 
-- **Token Protection**: Keep your Discord bot token secure and never commit it to version control
-- **Authorization**: Use `authorizedUserIds` to restrict access if needed
-- **Intents**: Ensure Message Content Intent is enabled for reading message content
-- **Permissions**: Grant only necessary permissions to the bot
+```typescript
+import TokenRingApp from "@tokenring-ai/app";
 
-### Performance Considerations
+const app = new TokenRingApp({
+  name: "My Discord Bot",
+  plugins: [
+    "@tokenring-ai/discord",
+    // other plugins...
+  ]
+});
 
-- **Message Chunking**: The service automatically chunks long messages to respect Discord's 2000 character limit
-- **Timeout Handling**: Agents have configurable timeouts that trigger automatic cleanup
-- **Resource Management**: Agents are automatically cleaned up when the service stops
+app.config({
+  discord: {
+    botToken: process.env.DISCORD_BOT_TOKEN!,
+    channelId: process.env.DISCORD_CHANNEL_ID,
+    authorizedUserIds: ['123456789012345678'],
+    defaultAgentType: 'teamLeader'
+  }
+});
 
-### Error Handling
+await app.start();
+```
 
-The service handles various error scenarios:
+## Integration
 
-- **Unauthorized Access**: Users not in `authorizedUserIds` receive an "not authorized" message
-- **Bot Offline**: Check that the bot token is valid and the bot is invited to your server
-- **Agent Timeouts**: Verify the `maxRunTime` setting in your agent configuration
-- **Message Formatting**: System messages are properly formatted with type indicators
+### Agent System Integration
 
-## Troubleshooting
+Each Discord user is assigned a dedicated agent instance that maintains conversation history. The plugin integrates with the TokenRing agent manager to create and manage these agents.
+
+#### Agent Lifecycle
+
+1. **Agent Creation**: When a user messages the bot for the first time, a new agent is created via `AgentManager.spawnAgent()`
+2. **Message Processing**: Messages are sent to the agent via `agent.handleInput()`
+3. **Event Subscription**: The plugin subscribes to agent events to process responses
+4. **Cleanup**: When the service stops, all user agents are deleted via `AgentManager.deleteAgent()`
+
+### Event Handling
+
+The Discord service processes agent events including:
+
+- `output.chat`: Sent as regular Discord messages
+- `output.info`, `output.warning`, `output.error`: Formatted as system messages with appropriate labels
+- `input.handled`: Indicates agent processing completion and triggers timeout check
+
+### Service Registration
+
+The plugin registers itself with the TokenRing app via the plugin architecture, automatically adding the DiscordService to the application when configured.
+
+#### Gateway Intents
+
+The Discord client uses the following Gateway Intents:
+
+- `GatewayIntentBits.Guilds`: Server/guild operations
+- `GatewayIntentBits.GuildMessages`: Guild message events
+- `GatewayIntentBits.MessageContent`: Message content access
+- `GatewayIntentBits.DirectMessages`: Direct message events
+
+## Monitoring and Debugging
 
 ### Common Issues
 
-1. **Bot not responding**: Ensure Message Content Intent is enabled in Discord Developer Portal
-2. **"Not authorized" message**: Add your user ID to `authorizedUserIds` or remove the restriction
-3. **Bot offline**: Check that the bot token is valid and the bot is invited to your server
-4. **Agent timeouts**: Verify the `maxRunTime` setting in your agent configuration
-5. **Long messages not sent**: The service automatically chunks messages to respect Discord's character limit
+| Issue | Solution |
+|-------|----------|
+| Bot not responding | Ensure Message Content Intent is enabled in Discord Developer Portal |
+| Authorization errors | Add your user ID to the authorized list or remove restrictions |
+| Bot offline | Verify bot token validity and invite status |
+| Agent timeouts | Adjust `maxRunTime` in agent configuration |
+| Long messages | Automatically chunked, but may require manual splitting for very large responses |
+
+### Debug Tips
+
+1. **Verify Bot Token**: Ensure the token is valid and has correct permissions
+2. **Check Message Content Intent**: Must be enabled in Discord Developer Portal
+3. **Verify Server Invitation**: Bot must be invited to the server with correct permissions
+4. **Monitor Agent State**: Check if agents are being created correctly
+5. **Check Event Subscriptions**: Verify events are being processed correctly
+
+### Logging
+
+The service outputs logs via the agent's info/warning/error methods:
+
+- `agent.infoLine()`: General information about agent actions
+- `agent.warningLine()`: Warnings about agent configuration
+- `agent.errorLine()`: Errors during agent processing
+
+## Development
+
+### Testing
+
+To run tests for the Discord plugin:
+
+```bash
+bun install
+bun test
+```
+
+### Test Configuration
+
+The plugin uses Vitest with the following configuration:
+
+```typescript
+import {defineConfig} from "vitest/config";
+
+export default defineConfig({
+  test: {
+    include: ["**/*.test.ts"],
+    environment: "node",
+    globals: true,
+    isolate: true,
+  },
+});
+```
+
+### Test Coverage
+
+Tests include:
+- Configuration validation
+- Schema parsing
+- Edge cases handling
+- Type inference verification
+
+### Build
+
+The plugin uses TypeScript and can be built with:
+
+```bash
+bun build
+```
+
+### Package Structure
+
+```
+pkg/discord/
+├── DiscordService.ts      # Main service implementation
+├── plugin.ts              # Plugin interface
+├── schema.ts              # Configuration schema (if separate)
+├── index.ts               # Exports
+├── package.json           # Package metadata
+├── vitest.config.ts       # Test configuration
+├── LICENSE                # MIT license
+└── README.md              # Package documentation
+```
+
+### Exports
+
+```typescript
+export {default as DiscordService} from "./DiscordService.ts";
+export type { DiscordServiceConfig } from "./DiscordService.ts";
+export { DiscordServiceConfigSchema } from "./DiscordService.ts";
+```
+
+## Best Practices
+
+### Authorization
+
+- Use `authorizedUserIds` to restrict access to specific users
+- Empty array (default) allows all users to interact
+- Add user IDs as strings, not mentions
+
+### Agent Configuration
+
+- Set appropriate `maxRunTime` for your use case
+- Use `defaultAgentType` to specify which agent type to spawn
+- Consider agent capabilities when choosing agent types
+
+### Message Handling
+
+- Long messages are automatically chunked to 2000 characters
+- System messages use special formatting for easy identification
+- Consider the context window size when designing prompts
+
+### Performance
+
+- Each user gets their own agent instance
+- Agents persist until the service stops
+- Consider memory usage with many concurrent users
 
 ## Related Components
 
-- **@tokenring-ai/agent**: Core agent system that handles conversation logic
-- **@tokenring-ai/app**: Application framework that manages service lifecycle
-- **@tokenring-ai/chat**: Chat functionality and message processing
+- `@tokenring-ai/agent`: Agent system and management
+- `@tokenring-ai/chat`: Chat service for agent interactions
+- `@tokenring-ai/app`: Application framework and plugin system
 
 ## License
 
-MIT License - see [LICENSE](./LICENSE) file for details.
+MIT License - see [LICENSE](https://github.com/tokenring-ai/tokenring/blob/main/LICENSE) for details.

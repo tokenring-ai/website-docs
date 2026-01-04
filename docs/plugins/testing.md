@@ -1,188 +1,310 @@
 # Testing Plugin
 
-Testing framework with auto-repair hooks and shell command testing capabilities.
-
 ## Overview
 
-The `@tokenring-ai/testing` package provides testing functionality for the Token Ring ecosystem, enabling automated test execution with shell command testing resources and auto-repair capabilities when tests fail.
+The `@tokenring-ai/testing` plugin provides tools for executing and validating shell commands within the TokenRing ecosystem. It integrates with the agent command system to enable chat-based testing workflows and supports configuration-driven resource management.
 
 ## Key Features
 
-- **Shell Command Testing**: Execute shell commands as test cases
-- **Auto-Repair Integration**: Automatically attempt repairs when tests fail
-- **Test Resource Registry**: Register and manage multiple testing resources
-- **State Management**: Maintain test results and repair count across sessions
-- **Interactive Commands**: Chat commands for test execution and management
+- **Testing Resources**: Pluggable components for defining and running tests (shell commands, custom resources)
+- **Service Layer**: Central `TestingService` for managing and executing tests across resources
+- **Chat Commands**: Interactive `/test` command for manual control
+- **Automation Hooks**: Automatic test execution after file modifications
+- **Configuration-Based Setup**: Declarative resource configuration through plugin system
+- **State Management**: Checkpoint-based state preservation during repair workflows
 
 ## Core Components
 
+- **TestingService**: Manages testing resources and executes tests based on configuration.
+- **ShellCommandTestingResource**: Handles execution of shell commands and validation of outputs.
+- **Chat Commands**: Predefined commands for interacting with testing functionality via chat.
+- **Lifecycle Hooks**: Integrates with agent lifecycle to manage plugin setup and teardown.
+- **State Management**: `TestingState` for tracking test results and repair counts.
+
+## Services and APIs
+
 ### TestingService
 
-Central service that manages test resources and execution.
+The central service for managing and executing tests across all registered resources.
 
-**Key Methods:**
-- `registerResource(name, resource)`: Registers a testing resource
-- `runTests(testPattern, agent)`: Executes tests matching the pattern
-- `allTestsPassed(agent)`: Checks if all tests have passed
-- `getAvailableResources()`: Lists registered test resource names
+**Methods:**
 
-### TestingResource Interface
-
-Abstract interface for test resources.
-
-**Required Methods:**
-- `runTest(agent)`: Executes the test and returns results
-- `description`: Description of the testing resource
-
-### TestResult
-
-Standardized result format for test executions.
-
-**Structure:**
-```typescript
-{
-  startedAt: number;    // Timestamp when test started
-  finishedAt: number;   // Timestamp when test finished
-  passed: boolean;     // Whether test passed
-  output?: string;     // Test output or error message
-  error?: unknown;     // Error details if test failed
-}
-```
+- `registerResource(name: string, resource: TestingResource)`: Register a testing resource
+- `getAvailableResources()`: Get all registered resource names
+- `runTests(likeName: string, agent: Agent)`: Execute tests matching the given pattern
+- `allTestsPassed(agent: Agent): boolean`: Check if all tests passed
 
 ### ShellCommandTestingResource
 
-Implementation for shell command testing.
+Concrete implementation for running shell commands as tests.
 
-**Configuration Options:**
-- `name`: Unique identifier for the test
-- `command`: Shell command to execute
-- `workingDirectory`: Optional working directory
-- `timeoutSeconds`: Optional timeout for command execution
-- `description`: Optional description of the test
-
-**Methods:**
-- `runTest(agent)`: Executes the shell command and returns test results
-
-## Tools
-
-**test**: Executes registered tests
-
-- Input schema validates test selection
-- Returns test results with pass/fail status
-- Includes command output in results
-
-## Chat Commands
-
-**/test**: Interactive command for test execution
-- Subcommands: `run <test-pattern>` to execute tests
-- Displays results in chat with pass/fail status
-- Auto-repair prompt when tests fail
-
-## Global Scripting Functions
-
-When `@tokenring-ai/scripting` is available:
-
-**test(name, agent)**: Runs a specific test
-```bash
-/var $result = test("my-test")
-/echo Test result: $result.passed
-```
-
-**runTests(pattern)**: Runs tests matching a pattern
-```bash
-/var $results = runTests("*")
-/echo All tests passed: $results.allPassed
-```
-
-## Configuration Options
-
-### Testing Configuration
+**Constructor Options:**
 
 ```typescript
-{
-  resources: Record<string, TestingResourceConfig>; // Registered test resources
-  maxAutoRepairs: number; // Maximum auto-repair attempts (default: 5)
-}
-```
-
-### Shell Command Test Configuration
-
-```typescript
-{
+interface ShellCommandTestingResourceOptions {
   type: "shell";
   name: string;
-  command: string;
-  workingDirectory?: string;
-  timeoutSeconds?: number;
   description?: string;
+  workingDirectory?: string;
+  command: string;
+  timeoutSeconds?: number;
 }
+```
+
+**Properties:**
+
+- `description`: Description of the testing resource
+- `options`: The configuration options passed to the constructor
+
+### TestingResource (Interface)
+
+Base interface for implementing custom test resources.
+
+```typescript
+interface TestingResource {
+  description: string;
+  runTest: (agent: Agent) => Promise<TestResult>;
+}
+```
+
+### TestResult Interface
+
+```typescript
+interface TestResult {
+  startedAt: number;
+  finishedAt: number;
+  passed: boolean;
+  output?: string;
+  error?: unknown;
+}
+```
+
+## Commands and Tools
+
+### /test Command
+
+Run tests interactively through the chat interface.
+
+**Usage:**
+
+- `/test list` - Show available tests
+- `/test run <test_name|*>` - Run specific tests or all tests
+
+**Examples:**
+
+```
+/test list                    # Lists all available tests
+/test run build-test          # Run the 'build-test' resource
+/test run *                   # Execute every available test
+```
+
+**Output:**
+
+- `PASSED`: Test completed successfully
+- `FAILED`: Test failed with error output shown
+
+## Configuration
+
+The plugin is configured under the `testing` section in the application config.
+
+```typescript
+import { TokenRingApp } from "@tokenring-ai/app";
+
+const app = new TokenRingApp({
+  testing: {
+    resources: {
+      buildTest: {
+        type: "shell",
+        name: "build-test",
+        command: "bun run build",
+        workingDirectory: "./project",
+        timeoutSeconds: 120
+      },
+      unitTests: {
+        type: "shell",
+        name: "unit-tests",
+        command: "bun test",
+        workingDirectory: "./project"
+      }
+    },
+    maxAutoRepairs: 5
+  }
+});
+```
+
+### Configuration Schema
+
+The `testingConfigSchema` defines the structure for testing configuration:
+
+```typescript
+const testingConfigSchema = z.object({
+  resources: z.record(z.string(), z.any()).optional(),
+  maxAutoRepairs: z.number().default(5),
+});
+```
+
+The `shellCommandTestingConfigSchema` defines the structure for shell resources:
+
+```typescript
+const shellCommandTestingConfigSchema = z.object({
+  type: z.literal("shell"),
+  name: z.string(),
+  description: z.string().optional(),
+  workingDirectory: z.string().optional(),
+  command: z.string(),
+  timeoutSeconds: z.number().optional(),
+});
 ```
 
 ## Usage Examples
 
-### Registering a Shell Command Test
+### Basic Shell Command Execution
+
+Configure a shell resource in your app config:
 
 ```typescript
-import { Agent } from '@tokenring-ai/agent';
-import { TestingService } from '@tokenring-ai/testing';
-import { ShellCommandTestingResource } from './ShellCommandTestingResource';
-
-const agent = new Agent();
-const testingService = new TestingService({ maxAutoRepairs: 3 });
-agent.registerService(testingService);
-
-const testResource = new ShellCommandTestingResource({
-  name: 'build-check',
-  command: 'bun test',
-  workingDirectory: './my-project',
-  timeoutSeconds: 30
+const app = new TokenRingApp({
+  testing: {
+    resources: {
+      shellTest: {
+        type: "shell",
+        name: "shell-test",
+        command: "echo 'Hello World'"
+      }
+    }
+  }
 });
-
-testingService.registerResource('build-check', testResource);
 ```
 
-### Running Tests
+### Programmatic Usage
 
 ```typescript
-// Programmatic execution
-await testingService.runTests('*', agent);
+import TestingService from '@tokenring-ai/testing/TestingService';
+import ShellCommandTestingResource from '@tokenring-ai/testing/ShellCommandTestingResource';
 
-// Using the tool
-const result = await agent.executeTool('test', { name: 'build-check' });
+const testingService = new TestingService({
+  resources: {
+    buildTest: {
+      type: "shell",
+      name: "build-test",
+      command: "bun run build",
+      workingDirectory: "./project",
+      timeoutSeconds: 120
+    }
+  },
+  maxAutoRepairs: 5
+});
 
-if (result.passed) {
-  console.log('Test passed!');
-} else {
-  console.log('Test failed:', result.output);
+const shellResource = new ShellCommandTestingResource({
+  type: "shell",
+  name: 'build-test',
+  command: 'bun run build',
+  workingDirectory: './project',
+  timeoutSeconds: 120
+});
+
+testingService.registerResource('build-test', shellResource);
+
+// Run tests
+const agent = new Agent(/* config */);
+await testingService.runTests("build-test", agent);
+
+// Check results
+console.log(testingService.allTestsPassed(agent) ? 'All tests passed!' : 'Some tests failed');
+```
+
+### Interactive Testing Workflow
+
+```bash
+# In agent chat:
+/test list              # See available tests
+/test run *             # Run all tests
+```
+
+## Automation Hooks
+
+### autoTest Hook
+
+Automatically runs tests after chat completion when files have been modified.
+
+**Trigger:** `afterChatCompletion`
+**Condition:** Filesystem is dirty (file modifications detected)
+
+**Behavior:**
+
+1. Detects file modifications via `filesystem.dirty`
+2. Runs all enabled tests across services
+3. Reports pass/fail status for each test
+4. Logs results to agent output
+
+**Test Failure Handling:**
+
+- If tests fail, the system tracks failures
+- Offers to automatically repair when `maxAutoRepairs` limit not reached
+- Handles repair input directly to the agent
+
+## State Management
+
+The TestingService manages state through the `TestingState` class:
+
+```typescript
+class TestingState implements AgentStateSlice {
+  name: string = "TestingState";
+  testResults: Record<string, TestResult> = {};
+  repairCount: number = 0;
+  maxAutoRepairs: number;
 }
 ```
 
-### Interactive Chat Command
+**State Preservation:**
 
-```bash
-/test run build*
+- Test results are persisted across sessions
+- Repair count is tracked to prevent infinite loops
+- State can be serialized and deserialized for checkpoint recovery
+
+## Integration
+
+- Registers chat commands via `AgentCommandService`
+- Adds hooks to `AgentLifecycleService` for startup/shutdown
+- Integrates with the agent system to provide testing functionality as part of the chat interface
+- Auto-registers `TestingService` with application
+
+## Development
+
+### Build Instructions
+
+- Build TypeScript: `npm run build`
+- Run linter: `npm run eslint`
+
+### Testing
+
+- Run unit tests: `npm run test`
+- Watch mode: `npm run test:watch`
+- Generate coverage report: `npm run test:coverage`
+
+### Package Structure
+
+```
+pkg/testing/
+├── index.ts                          # Main entry point
+├── plugin.ts                         # TokenRingPlugin definition
+├── TestingService.ts                 # Core testing service implementation
+├── ShellCommandTestingResource.ts    # Shell command resource handler
+├── TestingResource.ts                # TestingResource interface
+├── chatCommands.ts                   # Agent chat commands
+├── commands/
+│   └── test.ts                       # /test command implementation
+├── hooks.ts                          # Lifecycle hooks
+├── hooks/
+│   └── autoTest.ts                   # autoTest hook implementation
+├── schema.ts                         # Zod schemas for configuration
+├── state/
+│   └── testingState.ts               # TestingState for state management
+├── package.json                      # Package configuration
+├── vitest.config.ts                  # Vitest configuration
+└── README.md                         # Package documentation
 ```
 
-## Auto-Repair Flow
+## License
 
-When tests fail, the plugin:
-1. Displays failure report with test outputs
-2. Asks for confirmation to attempt auto-repair
-3. If confirmed, processes the failure report and attempts to fix issues
-4. Tracks repair attempts and limits to `maxAutoRepairs`
-
-## Dependencies
-
-- `@tokenring-ai/agent`: Core agent framework
-- `@tokenring-ai/app`: Application framework
-- `@tokenring-ai/chat`: Chat service integration
-- `@tokenring-ai/filesystem`: Filesystem operations for shell commands
-- `@tokenring-ai/queue`: Queue management
-- `@tokenring-ai/utility`: Utility functions and registries
-
-## Notes
-
-- Test results are preserved in agent state for cross-session tracking
-- Auto-repair functionality requires human confirmation after each failure
-- Shell command tests support timeout configuration to prevent hanging processes
-- Test resources can be registered dynamically based on configuration
+MIT License

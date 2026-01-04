@@ -58,7 +58,7 @@ The main class implementing the FileSystemProvider interface with the following 
 
 #### Advanced Operations
 - `stat(filePath: string)`: Get file statistics (size, dates, etc.)
-- `glob(pattern: string, options?: { ignoreFilter?: (file: string) => boolean })`: Match files by pattern
+- `glob(pattern: string, options?: { ignoreFilter?: (file: string) => boolean })`: **Note**: The `pattern` parameter is currently ignored; only the `ignoreFilter` is applied
 - `grep(searchString: string | string[], options?: { ignoreFilter?: (file: string) => boolean, includeContent?: { linesBefore?: number, linesAfter?: number } })`: Search text across files
 - `watch(dir: string, options?: WatchOptions)`: Not implemented
 - `executeCommand(command: string | string[], options?: ExecuteCommandOptions)`: Not supported in browser
@@ -157,12 +157,14 @@ const resultsFiltered = await provider.grep("search term", {
 ### Glob Pattern Matching
 
 ```typescript
-// Get all JavaScript files
-const jsFiles = await provider.glob("*.js");
+// Note: The `pattern` parameter is ignored. Use `ignoreFilter` to filter files:
+const jsFiles = await provider.glob("*", {
+  ignoreFilter: (file) => !file.endsWith(".js")
+}); // Excludes non-JavaScript files
 
-// Get all files with ignore filter
+// Example: Exclude test files
 const filteredFiles = await provider.glob("*", {
-  ignoreFilter: (file) => file.includes(".jsx")
+  ignoreFilter: (file) => file.includes("test")
 });
 ```
 
@@ -221,23 +223,17 @@ app.services.waitForItemByType(FileSystemService, (fileSystemService) => {
 - **In-memory only**: All operations are in memory, no persistence across sessions
 - **Mock data only**: Cannot access real browser file system
 
-## Dependencies
+## Development
 
-- `@tokenring-ai/app`: Application framework
-- `@tokenring-ai/filesystem`: Abstract filesystem interface
-
-## Testing
-
-Run tests with:
-
-```bash
-bun run test
-```
-
-```bash
-bun run test:watch
-```
-
-## License
-
-MIT License
+- **Version**: 0.2.0
+- **Dependencies**:
+  - `@tokenring-ai/app`: Application framework
+  - `@tokenring-ai/filesystem`: Abstract filesystem interface
+- **Testing**:
+  ```bash
+  bun run test
+  ```
+  ```bash
+  bun run test:watch
+  ```
+- **License**: MIT License

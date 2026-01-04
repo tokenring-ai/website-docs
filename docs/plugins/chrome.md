@@ -1,180 +1,160 @@
 # Chrome Plugin
 
-Chrome browser automation and web search integration for Token Ring.
-
 ## Overview
-
-The `@tokenring-ai/chrome` package provides Chrome browser automation capabilities for the Token Ring ecosystem. It includes a page scraping tool and integrates with the Token Ring web search service through a Chrome-based search provider.
+The Chrome Plugin provides browser automation capabilities for Token Ring using Puppeteer. It integrates with the WebSearchService to provide Chrome-based web search and news search providers, and adds tools for web scraping via the chat service.
 
 ## Key Features
-
-- **Page Scrape Tool**: Extract text content from web pages using Puppeteer with intelligent selector prioritization
-- **Web Search Provider**: Google search integration with the Token Ring websearch service
-- **Smart Content Detection**: Prioritizes `article`, `main`, or `body` selectors when scraping content
-- **Configurable Timeouts**: Control scraping and script execution timeouts (5-180 seconds)
-- **Clean Text Extraction**: Automatically cleans and formats extracted text content
-- **Seamless Plugin Integration**: Automatically registers with Token Ring chat and websearch services
+- **Chrome-based Web Search**: Utilizes Puppeteer for accurate web search results.
+- **News Search**: Performs news-specific searches with source, date, and snippet information.
+- **Dynamic Page Scraping**: Extracts content from HTML pages with intelligent selector prioritization.
+- **HTML to Markdown Conversion**: Converts fetched HTML content to Markdown using Turndown.
+- **Configurable Browser Launch**: Supports both launching new browser instances or connecting to existing ones.
+- **Tool Integration**: Provides tools for web scraping via the chat service.
 
 ## Core Components
 
+### ChromeWebSearchProvider
+
+The ChromeWebSearchProvider class implements the WebSearchProvider interface. It uses Puppeteer to interact with websites for searching and content fetching.
+
+**Constructor Parameters:**
+- `options`: Configuration object with:
+  - `launch`: boolean - Whether to launch a new browser instance (vs connecting to an existing one)
+
 ### Tools
 
-#### Tool: `chrome_scrapePageText`
+The plugin registers the following tool with the chat service:
 
-Scrape text content from a web page using Puppeteer.
+- **chrome_scrapePageText**: Scrapes text content from a web page using Puppeteer with selector prioritization.
 
-**Parameters:**
-- `url`: string - The URL of the web page to scrape text from
-- `timeoutSeconds?`: number - Timeout for the scraping operation (default 30s, max 180s)
-- `selector?`: string - Custom CSS selector to target specific content
+## Usage Examples
+
+### Basic Scraping via Chat
+
+```typescript
+const result = await tools.chrome_scrapePageText({
+  url: 'https://example.com/article',
+});
+console.log(result.text);
+```
+
+### Direct WebSearchService Usage
+
+```typescript
+import { WebSearchService } from '@tokenring-ai/websearch';
+import { ChromeWebSearchProvider } from '@tokenring-ai/chrome';
+
+const webSearch = new WebSearchService();
+const chromeProvider = new ChromeWebSearchProvider({ launch: true });
+webSearch.registerProvider('chrome', chromeProvider);
+
+const results = await webSearch.searchWeb('TypeScript documentation', { countryCode: 'us' });
+console.log(results.organic);
+```
+
+## Configuration
+
+The Chrome Plugin's configuration is structured under the `chrome` section of the Token Ring app configuration:
+
+```typescript
+interface ChromeConfig {
+  websearch?: {
+    providers: {
+      [name: string]: {
+        type: 'chrome';
+        launch?: boolean;
+      };
+    };
+  };
+}
+```
+
+Example configuration:
+
+```typescript
+export default {
+  chrome: {
+    websearch: {
+      providers: {
+        'default-chrome': {
+          type: 'chrome',
+          launch: true,
+        },
+      },
+    },
+  },
+} satisfies TokenRingPlugin;
+```
+
+## API Reference
+
+### ChromeWebSearchProvider Methods
+
+| Method | Description |
+|--------|-------------|
+| `searchWeb(query, options?)` | Perform a web search and return organic results |
+| `searchNews(query, options?)` | Perform a news search and return news articles |
+| `fetchPage(url, options?)` | Fetch a page and convert HTML to Markdown |
+
+### Tool Definitions
+
+#### chrome_scrapePageText
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `url` | string (required) | URL to scrape text from |
+| `timeoutSeconds` | number (optional) | Timeout in seconds (5-180, default: 30) |
+| `selector` | string (optional) | CSS selector for target content |
 
 **Returns:**
 ```typescript
 {
-  text: string;           // Extracted text content
-  sourceSelector: string;  // The selector that was used
-  url: string;            // Original URL
+  text: string;        // Extracted text content
+  sourceSelector: string; // The selector that was used
+  url: string;         // Original URL
 }
 ```
 
-**Behavior:**
-- Launches Puppeteer in headless mode
-- Navigates to the specified URL
-- Attempts to find content using prioritized selectors: `article`, `main`, or `body`
-- Extracts and cleans text content
-- Returns the extracted text and the source selector used
+## Integration
 
-### Web Search Provider
+- **WebSearchService**: Registers as a provider for the 'chrome' type
+- **ChatService**: Adds tools for web scraping
+- **Agent System**: Enables agents to perform browser-based tasks via tools
 
-#### ChromeWebSearchProvider
+## Best Practices
 
-Provides Google search capabilities integrated with the Token Ring websearch service.
+1. **Selector Selection**: When using `chrome_scrapePageText`, provide specific selectors for better results
+2. **Timeout Management**: Set appropriate timeouts for slow-loading pages
+3. **Resource Cleanup**: The tools handle browser cleanup automatically
+4. **Error Handling**: Tools throw descriptive errors with the tool name prefix
 
-**Search Methods:**
+## Testing and Development
 
-- `searchWeb(query, options)`: Perform web searches
-- `searchNews(query, options)`: Perform news searches  
-- `fetchPage(url, options)`: Fetch and convert HTML to markdown
-
-**Configuration:**
-- `launch`: boolean - Launch new browser instance (true) or connect to existing (false)
-
-## Usage Examples
-
-### Scraping Web Page Text
-
-```typescript
-import { ServiceRegistry } from '@tokenring-ai/registry';
-import * as chromeTools from '@tokenring-ai/chrome/tools';
-import ChatService from '@tokenring-ai/chat/ChatService';
-
-const registry = new ServiceRegistry();
-registry.registerService(new ChatService());
-
-const res = await chromeTools.scrapePageText.execute(
-  { 
-    url: 'https://example.com', 
-    selector: 'article' 
-  }, 
-  registry
-);
-if (res.ok) {
-  console.log('Extracted text:', res.result.text);
-  console.log('Used selector:', res.result.sourceSelector);
-}
-```
-
-### Using Chrome Search Provider
-
-```typescript
-import { ServiceRegistry } from '@tokenring-ai/registry';
-import WebSearchService from '@tokenring-ai/websearch';
-import { ChromeWebSearchOptionsSchema } from '@tokenring-ai/chrome';
-
-const registry = new ServiceRegistry();
-const websearchConfig = {
-  providers: {
-    chrome: {
-      type: 'chrome',
-      launch: true
-    }
-  }
-};
-
-const webSearchService = new WebSearchService();
-webSearchService.registerProvider('chrome', new ChromeWebSearchProvider(ChromeWebSearchOptionsSchema.parse(websearchConfig.providers.chrome)));
-
-const results = await webSearchService.searchWeb('Token Ring AI', { countryCode: 'us' });
-console.log('Search results:', results.organic);
-```
-
-## Configuration Options
-
-### Tool Configuration
-
-- **url**: string - Required URL to scrape text from
-- **timeoutSeconds**: number - Execution timeout (5-180 seconds, default 30)
-- **selector**: string - Optional custom CSS selector
-
-### Web Search Provider Configuration
-
-- **launch**: boolean - Whether to launch a new browser instance (true) or connect to existing (false)
-- **countryCode**: Optional country code for localized search results
-
-## Dependencies
-
-- `@tokenring-ai/agent`: Agent integration
-- `@tokenring-ai/chat`: Chat service for tool registration
-- `@tokenring-ai/websearch`: Web search service integration
-- `@tokenring-ai/app`: Application framework
-- `puppeteer@^24.33.0`: Browser automation
-- `turndown@^7.2.2`: HTML to markdown conversion
-- `zod`: Schema validation
-
-## Browser Management
-
-The package automatically manages browser lifecycle:
-- Launches browser instances as needed
-- Closes browsers after operations complete
-- Provides both local browser launch and connection options
-- Handles timeout enforcement and cleanup
-
-## Integration Points
-
-- Integrates with the Token Ring chat service for tool registration
-- Provides web search provider for the Token Ring websearch service
-- Follows the standard Token Ring plugin architecture
-- Supports both tool execution and service provider patterns
-
-## Package Structure
-
-- `index.ts`: Main export file
-- `ChromeWebSearchProvider.ts`: Core web search provider implementation  
-- `tools.ts`: Tool exports and definitions
-- `tools/scrapePageText.ts`: Page scraping tool implementation
-- `plugin.ts`: Plugin integration for Token Ring applications
-
-## Development
-
-### Build
+### Build and Test
 
 ```bash
+# Type check
 bun run build
-```
 
-### Testing
-
-```bash
+# Run tests
 bun run test
+
+# Run tests with coverage
+bun run test:coverage
 ```
 
-### Scripts
+### Package Structure
 
-- `build`: Compile TypeScript with `tsc --noEmit`
-- `test`: Run Vitest tests
-- `test:watch`: Watch mode for testing
-- `test:coverage`: Run tests with coverage report
+```
+pkg/chrome/
+├── ChromeWebSearchProvider.ts   # Web search provider implementation
+├── plugin.ts                    # Plugin registration
+├── tools/
+│   └── scrapePageText.ts       # Web scraping tool
+├── package.json
+└── README.md
+```
 
 ## License
 
-MIT License - see LICENSE file for details.
+MIT License - see [LICENSE](https://github.com/tokenring-ai/tokenring/blob/main/LICENSE) for details.

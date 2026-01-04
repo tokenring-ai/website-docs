@@ -4,7 +4,7 @@
 
 Token Ring provides two primary CLI packages for different use cases:
 
-### `@tokenring-ai/cli` - Legacy Terminal Interface
+### `@tokenring-ai/cli` - Current Terminal Interface
 
 **Purpose**: Provides a basic terminal interface for interacting with Token Ring AI agents and services.
 
@@ -17,7 +17,7 @@ Token Ring provides two primary CLI packages for different use cases:
 
 **Use Case**: Simple terminal interactions with minimal UI features.
 
-### `@tokenring-ai/cli-ink` - Ink-based Interactive CLI
+### `@tokenring-ai/cli-ink` - Ink-based Enhanced Interactive CLI
 
 **Purpose**: Provides an enhanced, interactive terminal interface using the Ink framework for rich terminal applications.
 
@@ -69,8 +69,6 @@ app.install(cliInkPlugin);
 await app.start();
 ```
 
-## Dependencies
-
 ### `@tokenring-ai/cli` Dependencies
 - `@tokenring-ai/agent`: Core agent framework
 - `@tokenring-ai/app`: Application framework  
@@ -93,16 +91,5 @@ await app.start();
 
 ## Development Status
 
-- `@tokenring-ai/cli`: Legacy package, maintained for compatibility
-- `@tokenring-ai/cli-ink`: Active development, recommended for new projects
-
-## Migration
-
-For users looking to upgrade from the basic CLI to the enhanced Ink-based CLI:
-
-1. Replace `@tokenring-ai/cli` with `@tokenring-ai/cli-ink` in your imports
-2. Update configuration to use `InkCLIConfigSchema` instead of `CLIConfigSchema`
-3. Take advantage of the enhanced commands and features
-4. Benefit from improved terminal UI and responsiveness
-
-The Ink-based CLI maintains compatibility with the same core functionality while providing significant UI and feature improvements.
+- `@tokenring-ai/cli`: Active development, recommended for new projects
+- `@tokenring-ai/cli-ink`: Stalled due to the horrible performance and UI glitching problems in the ink package 

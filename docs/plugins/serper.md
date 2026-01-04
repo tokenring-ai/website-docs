@@ -40,36 +40,49 @@ constructor(config: SerperWebSearchProviderOptions)
 
 ##### searchWeb(query: string, options?: WebSearchProviderOptions): Promise<WebSearchResult>
 
-Performs a Google web search and returns organic results, knowledge graphs, and related searches.
+Performs a Google web search and returns organic results, knowledge graphs, related searches, and people also ask results. Supports Serper-specific parameters such as `autocorrect` and `extraParams` for additional search options.
 
 **Example:**
 ```typescript
-const results = await provider.searchWeb('Token Ring AI framework');
-console.log(results.organic); // Array of organic search results
-console.log(results.knowledgeGraph); // Knowledge graph if available
+// Search with autocorrect and other parameters
+const results = await provider.searchWeb('machine learning', {
+  countryCode: 'us',
+  language: 'en',
+  num: 10,
+  autocorrect: true,
+  extraParams: { gl: 'uk' } // Override country code for this query
+});
 ```
 
 ##### searchNews(query: string, options?: WebSearchProviderOptions): Promise<NewsSearchResult>
 
-Performs a Google News search and returns recent news articles.
+Performs a Google News search and returns recent news articles limited to the last hour by default. The date range can be adjusted using the `extraParams` parameter (e.g., `tbs` for custom date ranges).
 
 **Example:**
 ```typescript
-const news = await provider.searchNews('AI technology news');
-console.log(news.news); // Array of news articles
+// Search for news within a specific date range
+const news = await provider.searchNews('artificial intelligence breakthroughs', {
+  extraParams: { tbs: 'qdr:d' }, // Last day
+  countryCode: 'us',
+  num: 5,
+  page: 1
+});
 ```
 
 ##### fetchPage(url: string, options?: WebPageOptions): Promise<WebPageResult>
 
-Fetches and extracts content from a web page using Serper's scraping service.
+Fetches and extracts content from a web page using Serper's scraping service. The returned `WebPageResult` includes only `markdown` and `metadata` properties; `credits` from the raw API response are filtered out.
 
 **Example:**
 ```typescript
-const page = await provider.fetchPage('https://example.com', {
-  timeout: 5000
+// Fetch and extract content from a webpage
+const page = await provider.fetchPage('https://tokenring.ai', {
+  timeout: 10000
 });
-console.log(page.markdown); // Extracted markdown content
-console.log(page.metadata); // Page metadata (title, description, OpenGraph)
+
+console.log('Page title:', page.metadata.title);
+console.log('Description:', page.metadata.description);
+console.log('Markdown content:', page.markdown.substring(0, 200) + '...');
 ```
 
 ## Configuration
@@ -92,14 +105,23 @@ interface SerperWebSearchProviderOptions {
 ### Search Options
 
 ```typescript
-interface SerperSearchOptions extends SerperWebSearchProviderOptions {
-  autocorrect?: boolean;  // Enable autocorrection
-  type?: "search";        // Search type
+interface SerperSearchOptions {
+  gl?: string;          // Country code
+  hl?: string;          // Language code
+  location?: string;    // Geographic location
+  num?: number;         // Results per page (1-100)
+  page?: number;        // Starting page number
+  autocorrect?: boolean; // Enable autocorrection
+  type?: "search";      // Fixed as "search"
   extraParams?: Record<string, string | number | boolean>; // Additional parameters
 }
 
-interface SerperNewsOptions extends SerperWebSearchProviderOptions {
-  type?: "news";          // Search type
+interface SerperNewsOptions {
+  gl?: string;          // Country code
+  location?: string;    // Geographic location
+  num?: number;         // Results per page
+  page?: number;        // Starting page number
+  type?: "news";        // Fixed as "news"
   extraParams?: Record<string, string | number | boolean>; // Additional parameters
 }
 ```
@@ -236,7 +258,7 @@ const app = new TokenRingApp({
 
 ### Types
 
-#### SerperSearchResponse
+##### SerperSearchResponse
 
 ```typescript
 {
@@ -248,7 +270,7 @@ const app = new TokenRingApp({
 }
 ```
 
-#### SerperNewsResponse
+##### SerperNewsResponse
 
 ```typescript
 {
@@ -258,7 +280,7 @@ const app = new TokenRingApp({
 }
 ```
 
-#### SerperPageResponse
+##### SerperPageResponse
 
 ```typescript
 {
@@ -281,7 +303,31 @@ const app = new TokenRingApp({
 
 ### Result Types
 
-#### SerperOrganicResult
+##### SerperKnowledgeGraph
+
+```typescript
+{
+  title: string;
+  type: string;
+  website?: string;
+  imageUrl?: string;
+  description?: string;
+  descriptionSource?: string;
+  descriptionLink?: string;
+  attributes?: Record<string, string>;
+}
+```
+
+##### SerperSitelink
+
+```typescript
+{
+  title: string;
+  link: string;
+}
+```
+
+##### SerperOrganicResult
 
 ```typescript
 {
@@ -295,7 +341,26 @@ const app = new TokenRingApp({
 }
 ```
 
-#### SerperNewsResult
+##### SerperPeopleAlsoAsk
+
+```typescript
+{
+  question: string;
+  snippet: string;
+  title: string;
+  link: string;
+}
+```
+
+##### SerperRelatedSearch
+
+```typescript
+{
+  query: string;
+}
+```
+
+##### SerperNewsResult
 
 ```typescript
 {
@@ -328,19 +393,9 @@ try {
 
 ## Rate Limits and Credits
 
-The package includes credit information in news responses and handles rate limits with built-in retry logic:
-
-- **Credit Tracking**: News responses include `credits` field showing API usage
-- **Rate Limiting**: Automatic retries with exponential backoff for 429/5xx errors
-- **Error Hints**: Clear messages for common issues (invalid API key, rate limits)
-
-## Dependencies
-
-- `@tokenring-ai/app@0.2.0`
-- `@tokenring-ai/agent@0.2.0`
-- `@tokenring-ai/websearch@0.2.0`
-- `@tokenring-ai/utility@0.2.0`
-- `zod@catalog:`
+- **Credit Tracking**: The raw Serper API response includes a `credits` field for news searches, but this is filtered out in the returned `NewsSearchResult` from `searchNews`. Similarly, for `fetchPage`, the `credits` field is not included in the returned `WebPageResult`.
+- **Rate Limiting**: Automatic retries with exponential backoff for 429 and 5xx errors.
+- **Error Hints**: Clear messages for common issues such as invalid API key (401) or rate limits (429).
 
 ## Development
 
@@ -364,3 +419,20 @@ The package uses ES modules and requires no build step for development.
 ## License
 
 MIT License - see [LICENSE](./LICENSE) for details.
+
+## Contributing
+
+1. Fork the repository
+2. Create a feature branch
+3. Add tests for new functionality
+4. Submit a pull request with comprehensive documentation
+
+## Related Packages
+
+- `@tokenring-ai/websearch`: Abstract web search provider interface
+- `@tokenring-ai/agent`: Agent orchestration system
+- `@tokenring-ai/utility`: HTTP utilities and retry logic
+
+--- 
+
+*Part of the Token Ring AI monorepo - building the future of AI-powered development tools.*

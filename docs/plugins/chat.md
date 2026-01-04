@@ -2,349 +2,393 @@
 
 ## Overview
 
-The Chat plugin provides a comprehensive AI chat interface for the Token Ring ecosystem, enabling AI-powered conversations with advanced features like context management, tool integration, and interactive command-line controls.
+The Chat plugin provides AI chat capabilities for the Token Ring ecosystem. It enables AI-powered conversations with advanced context management, tool integration, and interactive command-line controls. The plugin integrates seamlessly with the Token Ring application framework and supports multiple AI providers through a provider registry system.
 
 ## Key Features
 
 - **AI Chat Interface**: Seamless integration with multiple AI models and providers
-- **Context Management**: Intelligent context handling with automatic compaction
-- **Tool Integration**: Extensible tool system with plugin architecture
-- **Interactive Commands**: Rich command set for chat management and configuration
-- **State Preservation**: Persistent chat history and configuration
-- **Multi-Provider Support**: Works with various AI model providers
+- **Context Management**: Intelligent context handling with automatic compaction and customizable context sources
+- **Tool Integration**: Extensible tool system with plugin architecture and wildcard matching
+- **Interactive Commands**: Rich command set for chat management including `/chat`, `/model`, `/tools`, and `/compact`
+- **State Preservation**: Persistent chat history and configuration with undo/redo capabilities
+- **Multi-Provider Support**: Works with various AI model providers (OpenAI, Anthropic, etc.)
 - **Interactive Selection**: Tree-based UI for model and tool selection
-- **Context Handlers**: Modular system for building chat requests with different sources
-- **Command System**: Interactive chat commands with comprehensive help documentation
+- **Feature Management**: Advanced model feature flags and capabilities
+- **Context Debugging**: Display and inspect chat context for transparency
+- **Parallel/Sequential Tool Execution**: Configurable tool execution mode with queue-based processing
+- **Token Usage Analytics**: Detailed breakdown of input/output tokens, costs, and timing
 
 ## Core Components
 
 ### ChatService
 
-The main chat service class that manages:
-- AI model configuration and selection
-- Chat message history and state
-- Tool registration and management
+The main chat service class that manages AI chat functionality. The service implements `TokenRingService` and provides:
+
+- AI model configuration and selection with auto-selection capabilities
+- Chat message history and state management
+- Tool registration and management with wildcard support
 - Context handlers for building chat requests
-
-```typescript
-import ChatService from "@tokenring-ai/chat";
-
-// Create chat service with default model
-const chatService = new ChatService({ model: "default-model" });
-
-// Register tools
-chatService.addTools("package-name", {
-  toolName: {
-    name: "tool-name",
-    description: "Tool description",
-    inputSchema: z.object({ /* input schema */ }),
-    execute: async (input, agent) => { /* tool implementation */ }
-  }
-});
-```
+- Interactive command handling through the agent system
+- State persistence and serialization
 
 ### Context Handlers
 
-Context handlers build the AI chat request by gathering relevant information:
+Context handlers build the AI chat request by gathering relevant information. Each handler is an async generator that yields `ChatInputMessage` items:
 
-- `system-message`: Adds system prompts
-- `prior-messages`: Includes previous conversation history
+- `system-message`: Adds system prompts (supports dynamic system prompts via functions)
+- `prior-messages`: Includes previous conversation history with intelligent truncation
 - `current-message`: Adds the current user input
-- `tool-context`: Includes context from enabled tools
+- `tool-context`: Includes context from enabled tools based on their required context handlers
+- `tool-call`: Includes tool call results in context (native TokenRing tools only)
 
 ### Chat Commands
 
 Interactive commands for chat management:
 
-- `/chat`: Send messages and manage chat settings
-- `/model`: Set or show the target AI model
+- `/chat`: Send messages and manage chat settings with subcommands (`send`, `settings`, `feature`, `context`)
+- `/model`: Set or show the target AI model with interactive selection
 - `/compact`: Compact conversation context by summarizing prior messages
-- `/tools`: List, enable, disable, or set enabled tools
+- `/tools`: List, enable, disable, or set enabled tools with tree-based UI
 
-## Chat Commands
+### ChatServiceState
 
-### /chat
+The state management class that tracks:
 
-#### /chat send <message>
-
-Send a message to the AI chat service. This is the primary command for communicating with the AI, using your selected model and current context.
-
-##### Examples
-
-```bash
-/chat send Hello, how are you?          # Send a simple message
-```
-
-##### Features
-
-- Uses your selected AI model (see `/model`)
-- Includes conversation context and system prompts
-- Provides available tools if enabled (see `/tools`)
-- Shows detailed token usage analytics after completion
-
-#### /chat settings [key=value ...]
-
-Configure AI model settings and behavior. With no arguments, shows current configuration.
-
-##### Available Settings
-
-- **temperature=0.7** - Controls randomness (0.0-2.0, default: 1.0)
-- **maxTokens=1000** - Maximum response length (integer)
-- **topP=0.9** - Nucleus sampling threshold (0.0-1.0)
-- **frequencyPenalty=0.0** - Reduce repetition (-2.0 to 2.0)
-- **presencePenalty=0.0** - Encourage new topics (-2.0 to 2.0)
-- **stopSequences=a,b,c** - Stop at these sequences
-- **autoCompact=true** - Enable automatic context compaction
-
-##### Examples
-
-```bash
-/chat settings                              # Show current settings
-/chat settings temperature=0.5 maxTokens=2000
-/chat settings autoCompact=true
-```
-
-#### /chat feature <list|enable|disable> [key[=value] ...]
-
-Manage model feature flags that enable special capabilities.
-
-##### /chat feature list
-
-List currently enabled and available features for your model.
-
-##### /chat feature enable key[=value] [...]
-
-Enable or set model feature flags.
-
-###### Value Types
-
-- **Boolean**: true/false, 1/0
-- **Number**: Numeric values
-- **String**: Text values
-
-###### Examples
-
-```bash
-/chat feature enable reasoning
-/chat feature enable temperature=0.7
-```
-
-##### /chat feature disable key [...]
-
-Remove/disable specific feature flags.
-
-###### Examples
-
-```bash
-/chat feature disable reasoning
-```
-
-#### /chat context
-
-Display all context items that would be included in a chat request. Useful for debugging and understanding what information the AI has access to.
-
-##### Shows
-
-- Total number of context messages
-- System prompt configuration
-- Previous conversation messages (with preview)
-
-**Note:** Context display shows the exact data sent to the AI model.
-
-### /tools
-
-#### /tools [enable|disable|set] <tool1> <tool2> ...
-
-Manage available tools for your chat session. Tools provide additional capabilities like web search, code execution, file operations, etc.
-
-##### Modes
-
-- `/tools` - Interactive tool selection (recommended)
-- `/tools enable tool1 tool2` - Enable specific tools
-- `/tools disable tool1` - Disable specific tools
-- `/tools set tool1 tool2` - Set exactly which tools are enabled
-
-##### Examples
-
-```bash
-/tools                    # Browse and select tools interactively
-/tools enable web-search  # Enable web search tool
-/tools disable calculator # Disable calculator tool
-/tools set web-search calculator # Only enable these two tools
-```
-
-##### Interactive Mode
-
-- Tools are grouped by package for easy browsing
-- Current selection is shown with checkmarks
-- Use spacebar to toggle selection, enter to confirm
-
-**Note:** Some tools may require additional setup or permissions.
-
-### /model
-
-#### /model [model_name]
-
-Set or display the AI model used for chat responses. Choose from available models based on your needs for speed, quality, and cost.
-
-##### Usage
-
-```bash
-/model                    # Interactive model selection (recommended)
-/model gpt-4              # Set to specific model
-/model auto               # Auto-select best available model
-/model auto:reasoning     # Auto-select with reasoning capabilities
-/model auto:frontier      # Auto-select latest frontier model
-```
-
-##### Interactive Mode
-
-- Models are grouped by provider (OpenAI, Anthropic, etc.)
-- Status indicators show availability:
-  - ✅ Online - Ready for immediate use
-  - 🧊 Cold - May have startup delay
-  - 🔴 Offline - Currently unavailable
-- Current model is highlighted
-
-##### Special Values
-
-- **auto** - Automatically selects best available model
-- **auto:reasoning** - Prefers models with advanced reasoning
-- **auto:frontier** - Prefers latest cutting-edge models
-
-##### Examples
-
-```bash
-/model                    # Browse and select model interactively
-/model gpt-4-turbo        # Use GPT-4 Turbo for better performance
-/model claude-3-sonnet    # Use Claude 3 Sonnet for balanced quality
-/model auto               # Let system choose best model
-```
-
-**Note:** Model availability and performance may vary based on your subscription level and current server load.
-
-### /compact
-
-#### /compact [<focus>]
-
-Compress the conversation context by creating intelligent summaries of prior messages. This helps reduce token usage and maintain context in long conversations.
-
-##### How it works
-
-- Analyzes all previous messages in the conversation
-- Creates concise summaries while preserving key information
-- Maintains conversation flow and important context
-- Reduces token count for better performance and cost savings
-
-##### When to use
-
-- After many messages have been exchanged
-- When you notice responses getting slower
-- When approaching token limits
-- Before starting a new topic in a long conversation
-
-##### Benefits
-
-- Faster response times in long conversations
-- Lower API costs due to reduced token usage
-- Maintains important context without losing information
-- Prevents context overflow errors
-
-##### Example
-
-```bash
-# Compresses all prior messages
-/compact                   
-
-# Gives more control over context compression
-/compact specifics of the task at hand, including the goal and expected outcome
-```
-
-**Note:** Compaction is automatic in some cases, but manual compaction gives you control over when and how context is compressed.
-
-## Configuration
-
-### Chat Configuration Schema
-
-```typescript
-import {ChatConfigSchema} from "@tokenring-ai/chat";
-
-const chatConfig = {
-  model: "gpt-4",
-  systemPrompt: "You are a helpful assistant",
-  temperature: 0.7,
-  maxTokens: 1000,
-  maxSteps: 30,
-  topP: 0.9,
-  topK: 40,
-  frequencyPenalty: 0.0,
-  presencePenalty: 0.0,
-  stopSequences: ["\n\n", "---"],
-  autoCompact: true,
-  enabledTools: [],
-  context: {
-    initial: [
-      { type: "system-message" },
-      { type: "tool-context" },
-      { type: "prior-messages" },
-      { type: "current-message" }
-    ],
-    followUp: [
-      { type: "prior-messages" },
-      { type: "current-message" }
-    ]
-  }
-};
-```
-
-### Available Settings
-
-- `model`: AI model identifier
-- `systemPrompt`: System instructions for the AI
-- `temperature`: Controls randomness (0.0-2.0)
-- `maxTokens`: Maximum response length
-- `maxSteps`: Maximum processing steps
-- `topP`: Nucleus sampling threshold
-- `topK`: Top-K sampling
-- `frequencyPenalty`: Reduce repetition
-- `presencePenalty`: Encourage new topics
-- `stopSequences`: Sequences to stop at
-- `autoCompact`: Enable automatic context compaction
-- `enabledTools`: List of enabled tool names
-- `context`: Configuration for context sources
+- Current configuration (model, tools, context settings, etc.)
+- Chat message history with timestamps
+- Tool execution queue (sequential by default)
+- Parallel/sequential tool execution mode
+- Initial config for reset operations
 
 ## API Reference
 
 ### ChatService Methods
 
-- `addTools(pkgName, tools)`: Register tools from a package
-- `setModel(model, agent)`: Set the AI model
-- `getModel(agent)`: Get the current model
-- `getChatConfig(agent)`: Get current chat configuration
-- `updateChatConfig(aiConfig, agent)`: Update configuration
-- `getChatMessages(agent)`: Get chat message history
-- `getLastMessage(agent)`: Get the last message
-- `pushChatMessage(message, agent)`: Add a message to history
-- `clearChatMessages(agent)`: Clear all messages
-- `popMessage(agent)`: Remove the last message (undo)
-- `getEnabledTools(agent)`: Get enabled tool names
-- `setEnabledTools(toolNames, agent)`: Set enabled tools
-- `enableTools(toolNames, agent)`: Enable additional tools
-- `disableTools(toolNames, agent)`: Disable tools
+#### Model Management
+
+| Method | Description |
+|--------|-------------|
+| `setModel(model: string, agent: Agent)` | Set the AI model for the agent |
+| `getModel(agent: Agent)` | Get the current model name or null |
+| `requireModel(agent: Agent)` | Get the current model or throw an error |
+
+#### Configuration Management
+
+| Method | Description |
+|--------|-------------|
+| `getChatConfig(agent: Agent)` | Get current chat configuration |
+| `updateChatConfig(aiConfig: Partial<ChatConfig>, agent: Agent)` | Update configuration with partial updates |
+
+#### Message History Management
+
+| Method | Description |
+|--------|-------------|
+| `getChatMessages(agent: Agent)` | Get all chat messages |
+| `getLastMessage(agent: Agent)` | Get the last message or null |
+| `pushChatMessage(message: StoredChatMessage, agent: Agent)` | Add a message to history |
+| `clearChatMessages(agent: Agent)` | Clear all messages |
+| `popMessage(agent: Agent)` | Remove the last message (undo) |
+
+#### Tool Management
+
+| Method | Description |
+|--------|-------------|
+| `addTools(pkgName: string, tools: Record<string, TokenRingToolDefinition>)` | Register tools from a package |
+| `getAvailableToolNames()` | Get all available tool names |
+| `getEnabledTools(agent: Agent)` | Get enabled tool names |
+| `setEnabledTools(toolNames: string[], agent: Agent)` | Set exact enabled tools |
+| `enableTools(toolNames: string[], agent: Agent)` | Enable additional tools |
+| `disableTools(toolNames: string[], agent: Agent)` | Disable tools |
+| `ensureToolNamesLike(pattern: string)` | Expand wildcard patterns to tool names |
+| `getToolNamesLike(pattern: string)` | Get tool names matching a pattern |
+
+#### Context Handler Management
+
+| Method | Description |
+|--------|-------------|
+| `getContextHandlerByName(name: string)` | Get a context handler by name |
+| `requireContextHandlerByName(name: string)` | Get a context handler or throw |
+| `registerContextHandler(name: string, handler: ContextHandler)` | Register a single context handler |
+| `registerContextHandlers(handlers: Record<string, ContextHandler>)` | Register multiple context handlers |
+
+#### Message Building
+
+| Method | Description |
+|--------|-------------|
+| `buildChatMessages(input: string, chatConfig: ChatConfig, agent: Agent)` | Build chat request messages from context handlers |
 
 ### runChat Function
 
+The core chat execution function that handles streaming responses, tool calls, and context compaction.
+
 ```typescript
-import {runChat} from "@tokenring-ai/chat";
+import runChat from "@tokenring-ai/chat/runChat.ts";
 
 async function runChat(
   input: string,
   chatConfig: ChatConfig,
-  agent: Agent
+  agent: Agent,
 ): Promise<[string, AIResponse]>
 ```
 
-## Plugin Integration
+**Parameters:**
+
+- `input`: The user input message
+- `chatConfig`: Chat configuration including model, tools, and context settings
+- `agent`: The agent instance
+
+**Returns:** A promise resolving to `[output, response]` where output is the text response and response is the full AI response object
+
+### Utility Functions
+
+#### tokenRingTool
+
+Converts a tool definition to TokenRing format:
+
+```typescript
+import {tokenRingTool} from "@tokenring-ai/chat";
+
+const tool = tokenRingTool({
+  name: "my-tool",
+  description: "Does something useful",
+  inputSchema: z.object({
+    param: z.string()
+  }),
+  async execute(input, agent) {
+    return "result";
+  }
+});
+```
+
+#### outputChatAnalytics
+
+Outputs token usage and cost analytics:
+
+```typescript
+import {outputChatAnalytics} from "@tokenring-ai/chat";
+
+outputChatAnalytics(response, agent, "Chat Complete");
+```
+
+#### compactContext
+
+Manually compacts conversation context:
+
+```typescript
+import {compactContext} from "@tokenring-ai/chat/util/compactContext.ts";
+
+await compactContext("focus topic", agent);
+```
+
+## Usage Examples
+
+### Basic Chat Setup
+
+```typescript
+import {TokenRingApp} from "@tokenring-ai/app";
+import ChatService from "@tokenring-ai/chat";
+
+const app = new TokenRingApp();
+
+// Add chat service with configuration
+app.addServices(new ChatService(app, {
+  defaultModels: ["auto"],
+  agentDefaults: {
+    model: "auto",
+    autoCompact: true,
+    maxSteps: 30,
+    enabledTools: [],
+    context: {
+      initial: [
+        {type: "system-message"},
+        {type: "tool-context"},
+        {type: "prior-messages"},
+        {type: "current-message"}
+      ],
+      followUp: [
+        {type: "prior-messages"},
+        {type: "current-message"}
+      ]
+    }
+  }
+}));
+
+await app.start();
+```
+
+### Sending Messages Programmatically
+
+```typescript
+import runChat from "@tokenring-ai/chat/runChat.ts";
+
+// Build chat configuration
+const chatConfig = {
+  model: "auto",
+  systemPrompt: "You are a helpful assistant",
+  maxSteps: 30,
+  autoCompact: true,
+  enabledTools: [],
+  context: {
+    initial: [
+      {type: "system-message"},
+      {type: "tool-context"},
+      {type: "prior-messages"},
+      {type: "current-message"}
+    ],
+    followUp: [
+      {type: "prior-messages"},
+      {type: "current-message"}
+    ]
+  }
+};
+
+// Run a chat message
+const [response, aiResponse] = await runChat(
+  "Hello, how are you?",
+  chatConfig,
+  agent
+);
+```
+
+### Managing Tools
+
+```typescript
+import ChatService from "@tokenring-ai/chat";
+
+const chatService = agent.requireServiceByType(ChatService);
+
+// Get available tools
+const availableTools = chatService.getAvailableToolNames();
+
+// Enable specific tools
+chatService.enableTools(["web-search", "calculator"], agent);
+
+// Disable specific tools
+chatService.disableTools(["file-system"], agent);
+
+// Set exact tool list
+chatService.setEnabledTools(["web-search", "calculator"], agent);
+
+// Use wildcard patterns
+chatService.ensureToolNamesLike("web-*"); // Expands to all web-* tools
+```
+
+### Interactive Chat Commands
+
+#### Send a Message
+
+```bash
+/chat send Hello, how are you?
+```
+
+#### Configure AI Settings
+
+```bash
+/chat settings temperature=0.5 maxTokens=2000
+```
+
+#### Manage Model Features
+
+```bash
+/chat feature list                              # List features
+/chat feature enable reasoning                  # Enable a feature
+/chat feature disable reasoning                 # Disable a feature
+```
+
+#### Show Context
+
+```bash
+/chat context
+```
+
+#### Compact Context
+
+```bash
+/compact
+/compact specifics of the task at hand
+```
+
+#### Manage Tools
+
+```bash
+/tools                    # Interactive tool selection
+/tools enable web-search calculator
+/tools disable file-system
+/tools set web-search calculator
+```
+
+#### Select Model
+
+```bash
+/model                    # Interactive model selection
+/model get                # Show current model
+/model set gpt-4-turbo    # Set specific model
+/model reset              # Reset to default
+```
+
+## Configuration
+
+### Plugin Configuration Schema
+
+The chat plugin is configured through the application's plugin configuration:
+
+```typescript
+import {z} from "zod";
+
+const configSchema = z.object({
+  chat: z.object({
+    defaultModels: z.array(z.string()),
+    agentDefaults: z.object({
+      model: z.string().default("auto"),
+      autoCompact: z.boolean().default(true),
+      enabledTools: z.array(z.string()).default([]),
+      maxSteps: z.number().default(30),
+      context: z.object({
+        initial: z.array(ContextSourceSchema).default(initialContextItems),
+        followUp: z.array(ContextSourceSchema).default(followUpContextItems),
+      }).optional(),
+    }),
+  }),
+});
+```
+
+### Chat Configuration Properties
+
+| Property | Type | Default | Description |
+|----------|------|---------|-------------|
+| `model` | string | "auto" | AI model identifier (supports "auto", "auto:reasoning", "auto:frontier", or specific model names) |
+| `systemPrompt` | string \| function | - | System instructions for the AI (can be a function for dynamic prompts) |
+| `maxSteps` | number | 30 | Maximum processing steps before prompting for continuation |
+| `autoCompact` | boolean | true | Enable automatic context compaction when approaching token limits |
+| `enabledTools` | string[] | [] | List of enabled tool names (supports wildcards) |
+| `context.initial` | ContextItem[] | [system-message, tool-context, prior-messages, current-message] | Context items for initial messages |
+| `context.followUp` | ContextItem[] | [prior-messages, current-message] | Context items for follow-up messages |
+
+### Context Source Types
+
+| Type | Description |
+|------|-------------|
+| `system-message` | Adds the system prompt |
+| `prior-messages` | Adds previous conversation history |
+| `current-message` | Adds the current user input |
+| `tool-context` | Adds context from enabled tools |
+| `tool-call` | Adds tool call results (for native tools) |
+
+### Available Settings
+
+Settings can be configured via `/chat settings`:
+
+- `temperature`: Controls randomness (0.0-2.0)
+- `maxTokens`: Maximum response length
+- `topP`: Nucleus sampling threshold (0.0-1.0)
+- `frequencyPenalty`: Reduce repetition (-2.0 to 2.0)
+- `presencePenalty`: Encourage new topics (-2.0 to 2.0)
+- `stopSequences`: Sequences to stop at
+- `autoCompact`: Enable automatic context compaction
+
+## Integration
+
+### Plugin Registration
 
 The chat plugin integrates with the Token Ring application framework:
 
@@ -358,19 +402,99 @@ app.use(chatPlugin);
 ### Service Registration
 
 The plugin automatically registers:
-- `ChatService`: Main chat service
+
+- `ChatService`: Main chat service with all methods
 - Context handlers for building chat requests
-- Interactive chat commands
+- Interactive chat commands (`/chat`, `/model`, `/tools`, `/compact`)
+- Model feature management
+- Context debugging tools
+- State management via ChatServiceState
 
-## State Management
+### Agent Configuration
 
-The chat service maintains state including:
-- Chat message history
-- Current configuration
-- Enabled tools
-- Context preferences
+Agents can have their own chat configuration merged with service defaults:
 
-State is automatically managed and preserved across sessions.
+```typescript
+const agentConfig = {
+  chat: {
+    model: "gpt-4",
+    systemPrompt: "You are a helpful assistant",
+    maxSteps: 50,
+    autoCompact: true,
+    enabledTools: ["web-search", "calculator"],
+    context: {
+      initial: [
+        {type: "system-message"},
+        {type: "tool-context"},
+        {type: "prior-messages"},
+        {type: "current-message"}
+      ],
+      followUp: [
+        {type: "prior-messages"},
+        {type: "current-message"}
+      ]
+    }
+  }
+};
+```
+
+### Tool Integration
+
+Tools are registered through packages using the `addTools` method:
+
+```typescript
+chatService.addTools("my-package", {
+  "my-tool": {
+    name: "my-tool",
+    description: "Does something useful",
+    inputSchema: z.object({
+      param: z.string()
+    }),
+    async execute(input, agent) {
+      // Tool implementation
+      return "result";
+    }
+  }
+});
+```
+
+## Monitoring and Debugging
+
+### Context Debugging
+
+Use `/chat context` to view the current context structure:
+
+```bash
+/chat context
+```
+
+This shows all context items that would be included in a chat request.
+
+### Compact Context
+
+Use `/compact` to summarize messages and reduce token usage:
+
+```bash
+/compact
+/compact focus on the main task details
+```
+
+### Analytics
+
+The `outputChatAnalytics` function provides detailed token usage and cost information:
+
+```typescript
+import {outputChatAnalytics} from "@tokenring-ai/chat";
+
+outputChatAnalytics(response, agent, "Chat Complete");
+```
+
+Output includes:
+- Input/Output/Total token counts
+- Cached token information
+- Reasoning tokens (if applicable)
+- Cost breakdown (input, output, total)
+- Timing information (elapsed time, tokens/sec)
 
 ## Development
 
@@ -395,24 +519,50 @@ bun run build
 
 ```
 pkg/chat/
-├── index.ts           # Main exports
-├── ChatService.ts     # Core chat service
-├── types.ts          # Type definitions
-├── contextHandlers/  # Context handler implementations
-├── commands/        # Chat command implementations
-├── util/            # Utility functions
-├── state/           # State management
-└── plugin.ts        # Plugin registration
+├── index.ts                    # Main exports
+├── ChatService.ts              # Core chat service class
+├── runChat.ts                  # Core chat execution function
+├── schema.ts                   # Type definitions and Zod schemas
+├── plugin.ts                   # Plugin registration
+├── chatCommands.ts             # Command exports
+├── contextHandlers.ts          # Context handler exports
+├── contextHandlers/
+│   ├── currentMessage.ts       # Current message handler
+│   ├── priorMessages.ts        # Prior messages handler
+│   ├── systemMessage.ts        # System message handler
+│   ├── toolContext.ts          # Tool context handler
+│   └── toolCall.ts             # Tool call handler
+├── commands/
+│   ├── chat.ts                 # Chat command with subcommands
+│   ├── model.ts                # Model command with subcommands
+│   ├── tool.ts                 # Tool management command
+│   └── compact.ts              # Context compaction command
+│   ├── chat/
+│   │   ├── send.ts             # Send message implementation
+│   │   ├── settings.ts         # Settings configuration
+│   │   ├── feature.ts          # Feature management
+│   │   └── context.ts          # Context display
+│   └── model/
+│       ├── set.ts              # Set model implementation
+│       ├── get.ts              # Get model implementation
+│       ├── select.ts           # Interactive selection
+│       ├── reset.ts            # Reset to default
+│       └── default.ts          # Show current and select
+├── util/
+│   ├── tokenRingTool.ts        # Tool wrapper utility
+│   ├── compactContext.ts       # Context compaction
+│   └── outputChatAnalytics.ts  # Analytics output
+├── state/
+│   └── chatServiceState.ts     # State management class
+└── vitest.config.ts            # Test configuration
 ```
 
-## Dependencies
+## Related Components
 
+- `@tokenring-ai/ai-client`: AI model registry and client management
+- `@tokenring-ai/agent`: Agent system integration
 - `@tokenring-ai/app`: Application framework
-- `@tokenring-ai/ai-client`: AI client integration
-- `@tokenring-ai/agent`: Agent system
-- `@tokenring-ai/utility`: Shared utilities
-- `zod`: Schema validation
-- `async`: Asynchronous utilities
+- `@tokenring-ai/scheduler`: Task scheduling integration
 
 ## License
 

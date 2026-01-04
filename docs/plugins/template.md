@@ -184,7 +184,7 @@ The package provides two main tools for programmatic access:
 ### `template/list`
 Lists all available templates.
 
-**Parameters:** None  
+**Parameters:** None
 **Returns:** Array of template names
 
 ### `template/run`
@@ -209,7 +209,7 @@ Templates are configured via the TokenRing configuration system:
 ```typescript
 // Configuration schema is automatically validated
 export default {
-  templates: {
+  template: {
     // Template name -> Template function mapping
     summarize: async (input: string) => ({
       inputs: [input],
@@ -256,6 +256,7 @@ const templateWithCircularRef = async (input: string) => ({
 ## Integration with TokenRing Ecosystem
 
 ### Plugin Architecture
+
 The package automatically integrates with TokenRing applications via the plugin system:
 
 ```typescript
@@ -270,11 +271,13 @@ export default {
 ```
 
 ### Service Dependencies
+
 - **ChatService**: For chat execution and tool management
 - **AgentCommandService**: For command registration
 - **Agent**: For template execution context
 
 ### State Management
+
 - **Tool State**: Automatically preserved and restored during template execution
 - **Context**: Supports selective context reset via `reset` parameter
 - **Chain Tracking**: Prevents circular references in template chains
@@ -284,6 +287,7 @@ export default {
 ### Creating Templates
 
 1. Define your template function:
+
 ```typescript
 import { TemplateChatRequest } from "@tokenring-ai/template";
 
@@ -296,15 +300,17 @@ export async function myCustomTemplate(input: string): Promise<TemplateChatReque
 ```
 
 2. Register it in your configuration:
+
 ```typescript
 export default {
-  templates: {
+  template: {
     myCustomTemplate: myCustomTemplate,
   }
 }
 ```
 
 3. Use it via chat command or tools:
+
 ```bash
 /template run myCustomTemplate "Your input here"
 ```
@@ -317,15 +323,6 @@ const chatRequest = await myCustomTemplate("test input");
 console.log(chatRequest.inputs); // ["test input"]
 console.log(chatRequest.nextTemplate); // undefined if no chaining
 ```
-
-## Dependencies
-
-- **@tokenring-ai/agent**: Core agent framework
-- **@tokenring-ai/ai-client**: AI integration
-- **@tokenring-ai/app**: Service management and plugin system
-- **@tokenring-ai/chat**: Chat execution and tool management
-- **@tokenring-ai/utility**: Registry and utility functions
-- **zod**: Schema validation
 
 ## License
 

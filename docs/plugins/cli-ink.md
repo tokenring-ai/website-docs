@@ -1,20 +1,20 @@
-# CLI Ink Plugin
+# cli-ink Plugin
 
-Ink-based Command Line Interface for TokenRing AI agents. This package provides an interactive terminal interface using Ink framework for managing AI agents, executing commands, and handling human interface requests.
+The `cli-ink` plugin provides an interactive terminal interface for TokenRing AI agents using the Ink framework. It enables users to manage agents, execute commands, handle human interface requests, and interact with the system through a responsive command-line environment.
 
 ## Overview
 
-The `@tokenring-ai/cli-ink` package serves as the primary CLI entry point for the Token Ring AI system, providing a feature-rich terminal experience with real-time event processing, comprehensive command support, and intuitive user interactions.
+The cli-ink package serves as the primary CLI entry point for the TokenRing AI system. It provides a feature-rich terminal experience with real-time event processing, comprehensive command support, and intuitive user interactions.
 
-## Key Features
+### Key Features
 
 - **Interactive Terminal Interface**: Built with Ink framework for responsive terminal applications
 - **Agent Management**: Select from running agents, create new ones, or connect to web applications
 - **Real-time Event Processing**: Stream agent outputs (chat, reasoning, system messages) with proper formatting
-- **Comprehensive Command Support**: Built-in commands like `/help`, `/switch`, `/markdown`
-- **Human Interface Requests**: Handle confirmations, selections, password prompts, web page opening
+- **Comprehensive Command Support**: Built-in commands like `/switch` for agent switching
+- **Human Interface Requests**: Handle confirmations, selections, password prompts, web page opening, and text input
 - **Dynamic Screen Management**: Switch between agent selection, chat, and interactive request handling
-- **Code Block Syntax Highlighting**: Render markdown with syntax highlighting for various programming languages
+- **Markdown Rendering**: Full markdown support with syntax highlighting for code blocks
 - **Responsive Layout**: Automatically adjusts to terminal window size
 - **Workflow Integration**: Support for spawning workflow-based agents
 - **Web Application Integration**: Connect to web applications via SPA resources
@@ -23,7 +23,7 @@ The `@tokenring-ai/cli-ink` package serves as the primary CLI entry point for th
 
 ## Installation
 
-This package is part of the TokenRing AI monorepo. To install and use:
+This package is part of the TokenRing AI monorepo.
 
 ```bash
 # Install dependencies
@@ -33,53 +33,58 @@ bun install
 vitest run
 ```
 
-### Dependencies
+## Usage Examples
 
-- **Core**: `@tokenring-ai/agent`, `@tokenring-ai/app`, `@tokenring-ai/utility`, `@tokenring-ai/web-host`
-- **CLI Framework**: `ink`, `ink-divider`, `ink-spinner`, `ink-syntax-highlight`, `ink-text-input`
-- **Prompt Handling**: `@inquirer/prompts`, `@mishieck/ink-titled-box`
-- **Utilities**: `chalk`, `cli-highlight`, `execa`, `open`, `marked`
-- **Development**: `typescript`, `vitest`, `@types/react`
-
-### Environment Variables
-
-None required for basic functionality.
-
-## Usage
-
-### Basic Usage
+### Basic Initialization and Startup
 
 ```typescript
-import TokenRingApp from "@tokenring-ai/app";
-import cliInkPlugin from "@tokenring-ai/cli-ink";
+import TokenRingApp from '@tokenring-ai/app';
+import cliInkPlugin from '@tokenring-ai/cli-ink';
 
-// Create and configure the app
 const app = new TokenRingApp();
 app.install(cliInkPlugin);
+await app.start();
+```
 
-// Start the CLI
+### Customizing the Banner
+
+```typescript
+const app = new TokenRingApp();
+app.install(cliInkPlugin, {
+  inkCLI: {
+    bannerNarrow: 'TokenRing CLI',
+    bannerWide: 'TokenRing AI CLI',
+    bannerCompact: 'CLI',
+    bannerColor: 'cyan'
+  }
+});
 await app.start();
 ```
 
 ### Plugin Integration
 
-The CLI is designed as a TokenRing plugin that integrates seamlessly with the main application:
-
 ```typescript
-import TokenRingApp, {TokenRingPlugin} from "@tokenring-ai/app";
-import AgentInkCLI, {InkCLIConfigSchema} from "./AgentInkCLI.ts";
+import TokenRingApp, { TokenRingPlugin } from '@tokenring-ai/app';
+import AgentInkCLI, { InkCLIConfigSchema } from '@tokenring-ai/cli-ink';
+import { z } from 'zod';
 
-import packageJSON from './package.json' with {type: 'json'};
+import packageJSON from './package.json' with { type: 'json' };
+
+const packageConfigSchema = z.object({
+  inkCLI: InkCLIConfigSchema.optional(),
+});
 
 export default {
   name: packageJSON.name,
   version: packageJSON.version,
   description: packageJSON.description,
-  install(app: TokenRingApp) {
-    const config = app.getConfigSlice('inkCLI', InkCLIConfigSchema);
-    app.addServices(new AgentInkCLI(app, config));
+  install(app, config) {
+    if (config.inkCLI) {
+      app.addServices(new AgentInkCLI(app, config.inkCLI));
+    }
   },
-} satisfies TokenRingPlugin;
+  config: packageConfigSchema,
+} satisfies TokenRingPlugin<typeof packageConfigSchema>;
 ```
 
 ## Configuration
@@ -97,56 +102,14 @@ export const InkCLIConfigSchema = z.object({
 
 ### Configuration Options
 
-- **bannerNarrow**: Narrow banner displayed in compact mode
-- **bannerWide**: Wide banner displayed in full mode
-- **bannerCompact**: Compact banner for agent chat screens
-- **bannerColor**: Color for the banner (uses Chalk color names)
+| Option | Type | Required | Default | Description |
+|--------|------|----------|---------|-------------|
+| `bannerNarrow` | string | Yes | - | Narrow banner displayed in compact mode |
+| `bannerWide` | string | Yes | - | Wide banner displayed in full mode |
+| `bannerCompact` | string | Yes | - | Compact banner for agent chat screens |
+| `bannerColor` | string | No | `'cyan'` | Color for the banner (uses Chalk color names) |
 
-## Core Features
-
-### Agent Selection & Management
-
-- Connect to existing running agents
-- Create new agents of various types
-- Switch between running agents using `/switch` command
-- Exit or detach from agents
-- Connect to web applications
-- Spawn workflow-based agents
-
-### Interactive Commands
-
-| Command | Description | Usage |
-|---------|-------------|-------|
-| `/help` | Show available commands | `/help` |
-| `/switch` | Return to agent selection | `/switch` |
-| `/markdown` | Outputs a sample of markdown | `/markdown` |
-
-### Keyboard Shortcuts
-
-**Ctrl-C Actions:**
-- `Ctrl-C` - Exit the application when in agent selection, return to agent selection when in chat
-
-**Navigation:**
-- `Up/Down Arrow` - Navigate lists and command history
-- `Tab` - Auto-complete commands
-- `Left/Right Arrow` - Expand/collapse tree nodes
-- `Space` - Toggle selections (multiple choice)
-- `Enter` - Select/submit
-- `Esc` - Cancel/cancel selection
-
-### Human Interface Requests
-
-The CLI handles various types of human interface requests:
-
-- **Ask for Text**: Open editor for multi-line responses (Ctrl+D to submit)
-- **Confirm**: Yes/no prompts with timeout support
-- **Selection**: Single choice from list
-- **Tree Selection**: Navigate hierarchical structures (agent types, categories)
-- **Password**: Secure input prompts
-- **Open Web Page**: Launch URLs in browser
-- **Multiple Tree Selection**: Choose multiple items from hierarchical structures
-
-## API Reference
+## Core Components
 
 ### AgentInkCLI Service
 
@@ -154,27 +117,32 @@ Main service class implementing the CLI functionality.
 
 ```typescript
 export default class AgentInkCLI implements TokenRingService {
-  constructor(app: TokenRingApp, config: z.infer<typeof InkCLIConfigSchema>)
-  async run(): Promise<void>
+  name = 'AgentInkCLI';
+  description = 'Ink-based CLI for interacting with agents';
+
+  constructor(app: TokenRingApp, config: z.infer<typeof InkCLIConfigSchema>);
+
+  async run(): Promise<void>;
 }
 ```
 
 ### AgentCLI Component
 
-Main component that manages screen state and rendering.
+Top-level component managing screen state transitions and rendering.
 
 ```typescript
 interface AgentCLIProps extends z.infer<typeof InkCLIConfigSchema> {
   agentManager: AgentManager;
   app: TokenRingApp;
 }
-export default function AgentCLI(props: AgentCLIProps)
+
+export default function AgentCLI(props: AgentCLIProps);
 ```
 
 ### Screen Types
 
 ```typescript
-type Screen = 
+type Screen =
   | { name: 'selectAgent' }
   | { name: 'chat'; agentId: string }
   | { name: 'askForConfirmation'; request: HumanInterfaceRequestFor<"askForConfirmation">, onResponse: (response: HumanInterfaceResponseFor<'askForConfirmation'>) => void }
@@ -185,94 +153,200 @@ type Screen =
   | { name: 'askForText'; request: HumanInterfaceRequestFor<"askForText">, onResponse: (response: HumanInterfaceResponseFor<'askForText'>) => void };
 ```
 
-## Event Handling
+## Screen Components
 
-The CLI processes various agent events in real-time:
+### AgentChatScreen
 
-- **output.chat**: Chat messages (green color)
-- **output.reasoning**: Agent reasoning (yellow color)
-- **output.system**: System messages with levels (error/warning/info)
-- **state.busy**: Loading states with spinners
-- **state.idle**: Ready for user input
-- **state.exit**: Agent exit notifications
-- **input.received**: Echo user input
-- **human.request**: Handle interactive prompts
-
-## Examples
-
-### Basic Agent Interaction
+Main chat interface displaying agent outputs and handling input.
 
 ```typescript
-// 1. Start the CLI
-await app.start();
+interface AgentChatScreenProps {
+  agentEventState: AgentEventState | null;
+  currentAgent: Agent;
+  setScreen: (screen: Screen) => void;
+}
 
-// 2. Select or create an agent
-// CLI will show agent selection menu with categories and options
-
-// 3. Chat with the agent
-// Type your questions and press Enter
-
-// 4. Use commands
-/help          // Show available commands
-/switch        // Return to agent selection
+export default function AgentChatScreen(props: AgentChatScreenProps);
 ```
 
-### Command History and Auto-completion
+Features:
+- Displays agent responses with markdown rendering
+- Shows thinking/reasoning process
+- Displays user input
+- Command input with history and auto-completion
+- Status line and busy state indicators
+
+### AgentSelectionScreen
+
+For selecting agents from categories or connecting to existing ones.
 
 ```typescript
-// The CLI maintains command history
-// Use up/down arrows to navigate through previous commands
+interface AgentSelectionScreenProps {
+  app: TokenRingApp;
+  setScreen: (screen: Screen) => void;
+  onCancel: () => void;
+}
 
-// Tab completion for commands
-agent.handleInput({ message: "/swi" });  // Tab to complete to "/switch"
+export default function AgentSelectionScreen(props: AgentSelectionScreenProps);
 ```
 
-### Web Application Integration
+Features:
+- Categorized agent list (by configuration)
+- Current running agents
+- Web applications
+- Workflows
+- Error display for agent spawning failures
+
+### Human Interface Screens
+
+| Screen | Purpose |
+|--------|---------|
+| `AskScreen` | Multi-line text input (Ctrl+D to submit, Esc to cancel) |
+| `ConfirmationScreen` | Yes/no prompts with arrow key navigation and timeout support |
+| `PasswordScreen` | Secure input with masked characters |
+| `TreeSelectionScreen` | Hierarchical tree-based selection (single or multiple) |
+| `WebPageScreen` | Opens URLs in browser |
+
+## Reusable Components
+
+### CommandInput
+
+Input field with history and auto-completion.
 
 ```typescript
-// The CLI automatically detects web applications
-// and provides options to connect to them
+export interface CommandInputProps {
+  history?: string[];
+  autoCompletion?: string[];
+  onSubmit: (value: string) => void;
+  onCancel?: () => void;
+  onCtrlC?: () => void;
+  prompt?: string;
+}
+
+export const CommandInput: React.FC<CommandInputProps>;
 ```
 
-### Workflow Agent Spawning
+Features:
+- Command history navigation (up/down arrows)
+- Tab auto-completion
+- Ctrl+C handling
+- Escape to cancel
+
+### SelectInput
+
+Generic selection input component.
 
 ```typescript
-// Workflows are listed in the agent selection screen
-// and can be spawned as agents
+export interface SelectOption<T = string> {
+  label: string;
+  value: T;
+}
+
+export interface SelectInputProps<T = string> {
+  message?: string;
+  options: SelectOption<T>[];
+  onSelect: (value: T) => void;
+  onCancel?: () => void;
+}
+
+export function SelectInput<T = string>(props: SelectInputProps<T>): React.ReactElement;
 ```
 
-## Integration Details
+### Markdown
 
-### Service Dependencies
+Renders markdown with syntax highlighting.
 
-- `@tokenring-ai/agent`: Core agent framework
-- `@tokenring-ai/app`: Application framework
-- `@tokenring-ai/web-host`: Web resource hosting
-- `@tokenring-ai/utility`: Shared utilities
+```typescript
+export interface InkMarkdownProps {
+  children: string;
+  options?: InkMarkdownOptions;
+}
 
-### Event Handling
+export function InkMarkdown(props: InkMarkdownProps): React.ReactElement;
+```
 
-The CLI subscribes to agent events and renders them appropriately:
+Features:
+- Full markdown parsing using marked
+- Syntax highlighting for 40+ languages
+- Tables, lists, blockquotes, and code blocks
+- Responsive width handling
 
-- `output.chat`: Regular chat messages
-- `output.reasoning`: Agent's internal reasoning
-- `output.info`: Informational messages
-- `output.warning`: Warning messages
-- `output.error`: Error messages
-- `input.handled`: Input processing status
-- `input.received`: User input display
-- `human.request`: Handle interactive prompts
+## Custom Hooks
 
-### Human Interface Requests
+### useAgentEvents
 
-The CLI handles various human interface request types:
+Subscribes to agent event state.
 
-- `askForText`: Text input prompts
-- `askForConfirmation`: Yes/no questions
-- `askForMultipleTreeSelection`: Multi-select from hierarchy
-- `askForSingleTreeSelection`: Single selection from hierarchy
-- `openWebPage`: Display web content
-- `askForPassword`: Secure password input
+```typescript
+export function useAgentEvents(agent: Agent | null) {
+  // Returns AgentEventState or null
+}
+```
+
+### useOutputBlocks
+
+Processes agent events into structured output blocks.
+
+```typescript
+export type OutputBlock =
+  | { type: 'chat'; message: string }
+  | { type: 'reasoning'; message: string }
+  | { type: 'input'; message: string }
+  | { type: 'system'; message: string; level: 'info' | 'warning' | 'error' };
+
+export function useOutputBlocks(events: AgentEventState["events"] | null) {
+  // Returns OutputBlock[]
+}
+```
+
+### useScreenSize
+
+Tracks terminal dimensions for responsive layout.
+
+```typescript
+export default function useScreenSize() {
+  // Returns { rows: number, columns: number }
+}
+```
+
+## Integration
+
+The cli-ink plugin integrates with several core TokenRing packages:
+
+- **@tokenring-ai/agent**: For agent management and event handling
+- **@tokenring-ai/app**: As the main application framework
+- **@tokenring-ai/web-host**: To detect and connect to web applications (SPA resources)
+- **@tokenring-ai/workflow**: For spawning workflow-based agents
+
+It registers itself as a service and handles human interface requests through the agent system's event system.
+
+## Event Types
+
+The CLI processes various agent events with color-coded output:
+
+| Event Type | Color | Description |
+|------------|-------|-------------|
+| `output.chat` | Green | Chat messages from the agent |
+| `output.reasoning` | Yellow | Agent reasoning process |
+| `output.info` | Blue | Informational system messages |
+| `output.warning` | Yellow | Warning system messages |
+| `output.error` | Red | Error system messages |
+| `input.received` | Yellow | User input echo |
+| `human.request` | - | Interactive prompt handling |
+
+## Keyboard Shortcuts
+
+### Ctrl+C Actions
+- `Ctrl+C` - Exit the application when in agent selection, return to agent selection when in chat
+
+### Navigation
+- `Up/Down Arrow` - Navigate lists and command history
+- `Tab` - Auto-complete commands
+- `Left/Right Arrow` - Expand/collapse tree nodes
+- `Space` - Toggle selections (multiple choice)
+- `Enter` - Select/submit
+- `Esc` or `q` - Cancel/cancel selection
+- `Ctrl+D` - Submit multi-line input
 
 ## Development
 
@@ -285,53 +359,62 @@ bun run build
 ### Testing
 
 ```bash
-vitest run
-vitest run:watch
-vitest run:coverage
+vitest run         # Run tests
+vitest run:watch  # Watch mode
+vitest run:coverage # Coverage report
 ```
 
 ### Adding New Screens
 
 1. Create a new file in `screens/` directory
-2. Implement the screen component following the existing patterns
-3. Add support in `AgentCLI.tsx` for handling the new screen type
+2. Implement the screen component
+3. Add the screen type to the `Screen` union type in `AgentCLI.tsx`
+4. Add handling in the main `AgentCLI` component
 
-### Adding Custom Components
+### Adding New Commands
 
-1. Create a new file in `components/` directory
-2. Implement the component with proper TypeScript types
-3. Use Ink components for consistent styling
+1. Update `CommandInput.tsx` with command handlers
+2. Add documentation for the new command
+3. Register command names from the `AgentCommandService`
 
 ## Package Structure
 
 ```
 pkg/cli-ink/
-├── index.ts                 # Main entry point and exports
-├── plugin.ts                # Plugin definition for TokenRing app integration
-├── AgentInkCLI.ts           # Main service class
-├── AgentCLI.tsx             # Core component managing screen state
-├── components/              # Reusable components
-│   ├── Markdown.tsx         # Markdown rendering with syntax highlighting
-│   ├── CommandInput.tsx     # Command input with history and auto-completion
-│   └── SelectInput.tsx      # Selection input component
-├── hooks/                  # Custom hooks
-│   ├── useAgentEvents.ts    # Agent event state management
-│   ├── useOutputBlocks.tsx  # Output block processing
-│   └── useScreenSize.ts     # Terminal size management
-├── screens/                # Screen components
-│   ├── AgentChatScreen.tsx  # Agent chat interface
+├── index.ts                    # Main entry point and exports
+├── plugin.ts                   # Plugin definition for TokenRing app integration
+├── AgentInkCLI.ts              # Main service class
+├── AgentCLI.tsx                # Core component managing screen state
+├── components/                 # Reusable components
+│   ├── CommandInput.tsx        # Command input with history and auto-completion
+│   ├── SelectInput.tsx         # Selection input component
+│   └── Markdown.tsx            # Markdown rendering with syntax highlighting
+├── hooks/                      # Custom hooks
+│   ├── useAgentEvents.ts       # Agent event state management
+│   ├── useOutputBlocks.tsx     # Output block processing
+│   └── useScreenSize.ts        # Terminal size management
+├── screens/                    # Screen components
+│   ├── AgentChatScreen.tsx     # Agent chat interface
 │   ├── AgentSelectionScreen.tsx # Agent selection interface
-│   ├── AskScreen.tsx        # Text input screen
-│   ├── ConfirmationScreen.tsx # Confirmation prompt screen
-│   ├── PasswordScreen.tsx   # Password input screen
+│   ├── AskScreen.tsx           # Text input screen
+│   ├── ConfirmationScreen.tsx  # Confirmation prompt screen
+│   ├── PasswordScreen.tsx      # Password input screen
 │   ├── TreeSelectionScreen.tsx # Tree-based selection
-│   └── WebPageScreen.tsx    # Web page opening screen
+│   └── WebPageScreen.tsx       # Web page opening screen
+├── markdown.sample.md          # Markdown rendering sample
 ├── package.json
 ├── tsconfig.json
 ├── vitest.config.ts
 └── README.md
 ```
 
+## Related Packages
+
+- [@tokenring-ai/agent](./agent.md) - Agent orchestration and management
+- [@tokenring-ai/app](./app.md) - Base application framework
+- [@tokenring-ai/web-host](./web-host.md) - Web application hosting
+- [@tokenring-ai/workflow](./workflow.md) - Workflow-based agent spawning
+
 ## License
 
-MIT License - see LICENSE file for details.
+MIT License - see [LICENSE](./LICENSE) file for details.

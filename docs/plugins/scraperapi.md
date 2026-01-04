@@ -4,12 +4,12 @@ Web scraping integration via ScraperAPI for structured Google SERP, Google News,
 
 ## Overview
 
-The `@tokenring-ai/scraperapi` package provides a ScraperAPI-based web search provider that integrates seamlessly with the Token Ring AI platform. It enables AI agents and applications to perform web searches, fetch structured Google Search Engine Results Pages (SERP), retrieve Google News articles, and scrape web pages through a unified interface.
+The `@tokenring-ai/scraperapi` package provides a ScraperAPI-based web search provider that integrates with the Token Ring AI platform. It enables AI agents and applications to perform web searches, fetch structured Google Search Engine Results Pages (SERP), retrieve Google News articles, and scrape web pages through a unified interface.
 
 This package extends the `WebSearchProvider` from `@tokenring-ai/websearch`, offering:
 
-- **Google SERP Search**: Structured search results with organic listings, knowledge graphs, related questions, videos, and pagination
-- **Google News Search**: Structured news articles with sources, thumbnails, dates, and pagination  
+- **Google SERP Search**: Structured search results with organic listings, knowledge graphs, and related questions
+- **Google News Search**: Structured news articles with sources, thumbnails, dates, and links
 - **HTML Fetching**: Retrieve page content with optional JavaScript rendering and geotargeting
 - **Error Handling**: Robust error management with retry logic via `doFetchWithRetry`
 - **Geotargeting**: Support for country-specific searches and custom TLDs
@@ -22,11 +22,9 @@ This package extends the `WebSearchProvider` from `@tokenring-ai/websearch`, off
 - **Web Scraping**: Fetch HTML content from any URL with optional rendering
 - **Google Search**: Perform structured searches with comprehensive parameter support
 - **Google News**: Retrieve news articles with metadata and thumbnails
-- **Geotargeting**: Country-specific searches with support for 20+ Google TLDs
+- **Geotargeting**: Country-specific searches with support for multiple Google TLDs
 - **Pagination**: Support for result pagination and continuation
 - **Structured Data**: JSON responses with consistent response formats
-- **Chat Command**: Built-in `/scraper` command for direct user interaction
-- **Tools**: Integration with agent tools for programmatic access
 
 ### Configuration Options
 
@@ -34,8 +32,6 @@ This package extends the `WebSearchProvider` from `@tokenring-ai/websearch`, off
 - Country code and TLD customization
 - JavaScript rendering toggle
 - Device type selection (desktop/mobile)
-- Result format selection (JSON/CSV)
-- Time-based filtering (hour/day/week/month/year)
 
 ## Installation
 
@@ -67,8 +63,7 @@ export default {
         countryCode: "us",                  // Optional (e.g., 'us', 'gb', 'ca')
         tld: "com",                         // Optional (e.g., 'com', 'co.uk')
         render: false,                      // Optional (enable JS rendering)
-        deviceType: "desktop",               // Optional ('desktop' or 'mobile')
-        outputFormat: "json"                 // Optional ('json' or 'csv')
+        deviceType: "desktop",              // Optional ('desktop' or 'mobile')
       }
     }
   }
@@ -81,12 +76,11 @@ The package uses Zod schema validation for configuration:
 
 ```typescript
 const ScraperAPIWebSearchProviderOptionsSchema = z.object({
-  apiKey: z.string(),                    // Required
-  countryCode: z.string().optional(),    // Optional
-  tld: z.string().optional(),            // Optional  
-  render: z.boolean().optional(),        // Optional
-  deviceType: z.enum(["desktop", "mobile"]).optional(), // Optional
-  outputFormat: z.enum(["json", "csv"]).optional() // Optional
+  apiKey: z.string(),                                    // Required
+  countryCode: z.string().optional(),                    // Optional
+  tld: z.string().optional(),                            // Optional
+  render: z.boolean().optional(),                        // Optional
+  deviceType: z.enum(["desktop", "mobile"]).optional(),  // Optional
 });
 ```
 
@@ -160,21 +154,6 @@ const renderedContent = await provider.fetchPage('https://example.com', {
 });
 ```
 
-### Chat Command Usage
-
-The package provides a built-in `/scraper` chat command for direct interaction:
-
-```text
-/scraper url <url> [--render] [--country <code>] [--header "K:V"]
-/scraper serp <query> [--country <code>] [--tld <tld>] [--tbs <range>] [--num <n>] [--output json|csv]
-/scraper news <query> [--country <code>] [--tld <tld>] [--tbs <range>] [--output json|csv]
-```
-
-Example:
-```text
-/scraper serp "cherry tomatoes" --country gb --tld co.uk --tbs d --num 20
-```
-
 ## API Reference
 
 ### ScraperAPIWebSearchProvider
@@ -193,7 +172,6 @@ new ScraperAPIWebSearchProvider(config: ScraperAPIWebSearchProviderOptions)
 - `tld` (string, optional): Google TLD (e.g., 'com', 'co.uk')
 - `render` (boolean, optional): Enable JavaScript rendering
 - `deviceType` (string, optional): Device type ('desktop' or 'mobile')
-- `outputFormat` (string, optional): Output format ('json' or 'csv')
 
 #### Methods
 
@@ -355,17 +333,25 @@ The package includes automatic plugin integration:
 
 ```typescript
 // plugin.ts
+import { TokenRingPlugin } from '@tokenring-ai/app';
+import { WebSearchConfigSchema, WebSearchService } from '@tokenring-ai/websearch';
+import { z } from 'zod';
+import packageJSON from './package.json' with { type: 'json' };
+import ScraperAPIWebSearchProvider, { ScraperAPIWebSearchProviderOptionsSchema } from './ScraperAPIWebSearchProvider.ts';
+
+const packageConfigSchema = z.object({
+  websearch: WebSearchConfigSchema.optional()
+});
+
 export default {
-  name: "@tokenring-ai/scraperapi",
-  version: "0.2.0",
-  description: "ScraperAPI integration for Token Ring",
-  install(app: TokenRingApp) {
-    const websearchConfig = app.getConfigSlice("websearch", WebSearchConfigSchema);
-    
-    if (websearchConfig) {
+  name: packageJSON.name,
+  version: packageJSON.version,
+  description: packageJSON.description,
+  install(app, config) {
+    if (config.websearch) {
       app.waitForService(WebSearchService, cdnService => {
-        for (const name in websearchConfig.providers) {
-          const provider = websearchConfig.providers[name];
+        for (const name in config.websearch!.providers) {
+          const provider = config.websearch!.providers[name];
           if (provider.type === "scraperapi") {
             cdnService.registerProvider(name, new ScraperAPIWebSearchProvider(
               ScraperAPIWebSearchProviderOptionsSchema.parse(provider)
@@ -375,17 +361,16 @@ export default {
       });
     }
   },
-} satisfies TokenRingPlugin;
+  config: packageConfigSchema
+} satisfies TokenRingPlugin<typeof packageConfigSchema>;
 ```
-
-## Dependencies
 
 ### Runtime Dependencies
 
 ```json
 {
   "@tokenring-ai/app": "0.2.0",
-  "@tokenring-ai/chat": "0.2.0", 
+  "@tokenring-ai/chat": "0.2.0",
   "@tokenring-ai/agent": "0.2.0",
   "@tokenring-ai/websearch": "0.2.0",
   "@tokenring-ai/utility": "0.2.0"
@@ -396,7 +381,6 @@ export default {
 
 - `vitest`: Testing framework
 - `typescript`: Type checking
-- `@vitest/coverage-v8`: Coverage reporting
 
 ## Testing
 
@@ -421,12 +405,7 @@ pkg/scraperapi/
 ├── ScraperAPIWebSearchProvider.ts     # Main provider implementation
 ├── plugin.ts                          # Token Ring plugin integration
 ├── package.json                       # Package metadata and dependencies
-├── README.md                          # This documentation
-└── design/                            # Internal design documents
-    ├── implementation.md              # Architecture and implementation details
-    ├── google_serp.md                 # SERP API documentation
-    ├── google_news.md                 # News API documentation
-    └── endpoint_docs.md               # General endpoint usage
+└── README.md                          # This documentation
 ```
 
 ## Rate Limiting and Usage
@@ -448,7 +427,7 @@ pkg/scraperapi/
 
 ### Common Issues
 
-1. **Missing API Key**: 
+1. **Missing API Key**:
    ```typescript
    if (!config?.apiKey) throw new Error("ScraperAPIWebSearchProvider requires apiKey");
    ```
@@ -533,8 +512,8 @@ For issues related to:
 3. Examine test files for usage examples
 4. Open an issue with detailed error information
 
---- 
+---
 
-**Version**: 0.2.0  
-**License**: MIT  
+**Version**: 0.2.0
+**License**: MIT
 **Maintainers**: Token Ring AI Team

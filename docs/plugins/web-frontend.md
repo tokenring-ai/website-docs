@@ -299,19 +299,6 @@ docker run -ti --rm \
 
 Access at `http://localhost:3000`
 
-## Dependencies
-
-**Package Dependencies:**
-- `@tokenring-ai/agent` (^0.1.0): Agent system
-- `@tokenring-ai/web-host` (^0.1.0): Web server
-
-**Frontend Dependencies:**
-- `react` (^18.3.1): UI framework
-- `react-dom` (^18.3.1): React DOM rendering
-- `@vitejs/plugin-react` (^4.3.4): Vite React plugin
-- `typescript` (^5.7.2): TypeScript support
-- `vite` (^6.0.3): Build tool
-
 ## License
 
 MIT License - Copyright (c) 2025 Mark Dierolf

@@ -20,23 +20,25 @@ The JavaScript plugin provides comprehensive JavaScript/TypeScript development t
 The plugin registers tools with the TokenRing chat service during installation:
 
 ```typescript
-import TokenRingApp from "@tokenring-ai/app";
-import {ChatService} from "@tokenring-ai/chat";
 import {TokenRingPlugin} from "@tokenring-ai/app";
+import {ChatService} from "@tokenring-ai/chat";
+import {z} from "zod";
 import packageJSON from './package.json' with {type: 'json'};
 import tools from "./tools.ts";
+
+const packageConfigSchema = z.object({});
 
 export default {
   name: packageJSON.name,
   version: packageJSON.version,
   description: packageJSON.description,
-  install(app: TokenRingApp) {
+  install(app, config) {
     app.waitForService(ChatService, chatService =>
       chatService.addTools(packageJSON.name, tools)
     );
-  }
-} satisfies TokenRingPlugin;
-```
+  },
+  config: packageConfigSchema
+} satisfies TokenRingPlugin<typeof packageConfigSchema>;```
 
 ### Available Tools
 
@@ -335,18 +337,6 @@ All tools provide comprehensive error handling:
 - Input validation and error messages
 
 ## Development
-
-### Dependencies
-
-- `@tokenring-ai/app`: Application framework (0.2.0)
-- `@tokenring-ai/chat`: Chat service integration (0.2.0)
-- `@tokenring-ai/agent`: Agent framework (0.2.0)
-- `@tokenring-ai/filesystem`: Filesystem operations (0.2.0)
-- `eslint`: Code linting (9.39.2)
-- `execa`: Command execution (9.6.1)
-- `jiti`: Runtime transpilation (2.6.1)
-- `jscodeshift`: Code transformation utilities (17.3.0)
-- `zod`: Schema validation
 
 ### Testing
 

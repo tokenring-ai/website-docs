@@ -1,116 +1,190 @@
-# AI Client Plugin
-
-Multi-provider AI integration with model registries for chat, embeddings, image generation, speech, and transcription.
+# AI Client
 
 ## Overview
 
-The `@tokenring-ai/ai-client` package provides comprehensive AI client integration for the Token Ring ecosystem. It offers a unified interface to multiple AI providers including OpenAI, Anthropic, Google, Groq, and others through the Vercel AI SDK. The package registers different model registries for various AI capabilities and manages provider configurations.
+The `@tokenring-ai/ai-client` package provides a unified interface for interacting with multiple AI providers through the Vercel AI SDK. It integrates with the Token Ring Agent framework to manage AI configurations, model selection, chat history, and request building.
+
+**Key Features:**
+
+- **Multi-Provider Support**: OpenAI, Anthropic, Google, Groq, DeepSeek, Cerebras, xAI, Perplexity, Azure, Ollama, OpenRouter, Fal, ElevenLabs, Llama, and OpenAI-compatible endpoints
+- **Model Registry**: Automatic model selection based on cost, capabilities (reasoning, intelligence, speed, tools), and availability
+- **Chat Management**: Conversation history, streaming responses, cost/timing analytics
+- **Multiple Modalities**: Chat completions, embeddings, image generation, speech synthesis, and audio transcription
+- **Reranking**: Document ranking and relevance scoring using AI models
+- **Feature Management**: Dynamic feature selection and configuration per model
+- **Auto-Configuration**: Automatic provider detection from environment variables
+- **Cost Tracking**: Detailed cost calculation and tracking for all AI operations
+
+## Installation
+
+Part of the Token Ring monorepo. Install dependencies and build:
+
+```bash
+bun install
+bun run build
+```
+
+## Core Properties
+
+- `ai.autoConfigure`: Whether to automatically configure providers from environment variables
+- `ai.providers`: Configuration object for AI providers
 
 ## Key Features
 
-- **Multi-Provider Support**: Integrates with 12+ AI providers through the Vercel AI SDK
-- **Model Registries**: Separate registries for chat, embeddings, image generation, speech, and transcription
+- **Multi-Provider Support**: Integrates with 15+ AI providers including OpenAI, Anthropic, Google, Groq, and others
+- **Model Registries**: Centralized management of chat, image generation, embedding, speech, transcription, and reranking models
+- **Type-Safe Configuration**: Zod schema for validation
+- **Extensible Provider System**: Custom providers can be added via the provider registry
 - **Cost Tracking**: Automatic cost calculation and tracking for AI usage
 - **Feature Flags**: Runtime feature configuration per model
-- **Provider Registration**: Dynamic provider registration through configuration
-- **Type-Safe Models**: Strong TypeScript types for all AI operations
 - **Streaming Support**: Full streaming capabilities for chat completions
 - **Context Compaction**: Automatic conversation summarization to manage token usage
 - **Reranking**: Document ranking and relevance scoring
 - **Multiple Modalities**: Support for chat, embeddings, images, speech, and transcription
 
-## Core Components
+## Core Methods/API
 
-### Model Registries
+### ChatModelRegistry
 
-The package registers five primary model registries that extend the base `ModelTypeRegistry`:
+The `ChatModelRegistry` manages chat completion models and provides methods for model selection and client creation.
 
-#### ChatModelRegistry
-- Manages chat models with comprehensive features
-- Supports streaming and non-streaming chat completion
-- Includes tool calling capabilities
-- Cost tracking and usage metrics
-- Reranking functionality
-- Context compaction for long conversations
+**Methods:**
 
-#### EmbeddingModelRegistry  
-- Handles text embedding generation
-- Batch processing for multiple inputs
-- Provider-specific request mangling
-- Feature flag support
+- `getClient(name: string)`: Get a chat client for a specific model
+- `getModelSpecsByRequirements(requirements)`: Get models matching specified requirements
+- `getCheapestModelByRequirements(requirements)`: Get the cheapest model matching requirements
+- `registerAllModelSpecs(modelSpecs)`: Register multiple model specifications
+- `getAllModelsWithOnlineStatus()`: Get all models with their availability status
+- `getModelsByProvider()`: Get models grouped by provider
 
-#### ImageGenerationModelRegistry
-- Image generation with provider-specific options
-- Quality and size configuration
-- Cost calculation per generation
-- Uint8Array output format
+**Example:**
 
-#### SpeechModelRegistry
-- Text-to-speech conversion
-- Voice and speed configuration
-- Audio output in Uint8Array format
-- Provider-specific options
+```typescript
+const chatRegistry = app.getService(ChatModelRegistry);
 
-#### TranscriptionModelRegistry
-- Audio transcription with language support
-- Prompt-based transcription
-- URL and DataContent input support
-- Text output format
+// Get a client for a specific model
+const client = await chatRegistry.getClient('openai:gpt-4.1');
 
-### Client Implementations
+// Get cheapest model with high reasoning capability
+const cheapest = chatRegistry.getCheapestModelByRequirements({
+  reasoningText: 4,
+  contextLength: 100000
+});
+```
 
-#### AIChatClient
-Primary chat client with the following capabilities:
+### EmbeddingModelRegistry
 
-**Key Methods:**
-- `streamChat(request, agent)`: Streams chat completion responses
-- `textChat(request, agent)`: Returns full text chat completion
-- `generateObject(request, agent)`: Generates structured objects with Zod schema
-- `rerank(request, agent)`: Reranks documents based on relevance
-- `calculateCost(usage)`: Calculates AI usage costs
-- `calculateTiming(elapsedMs, usage)`: Computes timing metrics
-- `setFeatures(features)`: Configures runtime feature flags
+The `EmbeddingModelRegistry` manages text embedding models for generating vector representations of text.
 
-**Request Types:**
-- `ChatRequest`: Standard chat completion request with messages, tools, and parameters
-- `GenerateRequest<T extends ZodObject>`: Structured object generation request
-- `RerankRequest`: Document reranking request
+**Methods:**
 
-#### AIEmbeddingClient
-Handles text embedding generation:
+- `getClient(name: string)`: Get an embedding client for a specific model
+- `getModelSpecsByRequirements(requirements)`: Get models matching requirements
+- `registerAllModelSpecs(modelSpecs)`: Register multiple model specifications
 
-**Key Methods:**
-- `getEmbeddings({ input })`: Generates embeddings for array of strings
-- `setFeatures(features)`: Configures feature flags
-- `getFeatures()`: Retrieves current feature configuration
-- `getModelId()`: Returns model identifier
+**Example:**
 
-#### AIImageGenerationClient
-Manages image generation:
+```typescript
+const embeddingRegistry = app.getService(EmbeddingModelRegistry);
+const client = await embeddingRegistry.getClient('openai:text-embedding-3-small');
 
-**Key Methods:**
-- `generateImage(request, agent)`: Generates images from prompts
-- `setFeatures(features)`: Configures feature flags
-- `getFeatures()`: Retrieves feature configuration
-- `getModelId()`: Returns model identifier
+const results = await client.getEmbeddings({
+  input: ['Hello', 'World']
+});
+console.log(results[0].embedding); // Vector array
+```
 
-#### AISpeechClient
-Handles text-to-speech conversion:
+### ImageGenerationModelRegistry
 
-**Key Methods:**
-- `generateSpeech(request, agent)`: Converts text to speech
-- `setFeatures(features)`: Configures feature flags
-- `getFeatures()`: Retrieves feature configuration
-- `getModelId()`: Returns model identifier
+The `ImageGenerationModelRegistry` manages image generation models.
 
-#### AITranscriptionClient
-Manages audio transcription:
+**Methods:**
 
-**Key Methods:**
-- `transcribe(request, agent)`: Transcribes audio to text
-- `setFeatures(features)`: Configures feature flags
-- `getFeatures()`: Retrieves feature configuration
-- `getModelId()`: Returns model identifier
+- `getClient(name: string)`: Get an image generation client
+- `registerAllModelSpecs(modelSpecs)`: Register model specifications
+
+**Example:**
+
+```typescript
+const imageRegistry = app.getService(ImageGenerationModelRegistry);
+const client = await imageRegistry.getClient('openai:gpt-image-1');
+
+const [image, result] = await client.generateImage({
+  prompt: 'A serene mountain landscape',
+  size: '1024x1024',
+  n: 1
+}, agent);
+```
+
+### SpeechModelRegistry
+
+The `SpeechModelRegistry` manages text-to-speech models.
+
+**Methods:**
+
+- `getClient(name: string)`: Get a speech synthesis client
+- `registerAllModelSpecs(modelSpecs)`: Register model specifications
+
+**Example:**
+
+```typescript
+const speechRegistry = app.getService(SpeechModelRegistry);
+const client = await speechRegistry.getClient('openai:tts-1-hd');
+
+const [audio, result] = await client.generateSpeech({
+  text: 'Hello, welcome to Token Ring AI!',
+  voice: 'alloy',
+  speed: 1.0
+}, agent);
+```
+
+### TranscriptionModelRegistry
+
+The `TranscriptionModelRegistry` manages audio transcription models.
+
+**Methods:**
+
+- `getClient(name: string)`: Get a transcription client
+- `registerAllModelSpecs(modelSpecs)`: Register model specifications
+
+**Example:**
+
+```typescript
+const transcriptionRegistry = app.getService(TranscriptionModelRegistry);
+const client = await transcriptionRegistry.getClient('openai:whisper-1');
+
+const [text, result] = await client.transcribe({
+  audio: audioBuffer,
+  language: 'en',
+  prompt: 'Context for better transcription'
+}, agent);
+```
+
+### RerankingModelRegistry
+
+The `RerankingModelRegistry` manages document reranking models.
+
+**Methods:**
+
+- `getClient(name: string)`: Get a reranking client
+- `registerAllModelSpecs(modelSpecs)`: Register model specifications
+
+**Example:**
+
+```typescript
+const rerankingRegistry = app.getService(RerankingModelRegistry);
+const client = await rerankingRegistry.getClient('openai:rerank');
+
+const result = await client.rerank({
+  query: 'What is AI?',
+  documents: [
+    'Artificial intelligence is...',
+    'Machine learning is...',
+    'Deep learning is...'
+  ],
+  topN: 2
+});
+```
 
 ## Usage Examples
 
@@ -125,7 +199,7 @@ const chatRegistry = new ChatModelRegistry();
 agent.registerService(chatRegistry);
 
 // Get chat client for a specific model
-const chatClient = await chatRegistry.getFirstOnlineClient('openai/gpt-4');
+const chatClient = await chatRegistry.getClient('openai:gpt-4.1');
 
 // Stream chat completion
 const [text, response] = await chatClient.streamChat({
@@ -133,21 +207,35 @@ const [text, response] = await chatClient.streamChat({
     { role: 'system', content: 'You are a helpful assistant.' },
     { role: 'user', content: 'Hello, how are you?' }
   ],
-  tools: {}, // Optional tool definitions
+  tools: {},
 }, agent);
 
 console.log('Chat response:', text);
 console.log('Cost:', response.cost.total);
 ```
 
-### Image Generation
+### Generating Embeddings
+
+```typescript
+import { EmbeddingModelRegistry } from '@tokenring-ai/ai-client';
+
+const embeddingRegistry = new EmbeddingModelRegistry();
+agent.registerService(embeddingRegistry);
+const embeddingClient = await embeddingRegistry.getClient('openai:text-embedding-3-large');
+
+const embeddings = await embeddingClient.getEmbeddings({
+  input: ['Token Ring AI is a framework for building AI applications']
+});
+```
+
+### Generating Images
 
 ```typescript
 import { ImageGenerationModelRegistry } from '@tokenring-ai/ai-client';
 
 const imageRegistry = new ImageGenerationModelRegistry();
 agent.registerService(imageRegistry);
-const imageClient = await imageRegistry.getFirstOnlineClient('dall-e-3');
+const imageClient = await imageRegistry.getClient('openai:gpt-image-1');
 
 const [image, result] = await imageClient.generateImage({
   prompt: 'A beautiful sunset over mountains',
@@ -156,32 +244,17 @@ const [image, result] = await imageClient.generateImage({
   n: 1
 }, agent);
 
-// Image is available as a GeneratedFile object
 console.log('Generated image:', image);
 ```
 
-### Text Embedding
-
-```typescript
-import { EmbeddingModelRegistry } from '@tokenring-ai/ai-client';
-
-const embeddingRegistry = new EmbeddingModelRegistry();
-agent.registerService(embeddingRegistry);
-const embeddingClient = await embeddingRegistry.getFirstOnlineClient('text-embedding-3-large');
-
-const embeddings = await embeddingClient.getEmbeddings({
-  input: ['Token Ring AI is a framework for building AI applications']
-});
-```
-
-### Speech Generation
+### Generating Speech
 
 ```typescript
 import { SpeechModelRegistry } from '@tokenring-ai/ai-client';
 
 const speechRegistry = new SpeechModelRegistry();
 agent.registerService(speechRegistry);
-const speechClient = await speechRegistry.getFirstOnlineClient('tts-1');
+const speechClient = await speechRegistry.getClient('openai:tts-1-hd');
 
 const [audio, result] = await speechClient.generateSpeech({
   text: 'Hello, welcome to Token Ring AI!',
@@ -189,18 +262,17 @@ const [audio, result] = await speechClient.generateSpeech({
   speed: 1.0
 }, agent);
 
-// Audio available as Uint8Array
 console.log('Generated audio:', audio);
 ```
 
-### Audio Transcription
+### Transcribing Audio
 
 ```typescript
 import { TranscriptionModelRegistry } from '@tokenring-ai/ai-client';
 
 const transcriptionRegistry = new TranscriptionModelRegistry();
 agent.registerService(transcriptionRegistry);
-const transcriptionClient = await transcriptionRegistry.getFirstOnlineClient('whisper-1');
+const transcriptionClient = await transcriptionRegistry.getClient('openai:whisper-1');
 
 const [text, result] = await transcriptionClient.transcribe({
   audio: new URL('audio.mp3'),
@@ -214,7 +286,9 @@ console.log('Transcribed text:', text);
 ### Reranking Documents
 
 ```typescript
-const client = await chatRegistry.getFirstOnlineClient('gpt-4');
+const chatRegistry = app.getService(ChatModelRegistry);
+const client = await chatRegistry.getClient('openai:gpt-4.1');
+
 const rankings = await client.rerank({
   query: 'What is artificial intelligence?',
   documents: [
@@ -228,211 +302,171 @@ const rankings = await client.rerank({
 console.log('Ranked documents:', rankings.rankings);
 ```
 
-## Configuration Options
+## Configuration
+
+The plugin configuration is defined in `schema.ts` and can be set in the application configuration.
 
 ### Provider Configuration
 
-Configure multiple providers in the app configuration:
+Configure providers in your `.tokenring/coder-config.mjs`:
 
-```json
-{
-  "ai": {
-    "providers": {
-      "openai": {
-        "apiKey": "your-openai-key",
-        "modelId": "gpt-4"
+```javascript
+export default {
+  ai: {
+    defaultModel: "gpt-4.1",
+    autoConfigure: true, // Set to true to auto-configure from environment variables
+    providers: {
+      "OpenAI": {
+        provider: "openai",
+        apiKey: process.env.OPENAI_API_KEY
       },
-      "anthropic": {
-        "apiKey": "your-anthropic-key",
-        "modelId": "claude-3-5-sonnet"
+      "Anthropic": {
+        provider: "anthropic",
+        apiKey: process.env.ANTHROPIC_API_KEY
       },
-      "google": {
-        "apiKey": "your-google-key",
-        "modelId": "gemini-2.0-flash"
+      "Google": {
+        provider: "google",
+        apiKey: process.env.GOOGLE_GENERATIVE_AI_API_KEY
+      },
+      "xAI": {
+        provider: "xai",
+        apiKey: process.env.XAI_API_KEY
+      },
+      "Perplexity": {
+        provider: "perplexity",
+        apiKey: process.env.PERPLEXITY_API_KEY
+      },
+      "Groq": {
+        provider: "groq",
+        apiKey: process.env.GROQ_API_KEY
+      },
+      "DeepSeek": {
+        provider: "deepseek",
+        apiKey: process.env.DEEPSEEK_API_KEY
+      },
+      "Cerebras": {
+        provider: "cerebras",
+        apiKey: process.env.CEREBRAS_API_KEY
+      },
+      "Azure": {
+        provider: "azure",
+        apiKey: process.env.AZURE_API_KEY,
+        baseURL: process.env.AZURE_API_ENDPOINT
+      },
+      "Ollama": {
+        provider: "ollama",
+        baseURL: process.env.LLAMA_BASE_URL ?? "http://127.0.0.1:11434"
+      },
+      "OpenRouter": {
+        provider: "openrouter",
+        apiKey: process.env.OPENROUTER_API_KEY
+      },
+      "Llama": {
+        provider: "llama",
+        apiKey: process.env.META_LLAMA_API_KEY
+      },
+      "OpenAI-Compatible": {
+        provider: "openaiCompatible",
+        baseURL: "https://api.example.com/v1",
+        apiKey: process.env.API_KEY
+      },
+      "Fal": {
+        provider: "fal",
+        apiKey: process.env.FAL_API_KEY
+      },
+      "ElevenLabs": {
+        provider: "elevenlabs",
+        apiKey: process.env.ELEVENLABS_API_KEY
       }
     }
   }
-}
-```
-
-### Feature Flags
-
-Enable specific features for individual models:
-
-```typescript
-// Get model with web search feature enabled
-const chatClient = await chatRegistry.getFirstOnlineClient('openai/gpt-4?websearch=1');
-
-// Get model with reasoning text enabled
-const chatClient = await chatRegistry.getFirstOnlineClient('openai/gpt-4?reasoningText=1');
-```
-
-### Model Specifications
-
-Each model can have provider-specific configurations:
-
-```typescript
-type ChatModelSpec = ModelSpec & {
-  impl: Exclude<LanguageModel, string>;
-  mangleRequest?: (req: ChatRequest, features: FeatureOptions) => void;
-  speed?: number;
-  research?: number;
-  reasoningText?: number;
-  tools?: number;
-  intelligence?: number;
-  maxCompletionTokens?: number;
-  contextLength: number;
-  costPerMillionInputTokens: number;
-  costPerMillionOutputTokens: number;
-  costPerMillionCachedInputTokens?: number;
-  costPerMillionReasoningTokens?: number;
 };
 ```
 
-## Provider Integration
+### Auto-Configuration
 
-The package integrates with multiple AI providers through the Vercel AI SDK:
+Set `autoConfigure: true` to automatically detect providers from environment variables:
 
-- **OpenAI**: Full support for all models
-- **Anthropic**: Claude models with tool calling
-- **Google**: Gemini models with web search
-- **Groq**: Fast inference models
-- **DeepSeek**: Open-source models
-- **Perplexity**: Web search optimized models
-- **Cerebras**: High-performance models
-- **Azure**: Azure AI services
-- **Fal**: Image generation providers
-- **XAI**: Elon Musk's AI models
-- **OpenRouter**: Multi-provider access
-- **Ollama**: Local model hosting
-- **OpenAI-Compatible**: Custom endpoint support
+| Environment Variable | Provider |
+|----------------------|----------|
+| `ANTHROPIC_API_KEY` | Anthropic |
+| `AZURE_API_KEY` + `AZURE_API_ENDPOINT` | Azure |
+| `CEREBRAS_API_KEY` | Cerebras |
+| `DEEPSEEK_API_KEY` | DeepSeek |
+| `GOOGLE_GENERATIVE_AI_API_KEY` | Google |
+| `GROQ_API_KEY` | Groq |
+| `META_LLAMA_API_KEY` | Llama |
+| `OPENAI_API_KEY` | OpenAI |
+| `LLAMA_BASE_URL` / `LLAMA_API_KEY` | Ollama |
+| `OPENROUTER_API_KEY` | OpenRouter |
+| `PERPLEXITY_API_KEY` | Perplexity |
+| `XAI_API_KEY` | xAI |
+| `DASHSCOPE_API_KEY` | Qwen (OpenAI-compatible) |
+| `ZAI_API_KEY` | zAI (OpenAI-compatible) |
 
-## Cost Tracking
-
-The AI client automatically tracks and calculates costs for all operations:
-
-```typescript
-interface AIResponseCost {
-  input?: number;
-  cachedInput?: number;
-  output?: number;
-  reasoning?: number;
-  total?: number;
-}
-
-interface AIResponseTiming {
-  elapsedMs: number;
-  tokensPerSec?: number;
-  totalTokens?: number;
-}
-```
-
-Cost calculations are based on provider-specific pricing and usage metrics.
-
-## Context Compaction
-
-The AI client includes automatic context compaction for long conversations:
-
-```typescript
-// Enable auto-compact
-aiService.updateAIConfig({ autoCompact: true }, agent);
-
-// Manual compact
-import { compactContext } from '@tokenring-ai/ai-client/util/compactContext';
-await compactContext(agent);
-```
-
-Compaction creates a summary of the conversation, reducing token usage while preserving important context.
-
-## Commands
-
-The package provides chat commands for interactive use:
-
-### `/chat [message]`
-
-Send a message to the AI using the current model and configuration.
-
-```
-/chat Explain how async/await works in JavaScript
-```
-
-### `/model [model_name]`
-
-Set or show the current model. Without arguments, shows an interactive tree selection.
-
-```
-/model gpt-4.1
-/model                    # Interactive selection
-```
-
-### `/ai settings key=value [...]`
-
-Update AI configuration settings.
-
-```
-/ai settings temperature=0.7 maxTokens=4000
-/ai settings autoCompact=true
-/ai                       # Show current settings
-```
-
-### `/ai context`
-
-Show all context items that would be included in the next chat request.
-
-```
-/ai context
-```
-
-### `/compact`
-
-Manually compact the conversation context by summarizing prior messages.
-
-```
-/compact
-```
-
-### `/rerank query=\"...\" documents=\"...\"`
-
-Rank documents by relevance to a query.
-
-```
-/rerank query=\"best programming languages\" documents=\"JavaScript,Python,Rust\"
-```
-
-## Supported Providers
-
-| Provider          | Chat | Embeddings | Images | Speech | Transcription | Reranking | Notes                                     |
-|-------------------|------|------------|--------|--------|---------------|-----------|-------------------------------------------|
-| OpenAI            | ✅    | ✅          | ✅      | ✅      | ✅             | ✅        | GPT-4.1, GPT-5, O3, O4-mini, TTS, Whisper   |
-| Anthropic         | ✅    | ❌          | ❌      | ❌      | ❌             | ❌        | Claude 3.5, 4, 4.1                        |
-| Google            | ✅    | ❌          | ✅      | ❌      | ❌             | ❌        | Gemini 2.5 Pro/Flash, web search          |
-| xAI               | ✅    | ❌          | ✅      | ❌      | ❌             | ❌        | Grok 3, 4, code models                    |
-| DeepSeek          | ✅    | ❌          | ❌      | ❌      | ❌             | ❌        | DeepSeek Chat, Reasoner                   |
-| Groq              | ✅    | ❌          | ❌      | ❌      | ❌             | ❌        | Fast inference, Llama models              |
-| Cerebras          | ✅    | ❌          | ❌      | ❌      | ❌             | ❌        | Ultra-fast inference                      |
-| Perplexity        | ✅    | ❌          | ❌      | ❌      | ❌             | ❌        | Sonar models with web search              |
-| Azure             | ✅    | ❌          | ❌      | ❌      | ❌             | ❌        | Azure OpenAI Service                      |
-| Ollama            | ✅    | ✅          | ❌      | ❌      | ❌             | ❌        | Local models                              |
-| OpenRouter        | ✅    | ❌          | ❌      | ❌      | ❌             | ❌        | Access to many providers                  |
-| Fal               | ❌    | ❌          | ✅      | ❌      | ❌             | ❌        | Image generation                          |
-| OpenAI-Compatible | ✅    | ✅          | ❌      | ❌      | ❌             | ❌        | Custom endpoints                          |
-
-## Model Features
+### Model Features
 
 Models can have various features that can be enabled/disabled:
 
-- **websearch**: Enables web search capability
-- **reasoningEffort**: Reasoning effort level (none, minimal, low, medium, high)
-- **reasoningSummary**: Reasoning summary mode (auto, detailed)
-- **serviceTier**: Service tier (auto, flex, priority, default)
-- **textVerbosity**: Text verbosity (low, medium, high)
-- **strictJsonSchema**: Use strict JSON schema validation
+#### OpenAI Models
+
+| Feature | Description | Default |
+|---------|-------------|---------|
+| `websearch` | Enables web search capability | false |
+| `reasoningEffort` | Reasoning effort level (none, minimal, low, medium, high) | "medium" |
+| `reasoningSummary` | Reasoning summary mode (auto, detailed) | undefined |
+| `serviceTier` | Service tier (auto, flex, priority, default) | "auto" |
+| `textVerbosity` | Text verbosity (low, medium, high) | "medium" |
+| `strictJsonSchema` | Use strict JSON schema validation | false |
+| `promptCacheRetention` | Prompt cache retention policy | "in_memory" |
+
+#### Anthropic Models
+
+| Feature | Description | Default |
+|---------|-------------|---------|
+| `maxSearchUses` | Maximum web searches (0-20) | 0 |
+
+#### Google Models
+
+| Feature | Description | Default |
+|---------|-------------|---------|
+| `websearch` | Enables web search | false |
+| `responseModalities` | Response modalities | ["TEXT"] |
+| `thinkingBudget` | Thinking token budget | undefined |
+| `thinkingLevel` | Thinking depth (Gemini 3) | undefined |
+| `includeThoughts` | Include thought summaries | false |
+
+#### xAI Models
+
+| Feature | Description | Default |
+|---------|-------------|---------|
+| `websearch` | Enables web search | false |
+| `maxSearchResults` | Max search results | 20 |
+| `returnCitations` | Return citations | false |
+
+#### Perplexity Models
+
+| Feature | Description | Default |
+|---------|-------------|---------|
+| `websearch` | Enables web search | true |
+| `searchContextSize` | Search context size (low, medium, high) | "low" |
+
+#### OpenRouter Models
+
+| Feature | Description | Default |
+|---------|-------------|---------|
+| `websearch` | Enables web search plugin | false |
+| `searchEngine` | Search engine (native, exa) | undefined |
+| `maxResults` | Max search results | 5 |
+| `temperature` | Temperature (0-2.0) | undefined |
+| `topP` | Top P sampling (0-1.0) | undefined |
+| `topK` | Top K sampling | undefined |
 
 **Example:**
 
 ```typescript
 // Select model with web search enabled
-const client = await chatRegistry.getFirstOnlineClient('openai/gpt-5?websearch=1');
+const client = await chatRegistry.getClient('openai/gpt-5?websearch=1');
 
 // Set features on a client
 client.setFeatures({
@@ -442,35 +476,141 @@ client.setFeatures({
 });
 ```
 
-## Dependencies
+## Supported Providers
 
-- `@tokenring-ai/app`: Application framework
-- `@tokenring-ai/agent`: Core agent system
+| Provider | Chat | Embeddings | Images | Speech | Transcription | Reranking | Notes |
+|----------|------|------------|--------|--------|---------------|-----------|-------|
+| OpenAI | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | GPT-4.1, GPT-5, O3, O4-mini, TTS, Whisper |
+| Anthropic | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ | Claude 4.5, 4.1 |
+| Google | ✅ | ❌ | ✅ | ❌ | ❌ | ❌ | Gemini 2.5 Pro/Flash, Imagen |
+| xAI | ✅ | ❌ | ✅ | ❌ | ❌ | ❌ | Grok 3, 4, 4.1 |
+| DeepSeek | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ | DeepSeek Chat, Reasoner |
+| Groq | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ | Fast inference, Llama models |
+| Cerebras | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ | Ultra-fast inference |
+| Perplexity | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ | Sonar models with web search |
+| Azure | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ | Azure OpenAI Service |
+| Ollama | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ | Local models |
+| OpenRouter | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ | Access to many providers |
+| Fal | ❌ | ❌ | ✅ | ❌ | ❌ | ❌ | Image generation |
+| OpenAI-Compatible | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ | Custom endpoints |
+| Llama | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ | Meta Llama models |
+| ElevenLabs | ❌ | ❌ | ❌ | ✅ | ✅ | ❌ | TTS and transcription |
+
+## Integration
+
+The AI Client integrates with the Agent system by registering model services. Agents can access these services via the application's service registry.
+
+### Chat Commands
+
+The package registers the following chat commands for interactive use:
+
+- `/chat [message]`: Send a message to the AI using the current model and configuration
+- `/model [model_name]`: Set or show the current model (supports interactive selection)
+- `/ai settings key=value [...]`: Update AI configuration settings
+- `/ai context`: Show all context items that would be included in the next chat request
+- `/compact`: Manually compact the conversation context by summarizing prior messages
+- `/rerank query="..." documents="..."`: Rank documents by relevance to a query
+
+## Cost Tracking
+
+All responses include detailed cost information:
+
+```typescript
+const [output, response] = await runChat({ input: 'Hello' }, agent);
+
+console.log(`Input: $${response.cost.input.toFixed(4)}`);
+console.log(`Cached: $${response.cost.cachedInput?.toFixed(4) || 0}`);
+console.log(`Output: $${response.cost.output.toFixed(4)}`);
+console.log(`Reasoning: $${response.cost.reasoning?.toFixed(4) || 0}`);
+console.log(`Total: $${response.cost.total.toFixed(4)}`);
+```
+
+**Cost Response Type:**
+
+```typescript
+type AIResponseCost = {
+  input?: number;           // Cost of input tokens
+  cachedInput?: number;     // Cost of cached input tokens
+  output?: number;          // Cost of output tokens
+  reasoning?: number;       // Cost of reasoning tokens
+  total?: number;           // Total cost
+};
+
+type AIResponseTiming = {
+  elapsedMs: number;        // Time elapsed in milliseconds
+  tokensPerSec?: number;    // Tokens processed per second
+  totalTokens?: number;     // Total tokens processed
+};
+```
+
+## Best Practices
+
+- Use `autoConfigure` for development to automatically detect available providers
+- For production, explicitly configure providers to ensure reliability and performance
+- Always validate configuration using the provided Zod schema
+- For long conversations, enable context compaction to manage token usage
+- Use model features (e.g., web search, reasoning effort) to optimize performance
+- Take advantage of cost tracking to monitor AI usage expenses
+
+## Testing
+
+The package includes unit tests using Vitest. Run tests with:
+
+```bash
+bun run test              # Run tests
+bun run test:watch        # Watch mode
+bun run test:coverage     # Coverage report
+```
+
+## Package Structure
+
+```
+pkg/ai-client/
+├── client/
+│   ├── AIChatClient.ts           # Chat completion client with streaming support
+│   ├── AIEmbeddingClient.ts      # Text embedding client
+│   ├── AIImageGenerationClient.ts # Image generation client
+│   ├── AISpeechClient.ts         # Text-to-speech client
+│   ├── AITranscriptionClient.ts  # Audio transcription client
+│   └── AIRerankingClient.ts      # Document reranking client
+├── providers/
+│   ├── anthropic.ts              # Anthropic provider
+│   ├── azure.ts                  # Azure provider
+│   ├── cerebras.ts               # Cerebras provider
+│   ├── deepseek.ts               # DeepSeek provider
+│   ├── elevenlabs.ts             # ElevenLabs provider (speech & transcription)
+│   ├── fal.ts                    # Fal provider (image generation)
+│   ├── google.ts                 # Google provider
+│   ├── groq.ts                   # Groq provider
+│   ├── llama.ts                  # Llama provider
+│   ├── ollama.ts                 # Ollama provider (local models)
+│   ├── openai.ts                 # OpenAI provider
+│   ├── openaiCompatible.ts       # OpenAI-compatible provider
+│   ├── openrouter.ts             # OpenRouter provider
+│   ├── perplexity.ts             # Perplexity provider
+│   ├── xai.ts                    # xAI provider
+│   └── xai-responses.ts          # xAI responses provider
+├── util/
+│   ├── cachedDataRetriever.ts    # Data caching utilities
+│   └── resequenceMessages.ts     # Message resequencing utilities
+├── ModelRegistry.ts              # Model registries for each modality
+├── ModelTypeRegistry.ts          # Generic model registry with features
+├── providers.ts                  # Provider registration and config schema
+├── schema.ts                     # AI model provider interface and schemas
+├── autoConfig.ts                 # Auto-configuration from environment
+├── plugin.ts                     # Plugin entry point
+└── index.ts                      # Package exports
+```
+
+## Related Components
+
+- `@tokenring-ai/app`: Base application framework
+- `@tokenring-ai/agent`: Agent orchestration system
+- `@ai-sdk/openai`: OpenAI provider implementation
+- `@ai-sdk/anthropic`: Anthropic provider implementation
+- `@ai-sdk/google`: Google provider implementation
 - `@tokenring-ai/utility`: Shared utilities
-- `ai@5.0.113`: Vercel AI SDK
-- `zod`: Schema validation
-- Multiple AI provider packages
-
-## Development
-
-### Testing
-
-Run tests with:
-
-```bash
-bun run test
-```
-
-### Building
-
-Compile TypeScript with:
-
-```bash
-bun run build
-```
-
-The package uses Vitest for testing and Bun as the package manager.
 
 ## License
 
-MIT License - See LICENSE file for details.
+MIT License - see [LICENSE](./LICENSE) file for details.

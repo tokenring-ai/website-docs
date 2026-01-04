@@ -233,8 +233,6 @@ await agent.executeTool('wordpress/generateImageForPost', {
 - `WORDPRESS_PASSWORD` - WordPress application password (not regular password)
 - `AI_IMAGE_MODEL` - AI image generation model name
 
-## Dependencies
-
 ### Runtime Dependencies
 
 - `@tokenring-ai/app`: Core application framework

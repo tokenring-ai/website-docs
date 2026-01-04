@@ -10,12 +10,12 @@ Key features include:
 - AI-powered commit message generation based on chat context
 - Automated commits after successful testing
 - Interactive slash commands for Git operations
-- Branch management capabilities
+- Branch management capabilities (list, create, switch, delete)
 - Safe rollback operations with validation
 - Git status checks and dirty file detection
 - Integrated with TokenRing's filesystem and testing services
 
-## Core Components
+## Core Properties
 
 ### GitService
 
@@ -32,17 +32,30 @@ const gitService = agent.requireServiceByType(GitService);
 - `name: string = "GitService"` - Service identifier
 - `description: string = "Provides Git functionality"` - Service description
 
+## Key Features
+
+- **AI-Powered Commit Messages**: Generate commit messages based on chat context
+- **Automated Commits**: Automatic commits after successful testing via hooks
+- **Interactive Commands**: Slash commands for Git operations
+- **Branch Management**: List, create, switch, delete branches
+- **Safe Rollbacks**: Validation before rollbacks to prevent data loss
+- **Filesystem Integration**: Works with TokenRing's filesystem service
+- **Error Handling**: Comprehensive validation and error messages
+
+## Core Methods/API
+
 ### Tools
 
-#### commitTool
+The git package provides three tools that are automatically registered with the agent's chat service:
+
+#### git_commit
 
 Commits changes to the Git repository with optional AI-generated commit messages.
 
 ```typescript
-import { commitTool } from '@tokenring-ai/git/tools';
-
-// Usage in agent code
-await commitTool.execute({ message: "Fix authentication bug" }, agent);
+// The tool is registered automatically via the plugin
+// Usage via agent.executeTool
+await agent.executeTool('git_commit', { message: "Fix authentication bug" });
 ```
 
 **Parameters:**
@@ -56,18 +69,17 @@ await commitTool.execute({ message: "Fix authentication bug" }, agent);
 - Validates git repository state before committing
 - Generates commit messages based on recent chat context
 
-#### rollbackTool
+#### git_rollback
 
 Rolls back to a previous commit state.
 
 ```typescript
-import { rollbackTool } from '@tokenring-ai/git/tools';
-
+// Usage via agent.executeTool
 // Roll back by number of commits
-await rollbackTool.execute({ steps: 2 }, agent);
+await agent.executeTool('git_rollback', { steps: 2 });
 
 // Roll back to specific commit
-await rollbackTool.execute({ commit: "abc123" }, agent);
+await agent.executeTool('git_rollback', { commit: "abc123" });
 ```
 
 **Parameters:**
@@ -80,84 +92,48 @@ await rollbackTool.execute({ commit: "abc123" }, agent);
 - Ensures clean filesystem state after operation
 - Validates input parameters
 
-#### branchTool
+#### git_branch
 
-Manages Git branches with various operations.
+Manages git branches - list, create, switch, or delete branches.
 
 ```typescript
-import { branchTool } from '@tokenring-ai/git/tools';
-
+// Usage via agent.executeTool
 // List all branches
-await branchTool.execute({ action: "list" }, agent);
+await agent.executeTool('git_branch', { action: "list" });
 
-// Create new branch
-await branchTool.execute({ action: "create", branchName: "feature-xyz" }, agent);
+// Create a new branch
+await agent.executeTool('git_branch', { action: "create", branchName: "feature-xyz" });
 
-// Switch to existing branch
-await branchTool.execute({ action: "switch", branchName: "main" }, agent);
-
-// Show current branch
-await branchTool.execute({ action: "current" }, agent);
-
-// Delete branch
-await branchTool.execute({ action: "delete", branchName: "old-feature" }, agent);
+// Switch to a branch
+await agent.executeTool('git_branch', { action: "switch", branchName: "main" });
 ```
 
 **Parameters:**
-- `action: "list" | "create" | "switch" | "delete" | "current"` - Branch operation to perform
-- `branchName?: string` - Required for create, switch, and delete actions
+- `action: "list" | "create" | "switch" | "delete" | "current"` - The branch action to perform
+- `branchName?: string` - The name of the branch (required for create, switch, and delete actions)
 
 **Features:**
-- Supports local and remote branch listing
-- Creates and switches to new branches in one operation
-- Validates branch existence before switch
-- Provides detailed branch information
+- Lists all branches (local and remote)
+- Creates and switches to new branches
+- Switches to existing branches
+- Deletes branches safely
+- Shows current branch
 
-### Chat Commands
+**Note:** The `git_branch` tool is registered automatically by the plugin but is not exported as a named export from the tools module.
 
-#### /git Command
+### Exported Tools
 
-Interactive slash command for Git operations in chat interfaces.
-
-```bash
-# Commit changes
-/git commit "Update README documentation"
-
-# Roll back commits
-/git rollback
-/git rollback 3
-
-# Branch operations
-/git branch
-/git branch list
-/git branch create feature-xyz
-/git branch switch main
-/git branch delete feature-xyz
-```
-
-**Subcommands:**
-- `commit [message]` - Commit changes with optional message
-- `rollback [steps]` - Roll back by specified number of commits (default: 1)
-- `branch [action] [branchName]` - Perform branch operations
-
-### Hooks
-
-#### autoCommit Hook
-
-Automatically commits changes after successful testing.
+The package exports the following tools for direct import:
 
 ```typescript
-import { autoCommit } from '@tokenring-ai/git/hooks';
-
-// Hook is automatically registered and triggers after testing
-// Commits changes if filesystem is dirty and all tests pass
+import { commitTool, rollbackTool } from '@tokenring-ai/git/tools';
 ```
 
-**Behavior:**
-- Triggers after testing completes
-- Checks if filesystem has uncommitted changes
-- Only commits if all tests pass
-- Uses the commit tool with empty message (AI generates from context)
+**Available exports:**
+- `commitTool` - The commit tool definition and execution function
+- `rollbackTool` - The rollback tool definition and execution function
+
+The `git_branch` tool is available to agents via `agent.executeTool()` but is not exported from the tools module.
 
 ## Usage Examples
 
@@ -165,49 +141,67 @@ import { autoCommit } from '@tokenring-ai/git/hooks';
 
 ```typescript
 // In agent code - no message provided, AI generates from context
-await commitTool.execute({}, agent);
+await agent.executeTool('git_commit', {});
 ```
 
 ### 2. Manual Commit with Custom Message
 
 ```typescript
 // In agent code - provide custom message
-await commitTool.execute({ 
-  message: "Fix authentication vulnerability" 
-}, agent);
+await agent.executeTool('git_commit', {
+  message: "Fix authentication vulnerability"
+});
 ```
 
-### 3. Branch Management via Chat
+### 3. Branch Management
 
-```bash
-# In chat interface
-/git branch create new-auth-feature
-/git branch switch new-auth-feature
+```typescript
+// List all branches
+await agent.executeTool('git_branch', { action: "list" });
+
+// Show current branch
+await agent.executeTool('git_branch', { action: "current" });
+
+// Create a new branch
+await agent.executeTool('git_branch', { action: "create", branchName: "new-feature" });
+
+// Switch to a branch
+await agent.executeTool('git_branch', { action: "switch", branchName: "main" });
+
+// Delete a branch
+await agent.executeTool('git_branch', { action: "delete", branchName: "old-feature" });
 ```
 
 ### 4. Rollback Operations
 
 ```typescript
 // Roll back one commit
-await rollbackTool.execute({}, agent);
+await agent.executeTool('git_rollback', {});
 
 // Roll back multiple commits
-await rollbackTool.execute({ steps: 3 }, agent);
+await agent.executeTool('git_rollback', { steps: 3 });
 
 // Roll back to specific commit
-await rollbackTool.execute({ 
-  commit: "a1b2c3d4e5f6" 
+await agent.executeTool('git_rollback', {
+  commit: "a1b2c3d4e5f6"
 }, agent);
 ```
 
 ### 5. Using the Chat Command
 
 ```bash
+# In chat interface
+
 # Commit with AI-generated message
 /git commit
 
 # Commit with custom message
 /git commit "Fix bug in authentication logic"
+
+/git commit "Update documentation"
+
+/# Roll back 1 commit (default)
+/git rollback
 
 # Roll back 2 commits
 /git rollback 2
@@ -215,46 +209,28 @@ await rollbackTool.execute({
 # List all branches
 /git branch list
 
+# Show current branch
+/git branch current
+
 # Create and switch to new branch
 /git branch create feature-update
+
+# Switch to existing branch
+/git branch switch main
+
+# Delete a branch
+/git branch delete feature-update
 ```
-
-## Package Structure
-
-```
-pkg/git/
-├── index.ts              # Main entry point and package registration
-├── GitService.ts         # Core Git service implementation
-├── tools.ts              # Tool exports
-├── chatCommands.ts       # Chat command exports
-├── hooks.ts              # Hook exports
-├── commands/
-│   └── git.ts           # /git slash command implementation
-├── tools/
-│   ├── commit.ts        # Commit tool implementation
-│   ├── rollback.ts      # Rollback tool implementation
-│   └── branch.ts        # Branch management tool
-├── hooks/
-│   └── autoCommit.ts    # Auto-commit hook implementation
-├── package.json         # Package metadata and dependencies
-├── tsconfig.json        # TypeScript configuration
-├── vitest.config.ts     # Test configuration
-└── LICENSE              # MIT license
-```
-
-## Dependencies
-
-- `@tokenring-ai/ai-client` - AI service integration for commit message generation
-- `@tokenring-ai/app` - Application framework
-- `@tokenring-ai/chat` - Chat service integration
-- `@tokenring-ai/agent` - Agent framework
-- `@tokenring-ai/filesystem` - Filesystem operations
-- `@tokenring-ai/testing` - Testing service integration
-- `@tokenring-ai/utility` - Utility functions
-- `execa@^9.6.1` - Shell command execution
-- `zod` - Schema validation
 
 ## Configuration
+
+### Plugin Configuration
+
+The plugin has an empty configuration schema:
+
+```typescript
+const config = {};
+```
 
 ### Git User Configuration
 
@@ -268,7 +244,51 @@ This can be overridden by setting your own Git configuration or through environm
 
 Commit message generation relies on the agent's AI service configuration. The AI analyzes recent chat context to generate appropriate commit messages.
 
-## Development
+## Integration
+
+### TokenRing Plugin
+
+Automatically registers GitService, tools, and hooks with the TokenRing app.
+
+```typescript
+import gitPlugin from '@tokenring-ai/git';
+
+app.registerPlugin(gitPlugin);
+```
+
+### Agent Integration
+
+The tools are automatically available to agents via the chat service:
+
+```typescript
+// Tools are registered automatically
+await agent.executeTool('git_commit', { message: "Your commit message" });
+```
+
+### Hook Integration
+
+The autoCommit hook is automatically registered and triggers after testing completes:
+
+```typescript
+// Hook behavior:
+// - Triggers after testing completes
+// - Checks if filesystem has uncommitted changes
+// - Only commits if all tests pass
+// - Uses the commit tool with empty message (AI generates from context)
+```
+
+### Chat Commands
+
+The `/git` command provides an interactive interface to Git operations:
+
+```typescript
+// Available subcommands:
+/git commit [message]     // Commit with optional message
+/git rollback [steps]     // Rollback by number of steps (default: 1)
+/git branch [action] [branchName]  // Branch management
+```
+
+## Testing and Development
 
 ### Scripts
 
@@ -286,13 +306,27 @@ bun run test:coverage
 bun run test:watch
 ```
 
-### TypeScript Configuration
+### Package Structure
 
-The package uses TypeScript with modern ES modules configuration:
-- Target: ES2022
-- Module: NodeNext
-- Strict mode enabled
-- Includes all .ts files in the package
+```
+pkg/git/
+├── GitService.ts         # Main service class
+├── plugin.ts             # Plugin registration
+├── tools.ts              # Tool exports (commitTool, rollbackTool)
+├── chatCommands.ts       # Chat command exports
+├── hooks.ts              # Hook exports (autoCommit)
+├── tools/
+│   ├── commit.ts         # git_commit tool implementation
+│   ├── rollback.ts       # git_rollback tool implementation
+│   └── branch.ts         # git_branch tool implementation
+├── hooks/
+│   └── autoCommit.ts     # Auto-commit hook implementation
+├── commands/
+│   └── git.ts            # /git command implementation
+├── package.json
+├── vitest.config.ts
+└── LICENSE
+```
 
 ## Limitations and Considerations
 
@@ -300,17 +334,15 @@ The package uses TypeScript with modern ES modules configuration:
 - **Local Operations**: Currently only supports local Git operations (no remote push/pull)
 - **Safety**: Rollback operations discard changes - use with caution
 - **AI Dependencies**: Commit message generation depends on available AI services and chat context
-- **Testing**: No specific tests in this package; relies on agent-level testing
+- **Testing**: Uses vitest for testing
 - **Branch Operations**: Requires proper Git branch naming conventions
 
-## Contributing
+## Related Components
 
-1. Follow the existing code style and patterns
-2. Run `bun run eslint` before committing changes
-3. Ensure all functionality works with the TokenRing agent framework
-4. Add appropriate error handling and logging
-5. Update tests if adding new functionality
-6. Follow the established documentation structure
+- `@tokenring-ai/filesystem` - Filesystem service for executing Git commands
+- `@tokenring-ai/testing` - Testing service for auto-commit hooks
+- `@tokenring-ai/ai-client` - AI client for commit message generation
+- `@tokenring-ai/chat` - Chat service for tool integration
 
 ## License
 

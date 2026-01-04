@@ -1,7 +1,5 @@
 # Image Generation Plugin
 
-## Overview
-
 The Image Generation plugin provides AI-powered image generation capabilities with configurable output directories, EXIF metadata management, and image indexing functionality. It integrates seamlessly with the Token Ring ecosystem to enable agents to generate, manage, and search AI-generated images.
 
 ## Key Features
@@ -63,7 +61,6 @@ const generateImage: TokenRingToolDefinition = {
     model: z.string().describe("Image generation model to use").optional(),
     keywords: z.array(z.string()).describe("Keywords to add to image EXIF/IPTC metadata").optional(),
   });
-};
 ```
 
 #### searchImages
@@ -78,7 +75,6 @@ const searchImages: TokenRingToolDefinition = {
     query: z.string().describe("Search query to match against image keywords"),
     limit: z.number().int().positive().default(10).describe("Maximum number of results to return").optional(),
   });
-};
 ```
 
 ### Chat Commands
@@ -305,12 +301,11 @@ const generateImage: TokenRingToolDefinition = {
   description: "Generate an AI image and save it to a configured output directory",
   inputSchema: z.object({
     prompt: z.string().describe("Description of the image to generate"),
-    aspectRatio: z.enum(["square", "tall", "none"]).default("square").optional(),
+    aspectRatio: z.enum(["square", "tall", "wide"]).default("square").optional(),
     outputDirectory: z.string().describe("Output directory (will prompt if not provided)").optional(),
     model: z.string().describe("Image generation model to use").optional(),
     keywords: z.array(z.string()).describe("Keywords to add to image EXIF/IPTC metadata").optional(),
   });
-};
 ```
 
 #### searchImages Tool
@@ -323,7 +318,6 @@ const searchImages: TokenRingToolDefinition = {
     query: z.string().describe("Search query to match against image keywords"),
     limit: z.number().int().positive().default(10).describe("Maximum number of results to return").optional(),
   });
-};
 ```
 
 ## Integration
@@ -386,9 +380,9 @@ Common error scenarios:
 The plugin includes unit tests using vitest:
 
 ```bash
-npm test
-npm test:watch
-npm test:coverage
+bun run test
+bun run test:watch
+bun run test:coverage
 ```
 
 ### Package Structure
@@ -407,26 +401,19 @@ pkg/image-generation/
     └── searchImages.ts   # Image search tool
 ```
 
-### Dependencies
-
-Key dependencies:
-- `@tokenring-ai/agent`: Agent orchestration
-- `@tokenring-ai/ai-client`: AI model integration
-- `@tokenring-ai/filesystem`: File system operations
-- `exiftool-vendored`: Metadata handling
-- `uuid`: Unique filename generation
-
 ### Build Instructions
 
 ```bash
 # Install dependencies
-npm install
+bun install
 
 # Build the package
-npm run build
+bun run build
 
 # Run tests
-npm test
+bun run test
+bun run test:watch
+bun run test:coverage
 ```
 
 ## Related Components
@@ -438,4 +425,4 @@ npm test
 
 ## License
 
-MIT License - Copyright (c) Token Ring AI
+MIT License - Copyright (c) 2025 Mark Dierolf

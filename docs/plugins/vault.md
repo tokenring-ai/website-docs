@@ -204,20 +204,21 @@ await vault.save({ API_KEY: 'new-key', DB_PASSWORD: 'new-pass' }, agent);
 The vault package integrates with TokenRing applications through a plugin system:
 
 ```typescript
-import TokenRingApp, { TokenRingPlugin } from '@tokenring-ai/app';
-import { VaultService } from '@tokenring-ai/vault';
+import { TokenRingPlugin } from "@tokenring-ai/app";
+import { VaultService } from "@tokenring-ai/vault";
+import { vaultConfigSchema } from "./VaultService.ts";
+import packageJSON from "./package.json";
 
 export default {
-  name: '@tokenring-ai/vault',
-  version: '0.2.0',
-  description: 'A vault service for storing persisted credentials',
-  install(app: TokenRingApp) {
-    const vaultConfig = app.getConfigSlice('vault', vaultConfigSchema.optional());
-    
-    if (vaultConfig) {
-      app.addServices(new VaultService(vaultConfig));
+  name: packageJSON.name,
+  version: packageJSON.version,
+  description: packageJSON.description,
+  install(app, config) {
+    if (config.vault) {
+      app.addServices(new VaultService(config.vault));
     }
-  }
+  },
+  config: z.object({ vault: vaultConfigSchema.optional() })
 } satisfies TokenRingPlugin;
 ```
 
@@ -233,7 +234,7 @@ export const vaultConfigSchema = z.object({
 ```
 
 **Configuration Options:**
-- `vaultFile`: Path to vault file (default: '.vault')
+- `vaultFile`: Path to vault file (default: `.vault`)
 - `relockTime`: Auto-lock timeout in milliseconds (default: 300000)
 
 ## Programmatic Vault Access
@@ -361,25 +362,10 @@ pkg/vault/
 ├── plugin.ts           # TokenRing plugin integration
 ├── vault.ts            # Core encryption and file operations
 ├── VaultService.ts     # TokenRing service implementation
+├── vitest.config.ts    # Vitest configuration
+├── LICENSE             # MIT license
 ├── package.json        # Package configuration
 └── README.md           # Package documentation
-```
-
-## Dependencies
-
-```json
-{
-  "dependencies": {
-    "@tokenring-ai/app": "0.2.0",
-    "@types/fs-extra": "^11.0.4",
-    "commander": "^14.0.2",
-    "fs-extra": "^11.3.2"
-  },
-  "devDependencies": {
-    "vitest": "catalog:",
-    "typescript": "catalog:"
-  }
-}
 ```
 
 ## Testing
