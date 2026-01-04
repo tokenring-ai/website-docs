@@ -30,7 +30,7 @@ bun install @tokenring-ai/web-host
 The main configuration schema for the web host service:
 
 ```typescript
-export const WebHostConfigSchema = z.object({
+export const WebHostConfigSchema = z.object(&#123;
   host: z.string().default("127.0.0.1"),
   port: z.number().optional(),
   auth: AuthConfigSchema.optional(),
@@ -38,7 +38,7 @@ export const WebHostConfigSchema = z.object({
     staticResourceConfigSchema,
     spaResourceConfigSchema
   ])).optional(),
-})
+&#125;)
 ```
 
 **Configuration Options:**
@@ -55,12 +55,12 @@ export const WebHostConfigSchema = z.object({
 Authentication configuration schema:
 
 ```typescript
-export const AuthConfigSchema = z.object({
-  users: z.record(z.string(), z.object({
+export const AuthConfigSchema = z.object(&#123;
+  users: z.record(z.string(), z.object(&#123;
     password: z.string().optional(),
     bearerToken: z.string().optional(),
-  }))
-})
+  &#125;))
+&#125;)
 ```
 
 **Authentication Options:**
@@ -74,14 +74,14 @@ export const AuthConfigSchema = z.object({
 ### Static Resource Configuration
 
 ```typescript
-export const staticResourceConfigSchema = z.object({
+export const staticResourceConfigSchema = z.object(&#123;
   type: z.literal("static"),
   root: z.string(),
   description: z.string(),
   indexFile: z.string(),
   notFoundFile: z.string().optional(),
   prefix: z.string()
-})
+&#125;)
 ```
 
 | Option | Type | Description |
@@ -96,12 +96,12 @@ export const staticResourceConfigSchema = z.object({
 ### SPA Resource Configuration
 
 ```typescript
-export const spaResourceConfigSchema = z.object({
+export const spaResourceConfigSchema = z.object(&#123;
   type: z.literal("spa"),
   file: z.string(),
   description: z.string(),
   prefix: z.string()
-})
+&#125;)
 ```
 
 | Option | Type | Description |
@@ -118,21 +118,21 @@ export const spaResourceConfigSchema = z.object({
 Central service managing the Fastify server and resource registration.
 
 ```typescript
-class WebHostService implements TokenRingService {
+class WebHostService implements TokenRingService &#123;
   name = "WebHostService";
   description = "Fastify web host for serving resources and APIs";
 
   private server!: FastifyInstance;
 
-  resources: KeyedRegistry<WebResource>;
+  resources: KeyedRegistry&lt;WebResource&gt;;
   registerResource = this.resources.register;
   getResources = this.resources.getAllItems;
 
-  constructor(private app: TokenRingApp, private config: z.output<typeof WebHostConfigSchema>);
+  constructor(private app: TokenRingApp, private config: z.output&lt;typeof WebHostConfigSchema&gt;);
 
-  async run(signal: AbortSignal): Promise<void>;
+  async run(signal: AbortSignal): Promise&lt;void&gt;;
   getURL(): URL;
-}
+&#125;
 ```
 
 **Properties:**
@@ -141,26 +141,26 @@ class WebHostService implements TokenRingService {
 |----------|------|-------------|
 | `name` | string | Service name (`"WebHostService"`) |
 | `description` | string | Service description |
-| `resources` | `KeyedRegistry<WebResource>` | Registry of registered resources |
+| `resources` | `KeyedRegistry&lt;WebResource&gt;` | Registry of registered resources |
 | `server` | `FastifyInstance` | The Fastify server instance |
 
 **Methods:**
 
 | Method | Signature | Description |
 |--------|-----------|-------------|
-| `registerResource` | `(name: string, resource: WebResource) => void` | Register a new web resource |
-| `getResources` | `() => Record<string, WebResource>` | Get all registered resources |
-| `getURL` | `() => URL` | Get the current server URL |
-| `run` | `(signal: AbortSignal) => Promise<void>` | Start the server |
+| `registerResource` | `(name: string, resource: WebResource) =&gt; void` | Register a new web resource |
+| `getResources` | `() =&gt; Record&lt;string, WebResource&gt;` | Get all registered resources |
+| `getURL` | `() =&gt; URL` | Get the current server URL |
+| `run` | `(signal: AbortSignal) =&gt; Promise&lt;void&gt;` | Start the server |
 
 ### WebResource Interface
 
 Interface for pluggable web resources.
 
 ```typescript
-interface WebResource {
-  register(server: FastifyInstance): Promise<void>;
-}
+interface WebResource &#123;
+  register(server: FastifyInstance): Promise&lt;void&gt;;
+&#125;
 ```
 
 ### StaticResource Class
@@ -168,23 +168,23 @@ interface WebResource {
 Serves static files from a directory.
 
 ```typescript
-class StaticResource implements WebResource {
-  constructor(private config: z.output<typeof staticResourceConfigSchema>) {}
+class StaticResource implements WebResource &#123;
+  constructor(private config: z.output&lt;typeof staticResourceConfigSchema&gt;) &#123;&#125;
 
-  async register(server: FastifyInstance): Promise<void> {
-    await server.register(fastifyStatic, {
+  async register(server: FastifyInstance): Promise&lt;void&gt; &#123;
+    await server.register(fastifyStatic, &#123;
       root: this.config.root,
       prefix: this.config.prefix,
       index: this.config.indexFile
-    });
+    &#125;);
 
-    if (this.config.notFoundFile) {
-      server.setNotFoundHandler((request, reply) => {
+    if (this.config.notFoundFile) &#123;
+      server.setNotFoundHandler((request, reply) =&gt; &#123;
         reply.sendFile(this.config.notFoundFile!);
-      });
-    }
-  }
-}
+      &#125;);
+    &#125;
+  &#125;
+&#125;
 ```
 
 **Constructor Options:**
@@ -198,13 +198,13 @@ class StaticResource implements WebResource {
 Serves single-page applications with proper client-side routing.
 
 ```typescript
-class SPAResource implements WebResource {
-  constructor(public config: z.output<typeof spaResourceConfigSchema>) {}
+class SPAResource implements WebResource &#123;
+  constructor(public config: z.output&lt;typeof spaResourceConfigSchema&gt;) &#123;&#125;
 
-  async register(server: FastifyInstance): Promise<void> {
+  async register(server: FastifyInstance): Promise&lt;void&gt; &#123;
     // Validates file exists, sets up static file serving, and handles SPA routing
-  }
-}
+  &#125;
+&#125;
 ```
 
 **Constructor Options:**
@@ -218,13 +218,13 @@ class SPAResource implements WebResource {
 Provides JSON-RPC 2.0 API endpoints with streaming support.
 
 ```typescript
-class JsonRpcResource implements WebResource {
-  constructor(private app: TokenRingApp, private endpoint: JsonRpcEndpoint) {}
+class JsonRpcResource implements WebResource &#123;
+  constructor(private app: TokenRingApp, private endpoint: JsonRpcEndpoint) &#123;&#125;
 
-  async register(server: FastifyInstance): Promise<void> {
+  async register(server: FastifyInstance): Promise&lt;void&gt; &#123;
     // Registers JSON-RPC API endpoints with streaming support
-  }
-}
+  &#125;
+&#125;
 ```
 
 ## JSON-RPC API Implementation
@@ -232,49 +232,49 @@ class JsonRpcResource implements WebResource {
 ### Defining RPC Schemas
 
 ```typescript
-import { z } from "zod";
+import &#123; z &#125; from "zod";
 
-const calculatorSchema = {
+const calculatorSchema = &#123;
   path: "/api/calc",
-  methods: {
-    add: {
+  methods: &#123;
+    add: &#123;
       type: "query" as const,
-      input: z.object({ a: z.number(), b: z.number() }),
-      result: z.object({ result: z.number() })
-    },
-    streamResult: {
+      input: z.object(&#123; a: z.number(), b: z.number() &#125;),
+      result: z.object(&#123; result: z.number() &#125;)
+    &#125;,
+    streamResult: &#123;
       type: "stream" as const,
-      input: z.object({ steps: z.number() }),
-      result: z.object({ step: z.number(), value: z.number() })
-    }
-  }
-};
+      input: z.object(&#123; steps: z.number() &#125;),
+      result: z.object(&#123; step: z.number(), value: z.number() &#125;)
+    &#125;
+  &#125;
+&#125;;
 ```
 
 ### Implementing RPC Methods
 
 ```typescript
-const calculator = {
-  add: async (params: { a: number; b: number }, app: TokenRingApp) => ({
+const calculator = &#123;
+  add: async (params: &#123; a: number; b: number &#125;, app: TokenRingApp) =&gt; (&#123;
     result: params.a + params.b
-  }),
+  &#125;),
 
-  streamResult: async function* (params: { steps: number }, app: TokenRingApp, signal: AbortSignal) {
+  streamResult: async function* (params: &#123; steps: number &#125;, app: TokenRingApp, signal: AbortSignal) &#123;
     let value = 0;
-    for (let i = 0; i < params.steps; i++) {
+    for (let i = 0; i &lt; params.steps; i++) &#123;
       if (signal.aborted) break;
       value += Math.random();
-      yield { step: i, value };
-      await new Promise(resolve => setTimeout(resolve, 500));
-    }
-  }
-};
+      yield &#123; step: i, value &#125;;
+      await new Promise(resolve =&gt; setTimeout(resolve, 500));
+    &#125;
+  &#125;
+&#125;;
 ```
 
 ### Creating JSON-RPC Endpoints
 
 ```typescript
-import { createJsonRPCEndpoint } from "@tokenring-ai/web-host/jsonrpc/createJsonRPCEndpoint";
+import &#123; createJsonRPCEndpoint &#125; from "@tokenring-ai/web-host/jsonrpc/createJsonRPCEndpoint";
 
 const calculatorEndpoint = createJsonRPCEndpoint(calculatorSchema, calculator);
 const rpcResource = new JsonRpcResource(app, calculatorEndpoint);
@@ -283,34 +283,34 @@ const rpcResource = new JsonRpcResource(app, calculatorEndpoint);
 ### JSON-RPC Client
 
 ```typescript
-import { createJsonRPCClient } from "@tokenring-ai/web-host/jsonrpc/createJsonRPCClient";
+import &#123; createJsonRPCClient &#125; from "@tokenring-ai/web-host/jsonrpc/createJsonRPCClient";
 
 const client = createJsonRPCClient(new URL("http://localhost:3000"), calculatorSchema);
 
 // Call query methods
-const result = await client.add({ a: 5, b: 3 });
-console.log(result.result); // { result: 8 }
+const result = await client.add(&#123; a: 5, b: 3 &#125;);
+console.log(result.result); // &#123; result: 8 &#125;
 
 // Stream methods return async generators
-for await (const update of client.streamResult({ steps: 5 })) {
+for await (const update of client.streamResult(&#123; steps: 5 &#125;)) &#123;
   console.log(update);
-}
+&#125;
 ```
 
 ### JSON-RPC Type Utilities
 
 ```typescript
-import type {
+import type &#123;
   JsonRPCSchema,
   JsonRPCImplementation,
   JsonRpcEndpoint,
   ResultOfRPCCall,
   ParamsOfRPCCall
-} from "@tokenring-ai/web-host/jsonrpc/types";
+&#125; from "@tokenring-ai/web-host/jsonrpc/types";
 
 // Type inference for RPC calls
-type AddResult = ResultOfRPCCall<typeof calculatorSchema, "add">;
-type AddParams = ParamsOfRPCCall<typeof calculatorSchema, "add">;
+type AddResult = ResultOfRPCCall&lt;typeof calculatorSchema, "add"&gt;;
+type AddParams = ParamsOfRPCCall&lt;typeof calculatorSchema, "add"&gt;;
 ```
 
 ## Usage Examples
@@ -318,30 +318,30 @@ type AddParams = ParamsOfRPCCall<typeof calculatorSchema, "add">;
 ### Basic Setup
 
 ```typescript
-import { TokenRingApp } from "@tokenring-ai/app";
+import &#123; TokenRingApp &#125; from "@tokenring-ai/app";
 import webHostPackage from "@tokenring-ai/web-host";
 
-const app = new TokenRingApp({
-  webHost: {
+const app = new TokenRingApp(&#123;
+  webHost: &#123;
     port: 3000,
     host: "127.0.0.1",
-    resources: {
-      "static-files": {
+    resources: &#123;
+      "static-files": &#123;
         type: "static",
         root: "./public",
         description: "Public static files",
         indexFile: "index.html",
         prefix: "/static"
-      },
-      "spa": {
+      &#125;,
+      "spa": &#123;
         type: "spa",
         file: "./dist/index.html",
         description: "Main application",
         prefix: "/"
-      }
-    }
-  }
-});
+      &#125;
+    &#125;
+  &#125;
+&#125;);
 
 await app.addPackages([webHostPackage]);
 await app.start();
@@ -350,99 +350,99 @@ await app.start();
 ### Complete Configuration with Authentication
 
 ```typescript
-const app = new TokenRingApp({
-  webHost: {
+const app = new TokenRingApp(&#123;
+  webHost: &#123;
     port: 3000,
     host: "0.0.0.0",
-    auth: {
-      users: {
-        "admin": {
+    auth: &#123;
+      users: &#123;
+        "admin": &#123;
           password: "admin123",
           bearerToken: "admin-token"
-        },
-        "api-user": {
+        &#125;,
+        "api-user": &#123;
           bearerToken: "api-key-abc123"
-        }
-      }
-    },
-    resources: {
-      "public": {
+        &#125;
+      &#125;
+    &#125;,
+    resources: &#123;
+      "public": &#123;
         type: "static",
         root: "./public",
         description: "Public static files",
         indexFile: "index.html",
         prefix: "/"
-      }
-    }
-  }
-});
+      &#125;
+    &#125;
+  &#125;
+&#125;);
 ```
 
 ### Registering Custom Resources Programmatically
 
 ```typescript
-import { WebHostService } from "@tokenring-ai/web-host";
-import { WebResource } from "@tokenring-ai/web-host/types";
-import { FastifyInstance } from "fastify";
+import &#123; WebHostService &#125; from "@tokenring-ai/web-host";
+import &#123; WebResource &#125; from "@tokenring-ai/web-host/types";
+import &#123; FastifyInstance &#125; from "fastify";
 
 // Get the web host service
 const webHost = app.getServiceByType(WebHostService);
 
-if (webHost) {
+if (webHost) &#123;
   // Create a custom API resource
-  const apiResource: WebResource = {
-    async register(server: FastifyInstance) {
-      server.get("/api/health", async () => {
-        return { status: "ok" };
-      });
+  const apiResource: WebResource = &#123;
+    async register(server: FastifyInstance) &#123;
+      server.get("/api/health", async () =&gt; &#123;
+        return &#123; status: "ok" &#125;;
+      &#125;);
 
-      server.post("/api/data", async (request, reply) => {
+      server.post("/api/data", async (request, reply) =&gt; &#123;
         const data = request.body;
-        return { received: data };
-      });
-    }
-  };
+        return &#123; received: data &#125;;
+      &#125;);
+    &#125;
+  &#125;;
 
   webHost.registerResource("customAPI", apiResource);
-}
+&#125;
 ```
 
 ### Registering JSON-RPC Resources
 
 ```typescript
-import { JsonRpcResource } from "@tokenring-ai/web-host/JsonRpcResource";
-import { createJsonRPCEndpoint } from "@tokenring-ai/web-host/jsonrpc/createJsonRPCEndpoint";
-import { z } from "zod";
+import &#123; JsonRpcResource &#125; from "@tokenring-ai/web-host/JsonRpcResource";
+import &#123; createJsonRPCEndpoint &#125; from "@tokenring-ai/web-host/jsonrpc/createJsonRPCEndpoint";
+import &#123; z &#125; from "zod";
 
-const chatSchema = {
+const chatSchema = &#123;
   path: "/api/chat",
-  methods: {
-    sendMessage: {
+  methods: &#123;
+    sendMessage: &#123;
       type: "query" as const,
-      input: z.object({ message: z.string() }),
-      result: z.object({ response: z.string() })
-    },
-    streamMessages: {
+      input: z.object(&#123; message: z.string() &#125;),
+      result: z.object(&#123; response: z.string() &#125;)
+    &#125;,
+    streamMessages: &#123;
       type: "stream" as const,
-      input: z.object({ count: z.number() }),
-      result: z.object({ message: z.string() })
-    }
-  }
-};
+      input: z.object(&#123; count: z.number() &#125;),
+      result: z.object(&#123; message: z.string() &#125;)
+    &#125;
+  &#125;
+&#125;;
 
-const chatImplementation = {
-  sendMessage: async (params: { message: string }, app: TokenRingApp) => ({
-    response: `You said: ${params.message}`
-  }),
+const chatImplementation = &#123;
+  sendMessage: async (params: &#123; message: string &#125;, app: TokenRingApp) =&gt; (&#123;
+    response: `You said: $&#123;params.message&#125;`
+  &#125;),
 
-  streamMessages: async function* (params: { count: number }, app: TokenRingApp, signal: AbortSignal) {
-    for (let i = 0; i < params.count; i++) {
+  streamMessages: async function* (params: &#123; count: number &#125;, app: TokenRingApp, signal: AbortSignal) &#123;
+    for (let i = 0; i &lt; params.count; i++) &#123;
       if (signal.aborted) break;
-      yield { message: `Message ${i + 1}` };
-      await new Promise(resolve => setTimeout(resolve, 1000));
-    }
-  }
-};
+      yield &#123; message: `Message $&#123;i + 1&#125;` &#125;;
+      await new Promise(resolve =&gt; setTimeout(resolve, 1000));
+    &#125;
+  &#125;
+&#125;;
 
 const chatEndpoint = createJsonRPCEndpoint(chatSchema, chatImplementation);
 const chatResource = new JsonRpcResource(app, chatEndpoint);
@@ -453,17 +453,17 @@ webHost.registerResource("chatAPI", chatResource);
 ### Serving Static Files
 
 ```typescript
-import { StaticResource } from "@tokenring-ai/web-host";
+import &#123; StaticResource &#125; from "@tokenring-ai/web-host";
 
 // Add custom static resource
-const staticResource = new StaticResource({
+const staticResource = new StaticResource(&#123;
   type: "static",
   root: "./public",
   description: "Public static files",
   indexFile: "index.html",
   notFoundFile: "404.html",
   prefix: "/static"
-});
+&#125;);
 
 webHost.registerResource("public", staticResource);
 ```
@@ -471,14 +471,14 @@ webHost.registerResource("public", staticResource);
 ### Serving Single-Page Application
 
 ```typescript
-import { SPAResource } from "@tokenring-ai/web-host";
+import &#123; SPAResource &#125; from "@tokenring-ai/web-host";
 
-const spaResource = new SPAResource({
+const spaResource = new SPAResource(&#123;
   type: "spa",
   file: "./dist/index.html",
   description: "Main application",
   prefix: "/"
-});
+&#125;);
 
 webHost.registerResource("frontend", spaResource);
 ```
@@ -528,35 +528,35 @@ pkg/web-host/
 ### Exports from `index.ts`
 
 ```typescript
-export { default as WebHostService } from "./WebHostService.js";
-export { default as StaticResource } from "./StaticResource.js";
-export type { WebResource } from "./types.js";
-export { WebHostConfigSchema } from "./index.ts";
+export &#123; default as WebHostService &#125; from "./WebHostService.js";
+export &#123; default as StaticResource &#125; from "./StaticResource.js";
+export type &#123; WebResource &#125; from "./types.js";
+export &#123; WebHostConfigSchema &#125; from "./index.ts";
 ```
 
 ### Exports from `jsonrpc/`
 
 ```typescript
 // createJsonRPCEndpoint.ts
-export function createJsonRPCEndpoint<T extends JsonRPCSchema>(
+export function createJsonRPCEndpoint&lt;T extends JsonRPCSchema&gt;(
   schemas: T,
-  implementation: JsonRPCImplementation<T>
+  implementation: JsonRPCImplementation&lt;T&gt;
 ): JsonRpcEndpoint;
 
 // createJsonRPCClient.ts
-export default function createJsonRPCClient<T extends JsonRPCSchema>(
+export default function createJsonRPCClient&lt;T extends JsonRPCSchema&gt;(
   baseURL: URL,
   schemas: T
-): { [K in keyof T["methods"]]: ... };
+): &#123; [K in keyof T["methods"]]: ... &#125;;
 
-export type ResultOfRPCCall<T, K> = ...;
-export type ParamsOfRPCCall<T, K> = ...;
+export type ResultOfRPCCall&lt;T, K&gt; = ...;
+export type ParamsOfRPCCall&lt;T, K&gt; = ...;
 ```
 
 ### Auth Functions
 
 ```typescript
-export const AuthConfigSchema = z.object({ ... });
+export const AuthConfigSchema = z.object(&#123; ... &#125;);
 export function registerAuth(server: FastifyInstance, config: AuthConfig): void;
 ```
 
@@ -588,9 +588,9 @@ curl -H "Authorization: Bearer admin-token" http://localhost:3000/api/status
 ### Accessing User Information
 
 ```typescript
-server.get("/api/whoami", async (request) => {
-  return { user: (request as any).user };
-});
+server.get("/api/whoami", async (request) =&gt; &#123;
+  return &#123; user: (request as any).user &#125;;
+&#125;);
 ```
 
 ## Error Handling

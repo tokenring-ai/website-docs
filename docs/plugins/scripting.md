@@ -29,7 +29,7 @@ Manages and executes scripts, variables, functions, and scripting language featu
 - `registerFunction(func)`: Registers a global function
 - `resolveFunction(name, agent)`: Resolves function from local or global registry
 - `executeFunction(funcName, args, agent)`: Executes a function with arguments
-- `runScript({scriptName, input}, agent)`: Executes a script with input
+- `runScript(&#123;scriptName, input&#125;, agent)`: Executes a script with input
 - `attach(agent)`: Initializes state for agent
 
 **Function Types:**
@@ -49,8 +49,8 @@ Manages state for scripting including:
 
 #### Script Management
 - `/script list` - Lists all available scripts
-- `/script run <scriptName> <input>` - Runs the specified script with input
-- `/script info <scriptName>` - Shows information about a script
+- `/script run &lt;scriptName&gt; &lt;input&gt;` - Runs the specified script with input
+- `/script info &lt;scriptName&gt;` - Shows information about a script
 
 #### Variable Commands
 - `/var $name = value` - Define or update a variable
@@ -59,9 +59,9 @@ Manages state for scripting including:
 - `/vars clear` - Clear all variables
 
 #### Function Commands
-- `/func static name($param1) => "text"` - Define static functions
-- `/func llm name($param1) => "prompt"` - Define LLM functions
-- `/func js name($param1) { code }` - Define JavaScript functions
+- `/func static name($param1) =&gt; "text"` - Define static functions
+- `/func llm name($param1) =&gt; "prompt"` - Define LLM functions
+- `/func js name($param1) &#123; code &#125;` - Define JavaScript functions
 - `/func delete name` - Delete a function
 - `/funcs [name]` - List functions
 
@@ -74,15 +74,15 @@ Manages state for scripting including:
 - `/lists clear` - Clear all lists
 
 #### Output and Control
-- `/echo <text|$var>` - Display text or variable
-- `/sleep <seconds|$var>` - Sleep for specified seconds
+- `/echo &lt;text|$var&gt;` - Display text or variable
+- `/sleep &lt;seconds|$var&gt;` - Sleep for specified seconds
 - `/prompt $var "message"` - Prompt user for input
 - `/confirm $var "message"` - Prompt for yes/no confirmation
 
 #### Control Flow
-- `/if $condition { commands }` - Conditional execution
-- `/for $item in @list { commands }` - Iterate over lists
-- `/while $condition { commands }` - Execute while condition is truthy
+- `/if $condition &#123; commands &#125;` - Conditional execution
+- `/for $item in @list &#123; commands &#125;` - Iterate over lists
+- `/while $condition &#123; commands &#125;` - Execute while condition is truthy
 
 #### Evaluation
 - `/eval "expression"` - Interpolate variables and execute a command
@@ -98,10 +98,10 @@ Manages state for scripting including:
 Run a script with the given input. Scripts are predefined sequences of chat commands.
 
 ```typescript
-const result = await agent.useTool("script_run", {
+const result = await agent.useTool("script_run", &#123;
   scriptName: "setupProject",
   input: "MyProject"
-});
+&#125;);
 ```
 
 **Parameters:**
@@ -120,26 +120,26 @@ const result = await agent.useTool("script_run", {
 The scripting package provides a built-in `runAgent` function for running subagents:
 
 ```typescript
-scriptingService.registerFunction("runAgent", {
+scriptingService.registerFunction("runAgent", &#123;
   type: 'native',
   params: ['agentType', 'message', 'context'],
-  async execute(this: ScriptingThis, agentType: string, message: string, context: string): Promise<string> {
-    const res = await runSubAgent({
+  async execute(this: ScriptingThis, agentType: string, message: string, context: string): Promise&lt;string&gt; &#123;
+    const res = await runSubAgent(&#123;
       agentType: agentType,
       headless: this.agent.headless,
-      command: `/work ${message}\n\nImportant Context:\n${context}`,
+      command: `/work $&#123;message&#125;\n\nImportant Context:\n$&#123;context&#125;`,
       forwardChatOutput: true,
       forwardSystemOutput: true,
       forwardHumanRequests: true,
-    }, this.agent, true);
+    &#125;, this.agent, true);
 
-    if (res.status === 'success') {
+    if (res.status === 'success') &#123;
       return res.response;
-    } else {
+    &#125; else &#123;
       throw new Error(res.response);
-    }
-  }
-});
+    &#125;
+  &#125;
+&#125;);
 ```
 
 ## Usage Examples
@@ -152,9 +152,9 @@ scriptingService.registerFunction("runAgent", {
 /var $topic = "AI safety"
 
 # Define and use functions
-/func static greet($name) => "Hello, $name!"
-/func llm summary($text) => "Summarize: $text"
-/func js currentDate() { return new Date().toISOString() }
+/func static greet($name) =&gt; "Hello, $name!"
+/func llm summary($text) =&gt; "Summarize: $text"
+/func js currentDate() &#123; return new Date().toISOString() &#125;
 
 # Use functions
 /call greet($name)
@@ -173,20 +173,20 @@ scriptingService.registerFunction("runAgent", {
 /list @tasks = ["review", "test", "deploy"]
 
 # Iterate over lists
-/for $file in @files {
+/for $file in @files &#123;
   /echo Processing $file
   /sleep 1
-}
+&#125;
 
-/for $task in @tasks {
-  /if $task == "test" {
+/for $task in @tasks &#123;
+  /if $task == "test" &#123;
     /echo Running tests...
     /sleep 2
-  } else {
+  &#125; else &#123;
     /echo Processing $task...
     /sleep 1
-  }
-}
+  &#125;
+&#125;
 ```
 
 ### Interactive Workflows
@@ -197,20 +197,20 @@ scriptingService.registerFunction("runAgent", {
 /confirm $proceed "Continue with operation? [y/n]"
 
 # Conditional execution based on user input
-/if $proceed {
+/if $proceed &#123;
   /echo Starting workflow...
   /script run setupProject $username
-} else {
+&#125; else &#123;
   /echo Operation cancelled.
-}
+&#125;
 ```
 
 ### LLM-Powered Functions
 
 ```bash
 # LLM-powered functions
-/func llm search($query) => "Search for $query on the internet and summarize results"
-/func llm analyze($text) => "Analyze the sentiment of this text: $text"
+/func llm search($query) =&gt; "Search for $query on the internet and summarize results"
+/func llm analyze($text) =&gt; "Analyze the sentiment of this text: $text"
 
 # Use LLM functions
 /var $searchResults = call(search("TokenRing AI features"))
@@ -223,14 +223,14 @@ scriptingService.registerFunction("runAgent", {
 
 ```bash
 # JavaScript functions
-/func js readFile($path) { 
+/func js readFile($path) &#123; 
   const fs = require('fs'); 
   return fs.readFileSync(path, 'utf-8'); 
-}
+&#125;
 
-/func js calculateSum($numbers) { 
-  return numbers.split(',').reduce((sum, num) => sum + parseInt(num), 0); 
-}
+/func js calculateSum($numbers) &#123; 
+  return numbers.split(',').reduce((sum, num) =&gt; sum + parseInt(num), 0); 
+&#125;
 
 # Use JavaScript functions
 /var $content = call(readFile("config.json"))
@@ -244,14 +244,14 @@ scriptingService.registerFunction("runAgent", {
 
 ```bash
 # Define a script (in configuration)
-# scripts: {
+# scripts: &#123;
 #   setupProject: [
 #     "/agent switch writer",
-#     "/template run projectSetup ${input}",
+#     "/template run projectSetup $&#123;input&#125;",
 #     "/tools enable filesystem",
 #     "/agent switch publisher"
 #   ]
-# }
+# &#125;
 
 # Run the script
 /script run setupProject "MyAwesomeProject"
@@ -269,22 +269,22 @@ scriptingService.registerFunction("runAgent", {
 ```bash
 # While loop with counter
 /var $count = "0"
-/while $count < "5" {
+/while $count &lt; "5" &#123;
   /echo Count: $count
   /var $count = call(calculateSum($count + ",1"))
   /sleep 1
-}
+&#125;
 
 # Complex conditional
-/if $username && $proceed {
+/if $username && $proceed &#123;
   /echo Welcome $username! Let's proceed with the setup.
   /script run complexSetup $username
-} else if $username {
+&#125; else if $username &#123;
   /echo Welcome back, $username! Please confirm to proceed.
   /confirm $proceed "Proceed with setup?"
-} else {
+&#125; else &#123;
   /echo Please provide your username first.
-}
+&#125;
 ```
 
 ## Global Functions
@@ -292,34 +292,34 @@ scriptingService.registerFunction("runAgent", {
 Packages can register global functions available to all scripting contexts:
 
 ```typescript
-import {ScriptingService} from "@tokenring-ai/scripting";
+import &#123;ScriptingService&#125; from "@tokenring-ai/scripting";
 
-async attach(agent: Agent): Promise<void> {
+async attach(agent: Agent): Promise&lt;void&gt; &#123;
   const scriptingService = agent.requireServiceByType(ScriptingService);
-  if (scriptingService) {
-    scriptingService.registerFunction({
+  if (scriptingService) &#123;
+    scriptingService.registerFunction(&#123;
       name: "runAgent",
       type: 'native',
       params: ['agentType', 'message', 'context'],
-      async execute(this: ScriptingThis, agentType: string, message: string, context: string): Promise<string> {
-        const res = await runSubAgent({
+      async execute(this: ScriptingThis, agentType: string, message: string, context: string): Promise&lt;string&gt; &#123;
+        const res = await runSubAgent(&#123;
           agentType: agentType,
           headless: this.agent.headless,
-          command: `/work ${message}\n\nImportant Context:\n${context}`,
+          command: `/work $&#123;message&#125;\n\nImportant Context:\n$&#123;context&#125;`,
           forwardChatOutput: true,
           forwardSystemOutput: true,
           forwardHumanRequests: true,
-        }, this.agent, true);
+        &#125;, this.agent, true);
 
-        if (res.status === 'success') {
+        if (res.status === 'success') &#123;
           return res.response;
-        } else {
+        &#125; else &#123;
           throw new Error(res.response);
-        }
-      }
-    });
-  }
-}
+        &#125;
+      &#125;
+    &#125;);
+  &#125;
+&#125;
 ```
 
 ## Configuration
@@ -327,23 +327,23 @@ async attach(agent: Agent): Promise<void> {
 Scripts are configured in your application config file:
 
 ```typescript
-import type {ScriptingConfigSchema} from "@tokenring-ai/scripting";
+import type &#123;ScriptingConfigSchema&#125; from "@tokenring-ai/scripting";
 
-export default {
-  scripting: {
+export default &#123;
+  scripting: &#123;
     setupProject: [
       `/agent switch writer`,
-      `/template run projectSetup ${input}`,
+      `/template run projectSetup $&#123;input&#125;`,
       `/tools enable filesystem`,
       `/agent switch publisher`
     ],
     publishWorkflow: [
       `/agent switch publisher`,
-      `/publish ${input}`,
+      `/publish $&#123;input&#125;`,
       `/notify "Published successfully"`
     ]
-  }
-} satisfies typeof ScriptingConfigSchema;
+  &#125;
+&#125; satisfies typeof ScriptingConfigSchema;
 ```
 
 Scripts can be defined as:

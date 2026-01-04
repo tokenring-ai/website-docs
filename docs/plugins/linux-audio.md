@@ -23,17 +23,17 @@ The main class that implements the `AudioProvider` interface for Linux systems. 
 
 ```typescript
 import LinuxAudioProvider from '@tokenring-ai/linux-audio/LinuxAudioProvider.ts';
-import { LinuxAudioProviderOptionsSchema } from '@tokenring-ai/linux-audio/LinuxAudioProvider.ts';
+import &#123; LinuxAudioProviderOptionsSchema &#125; from '@tokenring-ai/linux-audio/LinuxAudioProvider.ts';
 
-const provider = new LinuxAudioProvider(LinuxAudioProviderOptionsSchema.parse({
+const provider = new LinuxAudioProvider(LinuxAudioProviderOptionsSchema.parse(&#123;
   type: 'linux',
-  record: {
+  record: &#123;
     sampleRate: 48000,
     channels: 1,
     format: 'wav'
-  },
-  playback: {}
-}));
+  &#125;,
+  playback: &#123;&#125;
+&#125;));
 ```
 
 ## API Reference
@@ -49,7 +49,7 @@ new LinuxAudioProvider(options: LinuxAudioProviderOptions)
 **Parameters:**
 - `options` (`LinuxAudioProviderOptions`): Configuration options including type, record settings, and playback settings
 
-#### `record(abortSignal: AbortSignal, options?: RecordingOptions): Promise<RecordingResult>`
+#### `record(abortSignal: AbortSignal, options?: RecordingOptions): Promise&lt;RecordingResult&gt;`
 
 Records audio from the system microphone to a WAV file.
 
@@ -57,25 +57,25 @@ Records audio from the system microphone to a WAV file.
 - `abortSignal`: AbortSignal to stop recording
 - `options`: Optional recording configuration (sampleRate, channels)
 
-**Returns:** `Promise<RecordingResult>` containing the path to the recorded WAV file
+**Returns:** `Promise&lt;RecordingResult&gt;` containing the path to the recorded WAV file
 
 ```typescript
 const abortController = new AbortController();
-const recording = await provider.record(abortController.signal, {
+const recording = await provider.record(abortController.signal, &#123;
   sampleRate: 48000,
   channels: 1
-});
+&#125;);
 console.log('Recording saved to:', recording.filePath);
 ```
 
-#### `playback(filename: string): Promise<string>`
+#### `playback(filename: string): Promise&lt;string&gt;`
 
 Plays an audio file through the system audio. Supports WAV files directly and other formats via ffmpeg.
 
 **Parameters:**
 - `filename`: Path to audio file (WAV or other formats)
 
-**Returns:** `Promise<string>` with the filename on success
+**Returns:** `Promise&lt;string&gt;` with the filename on success
 
 ```typescript
 // WAV file
@@ -88,19 +88,19 @@ await provider.playback('/tmp/recording.mp3');
 ### LinuxAudioProviderOptionsSchema
 
 ```typescript
-const LinuxAudioProviderOptionsSchema = z.object({
+const LinuxAudioProviderOptionsSchema = z.object(&#123;
   type: z.literal("linux"),
-  record: z.object({
+  record: z.object(&#123;
     sampleRate: z.number().default(48000),
     channels: z.number().default(1),
     format: z.string().default('wav'),
-  }).default({
+  &#125;).default(&#123;
     sampleRate: 48000,
     channels: 1,
     format: 'wav',
-  }),
-  playback: z.object({}).default({})
-});
+  &#125;),
+  playback: z.object(&#123;&#125;).default(&#123;&#125;)
+&#125;);
 ```
 
 **Configuration Options:**
@@ -118,66 +118,66 @@ When used as part of the Token Ring AI application, the plugin automatically reg
 
 ```typescript
 // Configure in your app config
-const config = {
-  audio: {
-    providers: {
-      linux: {
+const config = &#123;
+  audio: &#123;
+    providers: &#123;
+      linux: &#123;
         type: 'linux',
-        record: {
+        record: &#123;
           sampleRate: 48000,
           channels: 1,
           format: 'wav'
-        },
-        playback: {}
-      }
-    }
-  }
-};
+        &#125;,
+        playback: &#123;&#125;
+      &#125;
+    &#125;
+  &#125;
+&#125;;
 ```
 
 The plugin handles registration automatically:
 
 ```typescript
 // plugin.ts
-import {TokenRingPlugin} from "@tokenring-ai/app";
-import {AudioServiceConfigSchema} from "@tokenring-ai/audio";
+import &#123;TokenRingPlugin&#125; from "@tokenring-ai/app";
+import &#123;AudioServiceConfigSchema&#125; from "@tokenring-ai/audio";
 import AudioService from "@tokenring-ai/audio/AudioService";
-import LinuxAudioProvider, {LinuxAudioProviderOptionsSchema} from "./LinuxAudioProvider.ts";
+import LinuxAudioProvider, &#123;LinuxAudioProviderOptionsSchema&#125; from "./LinuxAudioProvider.ts";
 
-export default {
+export default &#123;
   name: packageJSON.name,
   version: packageJSON.version,
-  install(app, config) {
-    if (config.audio) {
-      app.waitForService(AudioService, audioService => {
-        for (const name in config.audio!.providers) {
+  install(app, config) &#123;
+    if (config.audio) &#123;
+      app.waitForService(AudioService, audioService =&gt; &#123;
+        for (const name in config.audio!.providers) &#123;
           const provider = config.audio!.providers[name];
-          if (provider.type === "linux") {
+          if (provider.type === "linux") &#123;
             audioService.registerProvider(name, new LinuxAudioProvider(LinuxAudioProviderOptionsSchema.parse(provider)));
-          }
-        }
-      });
-    }
-  },
+          &#125;
+        &#125;
+      &#125;);
+    &#125;
+  &#125;,
   config: packageConfigSchema
-} satisfies TokenRingPlugin<typeof packageConfigSchema>;
+&#125; satisfies TokenRingPlugin&lt;typeof packageConfigSchema&gt;;
 ```
 
 ### Manual Registration
 
 ```typescript
 import LinuxAudioProvider from '@tokenring-ai/linux-audio/LinuxAudioProvider.ts';
-import { AudioService } from '@tokenring-ai/audio';
+import &#123; AudioService &#125; from '@tokenring-ai/audio';
 
-const provider = new LinuxAudioProvider(LinuxAudioProviderOptionsSchema.parse({
+const provider = new LinuxAudioProvider(LinuxAudioProviderOptionsSchema.parse(&#123;
   type: 'linux',
-  record: {
+  record: &#123;
     sampleRate: 48000,
     channels: 1,
     format: 'wav'
-  },
-  playback: {}
-}));
+  &#125;,
+  playback: &#123;&#125;
+&#125;));
 
 const audioService = new AudioService();
 audioService.registerProvider('linux', provider);
@@ -195,21 +195,21 @@ await audioService.playback(recording.filePath);
 Configure the provider via the Token Ring AI application configuration:
 
 ```json
-{
-  "audio": {
-    "providers": {
-      "linux": {
+&#123;
+  "audio": &#123;
+    "providers": &#123;
+      "linux": &#123;
         "type": "linux",
-        "record": {
+        "record": &#123;
           "sampleRate": 48000,
           "channels": 1,
           "format": "wav"
-        },
-        "playback": {}
-      }
-    }
-  }
-}
+        &#125;,
+        "playback": &#123;&#125;
+      &#125;
+    &#125;
+  &#125;
+&#125;
 ```
 
 **Record Options:**
@@ -228,11 +228,11 @@ import AudioService from '@tokenring-ai/audio/AudioService';
 import LinuxAudioProvider from '@tokenring-ai/linux-audio/LinuxAudioProvider.ts';
 
 const audioService = new AudioService();
-const provider = new LinuxAudioProvider({
+const provider = new LinuxAudioProvider(&#123;
   type: 'linux',
-  record: { sampleRate: 48000, channels: 1, format: 'wav' },
-  playback: {}
-});
+  record: &#123; sampleRate: 48000, channels: 1, format: 'wav' &#125;,
+  playback: &#123;&#125;
+&#125;);
 
 audioService.registerProvider('linux', provider);
 const recording = await audioService.record(abortSignal);
@@ -247,30 +247,30 @@ The provider includes robust error handling for audio operations:
 
 ```typescript
 // Recording error handling
-try {
-  const recording = await provider.record(abortController.signal, {
+try &#123;
+  const recording = await provider.record(abortController.signal, &#123;
     sampleRate: 48000,
     channels: 1
-  });
-} catch (error) {
-  if (error instanceof Error) {
+  &#125;);
+&#125; catch (error) &#123;
+  if (error instanceof Error) &#123;
     console.error('Recording failed:', error.message);
     // Handle specific errors
-    if (error.message.includes('Audio device not available')) {
+    if (error.message.includes('Audio device not available')) &#123;
       // Handle device issues
-    }
-  }
-}
+    &#125;
+  &#125;
+&#125;
 
 // Playback error handling
-try {
+try &#123;
   await provider.playback('/path/to/audio.wav');
-} catch (error) {
-  if (error instanceof Error) {
+&#125; catch (error) &#123;
+  if (error instanceof Error) &#123;
     console.error('Playback failed:', error.message);
     // Handle file not found or audio device errors
-  }
-}
+  &#125;
+&#125;
 ```
 
 ### Logging

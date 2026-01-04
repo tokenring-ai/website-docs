@@ -36,7 +36,7 @@ When a file is modified, the service scans for comment lines that contain AI tri
 
 ## Core Methods
 
-### run(signal: AbortSignal): Promise<void>
+### run(signal: AbortSignal): Promise&lt;void&gt;
 
 Starts the CodeWatchService and begins monitoring all configured filesystems.
 
@@ -51,7 +51,7 @@ const abortController = new AbortController();
 await service.run(abortController.signal);
 ```
 
-### watchFileSystem(fileSystemProviderName: string, filesystemConfig: FileSystemConfig, signal: AbortSignal): Promise<void>
+### watchFileSystem(fileSystemProviderName: string, filesystemConfig: FileSystemConfig, signal: AbortSignal): Promise&lt;void&gt;
 
 Configures and starts watching a filesystem for file changes.
 
@@ -61,7 +61,7 @@ Configures and starts watching a filesystem for file changes.
 - `filesystemConfig`: Configuration object including `pollInterval`, `stabilityThreshold`, and `agentType`
 - `signal`: AbortSignal to cancel the watcher
 
-### processFileForAIComments({filePath, fileSystemProviderName}): Promise<void>
+### processFileForAIComments(&#123;filePath, fileSystemProviderName&#125;): Promise&lt;void&gt;
 
 Scans a file for AI comments and processes them.
 
@@ -70,7 +70,7 @@ Scans a file for AI comments and processes them.
 - `filePath`: Path to the file to process
 - `fileSystemProviderName`: Name of the filesystem provider
 
-### checkAndTriggerAIAction(line: string, filePath: string, lineNumber: number, fileSystemProviderName: string): Promise<void>
+### checkAndTriggerAIAction(line: string, filePath: string, lineNumber: number, fileSystemProviderName: string): Promise&lt;void&gt;
 
 Checks a comment line for AI triggers and initiates action.
 
@@ -81,7 +81,7 @@ Checks a comment line for AI triggers and initiates action.
 - `lineNumber`: Line number in the file
 - `fileSystemProviderName`: Name of the filesystem provider
 
-### handleAIComment(commentLine: string, filePath: string, lineNumber: number, fileSystemProviderName: string): Promise<void>
+### handleAIComment(commentLine: string, filePath: string, lineNumber: number, fileSystemProviderName: string): Promise&lt;void&gt;
 
 Handles processing of a specific AI comment type.
 
@@ -92,7 +92,7 @@ Handles processing of a specific AI comment type.
 - `lineNumber`: Line number in the file
 - `fileSystemProviderName`: Name of the filesystem provider
 
-### triggerCodeModification(content: string, filePath: string, lineNumber: number, fileSystemProviderName: string): Promise<void>
+### triggerCodeModification(content: string, filePath: string, lineNumber: number, fileSystemProviderName: string): Promise&lt;void&gt;
 
 Triggers code modification agent for an `AI!` comment.
 
@@ -103,7 +103,7 @@ Triggers code modification agent for an `AI!` comment.
 - `lineNumber`: Line number in the file
 - `fileSystemProviderName`: Name of the filesystem provider
 
-### runCodeModification(prompt: string, filePath: string, agent: Agent): Promise<void>
+### runCodeModification(prompt: string, filePath: string, agent: Agent): Promise&lt;void&gt;
 
 Executes code modification agent.
 
@@ -118,24 +118,24 @@ Executes code modification agent.
 ### Basic Integration
 
 ```typescript
-import { TokenRingApp } from "@tokenring-ai/app";
+import &#123; TokenRingApp &#125; from "@tokenring-ai/app";
 import codeWatchPlugin from "@tokenring-ai/code-watch";
 
-const app = new TokenRingApp({
+const app = new TokenRingApp(&#123;
   plugins: [codeWatchPlugin],
-  config: {
-    codewatch: {
-      filesystems: {
-        local: {
+  config: &#123;
+    codewatch: &#123;
+      filesystems: &#123;
+        local: &#123;
           pollInterval: 1000,
           stabilityThreshold: 2000,
           agentType: "code-modification-agent"
-        }
-      },
+        &#125;
+      &#125;,
       concurrency: 1
-    }
-  }
-});
+    &#125;
+  &#125;
+&#125;);
 
 app.start();
 ```
@@ -143,27 +143,27 @@ app.start();
 ### Manual Configuration
 
 ```typescript
-import { TokenRingApp } from "@tokenring-ai/app";
-import { CodeWatchService } from "@tokenring-ai/code-watch";
-import { CodeWatchConfigSchema } from "@tokenring-ai/code-watch";
+import &#123; TokenRingApp &#125; from "@tokenring-ai/app";
+import &#123; CodeWatchService &#125; from "@tokenring-ai/code-watch";
+import &#123; CodeWatchConfigSchema &#125; from "@tokenring-ai/code-watch";
 
 const app = new TokenRingApp();
 
-const config = {
-  filesystems: {
-    local: {
+const config = &#123;
+  filesystems: &#123;
+    local: &#123;
       pollInterval: 1500,
       stabilityThreshold: 2500,
       agentType: "code-modification-agent"
-    },
-    project: {
+    &#125;,
+    project: &#123;
       pollInterval: 1000,
       stabilityThreshold: 2000,
       agentType: "project-agent"
-    }
-  },
+    &#125;
+  &#125;,
   concurrency: 2
-};
+&#125;;
 
 app.addServices(new CodeWatchService(app, config));
 ```
@@ -171,20 +171,20 @@ app.addServices(new CodeWatchService(app, config));
 ### Running the Service Manually
 
 ```typescript
-import { TokenRingApp } from "@tokenring-ai/app";
-import { CodeWatchService } from "@tokenring-ai/code-watch";
+import &#123; TokenRingApp &#125; from "@tokenring-ai/app";
+import &#123; CodeWatchService &#125; from "@tokenring-ai/code-watch";
 
 const app = new TokenRingApp();
-const config = {
-  filesystems: {
-    local: {
+const config = &#123;
+  filesystems: &#123;
+    local: &#123;
       pollInterval: 1000,
       stabilityThreshold: 2000,
       agentType: "code-modification-agent"
-    }
-  },
+    &#125;
+  &#125;,
   concurrency: 1
-};
+&#125;;
 
 const service = new CodeWatchService(app, config);
 const abortController = new AbortController();
@@ -199,17 +199,17 @@ abortController.abort();
 ### Error Handling
 
 ```typescript
-import { TokenRingApp } from "@tokenring-ai/app";
-import { CodeWatchService } from "@tokenring-ai/code-watch";
+import &#123; TokenRingApp &#125; from "@tokenring-ai/app";
+import &#123; CodeWatchService &#125; from "@tokenring-ai/code-watch";
 
 const app = new TokenRingApp();
 const service = new CodeWatchService(app, config);
 
-try {
+try &#123;
   await service.run(new AbortController().signal);
-} catch (error) {
-  app.logger.error(`CodeWatchService error: ${error}`);
-}
+&#125; catch (error) &#123;
+  app.logger.error(`CodeWatchService error: $&#123;error&#125;`);
+&#125;
 ```
 
 ## Configuration
@@ -219,51 +219,51 @@ The `codewatch` configuration schema defines the structure for configuring the C
 ### Configuration Schema
 
 ```typescript
-const CodeWatchConfigSchema = z.object({
-  filesystems: z.record(z.string(), z.object({
+const CodeWatchConfigSchema = z.object(&#123;
+  filesystems: z.record(z.string(), z.object(&#123;
     pollInterval: z.number().default(1000),
     stabilityThreshold: z.number().default(2000),
     agentType: z.string()
-  })),
+  &#125;)),
   concurrency: z.number().default(1),
-});
+&#125;);
 ```
 
 ### Configuration Options
 
-| Field | Type | Default | Description |
-|-------|------|---------|-------------|
-| `filesystems` | Record<string, FileSystemConfig> | Required | Configuration for each filesystem to monitor |
-| `concurrency` | number | 1 | Maximum concurrent file processing operations |
+| Field         | Type                                   | Default  | Description                                   |
+|---------------|----------------------------------------|----------|-----------------------------------------------|
+| `filesystems` | Record&lt;string, FileSystemConfig&gt; | Required | Configuration for each filesystem to monitor  |
+| `concurrency` | number                                 | 1        | Maximum concurrent file processing operations |
 
 #### FileSystemConfig
 
-| Field | Type | Default | Description |
-|-------|------|---------|-------------|
-| `pollInterval` | number | 1000 | Polling interval in milliseconds for detecting file changes |
-| `stabilityThreshold` | number | 2000 | Time in milliseconds to wait after a change before processing |
-| `agentType` | string | Required | Type of agent to spawn for code modifications |
+| Field                | Type   | Default  | Description                                                   |
+|----------------------|--------|----------|---------------------------------------------------------------|
+| `pollInterval`       | number | 1000     | Polling interval in milliseconds for detecting file changes   |
+| `stabilityThreshold` | number | 2000     | Time in milliseconds to wait after a change before processing |
+| `agentType`          | string | Required | Type of agent to spawn for code modifications                 |
 
 ### Example Configuration
 
 ```typescript
-const appConfig = {
-  codewatch: {
-    filesystems: {
-      local: {
+const appConfig = &#123;
+  codewatch: &#123;
+    filesystems: &#123;
+      local: &#123;
         pollInterval: 1000,
         stabilityThreshold: 2000,
         agentType: "code-modification-agent"
-      },
-      project: {
+      &#125;,
+      project: &#123;
         pollInterval: 1500,
         stabilityThreshold: 2500,
         agentType: "project-agent"
-      }
-    },
+      &#125;
+    &#125;,
     concurrency: 2
-  }
-};
+  &#125;
+&#125;;
 ```
 
 ## Integration

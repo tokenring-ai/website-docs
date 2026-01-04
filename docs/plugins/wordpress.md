@@ -26,23 +26,23 @@ The main blog provider that implements the `BlogProvider` interface.
 
 **Constructor Options:**
 ```typescript
-{
+&#123;
   url: string,
   username: string,
   password: string,
   imageGenerationModel: string,
   cdn: string,
   description: string
-}
+&#125;
 ```
 
 **Key Methods:**
-- `getAllPosts(): Promise<BlogPost[]>` - Get all posts with statuses (publish, future, draft, pending, private)
+- `getAllPosts(): Promise&lt;BlogPost[]&gt;` - Get all posts with statuses (publish, future, draft, pending, private)
 - `getCurrentPost(agent: Agent): BlogPost | null` - Get currently selected post
-- `createPost(data: CreatePostData, agent: Agent): Promise<BlogPost>` - Create new draft post
-- `updatePost(data: UpdatePostData, agent: Agent): Promise<BlogPost>` - Update selected post
-- `selectPostById(id: string, agent: Agent): Promise<BlogPost>` - Select post by ID
-- `clearCurrentPost(agent: Agent): Promise<void>` - Clear current post selection
+- `createPost(data: CreatePostData, agent: Agent): Promise&lt;BlogPost&gt;` - Create new draft post
+- `updatePost(data: UpdatePostData, agent: Agent): Promise&lt;BlogPost&gt;` - Update selected post
+- `selectPostById(id: string, agent: Agent): Promise&lt;BlogPost&gt;` - Select post by ID
+- `clearCurrentPost(agent: Agent): Promise&lt;void&gt;` - Clear current post selection
 
 ### WordPressCDNProvider
 
@@ -50,15 +50,15 @@ CDN provider that uses WordPress media library for file storage.
 
 **Constructor Options:**
 ```typescript
-{
+&#123;
   url: string,
   username: string,
   password: string
-}
+&#125;
 ```
 
 **Key Methods:**
-- `upload(data: Buffer, options?: UploadOptions): Promise<UploadResult>` - Upload file to WordPress media library
+- `upload(data: Buffer, options?: UploadOptions): Promise&lt;UploadResult&gt;` - Upload file to WordPress media library
 - `name: string = "WordPressCDN"` - Provider name
 - `description: string = "CDN backed by a WordPress media library"` - Provider description
 
@@ -79,7 +79,7 @@ State management for tracking the currently selected post.
 
 #### BlogPost
 ```typescript
-interface BlogPost {
+interface BlogPost &#123;
   id: string;
   title: string;
   content: string;
@@ -87,48 +87,48 @@ interface BlogPost {
   created_at: Date;
   updated_at: Date;
   published_at: Date;
-}
+&#125;
 ```
 
 #### CreatePostData
 ```typescript
-interface CreatePostData {
+interface CreatePostData &#123;
   title: string;
   content?: string;
   tags?: string[];
-  feature_image?: { id: string };
-}
+  feature_image?: &#123; id: string &#125;;
+&#125;
 ```
 
 #### UpdatePostData
 ```typescript
-interface UpdatePostData {
+interface UpdatePostData &#123;
   title?: string;
   content?: string;
   tags?: string[];
-  feature_image?: { id: string };
+  feature_image?: &#123; id: string &#125;;
   status?: "published" | "scheduled" | "draft" | "pending" | "private";
-}
+&#125;
 ```
 
 ### Tools
 
 **wordpress/createPost**: Create a new WordPress post from Markdown
-- Input: `{ title: string, content: string, tags?: string[], feature_image?: { id: string } }`
+- Input: `&#123; title: string, content: string, tags?: string[], feature_image?: &#123; id: string &#125; &#125;`
 - Converts Markdown to HTML and creates draft post
 
 **wordpress/getCurrentPost**: Return details of currently selected post
 
 **wordpress/updatePost**: Update selected post
-- Input: `{ title?: string, content?: string, tags?: string[], feature_image?: { id: string }, status?: 'published'|'scheduled'|'draft'|'pending'|'private' }`
+- Input: `&#123; title?: string, content?: string, tags?: string[], feature_image?: &#123; id: string &#125;, status?: 'published'|'scheduled'|'draft'|'pending'|'private' &#125;`
 
 **wordpress/selectPostById**: Select post by ID
-- Input: `{ id: string }`
+- Input: `&#123; id: string &#125;`
 
 **wordpress/clearCurrentPost**: Clear current post selection
 
 **wordpress/generateImageForPost**: Generate AI image and set as featured image
-- Input: `{ prompt: string, aspectRatio?: 'square'|'tall'|'wide' }`
+- Input: `&#123; prompt: string, aspectRatio?: 'square'|'tall'|'wide' &#125;`
 
 ### Chat Commands
 
@@ -145,47 +145,47 @@ interface UpdatePostData {
 ## Usage Example
 
 ```typescript
-import { WordPressBlogProvider, WordPressCDNProvider } from '@tokenring-ai/wordpress';
-import { BlogService, CDNService } from '@tokenring-ai/blog';
-import { CDNService } from '@tokenring-ai/cdn';
+import &#123; WordPressBlogProvider, WordPressCDNProvider &#125; from '@tokenring-ai/wordpress';
+import &#123; BlogService, CDNService &#125; from '@tokenring-ai/blog';
+import &#123; CDNService &#125; from '@tokenring-ai/cdn';
 
 // Initialize WordPress blog provider
-const wpBlogProvider = new WordPressBlogProvider({
+const wpBlogProvider = new WordPressBlogProvider(&#123;
   url: process.env.WORDPRESS_URL!,
   username: process.env.WORDPRESS_USERNAME!,
   password: process.env.WORDPRESS_PASSWORD!,
   imageGenerationModel: process.env.AI_IMAGE_MODEL!,
   cdn: 'wordpress',
   description: 'WordPress Blog'
-});
+&#125;);
 
 // Initialize WordPress CDN provider
-const wpCDNProvider = new WordPressCDNProvider({
+const wpCDNProvider = new WordPressCDNProvider(&#123;
   url: process.env.WORDPRESS_URL!,
   username: process.env.WORDPRESS_USERNAME!,
   password: process.env.WORDPRESS_PASSWORD!
-});
+&#125;);
 
 // Register with services
-app.services.waitForItemByType(BlogService, blogService => {
+app.services.waitForItemByType(BlogService, blogService =&gt; &#123;
   blogService.registerBlog('wordpress', wpBlogProvider);
-});
+&#125;);
 
-app.services.waitForItemByType(CDNService, cdnService => {
+app.services.waitForItemByType(CDNService, cdnService =&gt; &#123;
   cdnService.registerProvider('wordpress', wpCDNProvider);
-});
+&#125;);
 
 // Create a post
-const result = await agent.executeTool('wordpress/createPost', {
+const result = await agent.executeTool('wordpress/createPost', &#123;
   title: 'Hello WordPress from Token Ring',
   content: '# Hello World\n\nThis is a test post created by an agent.',
   tags: ['tokenring', 'wordpress', 'test']
-});
+&#125;);
 
 // Generate featured image
-await agent.executeTool('wordpress/generateImageForPost', {
+await agent.executeTool('wordpress/generateImageForPost', &#123;
   prompt: 'A beautiful landscape image for a blog post'
-});
+&#125;);
 ```
 
 ## Configuration Options
@@ -193,10 +193,10 @@ await agent.executeTool('wordpress/generateImageForPost', {
 ### Blog Provider Configuration
 
 ```json
-{
-  "blog": {
-    "providers": {
-      "wordpress": {
+&#123;
+  "blog": &#123;
+    "providers": &#123;
+      "wordpress": &#123;
         "type": "wordpress",
         "url": "https://your-site.com",
         "username": "your-username",
@@ -204,27 +204,27 @@ await agent.executeTool('wordpress/generateImageForPost', {
         "imageGenerationModel": "dall-e-3",
         "cdn": "wordpress",
         "description": "WordPress Blog"
-      }
-    }
-  }
-}
+      &#125;
+    &#125;
+  &#125;
+&#125;
 ```
 
 ### CDN Provider Configuration
 
 ```json
-{
-  "cdn": {
-    "providers": {
-      "wordpress": {
+&#123;
+  "cdn": &#123;
+    "providers": &#123;
+      "wordpress": &#123;
         "type": "wordpress",
         "url": "https://your-site.com",
         "username": "your-username",
         "password": "your-app-password"
-      }
-    }
-  }
-}
+      &#125;
+    &#125;
+  &#125;
+&#125;
 ```
 
 **Environment Variables:**
@@ -256,16 +256,16 @@ The package integrates with WordPress REST API endpoints:
 ### Posts API
 - `GET /wp/v2/posts` - List posts
 - `POST /wp/v2/posts` - Create post
-- `GET /wp/v2/posts/{id}` - Get post
-- `POST /wp/v2/posts/{id}` - Update post
-- `DELETE /wp/v2/posts/{id}` - Delete post
+- `GET /wp/v2/posts/&#123;id&#125;` - Get post
+- `POST /wp/v2/posts/&#123;id&#125;` - Update post
+- `DELETE /wp/v2/posts/&#123;id&#125;` - Delete post
 
 ### Media API
 - `GET /wp/v2/media` - List media
 - `POST /wp/v2/media` - Upload media
-- `GET /wp/v2/media/{id}` - Get media item
-- `POST /wp/v2/media/{id}` - Update media
-- `DELETE /wp/v2/media/{id}` - Delete media
+- `GET /wp/v2/media/&#123;id&#125;` - Get media item
+- `POST /wp/v2/media/&#123;id&#125;` - Update media
+- `DELETE /wp/v2/media/&#123;id&#125;` - Delete media
 
 ### Tags API
 - `GET /wp/v2/tags` - List tags

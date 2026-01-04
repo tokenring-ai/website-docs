@@ -84,11 +84,11 @@ Utility for pattern-based file selection.
 **Interface:**
 
 ```typescript
-interface MatchItem {
+interface MatchItem &#123;
   path: string;
   include?: RegExp;
   exclude?: RegExp;
-}
+&#125;
 ```
 
 **Key Methods:**
@@ -134,17 +134,17 @@ Retrieves files by paths/globs or searches text within files.
 **Returns:**
 
 ```typescript
-{
+&#123;
   files: FileInfo[],
   matches: MatchInfo[],
-  summary: {
+  summary: &#123;
     totalFiles: number,
     totalMatches: number,
     searchPatterns?: string[],
     returnType: ReturnType,
     limitExceeded: boolean
-  }
-}
+  &#125;
+&#125;
 ```
 
 ### terminal_bash
@@ -160,13 +160,13 @@ Executes shell commands with safety validation.
 **Returns:**
 
 ```typescript
-{
+&#123;
   ok: boolean,
   stdout: string,
   stderr: string,
   exitCode: number,
   error?: string
-}
+&#125;
 ```
 
 **Safety Levels:**
@@ -266,8 +266,8 @@ Provides contents of selected files as chat context.
 - For directories, provides directory listings
 - Marks files as read in state
 - Output format:
-  - For files: `BEGIN FILE ATTACHMENT: {path}\n{content}\nEND FILE ATTACHMENT: {path}`
-  - For directories: `BEGIN DIRECTORY LISTING:\n{path}\n- {file}\n...\nEND DIRECTORY LISTING`
+  - For files: `BEGIN FILE ATTACHMENT: &#123;path&#125;\n&#123;content&#125;\nEND FILE ATTACHMENT: &#123;path&#125;`
+  - For directories: `BEGIN DIRECTORY LISTING:\n&#123;path&#125;\n- &#123;file&#125;\n...\nEND DIRECTORY LISTING`
 
 ### search-files
 
@@ -289,16 +289,16 @@ Provides file search results as chat context based on user input.
 ### FileSystemConfigSchema
 
 ```typescript
-const FileSystemConfigSchema = z.object({
-  agentDefaults: z.object({
+const FileSystemConfigSchema = z.object(&#123;
+  agentDefaults: z.object(&#123;
     provider: z.string(),
     selectedFiles: z.array(z.string()).default([]),
     requireReadBeforeWrite: z.boolean().default(true)
-  }),
+  &#125;),
   providers: z.record(z.string(), z.any()),
   safeCommands: z.array(z.string()).default([...]),
   dangerousCommands: z.array(z.string()).default([...])
-});
+&#125;);
 ```
 
 **agentDefaults:**
@@ -318,9 +318,9 @@ List of regex patterns for commands that require explicit confirmation.
 ### Package Config Schema
 
 ```typescript
-const packageConfigSchema = z.object({
+const packageConfigSchema = z.object(&#123;
   filesystem: FileSystemConfigSchema.optional(),
-});
+&#125;);
 ```
 
 ## RPC Endpoints
@@ -329,20 +329,20 @@ JSON-RPC endpoints available at `/rpc/filesystem`:
 
 | Method | Type | Input | Output |
 |--------|------|-------|--------|
-| readFile | query | `{agentId, path}` | `{content}` |
-| exists | query | `{agentId, path}` | `{exists}` |
-| stat | query | `{agentId, path}` | `{stats}` |
-| glob | query | `{agentId, pattern}` | `{files}` |
-| listDirectory | query | `{agentId, path, showHidden, recursive}` | `{files}` |
-| writeFile | mutation | `{agentId, path, content}` | `{success}` |
-| appendFile | mutation | `{agentId, path, content}` | `{success}` |
-| deleteFile | mutation | `{agentId, path}` | `{success}` |
-| rename | mutation | `{agentId, oldPath, newPath}` | `{success}` |
-| createDirectory | mutation | `{agentId, path, recursive}` | `{success}` |
-| copy | mutation | `{agentId, source, destination, overwrite}` | `{success}` |
-| addFileToChat | mutation | `{agentId, file}` | `{success}` |
-| removeFileFromChat | mutation | `{agentId, file}` | `{success}` |
-| getSelectedFiles | query | `{agentId}` | `{files}` |
+| readFile | query | `&#123;agentId, path&#125;` | `&#123;content&#125;` |
+| exists | query | `&#123;agentId, path&#125;` | `&#123;exists&#125;` |
+| stat | query | `&#123;agentId, path&#125;` | `&#123;stats&#125;` |
+| glob | query | `&#123;agentId, pattern&#125;` | `&#123;files&#125;` |
+| listDirectory | query | `&#123;agentId, path, showHidden, recursive&#125;` | `&#123;files&#125;` |
+| writeFile | mutation | `&#123;agentId, path, content&#125;` | `&#123;success&#125;` |
+| appendFile | mutation | `&#123;agentId, path, content&#125;` | `&#123;success&#125;` |
+| deleteFile | mutation | `&#123;agentId, path&#125;` | `&#123;success&#125;` |
+| rename | mutation | `&#123;agentId, oldPath, newPath&#125;` | `&#123;success&#125;` |
+| createDirectory | mutation | `&#123;agentId, path, recursive&#125;` | `&#123;success&#125;` |
+| copy | mutation | `&#123;agentId, source, destination, overwrite&#125;` | `&#123;success&#125;` |
+| addFileToChat | mutation | `&#123;agentId, file&#125;` | `&#123;success&#125;` |
+| removeFileFromChat | mutation | `&#123;agentId, file&#125;` | `&#123;success&#125;` |
+| getSelectedFiles | query | `&#123;agentId&#125;` | `&#123;files&#125;` |
 
 ## State Management
 
@@ -372,18 +372,18 @@ Tracks filesystem-related state for agents.
 ```typescript
 import FileSystemService from '@tokenring-ai/filesystem/FileSystemService';
 
-const fs = new FileSystemService({
-  agentDefaults: {
+const fs = new FileSystemService(&#123;
+  agentDefaults: &#123;
     provider: 'local',
     selectedFiles: [],
     requireReadBeforeWrite: true,
-  },
+  &#125;,
   safeCommands: ['ls', 'cat', 'grep', 'git', 'npm', 'bun', 'node'],
   dangerousCommands: ['rm', 'chmod', 'chown', 'sudo'],
-  providers: {
-    local: { /* local provider config */ }
-  }
-});
+  providers: &#123;
+    local: &#123; /* local provider config */ &#125;
+  &#125;
+&#125;);
 
 // Write a file
 await fs.writeFile('example.txt', 'Hello, world!', agent);
@@ -399,12 +399,12 @@ await fs.appendFile('example.txt', '\nAdditional content', agent);
 
 ```typescript
 // Get directory tree
-for await (const path of fs.getDirectoryTree('./src', {recursive: true}, agent)) {
+for await (const path of fs.getDirectoryTree('./src', &#123;recursive: true&#125;, agent)) &#123;
   console.log(path);
-}
+&#125;
 
 // Find files with glob pattern
-const tsFiles = await fs.glob('**/*.ts', {}, agent);
+const tsFiles = await fs.glob('**/*.ts', &#123;&#125;, agent);
 ```
 
 ### Chat File Management
@@ -420,19 +420,19 @@ const files = fs.getFilesInChat(agent);
 fs.removeFileFromChat('src/main.ts', agent);
 
 // Interactive file selection
-const selected = await fs.askForFileSelection({allowDirectories: true}, agent);
+const selected = await fs.askForFileSelection(&#123;allowDirectories: true&#125;, agent);
 ```
 
 ### File Search
 
 ```typescript
 // Search for text in files
-const results = await fs.grep(['TODO', 'FIXME'], {
-  includeContent: {linesBefore: 2, linesAfter: 2}
-}, agent);
+const results = await fs.grep(['TODO', 'FIXME'], &#123;
+  includeContent: &#123;linesBefore: 2, linesAfter: 2&#125;
+&#125;, agent);
 
 // Glob pattern matching
-const configs = await fs.glob('**/*.config.{js,json,ts}', {}, agent);
+const configs = await fs.glob('**/*.config.&#123;js,json,ts&#125;', &#123;&#125;, agent);
 ```
 
 ### Shell Command Execution
@@ -440,15 +440,15 @@ const configs = await fs.glob('**/*.config.{js,json,ts}', {}, agent);
 ```typescript
 const result = await fs.executeCommand(
   ['npm', 'install'],
-  {timeoutSeconds: 120, workingDirectory: './frontend'},
+  &#123;timeoutSeconds: 120, workingDirectory: './frontend'&#125;,
   agent
 );
 
-if (result.ok) {
+if (result.ok) &#123;
   console.log('Install completed:', result.stdout);
-} else {
+&#125; else &#123;
   console.error('Install failed:', result.stderr);
-}
+&#125;
 ```
 
 ## Integration
@@ -544,4 +544,4 @@ pkg/filesystem/
 
 ## License
 
-MIT License - see [LICENSE](https://github.com/tokenring-ai/tokenring/blob/main/packages/filesystem/LICENSE) for details.
+MIT License - see [LICENSE](https://github.com/tokenring-ai/monorepo/blob/main/LICENSE) for details.

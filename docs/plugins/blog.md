@@ -28,7 +28,7 @@ bun install @tokenring-ai/blog
 The `BlogProvider` interface defines the contract for blog provider implementations:
 
 ```typescript
-export interface BlogPost {
+export interface BlogPost &#123;
   id: string;
   title: string;
   content?: string;
@@ -37,30 +37,30 @@ export interface BlogPost {
   created_at: Date;
   updated_at: Date;
   published_at?: Date;
-  feature_image?: {
+  feature_image?: &#123;
     id?: string;
     url?: string;
-  }
+  &#125;
   url?: string;
-}
+&#125;
 
-export type CreatePostData = Omit<BlogPost, 'id' | 'created_at' | 'updated_at' | 'published_at' | 'status'>;
+export type CreatePostData = Omit&lt;BlogPost, 'id' | 'created_at' | 'updated_at' | 'published_at' | 'status'&gt;;
 
-export type UpdatePostData = Partial<Omit<BlogPost, 'id' | 'created_at' | 'updated_at'>>;
+export type UpdatePostData = Partial&lt;Omit&lt;BlogPost, 'id' | 'created_at' | 'updated_at'&gt;&gt;;
 
-export interface BlogProvider {
+export interface BlogProvider &#123;
   description: string;
   imageGenerationModel: string;
   cdnName: string;
 
-  attach(agent: Agent): Promise<void>;
-  getAllPosts(agent: Agent): Promise<BlogPost[]>;
-  createPost(data: CreatePostData, agent: Agent): Promise<BlogPost>;
-  updatePost(data: UpdatePostData, agent: Agent): Promise<BlogPost>;
-  selectPostById(id: string, agent: Agent): Promise<BlogPost>;
+  attach(agent: Agent): Promise&lt;void&gt;;
+  getAllPosts(agent: Agent): Promise&lt;BlogPost[]&gt;;
+  createPost(data: CreatePostData, agent: Agent): Promise&lt;BlogPost&gt;;
+  updatePost(data: UpdatePostData, agent: Agent): Promise&lt;BlogPost&gt;;
+  selectPostById(id: string, agent: Agent): Promise&lt;BlogPost&gt;;
   getCurrentPost(agent: Agent): BlogPost | null;
-  clearCurrentPost(agent: Agent): Promise<void;
-}
+  clearCurrentPost(agent: Agent): Promise&lt;void;
+&#125;
 ```
 
 ### BlogService
@@ -68,22 +68,22 @@ export interface BlogProvider {
 The `BlogService` class manages blog providers and post operations:
 
 ```typescript
-export default class BlogService implements TokenRingService {
+export default class BlogService implements TokenRingService &#123;
   name = "BlogService";
   description = "Abstract interface for blog operations";
 
   registerBlog(provider: BlogProvider): void;
   getAvailableBlogs(): string[];
-  async attach(agent: Agent): Promise<void>;
+  async attach(agent: Agent): Promise&lt;void&gt;;
   setActiveProvider(name: string, agent: Agent): void;
-  async getAllPosts(agent: Agent): Promise<BlogPost[]>;
-  async createPost(data: CreatePostData, agent: Agent): Promise<BlogPost>;
-  async updatePost(data: UpdatePostData, agent: Agent): Promise<BlogPost>;
+  async getAllPosts(agent: Agent): Promise&lt;BlogPost[]&gt;;
+  async createPost(data: CreatePostData, agent: Agent): Promise&lt;BlogPost&gt;;
+  async updatePost(data: UpdatePostData, agent: Agent): Promise&lt;BlogPost&gt;;
   getCurrentPost(agent: Agent): BlogPost | null;
-  async selectPostById(id: string, agent: Agent): Promise<BlogPost>;
-  async clearCurrentPost(agent: Agent): Promise<void>;
-  async publishPost(agent: Agent): Promise<void>;
-}
+  async selectPostById(id: string, agent: Agent): Promise&lt;BlogPost&gt;;
+  async clearCurrentPost(agent: Agent): Promise&lt;void&gt;;
+  async publishPost(agent: Agent): Promise&lt;void&gt;;
+&#125;
 ```
 
 ### BlogState
@@ -91,17 +91,17 @@ export default class BlogService implements TokenRingService {
 The `BlogState` class manages state for blog operations:
 
 ```typescript
-export class BlogState implements AgentStateSlice {
+export class BlogState implements AgentStateSlice &#123;
   name = "BlogState";
   activeProvider: string | null;
 
-  constructor(readonly initialConfig: z.output<typeof BlogAgentConfigSchema>);
+  constructor(readonly initialConfig: z.output&lt;typeof BlogAgentConfigSchema&gt;);
   transferStateFromParent(parent: Agent): void;
   reset(what: ResetWhat[]): void;
   serialize(): object;
   deserialize(data: any): void;
   show(): string[];
-}
+&#125;
 ```
 
 ## Chat Commands
@@ -112,7 +112,7 @@ The plugin provides the following chat commands through the AgentCommandService:
 
 - `/blog provider get` - Display the currently active blog provider
 - `/blog provider select` - Select an active blog provider interactively
-- `/blog provider set <name>` - Set a specific blog provider by name
+- `/blog provider set &lt;name&gt;` - Set a specific blog provider by name
 - `/blog provider reset` - Reset to the initial configured blog provider
 
 ### Post Management
@@ -137,11 +137,11 @@ Creates a new blog post with title, content, and tags.
 
 **Input Schema:**
 ```typescript
-{
+&#123;
   title: z.string().describe("Title of the blog post"),
   contentInMarkdown: z.string().describe("The content of the post in Markdown format. The title of the post goes in the title tag, NOT inside the content"),
   tags: z.array(z.string()).describe("Tags for the post").optional()
-}
+&#125;
 ```
 
 ### blog_updatePost
@@ -150,11 +150,11 @@ Updates the currently selected blog post.
 
 **Input Schema:**
 ```typescript
-{
+&#123;
   title: z.string().describe("New title for the post").optional(),
   contentInMarkdown: z.string().describe("The content of the post in Markdown format. The title of the post goes in the title tag, NOT inside the content").optional(),
   tags: z.array(z.string()).describe("New tags for the post").optional()
-}
+&#125;
 ```
 
 ### blog_getAllPosts
@@ -163,11 +163,11 @@ Gets all posts from a blog service with filtering options.
 
 **Input Schema:**
 ```typescript
-{
+&#123;
   status: z.enum(['draft', 'published', 'all']).default('all').optional(),
   tag: z.string().describe("Filter by tag").optional(),
   limit: z.number().int().positive().default(10).optional()
-}
+&#125;
 ```
 
 ### blog_getCurrentPost
@@ -176,7 +176,7 @@ Gets the currently selected post.
 
 **Input Schema:**
 ```typescript
-{}
+&#123;&#125;
 ```
 
 ### blog_generateImageForPost
@@ -185,10 +185,10 @@ Generates an AI image and sets it as the featured image for the currently select
 
 **Input Schema:**
 ```typescript
-{
+&#123;
   prompt: z.string().describe("Description of the image to generate"),
   aspectRatio: z.enum(['square', 'tall', 'wide']).default('square').optional()
-}
+&#125;
 ```
 
 ## Scripting Functions
@@ -254,33 +254,33 @@ The plugin is configured through the `blog` section in the Token Ring configurat
 **Configuration Schema:**
 
 ```typescript
-const BlogAgentConfigSchema = z.object({
+const BlogAgentConfigSchema = z.object(&#123;
   provider: z.string().optional()
-}).default({});
+&#125;).default(&#123;&#125;);
 
-const BlogConfigSchema = z.object({
+const BlogConfigSchema = z.object(&#123;
   providers: z.record(z.string(), z.any()),
   agentDefaults: BlogAgentConfigSchema,
-});
+&#125;);
 ```
 
 **Example Configuration:**
 
 ```json
-{
-  "blog": {
-    "providers": {
-      "wordpress": {
+&#123;
+  "blog": &#123;
+    "providers": &#123;
+      "wordpress": &#123;
         "url": "https://example.com/wp-json",
         "username": "admin",
         "password": "secret"
-      }
-    },
-    "agentDefaults": {
+      &#125;
+    &#125;,
+    "agentDefaults": &#123;
       "provider": "wordpress"
-    }
-  }
-}
+    &#125;
+  &#125;
+&#125;
 ```
 
 ## Usage Examples
@@ -288,17 +288,17 @@ const BlogConfigSchema = z.object({
 ### Basic Setup
 
 ```typescript
-import { BlogService } from '@tokenring-ai/blog';
+import &#123; BlogService &#125; from '@tokenring-ai/blog';
 
-const blogService = new BlogService({
-  providers: {
+const blogService = new BlogService(&#123;
+  providers: &#123;
     wordpress: wordpressProvider,
     // other providers
-  },
-  agentDefaults: {
+  &#125;,
+  agentDefaults: &#123;
     provider: 'wordpress'
-  }
-});
+  &#125;
+&#125;);
 
 await blogService.attach(agent);
 ```
@@ -307,11 +307,11 @@ await blogService.attach(agent);
 
 ```typescript
 const blogService = agent.requireServiceByType(BlogService);
-const newPost = await blogService.createPost({
+const newPost = await blogService.createPost(&#123;
   title: 'My New Post',
   content: 'This is the content in **Markdown** format.',
   tags: ['technology', 'ai']
-}, agent);
+&#125;, agent);
 ```
 
 ### Using Chat Commands
@@ -338,27 +338,27 @@ const newPost = await blogService.createPost({
 
 ```typescript
 // Using tools directly
-await tools.createPost({
+await tools.createPost(&#123;
   title: "My New Post",
   contentInMarkdown: "## Introduction\n\nThis is my new post content.",
   tags: ["technology", "ai"]
-});
+&#125;);
 
-await tools.updatePost({
+await tools.updatePost(&#123;
   title: "Updated Title",
   contentInMarkdown: "Updated content here.",
   tags: ["updated"]
-});
+&#125;);
 
-const result = await tools.getAllPosts({
+const result = await tools.getAllPosts(&#123;
   status: "draft",
   limit: 10
-});
+&#125;);
 
-await tools.generateImageForPost({
+await tools.generateImageForPost(&#123;
   prompt: "A beautiful sunset over the ocean",
   aspectRatio: "wide"
-});
+&#125;);
 ```
 
 ### Using Scripting Functions
@@ -467,4 +467,4 @@ Test cases cover:
 
 ## License
 
-MIT License - see [LICENSE](https://github.com/tokenring-ai/tokenring/blob/main/pkg/blog/LICENSE) file for details.
+MIT License - see [LICENSE](https://github.com/tokenring-ai/monorepo/blob/main/LICENSE) for details.

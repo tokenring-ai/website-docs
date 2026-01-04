@@ -25,8 +25,8 @@ The `@tokenring-ai/template` package provides a comprehensive system for managin
 The central service that manages template registration and execution:
 
 ```typescript
-import { Agent } from "@tokenring-ai/agent";
-import { TemplateService } from "@tokenring-ai/template";
+import &#123; Agent &#125; from "@tokenring-ai/agent";
+import &#123; TemplateService &#125; from "@tokenring-ai/template";
 
 // Access via agent
 const templateService = agent.requireServiceByType(TemplateService);
@@ -39,7 +39,7 @@ const template = templateService.getTemplateByName("myTemplate");
 
 // Run a template
 const result = await templateService.runTemplate(
-  { templateName: "myTemplate", input: "Hello world" },
+  &#123; templateName: "myTemplate", input: "Hello world" &#125;,
   agent
 );
 ```
@@ -47,24 +47,24 @@ const result = await templateService.runTemplate(
 ### TemplateChatRequest Schema
 
 ```typescript
-interface TemplateChatRequest {
+interface TemplateChatRequest &#123;
   inputs: string[];                    // Array of inputs to process
   nextTemplate?: string;               // Next template to run
   reset?: ResetWhat[];                 // Context types to reset (chat, memory, events)
   activeTools?: string[];              // Tools to enable during execution
-}
+&#125;
 ```
 
 ### TemplateResult Schema
 
 ```typescript
-interface TemplateResult {
+interface TemplateResult &#123;
   ok: boolean;
   output?: string;
   response?: any;
   error?: string;
   nextTemplateResult?: TemplateResult; // For chained templates
-}
+&#125;
 ```
 
 ## Template Structure
@@ -72,17 +72,17 @@ interface TemplateResult {
 Templates are async functions that accept an input string and return a `TemplateChatRequest`:
 
 ```typescript
-import { TemplateChatRequest } from "@tokenring-ai/template";
+import &#123; TemplateChatRequest &#125; from "@tokenring-ai/template";
 
-export async function myTemplate(input: string): Promise<TemplateChatRequest> {
-  return {
+export async function myTemplate(input: string): Promise&lt;TemplateChatRequest&gt; &#123;
+  return &#123;
     inputs: [input],
     // Optional parameters
     nextTemplate: "followUpTemplate", // Chain to another template
     reset: ["chat", "memory"],       // Reset context types
     activeTools: ["websearch", "wikipedia"], // Enable specific tools
-  };
-}
+  &#125;;
+&#125;
 ```
 
 ## Usage Examples
@@ -92,7 +92,7 @@ export async function myTemplate(input: string): Promise<TemplateChatRequest> {
 ```typescript
 // Run a template via tool
 const result = await templateService.runTemplate(
-  { templateName: "summarize", input: "Long article text..." },
+  &#123; templateName: "summarize", input: "Long article text..." &#125;,
   agent
 );
 
@@ -103,46 +103,46 @@ console.log(result.output); // AI response
 
 ```typescript
 // First template generates content
-export async function generateDraft(input: string): Promise<TemplateChatRequest> {
-  return {
+export async function generateDraft(input: string): Promise&lt;TemplateChatRequest&gt; &#123;
+  return &#123;
     inputs: [input],
     nextTemplate: "improveDraft", // Chain to improvement template
-  };
-}
+  &#125;;
+&#125;
 
 // Second template improves the draft
-export async function improveDraft(input: string): Promise<TemplateChatRequest> {
-  return {
+export async function improveDraft(input: string): Promise&lt;TemplateChatRequest&gt; &#123;
+  return &#123;
     inputs: [input],
     // No nextTemplate, so this ends the chain
-  };
-}
+  &#125;;
+&#125;
 ```
 
 ### Context Reset and Tool Management
 
 ```typescript
-export async function newTaskTemplate(input: string): Promise<TemplateChatRequest> {
-  return {
+export async function newTaskTemplate(input: string): Promise&lt;TemplateChatRequest&gt; &#123;
+  return &#123;
     inputs: [input],
     reset: ["chat", "memory", "events"], // Clear previous context
     activeTools: ["websearch", "wikipedia"], // Enable only these tools
-  };
-}
+  &#125;;
+&#125;
 ```
 
 ### Multiple Inputs
 
 ```typescript
-export async function multiStepAnalysis(input: string): Promise<TemplateChatRequest> {
-  return {
+export async function multiStepAnalysis(input: string): Promise&lt;TemplateChatRequest&gt; &#123;
+  return &#123;
     inputs: [
       "Analyze this data for trends",
       "Identify key insights",
       "Generate recommendations"
     ],
-  };
-}
+  &#125;;
+&#125;
 ```
 
 ## Interactive Chat Commands
@@ -157,7 +157,7 @@ List all available templates.
 /template list
 ```
 
-### `/template run <templateName> [input]`
+### `/template run &lt;templateName&gt; [input]`
 Run a template with optional input.
 
 **Arguments:**
@@ -169,7 +169,7 @@ Run a template with optional input.
 /template run summarize This is the text to summarize
 ```
 
-### `/template info <templateName>`
+### `/template info &lt;templateName&gt;`
 Show information about a specific template.
 
 **Example:**
@@ -196,10 +196,10 @@ Runs a template with the given input.
 
 **Example Usage:**
 ```typescript
-const result = await agent.runTool('template/run', {
+const result = await agent.runTool('template/run', &#123;
   templateName: 'summarize',
   input: 'Long article text...'
-});
+&#125;);
 ```
 
 ## Configuration
@@ -208,23 +208,23 @@ Templates are configured via the TokenRing configuration system:
 
 ```typescript
 // Configuration schema is automatically validated
-export default {
-  template: {
-    // Template name -> Template function mapping
-    summarize: async (input: string) => ({
+export default &#123;
+  template: &#123;
+    // Template name -&gt; Template function mapping
+    summarize: async (input: string) =&gt; (&#123;
       inputs: [input],
-    }),
-    translateToFrench: async (input: string) => ({
+    &#125;),
+    translateToFrench: async (input: string) =&gt; (&#123;
       inputs: [input],
       system: "You are a professional translator.",
-    }),
-    research: async (input: string) => ({
+    &#125;),
+    research: async (input: string) =&gt; (&#123;
       inputs: [input],
       activeTools: ["websearch", "wikipedia"],
       nextTemplate: "summarizeFindings",
-    }),
-  }
-};
+    &#125;),
+  &#125;
+&#125;;
 ```
 
 ## Error Handling
@@ -240,17 +240,17 @@ The package includes comprehensive error handling:
 
 ```typescript
 // Missing template
-try {
-  await templateService.runTemplate({ templateName: "nonexistent", input: "test" }, agent);
-} catch (error) {
+try &#123;
+  await templateService.runTemplate(&#123; templateName: "nonexistent", input: "test" &#125;, agent);
+&#125; catch (error) &#123;
   console.log(error.message); // "Template not found: nonexistent"
-}
+&#125;
 
 // Circular reference
-const templateWithCircularRef = async (input: string) => ({
+const templateWithCircularRef = async (input: string) =&gt; (&#123;
   inputs: [input],
   nextTemplate: "anotherTemplate", // This could create a circular reference
-});
+&#125;);
 ```
 
 ## Integration with TokenRing Ecosystem
@@ -260,14 +260,14 @@ const templateWithCircularRef = async (input: string) => ({
 The package automatically integrates with TokenRing applications via the plugin system:
 
 ```typescript
-export default {
+export default &#123;
   name: "@tokenring-ai/template",
-  install(app: TokenRingApp) {
+  install(app: TokenRingApp) &#123;
     // Templates are automatically registered
     // Tools and commands are automatically added
     // Service is automatically attached to agents
-  }
-}
+  &#125;
+&#125;
 ```
 
 ### Service Dependencies
@@ -289,24 +289,24 @@ export default {
 1. Define your template function:
 
 ```typescript
-import { TemplateChatRequest } from "@tokenring-ai/template";
+import &#123; TemplateChatRequest &#125; from "@tokenring-ai/template";
 
-export async function myCustomTemplate(input: string): Promise<TemplateChatRequest> {
-  return {
+export async function myCustomTemplate(input: string): Promise&lt;TemplateChatRequest&gt; &#123;
+  return &#123;
     inputs: [input],
     // Add your template logic here
-  };
-}
+  &#125;;
+&#125;
 ```
 
 2. Register it in your configuration:
 
 ```typescript
-export default {
-  template: {
+export default &#123;
+  template: &#123;
     myCustomTemplate: myCustomTemplate,
-  }
-}
+  &#125;
+&#125;
 ```
 
 3. Use it via chat command or tools:

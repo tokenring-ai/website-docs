@@ -26,15 +26,15 @@ bun add @tokenring-ai/browser-file-system
 Configure the filesystem service in your application configuration:
 
 ```json
-{
-  "filesystem": {
-    "providers": {
-      "browser": {
+&#123;
+  "filesystem": &#123;
+    "providers": &#123;
+      "browser": &#123;
         "type": "browser"
-      }
-    }
-  }
-}
+      &#125;
+    &#125;
+  &#125;
+&#125;
 ```
 
 ## Core Components
@@ -47,19 +47,19 @@ The main class implementing the FileSystemProvider interface with the following 
 - `readFile(filePath: string)`: Read file content
 - `writeFile(filePath: string, content: string | Buffer)`: Write or overwrite file
 - `appendFile(filePath: string, content: string | Buffer)`: Append to existing file
-- `copy(source: string, destination: string, options?: { overwrite?: boolean })`: Copy files with overwrite option
+- `copy(source: string, destination: string, options?: &#123; overwrite?: boolean &#125;)`: Copy files with overwrite option
 - `rename(oldPath: string, newPath: string)`: Rename/move files
 - `deleteFile(filePath: string)`: Not implemented in mock (read-only aspects)
 
 #### Directory Operations
-- `getDirectoryTree(path: string = "/", params?: { recursive?: boolean, ig?: (path: string) => boolean })`: Generate directory tree with optional ignore filters
-- `createDirectory(path: string, options?: { recursive?: boolean })`: No-op implementation (always returns true)
+- `getDirectoryTree(path: string = "/", params?: &#123; recursive?: boolean, ig?: (path: string) =&gt; boolean &#125;)`: Generate directory tree with optional ignore filters
+- `createDirectory(path: string, options?: &#123; recursive?: boolean &#125;)`: No-op implementation (always returns true)
 - `exists(filePath: string)`: Check if file exists
 
 #### Advanced Operations
 - `stat(filePath: string)`: Get file statistics (size, dates, etc.)
-- `glob(pattern: string, options?: { ignoreFilter?: (file: string) => boolean })`: **Note**: The `pattern` parameter is currently ignored; only the `ignoreFilter` is applied
-- `grep(searchString: string | string[], options?: { ignoreFilter?: (file: string) => boolean, includeContent?: { linesBefore?: number, linesAfter?: number } })`: Search text across files
+- `glob(pattern: string, options?: &#123; ignoreFilter?: (file: string) =&gt; boolean &#125;)`: **Note**: The `pattern` parameter is currently ignored; only the `ignoreFilter` is applied
+- `grep(searchString: string | string[], options?: &#123; ignoreFilter?: (file: string) =&gt; boolean, includeContent?: &#123; linesBefore?: number, linesAfter?: number &#125; &#125;)`: Search text across files
 - `watch(dir: string, options?: WatchOptions)`: Not implemented
 - `executeCommand(command: string | string[], options?: ExecuteCommandOptions)`: Not supported in browser
 
@@ -82,7 +82,7 @@ The plugin initializes with a pre-populated mock file system containing:
 ### Basic File Operations
 
 ```typescript
-import { BrowserFileSystemProvider } from "@tokenring-ai/browser-file-system";
+import &#123; BrowserFileSystemProvider &#125; from "@tokenring-ai/browser-file-system";
 
 const provider = new BrowserFileSystemProvider();
 
@@ -104,23 +104,23 @@ const exists = await provider.exists("/new-file.txt");
 
 ```typescript
 // Get all files recursively
-for await (const filePath of provider.getDirectoryTree("/")) {
+for await (const filePath of provider.getDirectoryTree("/")) &#123;
   console.log(filePath);
-}
+&#125;
 
 // Get only direct children (non-recursive)
-for await (const filePath of provider.getDirectoryTree("/", { recursive: false })) {
+for await (const filePath of provider.getDirectoryTree("/", &#123; recursive: false &#125;)) &#123;
   console.log(filePath);
-}
+&#125;
 
 // Get with ignore filter
-const ignoreJsx = (path: string) => path.includes(".jsx");
-for await (const filePath of provider.getDirectoryTree("/", { 
+const ignoreJsx = (path: string) =&gt; path.includes(".jsx");
+for await (const filePath of provider.getDirectoryTree("/", &#123; 
   recursive: true, 
   ig: ignoreJsx 
-})) {
+&#125;)) &#123;
   console.log(filePath);
-}
+&#125;
 ```
 
 ### File Copy and Rename
@@ -130,7 +130,7 @@ for await (const filePath of provider.getDirectoryTree("/", {
 await provider.copy("/README.md", "/copy-of-readme.md");
 
 // Copy with overwrite option
-await provider.copy("/source.txt", "/dest.txt", { overwrite: true });
+await provider.copy("/source.txt", "/dest.txt", &#123; overwrite: true &#125;);
 
 // Rename a file
 await provider.rename("/temp.txt", "/renamed.txt");
@@ -144,43 +144,43 @@ const results = await provider.grep("console");
 console.log(results);
 
 // Search with context lines
-const resultsWithContext = await provider.grep("console", {
-  includeContent: { linesBefore: 1, linesAfter: 1 }
-});
+const resultsWithContext = await provider.grep("console", &#123;
+  includeContent: &#123; linesBefore: 1, linesAfter: 1 &#125;
+&#125;);
 
 // Search with ignore filter
-const resultsFiltered = await provider.grep("search term", {
-  ignoreFilter: (file) => file.includes("subdirectory")
-});
+const resultsFiltered = await provider.grep("search term", &#123;
+  ignoreFilter: (file) =&gt; file.includes("subdirectory")
+&#125;);
 ```
 
 ### Glob Pattern Matching
 
 ```typescript
 // Note: The `pattern` parameter is ignored. Use `ignoreFilter` to filter files:
-const jsFiles = await provider.glob("*", {
-  ignoreFilter: (file) => !file.endsWith(".js")
-}); // Excludes non-JavaScript files
+const jsFiles = await provider.glob("*", &#123;
+  ignoreFilter: (file) =&gt; !file.endsWith(".js")
+&#125;); // Excludes non-JavaScript files
 
 // Example: Exclude test files
-const filteredFiles = await provider.glob("*", {
-  ignoreFilter: (file) => file.includes("test")
-});
+const filteredFiles = await provider.glob("*", &#123;
+  ignoreFilter: (file) =&gt; file.includes("test")
+&#125;);
 ```
 
 ## Configuration Options
 
 ### Provider Configuration
 ```json
-{
-  "filesystem": {
-    "providers": {
-      "browser": {
+&#123;
+  "filesystem": &#123;
+    "providers": &#123;
+      "browser": &#123;
         "type": "browser"
-      }
-    }
-  }
-}
+      &#125;
+    &#125;
+  &#125;
+&#125;
 ```
 
 ### Provider Parameters
@@ -196,7 +196,7 @@ const filteredFiles = await provider.glob("*", {
 The plugin automatically registers with the FileSystemService when configured:
 
 ```typescript
-import { BrowserFileSystemProvider } from "@tokenring-ai/browser-file-system";
+import &#123; BrowserFileSystemProvider &#125; from "@tokenring-ai/browser-file-system";
 
 // Plugin installation happens automatically when added to TokenRing app
 // with the browser provider configured
@@ -207,12 +207,12 @@ import { BrowserFileSystemProvider } from "@tokenring-ai/browser-file-system";
 The plugin registers the browser file system provider with the TokenRing service registry:
 
 ```typescript
-app.services.waitForItemByType(FileSystemService, (fileSystemService) => {
+app.services.waitForItemByType(FileSystemService, (fileSystemService) =&gt; &#123;
   fileSystemService.registerFileSystemProvider(
     "browser",
     new BrowserFileSystemProvider()
   );
-});
+&#125;);
 ```
 
 ## Limitations

@@ -43,15 +43,15 @@ app.install(wikipediaPlugin);
 ```typescript
 import WikipediaService from "@tokenring-ai/wikipedia";
 
-const wikipedia = new WikipediaService({
+const wikipedia = new WikipediaService(&#123;
   baseUrl: "https://en.wikipedia.org" // Optional, defaults to English Wikipedia
-});
+&#125;);
 
 // Search for articles
-const searchResults = await wikipedia.search("artificial intelligence", {
+const searchResults = await wikipedia.search("artificial intelligence", &#123;
   limit: 10,
   offset: 0
-});
+&#125;);
 
 // Get page content
 const pageContent = await wikipedia.getPage("Artificial intelligence");
@@ -67,17 +67,17 @@ Search Wikipedia articles and return structured results.
 
 ```typescript
 // Tool input schema:
-{
+&#123;
   query: string,           // Required search term
   limit?: number,          // Number of results (1-500, default: 10)
   offset?: number          // Pagination offset (default: 0)
-}
+&#125;
 
 // Example usage:
-const result = await agent.executeTool("wikipedia_search", {
+const result = await agent.executeTool("wikipedia_search", &#123;
   query: "machine learning",
   limit: 5
-});
+&#125;);
 ```
 
 #### wikipedia_getPage
@@ -86,14 +86,14 @@ Retrieve the raw wiki markup content of a Wikipedia page by title.
 
 ```typescript
 // Tool input schema:
-{
+&#123;
   title: string           // Required page title
-}
+&#125;
 
 // Example usage:
-const result = await agent.executeTool("wikipedia_getPage", {
+const result = await agent.executeTool("wikipedia_getPage", &#123;
   title: "Machine learning"
-});
+&#125;);
 ```
 
 ## API Reference
@@ -113,7 +113,7 @@ constructor(config?: WikipediaConfig)
 
 #### Methods
 
-##### search(query: string, options?: WikipediaSearchOptions): Promise<any>
+##### search(query: string, options?: WikipediaSearchOptions): Promise&lt;any&gt;
 
 Search Wikipedia articles.
 
@@ -126,7 +126,7 @@ Search Wikipedia articles.
 
 **Returns:** Promise resolving to Wikipedia API response
 
-##### getPage(title: string): Promise<string>
+##### getPage(title: string): Promise&lt;string&gt;
 
 Retrieve raw wiki markup content.
 
@@ -140,27 +140,27 @@ Retrieve raw wiki markup content.
 #### WikipediaConfig
 
 ```typescript
-export type WikipediaConfig = {
+export type WikipediaConfig = &#123;
   baseUrl?: string;
-}
+&#125;
 ```
 
 #### WikipediaSearchOptions
 
 ```typescript
-export type WikipediaSearchOptions = {
+export type WikipediaSearchOptions = &#123;
   limit?: number;
   namespace?: number;
   offset?: number;
-}
+&#125;
 ```
 
 #### Configuration Schema
 
 ```typescript
-export const WikipediaConfigSchema = z.object({
+export const WikipediaConfigSchema = z.object(&#123;
   baseUrl: z.string().optional(),
-});
+&#125;);
 ```
 
 ### Tool Definitions
@@ -168,39 +168,39 @@ export const WikipediaConfigSchema = z.object({
 #### wikipedia_search Tool
 
 ```typescript
-{
+&#123;
   name: "wikipedia_search",
   description: "Search Wikipedia articles. Returns structured JSON with search results.",
-  inputSchema: z.object({
+  inputSchema: z.object(&#123;
     query: z.string().min(1).describe("Search query"),
     limit: z.number().int().positive().max(500).optional().describe("Number of results (1-500, default: 10)"),
     offset: z.number().int().min(0).optional().describe("Offset for pagination (default: 0)"),
-  }),
-  execute: async function({ query, limit, offset }, agent) {
+  &#125;),
+  execute: async function(&#123; query, limit, offset &#125;, agent) &#123;
     const wikipedia = agent.requireServiceByType(WikipediaService);
-    agent.infoLine(`[wikipediaSearch] Searching: ${query}`);
-    const results = await wikipedia.search(query, { limit, offset });
-    return { results };
-  }
-}
+    agent.infoLine(`[wikipediaSearch] Searching: $&#123;query&#125;`);
+    const results = await wikipedia.search(query, &#123; limit, offset &#125;);
+    return &#123; results &#125;;
+  &#125;
+&#125;
 ```
 
 #### wikipedia_getPage Tool
 
 ```typescript
-{
+&#123;
   name: "wikipedia_getPage",
   description: "Retrieve a Wikipedia page's raw wiki markup content by title.",
-  inputSchema: z.object({
+  inputSchema: z.object(&#123;
     title: z.string().min(1).describe("Wikipedia page title")
-  }),
-  execute: async function({ title }, agent) {
+  &#125;),
+  execute: async function(&#123; title &#125;, agent) &#123;
     const wikipedia = agent.requireServiceByType(WikipediaService);
-    agent.infoLine(`[wikipediaGetPage] Retrieving: ${title}`);
+    agent.infoLine(`[wikipediaGetPage] Retrieving: $&#123;title&#125;`);
     const content = await wikipedia.getPage(title);
-    return { content };
-  }
-}
+    return &#123; content &#125;;
+  &#125;
+&#125;
 ```
 
 ## Integration with Token Ring
@@ -223,7 +223,7 @@ The plugin automatically registers the WikipediaService when configured:
 
 ```typescript
 // Configuration in app setup
-app.addServices(new WikipediaService({ baseUrl: "https://es.wikipedia.org" }));
+app.addServices(new WikipediaService(&#123; baseUrl: "https://es.wikipedia.org" &#125;));
 ```
 
 ### Tool Registration
@@ -276,14 +276,14 @@ You can configure the service to use different Wikipedia language editions:
 const englishWiki = new WikipediaService();
 
 // Spanish Wikipedia
-const spanishWiki = new WikipediaService({
+const spanishWiki = new WikipediaService(&#123;
   baseUrl: "https://es.wikipedia.org"
-});
+&#125;);
 
 // French Wikipedia
-const frenchWiki = new WikipediaService({
+const frenchWiki = new WikipediaService(&#123;
   baseUrl: "https://fr.wikipedia.org"
-});
+&#125;);
 ```
 
 ### User-Agent
@@ -312,47 +312,47 @@ import WikipediaService from "@tokenring-ai/wikipedia";
 const wikipedia = new WikipediaService();
 
 // Search for articles
-const searchResults = await wikipedia.search("quantum computing", {
+const searchResults = await wikipedia.search("quantum computing", &#123;
   limit: 3
-});
+&#125;);
 
 console.log("Search results:", searchResults.query.search);
 
 // Get content from the first result
-if (searchResults.query.search.length > 0) {
+if (searchResults.query.search.length &gt; 0) &#123;
   const firstResult = searchResults.query.search[0];
   const content = await wikipedia.getPage(firstResult.title);
   console.log("Page content length:", content.length);
-}
+&#125;
 ```
 
 ### Agent Workflow Example
 
 ```typescript
 // In a Token Ring agent
-async function researchTopic(query: string) {
+async function researchTopic(query: string) &#123;
   // Search for relevant articles
-  const searchResult = await agent.executeTool("wikipedia_search", {
+  const searchResult = await agent.executeTool("wikipedia_search", &#123;
     query,
     limit: 5
-  });
+  &#125;);
   
   // Get content from the most relevant article
-  if (searchResult.results?.query?.search?.length > 0) {
+  if (searchResult.results?.query?.search?.length &gt; 0) &#123;
     const topArticle = searchResult.results.query.search[0];
-    const pageContent = await agent.executeTool("wikipedia_getPage", {
+    const pageContent = await agent.executeTool("wikipedia_getPage", &#123;
       title: topArticle.title
-    });
+    &#125;);
     
-    return {
+    return &#123;
       title: topArticle.title,
       snippet: topArticle.snippet,
       content: pageContent.content
-    };
-  }
+    &#125;;
+  &#125;
   
   throw new Error("No relevant articles found");
-}
+&#125;
 ```
 
 ## Contributing

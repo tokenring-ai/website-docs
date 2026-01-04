@@ -21,15 +21,15 @@ The `@tokenring-ai/memory` package provides short-term memory management functio
 The primary service class implementing memory management for agents:
 
 ```typescript
-class ShortTermMemoryService implements TokenRingService {
+class ShortTermMemoryService implements TokenRingService &#123;
   name = "ShortTermMemoryService";
   description = "Provides Short Term Memory functionality";
 
-  async attach(agent: Agent): Promise<void>;
+  async attach(agent: Agent): Promise&lt;void&gt;;
   addMemory(memory: string, agent: Agent): void;
   clearMemory(agent: Agent): void;
   spliceMemory(index: number, count: number, agent: Agent, ...items: string[]): void;
-}
+&#125;
 ```
 
 ### MemoryState
@@ -37,7 +37,7 @@ class ShortTermMemoryService implements TokenRingService {
 The state management class that stores memory data with serialization support:
 
 ```typescript
-class MemoryState implements AgentStateSlice {
+class MemoryState implements AgentStateSlice &#123;
   name = "MemoryState";
   memories: string[] = [];
 
@@ -46,7 +46,7 @@ class MemoryState implements AgentStateSlice {
   serialize(): object;
   deserialize(data: any): void;
   show(): string[]; // Returns formatted memory display
-}
+&#125;
 ```
 
 ### Scripting Functions
@@ -55,24 +55,24 @@ Native scripting functions automatically registered when scripting service is av
 
 ```typescript
 // addMemory - Adds a memory item via scripting
-scriptingService.registerFunction("addMemory", {
+scriptingService.registerFunction("addMemory", &#123;
   type: 'native',
   params: ['memory'],
-  execute(this: ScriptingThis, memory: string): string {
+  execute(this: ScriptingThis, memory: string): string &#123;
     this.agent.requireServiceByType(ShortTermMemoryService).addMemory(memory, this.agent);
-    return `Added memory: ${memory.substring(0, 50)}...`;
-  }
-});
+    return `Added memory: $&#123;memory.substring(0, 50)&#125;...`;
+  &#125;
+&#125;);
 
 // clearMemory - Clears all memory items via scripting
-scriptingService.registerFunction("clearMemory", {
+scriptingService.registerFunction("clearMemory", &#123;
   type: 'native',
   params: [],
-  execute(this: ScriptingThis): string {
+  execute(this: ScriptingThis): string &#123;
     this.agent.requireServiceByType(ShortTermMemoryService).clearMemory(this.agent);
     return 'Memory cleared';
-  }
-});
+  &#125;
+&#125;);
 ```
 
 ## Commands and Tools
@@ -84,10 +84,10 @@ The plugin registers a `/memory` command for interactive memory management:
 #### Available Operations:
 
 - **list**: Display all stored memory items with indices
-- **add <text>**: Add a new memory item
+- **add &lt;text&gt;**: Add a new memory item
 - **clear**: Remove all memory items
-- **remove <index>**: Remove memory item at specific index
-- **set <index> <text>**: Update memory item at specific index
+- **remove &lt;index&gt;**: Remove memory item at specific index
+- **set &lt;index&gt; &lt;text&gt;**: Update memory item at specific index
 
 #### Usage Examples:
 
@@ -107,15 +107,15 @@ const name = "memory_add";
 
 const description = "Add an item to the memory list. The item will be presented in future chats to help keep important information in the back of your mind.";
 
-const inputSchema = z.object({
+const inputSchema = z.object(&#123;
   memory: z.string().describe("The fact, idea, or info to remember."),
-});
+&#125;);
 
-async function execute({memory}: z.infer<typeof inputSchema>, agent: Agent): Promise<string> {
+async function execute(&#123;memory&#125;: z.infer&lt;typeof inputSchema&gt;, agent: Agent): Promise&lt;string&gt; &#123;
   const memoryService = agent.requireServiceByType(ShortTermMemoryService);
   memoryService.addMemory(memory, agent);
   return "Memory added";
-}
+&#125;
 ```
 
 ## Configuration
@@ -150,15 +150,15 @@ chatService.addTools(packageJSON.name, tools);
 Memory items are automatically included in chat context:
 
 ```typescript
-export default async function * getContextItems(input: string, chatConfig: ChatConfig, params: {}, agent: Agent): AsyncGenerator<ContextItem> {
+export default async function * getContextItems(input: string, chatConfig: ChatConfig, params: &#123;&#125;, agent: Agent): AsyncGenerator&lt;ContextItem&gt; &#123;
   const state = agent.getState(MemoryState);
-  for (const memory of state.memories ?? []) {
-    yield {
+  for (const memory of state.memories ?? []) &#123;
+    yield &#123;
       role: "user",
       content: memory,
-    };
-  }
-}
+    &#125;;
+  &#125;
+&#125;
 ```
 
 ### Agent Command Integration
@@ -178,7 +178,7 @@ agentCommandService.addAgentCommands(chatCommands);
 await scriptingService.executeFunction("addMemory", "Important meeting at 3 PM");
 
 // Add memory via tool
-await chatService.useTool("memory_add", {memory: "Project deadline is Friday"});
+await chatService.useTool("memory_add", &#123;memory: "Project deadline is Friday"&#125;);
 
 // Clear all memories
 await scriptingService.executeFunction("clearMemory");

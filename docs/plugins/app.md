@@ -42,32 +42,32 @@ Configuration builder that loads from multiple locations with Zod validation.
 ```typescript
 import TokenRingApp from "@tokenring-ai/app";
 
-const app = new TokenRingApp("/path/to/app", {
+const app = new TokenRingApp("/path/to/app", &#123;
   apiKey: process.env.API_KEY,
   model: "gpt-4"
-});
+&#125;);
 ```
 
 ### Service Management
 
 ```typescript
-import TokenRingApp, { TokenRingService } from "@tokenring-ai/app";
+import TokenRingApp, &#123; TokenRingService &#125; from "@tokenring-ai/app";
 
-class MyService implements TokenRingService {
+class MyService implements TokenRingService &#123;
   name = "MyService";
   description = "A custom service";
 
-  async run(signal: AbortSignal) {
+  async run(signal: AbortSignal) &#123;
     console.log("MyService started");
-    signal.addEventListener("abort", () => {
+    signal.addEventListener("abort", () =&gt; &#123;
       console.log("MyService stopped");
-    });
-  }
+    &#125;);
+  &#125;
 
-  doSomething() {
+  doSomething() &#123;
     return "Service result";
-  }
-}
+  &#125;
+&#125;
 
 // Add service to application
 app.addServices(new MyService());
@@ -79,26 +79,26 @@ const myService = app.requireService(MyService);
 ### Plugin with Configuration
 
 ```typescript
-import { z } from "zod";
-import type { TokenRingPlugin } from "@tokenring-ai/app/types.ts";
+import &#123; z &#125; from "zod";
+import type &#123; TokenRingPlugin &#125; from "@tokenring-ai/app/types.ts";
 
-const MyPluginConfigSchema = z.object({
+const MyPluginConfigSchema = z.object(&#123;
   apiKey: z.string(),
   model: z.string().default("gpt-3.5-turbo")
-});
+&#125;);
 
-const myPlugin: TokenRingPlugin<typeof MyPluginConfigSchema> = {
+const myPlugin: TokenRingPlugin&lt;typeof MyPluginConfigSchema&gt; = &#123;
   name: "MyPlugin",
   version: "1.0.0",
   description: "My custom plugin with config",
   config: MyPluginConfigSchema,
-  install(app, config) {
-    console.log(`Installing with API key: ${config.apiKey}`);
-  },
-  start(app, config) {
-    console.log(`Starting with model: ${config.model}`);
-  }
-};
+  install(app, config) &#123;
+    console.log(`Installing with API key: $&#123;config.apiKey&#125;`);
+  &#125;,
+  start(app, config) &#123;
+    console.log(`Starting with model: $&#123;config.model&#125;`);
+  &#125;
+&#125;;
 
 await pluginManager.installPlugins([myPlugin]);
 ```
@@ -107,67 +107,67 @@ await pluginManager.installPlugins([myPlugin]);
 
 ```typescript
 import StateManager from "@tokenring-ai/app/StateManager";
-import type { SerializableStateSlice } from "@tokenring-ai/app/StateManager.ts";
+import type &#123; SerializableStateSlice &#125; from "@tokenring-ai/app/StateManager.ts";
 
-interface UserState extends SerializableStateSlice {
+interface UserState extends SerializableStateSlice &#123;
   name: string;
   email: string;
-}
+&#125;
 
-class UserStateSlice implements UserState {
+class UserStateSlice implements UserState &#123;
   name = "UserState";
   email: string;
 
-  constructor(props: { name: string; email: string }) {
+  constructor(props: &#123; name: string; email: string &#125;) &#123;
     this.name = props.name;
     this.email = props.email;
-  }
+  &#125;
 
-  serialize() {
-    return { name: this.name, email: this.email };
-  }
+  serialize() &#123;
+    return &#123; name: this.name, email: this.email &#125;;
+  &#125;
 
-  deserialize(data: object) {
+  deserialize(data: object) &#123;
     this.name = (data as UserState).name;
     this.email = (data as UserState).email;
-  }
-}
+  &#125;
+&#125;
 
 // Initialize state
-const stateManager = new StateManager<UserState>();
+const stateManager = new StateManager&lt;UserState&gt;();
 stateManager.initializeState(
   UserStateSlice,
-  new UserStateSlice({ name: "John", email: "john@example.com" })
+  new UserStateSlice(&#123; name: "John", email: "john@example.com" &#125;)
 );
 
 // Update state
-const result = stateManager.mutateState(UserStateSlice, (state) => {
+const result = stateManager.mutateState(UserStateSlice, (state) =&gt; &#123;
   state.name = "Jane";
   return state.name;
-});
+&#125;);
 
 console.log(result); // "Jane"
 
 // Subscribe to changes
-const unsubscribe = stateManager.subscribe(UserStateSlice, (state) => {
+const unsubscribe = stateManager.subscribe(UserStateSlice, (state) =&gt; &#123;
   console.log("State changed:", state);
-});
+&#125;);
 
 // Async state observation
 const stateStream = stateManager.subscribeAsync(UserStateSlice, signal);
-for await (const state of stateStream) {
+for await (const state of stateStream) &#123;
   console.log("New state:", state);
-}
+&#125;
 ```
 
 ### Scheduled Tasks
 
 ```typescript
 // Schedule a task that runs every 5 seconds
-app.scheduleEvery(5000, async () => {
+app.scheduleEvery(5000, async () =&gt; &#123;
   const result = await fetchData();
   console.log("Scheduled task result:", result);
-});
+&#125;);
 
 // The task can be stopped by shutting down the app
 app.shutdown();
@@ -177,23 +177,23 @@ app.shutdown();
 
 ```typescript
 import buildTokenRingAppConfig from "@tokenring-ai/app/buildTokenRingAppConfig";
-import { z } from "zod";
+import &#123; z &#125; from "zod";
 
-const AppConfigSchema = z.object({
+const AppConfigSchema = z.object(&#123;
   apiKey: z.string(),
   model: z.string().default("gpt-4")
-});
+&#125;);
 
-const config = await buildTokenRingAppConfig({
+const config = await buildTokenRingAppConfig(&#123;
   workingDirectory: "/path/to/app",
   dataDirectory: "/path/to/data",
   configFileName: "app.config",
   configSchema: AppConfigSchema,
-  defaultConfig: {
+  defaultConfig: &#123;
     apiKey: "",
     model: "gpt-3.5-turbo"
-  }
-});
+  &#125;
+&#125;);
 ```
 
 ## Core Properties
@@ -205,7 +205,7 @@ const config = await buildTokenRingAppConfig({
 | `config` | `TokenRingAppConfig` | The application configuration |
 | `packageDirectory` | `string` | Path to the application directory |
 | `logs` | `LogEntry[]` | Array of logged system messages |
-| `services` | `TypedRegistry<TokenRingService>` | Registry of all registered services |
+| `services` | `TypedRegistry&lt;TokenRingService&gt;` | Registry of all registered services |
 
 ### PluginManager Properties
 
@@ -218,7 +218,7 @@ const config = await buildTokenRingAppConfig({
 
 | Property | Type | Description |
 |----------|------|-------------|
-| `state` | `Map<string, SpecificStateSliceType>` | Internal state storage |
+| `state` | `Map&lt;string, SpecificStateSliceType&gt;` | Internal state storage |
 
 ## Core Methods
 
@@ -232,12 +232,12 @@ addServices(...services: TokenRingService[]): void
 Register services with the application. Services are automatically initialized in registration order.
 
 ```typescript
-requireService<T>(serviceType: abstract new (...args: any[]) => T): T
+requireService&lt;T&gt;(serviceType: abstract new (...args: any[]) =&gt; T): T
 ```
 Get a service by type. Throws an error if the service is not found.
 
 ```typescript
-getService<T>(serviceType: abstract new (...args: any[]) => T): T | undefined
+getService&lt;T&gt;(serviceType: abstract new (...args: any[]) =&gt; T): T | undefined
 ```
 Get a service by type. Returns undefined if the service is not found.
 
@@ -247,9 +247,9 @@ getServices(): TokenRingService[]
 Get all registered services.
 
 ```typescript
-waitForService<T>(
-  serviceType: abstract new (...args: any[]) => T,
-  callback: (service: R) => void
+waitForService&lt;T&gt;(
+  serviceType: abstract new (...args: any[]) =&gt; T,
+  callback: (service: R) =&gt; void
 ): void
 ```
 Wait for a service to become available. The callback is invoked when the service is registered.
@@ -269,7 +269,7 @@ Log error messages with formatted output.
 #### Promise Management
 
 ```typescript
-trackPromise(initiator: (signal: AbortSignal) => Promise<void>): void
+trackPromise(initiator: (signal: AbortSignal) =&gt; Promise&lt;void&gt;): void
 ```
 Track an app-level promise and log any errors that occur.
 
@@ -278,7 +278,7 @@ Track an app-level promise and log any errors that occur.
 ```typescript
 scheduleEvery(
   interval: number,
-  callback: () => Promise<void>,
+  callback: () =&gt; Promise&lt;void&gt;,
   signal?: AbortSignal
 ): void
 ```
@@ -287,10 +287,10 @@ Schedule a recurring task with a specified interval. The task runs until aborted
 #### Configuration
 
 ```typescript
-getConfigSlice<T extends { parse: (any: any) => any }>(
+getConfigSlice&lt;T extends &#123; parse: (any: any) =&gt; any &#125;&gt;(
   key: string,
   schema: T
-): z.output<T>
+): z.output&lt;T&gt;
 ```
 Get a validated config slice using a Zod schema. Throws if the key doesn't exist or validation fails.
 
@@ -302,114 +302,114 @@ shutdown(): void
 Stop the application by aborting the internal AbortController.
 
 ```typescript
-run(): Promise<void>
+run(): Promise&lt;void&gt;
 ```
 Start all registered services. Returns a promise that resolves when all services complete or the abort signal is triggered.
 
 ### PluginManager Methods
 
 ```typescript
-getPlugins(): TokenRingPlugin<unknown>[]
+getPlugins(): TokenRingPlugin&lt;unknown&gt;[]
 ```
 Get all installed plugins.
 
 ```typescript
-async installPlugins(plugins: TokenRingPlugin<any>[]): Promise<void>
+async installPlugins(plugins: TokenRingPlugin&lt;any&gt;[]): Promise&lt;void&gt;
 ```
 Install plugins with configuration validation. All plugins are installed first, then started. Errors during installation prevent plugin registration.
 
 ### StateManager Methods
 
 ```typescript
-initializeState<S, T extends SerializableStateSlice>(
-  StateClass: new (props: S) => T,
+initializeState&lt;S, T extends SerializableStateSlice&gt;(
+  StateClass: new (props: S) =&gt; T,
   props: S
 ): void
 ```
 Initialize a state slice with the given class and props.
 
 ```typescript
-getState<T extends SerializableStateSlice>(
-  StateClass: new (...args: any[]) => T
+getState&lt;T extends SerializableStateSlice&gt;(
+  StateClass: new (...args: any[]) =&gt; T
 ): T
 ```
 Get a state slice by class. Throws if not initialized.
 
 ```typescript
-mutateState<R, T extends SerializableStateSlice>(
-  StateClass: new (...args: any[]) => T,
-  callback: (state: T) => R
+mutateState&lt;R, T extends SerializableStateSlice&gt;(
+  StateClass: new (...args: any[]) =&gt; T,
+  callback: (state: T) =&gt; R
 ): R
 ```
 Mutate state with a callback. Returns the callback result.
 
 ```typescript
-serialize(): Record<string, object>
+serialize(): Record&lt;string, object&gt;
 ```
 Serialize all state slices to a record.
 
 ```typescript
 deserialize(
-  data: Record<string, object>,
-  onMissing?: (key: string) => void
+  data: Record&lt;string, object&gt;,
+  onMissing?: (key: string) =&gt; void
 ): void
 ```
 Deserialize state slices. Unknown keys trigger the onMissing callback.
 
 ```typescript
-forEach(cb: (item: SerializableStateSlice) => void): void
+forEach(cb: (item: SerializableStateSlice) =&gt; void): void
 ```
 Iterate over all state slices.
 
 ```typescript
-entries(): IterableIterator<[string, SerializableStateSlice]>
+entries(): IterableIterator&lt;[string, SerializableStateSlice]&gt;
 ```
 Get an iterator of [key, value] pairs for all state slices.
 
 ```typescript
-subscribe<T extends SerializableStateSlice>(
-  StateClass: new (...args: any[]) => T,
-  callback: (state: T) => void
-): () => void
+subscribe&lt;T extends SerializableStateSlice&gt;(
+  StateClass: new (...args: any[]) =&gt; T,
+  callback: (state: T) =&gt; void
+): () =&gt; void
 ```
 Subscribe to state changes. Returns an unsubscribe function.
 
 ```typescript
-waitForState<T extends SerializableStateSlice>(
-  StateClass: new (...args: any[]) => T,
-  predicate: (state: T) => boolean
-): Promise<T>
+waitForState&lt;T extends SerializableStateSlice&gt;(
+  StateClass: new (...args: any[]) =&gt; T,
+  predicate: (state: T) =&gt; boolean
+): Promise&lt;T&gt;
 ```
 Wait for a state predicate to become true.
 
 ```typescript
-timedWaitForState<T extends SerializableStateSlice>(
-  StateClass: new (...args: any[]) => T,
-  predicate: (state: T) => boolean,
+timedWaitForState&lt;T extends SerializableStateSlice&gt;(
+  StateClass: new (...args: any[]) =&gt; T,
+  predicate: (state: T) =&gt; boolean,
   timeoutMs: number
-): Promise<T>
+): Promise&lt;T&gt;
 ```
 Wait for a state predicate with timeout.
 
 ```typescript
-subscribeAsync<T extends SerializableStateSlice>(
-  StateClass: new (...args: any[]) => T,
+subscribeAsync&lt;T extends SerializableStateSlice&gt;(
+  StateClass: new (...args: any[]) =&gt; T,
   signal: AbortSignal
-): AsyncGenerator<T, void, unknown>
+): AsyncGenerator&lt;T, void, unknown&gt;
 ```
 Async generator that yields state updates until aborted.
 
 ### buildTokenRingAppConfig
 
 ```typescript
-async function buildTokenRingAppConfig<ConfigSchema extends ZodObject>({
+async function buildTokenRingAppConfig&lt;ConfigSchema extends ZodObject&gt;(&#123;
   workingDirectory,
   dataDirectory,
   configFileName,
   configSchema,
   defaultConfig,
   mergeConfig
-}: CreateTokenRingAppOptions<ConfigSchema>): Promise<z.output<ConfigSchema>>
+&#125;: CreateTokenRingAppOptions&lt;ConfigSchema&gt;): Promise&lt;z.output&lt;ConfigSchema&gt;&gt;
 ```
 Build application configuration by loading from multiple locations with Zod validation.
 
@@ -419,30 +419,30 @@ Build application configuration by loading from multiple locations with Zod vali
 
 ```typescript
 const TokenRingAppConfigSchema = z.record(z.string(), z.unknown());
-type TokenRingAppConfig = z.infer<typeof TokenRingAppConfigSchema>;
+type TokenRingAppConfig = z.infer&lt;typeof TokenRingAppConfigSchema&gt;;
 ```
 
 ### Plugin Configuration Schema
 
 ```typescript
-const MyPluginSchema = z.object({
+const MyPluginSchema = z.object(&#123;
   enabled: z.boolean().default(true),
   apiKey: z.string().optional(),
   models: z.array(z.string()).default([])
-});
+&#125;);
 
-const myPlugin: TokenRingPlugin<typeof MyPluginSchema> = {
+const myPlugin: TokenRingPlugin&lt;typeof MyPluginSchema&gt; = &#123;
   name: "MyPlugin",
   version: "1.0.0",
   description: "Plugin with config",
   config: MyPluginSchema,
-  install(app, config) {
+  install(app, config) &#123;
     // Config is already validated
-    if (config.enabled) {
+    if (config.enabled) &#123;
       // Initialize plugin
-    }
-  }
-};
+    &#125;
+  &#125;
+&#125;;
 ```
 
 ### Config Loading Order
@@ -455,21 +455,21 @@ Config files are loaded from `~` (home) and `dataDirectory` in that order, with 
 
 ```typescript
 import PluginManager from "@tokenring-ai/app/PluginManager";
-import type { TokenRingPlugin } from "@tokenring-ai/app/types.ts";
+import type &#123; TokenRingPlugin &#125; from "@tokenring-ai/app/types.ts";
 
 const pluginManager = new PluginManager(app);
 
-const myPlugin: TokenRingPlugin = {
+const myPlugin: TokenRingPlugin = &#123;
   name: "MyPlugin",
   version: "1.0.0",
   description: "Custom plugin",
-  install(app) {
+  install(app) &#123;
     // Set up plugin
-  },
-  start(app) {
+  &#125;,
+  start(app) &#123;
     // Start plugin
-  }
-};
+  &#125;
+&#125;;
 
 await pluginManager.installPlugins([myPlugin]);
 ```
@@ -483,22 +483,22 @@ await fs.writeFile("state.json", JSON.stringify(serialized));
 
 // Load state
 const data = JSON.parse(await fs.readFile("state.json", "utf-8"));
-stateManager.deserialize(data, (key) => {
-  console.log(`Unknown state: ${key}`);
-});
+stateManager.deserialize(data, (key) =&gt; &#123;
+  console.log(`Unknown state: $&#123;key&#125;`);
+&#125;);
 ```
 
 ### Abort Signal Handling
 
 ```typescript
-const app = new TokenRingApp("/path", {});
+const app = new TokenRingApp("/path", &#123;&#125;);
 
-app.trackPromise(async (signal) => {
-  while (!signal.aborted) {
+app.trackPromise(async (signal) =&gt; &#123;
+  while (!signal.aborted) &#123;
     const result = await longRunningOperation();
     processResult(result);
-  }
-});
+  &#125;
+&#125;);
 
 // Stop the app
 app.shutdown();
@@ -551,59 +551,59 @@ app.shutdown();
 ### TokenRingService
 
 ```typescript
-interface TokenRingService {
+interface TokenRingService &#123;
   name: string;
   description: string;
-  run?(signal: AbortSignal): Promise<void> | void;
-  attach?(agent: Agent): Promise<void> | void;
-  detach?(agent: Agent): Promise<void> | void;
-}
+  run?(signal: AbortSignal): Promise&lt;void&gt; | void;
+  attach?(agent: Agent): Promise&lt;void&gt; | void;
+  detach?(agent: Agent): Promise&lt;void&gt; | void;
+&#125;
 ```
 
 ### TokenRingPlugin
 
 ```typescript
-type TokenRingPlugin<ConfigType> = {
+type TokenRingPlugin&lt;ConfigType&gt; = &#123;
   name: string;
   version: string;
   description: string;
-  install?: (app: TokenRingApp) => void;
-  start?: (app: TokenRingApp) => Promise<void> | void;
-} | {
+  install?: (app: TokenRingApp) =&gt; void;
+  start?: (app: TokenRingApp) =&gt; Promise&lt;void&gt; | void;
+&#125; | &#123;
   name: string;
   version: string;
   description: string;
   config: ConfigType;
-  install?: (app: TokenRingApp, config: z.output<ConfigType>) => void;
-  start?: (app: TokenRingApp, config: z.output<ConfigType>) => Promise<void> | void;
-};
+  install?: (app: TokenRingApp, config: z.output&lt;ConfigType&gt;) =&gt; void;
+  start?: (app: TokenRingApp, config: z.output&lt;ConfigType&gt;) =&gt; Promise&lt;void&gt; | void;
+&#125;;
 ```
 
 ### SerializableStateSlice
 
 ```typescript
-interface SerializableStateSlice {
+interface SerializableStateSlice &#123;
   name: string;
   serialize(): object;
   deserialize(data: object): void;
-}
+&#125;
 ```
 
 ### TokenRingAppConfig
 
 ```typescript
 export const TokenRingAppConfigSchema = z.record(z.string(), z.unknown());
-export type TokenRingAppConfig = z.infer<typeof TokenRingAppConfigSchema>;
+export type TokenRingAppConfig = z.infer&lt;typeof TokenRingAppConfigSchema&gt;;
 ```
 
 ### LogEntry
 
 ```typescript
-type LogEntry = {
+type LogEntry = &#123;
   timestamp: number;
   level: "info" | "error";
   message: string;
-};
+&#125;;
 ```
 
 ## Error Handling
@@ -661,4 +661,4 @@ pkg/app/
 
 ## License
 
-MIT License - see [LICENSE](https://github.com/tokenring-ai/tokenring/blob/main/pkg/app/LICENSE) file for details.
+MIT License - see [LICENSE](https://github.com/tokenring-ai/monorepo/blob/main/LICENSE) for details.

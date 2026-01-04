@@ -23,9 +23,9 @@ The core service handling all Reddit API communication. This service extends `Ht
 ```typescript
 import RedditService from "@tokenring-ai/reddit";
 
-const reddit = new RedditService({
+const reddit = new RedditService(&#123;
   baseUrl: "https://www.reddit.com"
-});
+&#125;);
 ```
 
 ### Chat Tools
@@ -53,13 +53,13 @@ Search for posts within a specific subreddit. Returns structured JSON with searc
 **Tool Name**: `reddit_searchSubreddit`
 
 ```typescript
-await agent.executeTool("reddit_searchSubreddit", {
+await agent.executeTool("reddit_searchSubreddit", &#123;
   subreddit: "programming",
   query: "javascript async await",
   limit: 10,
   sort: "relevance",
   t: "week"
-});
+&#125;);
 ```
 
 **Input Schema**:
@@ -81,9 +81,9 @@ Retrieve a Reddit post's content and comments by URL. Returns the full post obje
 **Tool Name**: `reddit_retrievePost`
 
 ```typescript
-await agent.executeTool("reddit_retrievePost", {
+await agent.executeTool("reddit_retrievePost", &#123;
   postUrl: "https://www.reddit.com/r/programming/comments/abc123/my_post/"
-});
+&#125;);
 ```
 
 **Input Schema**:
@@ -99,10 +99,10 @@ Get the latest posts from a subreddit. Returns newest posts in chronological ord
 **Tool Name**: `reddit_getLatestPosts`
 
 ```typescript
-await agent.executeTool("reddit_getLatestPosts", {
+await agent.executeTool("reddit_getLatestPosts", &#123;
   subreddit: "technology",
   limit: 20
-});
+&#125;);
 ```
 
 **Input Schema**:
@@ -123,7 +123,7 @@ Search for posts in a subreddit using a simple function signature. Returns a JSO
 ```typescript
 const searchResults = await scriptingService.execute('searchSubreddit', 'typescript', 'advanced');
 const posts = JSON.parse(searchResults);
-console.log(posts.map((post: any) => post.data.title));
+console.log(posts.map((post: any) =&gt; post.data.title));
 ```
 
 **Parameters**:
@@ -150,7 +150,7 @@ Get the latest posts from a subreddit. Returns a JSON stringified array of posts
 ```typescript
 const latestPosts = await scriptingService.execute('getLatestPosts', 'golang');
 const posts = JSON.parse(latestPosts);
-posts.forEach((post: any) => console.log(post.data.title));
+posts.forEach((post: any) =&gt; console.log(post.data.title));
 ```
 
 **Parameters**:
@@ -163,7 +163,7 @@ posts.forEach((post: any) => console.log(post.data.title));
 The Reddit plugin has no configuration schema:
 
 ```typescript
-const packageConfigSchema = z.object({});
+const packageConfigSchema = z.object(&#123;&#125;);
 ```
 
 ### Service Configuration
@@ -171,9 +171,9 @@ const packageConfigSchema = z.object({});
 The `RedditService` accepts an optional configuration object:
 
 ```typescript
-interface RedditConfig {
+interface RedditConfig &#123;
   baseUrl?: string;  // Optional custom base URL (default: https://www.reddit.com)
-}
+&#125;
 ```
 
 **Example**:
@@ -183,9 +183,9 @@ interface RedditConfig {
 const reddit = new RedditService();
 
 // Custom base URL (for testing or alternative instances)
-const customReddit = new RedditService({
+const customReddit = new RedditService(&#123;
   baseUrl: "https://www.reddit.com"
-});
+&#125;);
 ```
 
 ### Request Headers
@@ -222,7 +222,7 @@ app.addServices(new RedditService());
 The plugin waits for the `ChatService` and registers its tools:
 
 ```typescript
-app.waitForService(ChatService, chatService =>
+app.waitForService(ChatService, chatService =&gt;
   chatService.addTools(packageJSON.name, tools)
 );
 ```
@@ -232,14 +232,14 @@ app.waitForService(ChatService, chatService =>
 The plugin registers functions with the `ScriptingService`:
 
 ```typescript
-scriptingService.registerFunction("searchSubreddit", {
+scriptingService.registerFunction("searchSubreddit", &#123;
   type: 'native',
   params: ['subreddit', 'query'],
-  async execute(this: ScriptingThis, subreddit: string, query: string): Promise<string> {
+  async execute(this: ScriptingThis, subreddit: string, query: string): Promise&lt;string&gt; &#123;
     const result = await this.agent.requireServiceByType(RedditService).searchSubreddit(subreddit, query);
     return JSON.stringify(result.data.children);
-  }
-});
+  &#125;
+&#125;);
 ```
 
 ## Usage Examples
@@ -248,20 +248,20 @@ scriptingService.registerFunction("searchSubreddit", {
 
 ```typescript
 // Search for relevant discussions
-const searchResults = await agent.executeTool("reddit_searchSubreddit", {
+const searchResults = await agent.executeTool("reddit_searchSubreddit", &#123;
   subreddit: "programming",
   query: "best practices 2024",
   limit: 20,
   sort: "top",
   t: "month"
-});
+&#125;);
 
 // Analyze specific posts
-for (const post of searchResults) {
-  const postData = await agent.executeTool("reddit_retrievePost", {
-    postUrl: `https://www.reddit.com/r/programming/comments/${post.id}/${post.title}/`
-  });
-}
+for (const post of searchResults) &#123;
+  const postData = await agent.executeTool("reddit_retrievePost", &#123;
+    postUrl: `https://www.reddit.com/r/programming/comments/$&#123;post.id&#125;/$&#123;post.title&#125;/`
+  &#125;);
+&#125;
 ```
 
 ### Content Research
@@ -270,16 +270,16 @@ for (const post of searchResults) {
 // Research a topic across multiple subreddits
 const subreddits = ["programming", "learnprogramming", "cscareerquestions"];
 
-for (const sub of subreddits) {
-  const results = await agent.executeTool("reddit_searchSubreddit", {
+for (const sub of subreddits) &#123;
+  const results = await agent.executeTool("reddit_searchSubreddit", &#123;
     subreddit: sub,
     query: "career advice beginners",
     limit: 10,
     sort: "top",
     t: "year"
-  });
-  console.log(`Results from r/${sub}:`, results.length);
-}
+  &#125;);
+  console.log(`Results from r/$&#123;sub&#125;:`, results.length);
+&#125;
 ```
 
 ### Monitoring Trending Topics
@@ -288,30 +288,30 @@ for (const sub of subreddits) {
 // Get latest posts from trending subreddits
 const trendingSubs = ["technology", "science", "news"];
 
-for (const sub of trendingSubs) {
-  const posts = await agent.executeTool("reddit_getLatestPosts", {
+for (const sub of trendingSubs) &#123;
+  const posts = await agent.executeTool("reddit_getLatestPosts", &#123;
     subreddit: sub,
     limit: 5
-  });
-  console.log(`Latest from r/${sub}:`, posts.map(p => p.data.title));
-}
+  &#125;);
+  console.log(`Latest from r/$&#123;sub&#125;:`, posts.map(p =&gt; p.data.title));
+&#125;
 ```
 
 ### Pagination Handling
 
 ```typescript
 // Get first page of posts
-const page1 = await agent.executeTool("reddit_getLatestPosts", {
+const page1 = await agent.executeTool("reddit_getLatestPosts", &#123;
   subreddit: "technology",
   limit: 25
-});
+&#125;);
 
 // Get next page using 'after' cursor
-const page2 = await agent.executeTool("reddit_getLatestPosts", {
+const page2 = await agent.executeTool("reddit_getLatestPosts", &#123;
   subreddit: "technology",
   limit: 25,
   after: page1[page1.length - 1].name  // Use last item's fullname
-});
+&#125;);
 ```
 
 ### Scripting Automation
@@ -326,10 +326,10 @@ const searchResults = await scriptingService.execute(
 
 // Parse and process results
 const posts = JSON.parse(searchResults);
-posts.forEach((post: any) => {
-  console.log(`Title: ${post.data.title}`);
-  console.log(`Score: ${post.data.score}`);
-});
+posts.forEach((post: any) =&gt; &#123;
+  console.log(`Title: $&#123;post.data.title&#125;`);
+  console.log(`Score: $&#123;post.data.score&#125;`);
+&#125;);
 ```
 
 ## Best Practices
@@ -397,4 +397,4 @@ bun run build
 
 ## License
 
-MIT License - see the [LICENSE](https://github.com/tokenring/writer/blob/main/LICENSE) file for details.
+MIT License - see [LICENSE](https://github.com/tokenring-ai/monorepo/blob/main/LICENSE) for details.

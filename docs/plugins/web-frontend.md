@@ -71,14 +71,14 @@ Single-page application with:
 ### Basic Setup
 
 ```typescript
-import { AgentTeam } from "@tokenring-ai/agent";
-import { packageInfo as webHostPackage } from "@tokenring-ai/web-host";
-import { packageInfo as agentApiPackage } from "@tokenring-ai/agent-api";
-import { packageInfo as webFrontendPackage } from "@tokenring-ai/web-frontend";
+import &#123; AgentTeam &#125; from "@tokenring-ai/agent";
+import &#123; packageInfo as webHostPackage &#125; from "@tokenring-ai/web-host";
+import &#123; packageInfo as agentApiPackage &#125; from "@tokenring-ai/agent-api";
+import &#123; packageInfo as webFrontendPackage &#125; from "@tokenring-ai/web-frontend";
 
-const team = new AgentTeam({
-  webHost: { enabled: true, port: 3000 }
-});
+const team = new AgentTeam(&#123;
+  webHost: &#123; enabled: true, port: 3000 &#125;
+&#125;);
 
 await team.addPackages([
   webHostPackage,
@@ -92,9 +92,9 @@ await team.addPackages([
 ### Custom Port
 
 ```typescript
-const team = new AgentTeam({
-  webHost: { enabled: true, port: 8080 }
-});
+const team = new AgentTeam(&#123;
+  webHost: &#123; enabled: true, port: 8080 &#125;
+&#125;);
 
 await team.addPackages([
   webHostPackage,
@@ -108,12 +108,12 @@ await team.addPackages([
 ### With Additional Packages
 
 ```typescript
-import { packageInfo as gitPackage } from "@tokenring-ai/git";
-import { packageInfo as filesystemPackage } from "@tokenring-ai/filesystem";
+import &#123; packageInfo as gitPackage &#125; from "@tokenring-ai/git";
+import &#123; packageInfo as filesystemPackage &#125; from "@tokenring-ai/filesystem";
 
-const team = new AgentTeam({
-  webHost: { enabled: true, port: 3000 }
-});
+const team = new AgentTeam(&#123;
+  webHost: &#123; enabled: true, port: 3000 &#125;
+&#125;);
 
 await team.addPackages([
   webHostPackage,
@@ -170,18 +170,18 @@ Edit `frontend/src/App.css` to customize colors, fonts, and layout:
 
 ```css
 /* Change theme colors */
-body {
+body &#123;
   background: #1e1e1e;  /* Background */
   color: #d4d4d4;       /* Text */
-}
+&#125;
 
-.message.chat {
+.message.chat &#123;
   color: #4ec9b0;       /* Chat output */
-}
+&#125;
 
-.message.reasoning {
+.message.reasoning &#123;
   color: #dcdcaa;       /* Reasoning */
-}
+&#125;
 ```
 
 ### Custom Agent Types
@@ -189,18 +189,18 @@ body {
 Modify `frontend/src/App.tsx` to add more agent creation options:
 
 ```typescript
-<div className="agent-list">
-  <h3>Create New Agent</h3>
-  <button onClick={() => createAgent('interactiveCodeAgent')} className="agent-btn">
+&lt;div className="agent-list"&gt;
+  &lt;h3&gt;Create New Agent&lt;/h3&gt;
+  &lt;button onClick=&#123;() =&gt; createAgent('interactiveCodeAgent')&#125; className="agent-btn"&gt;
     Interactive Code Agent
-  </button>
-  <button onClick={() => createAgent('teamLeader')} className="agent-btn">
+  &lt;/button&gt;
+  &lt;button onClick=&#123;() =&gt; createAgent('teamLeader')&#125; className="agent-btn"&gt;
     Team Leader
-  </button>
-  <button onClick={() => createAgent('testEngineer')} className="agent-btn">
+  &lt;/button&gt;
+  &lt;button onClick=&#123;() =&gt; createAgent('testEngineer')&#125; className="agent-btn"&gt;
     Test Engineer
-  </button>
-</div>
+  &lt;/button&gt;
+&lt;/div&gt;
 ```
 
 ### Custom Event Handling
@@ -209,13 +209,13 @@ Extend event handling in `frontend/src/App.tsx`:
 
 ```typescript
 // Add custom event listener
-client.on('event:custom.event', (data: any) => {
-  setMessages(m => [...m, { 
+client.on('event:custom.event', (data: any) =&gt; &#123;
+  setMessages(m =&gt; [...m, &#123; 
     type: 'system', 
-    content: `Custom: ${data.message}`,
+    content: `Custom: $&#123;data.message&#125;`,
     level: 'info'
-  }]);
-});
+  &#125;]);
+&#125;);
 ```
 
 ### Custom Human Interaction
@@ -223,15 +223,15 @@ client.on('event:custom.event', (data: any) => {
 Replace the default `prompt()` with custom UI:
 
 ```typescript
-client.on('event:human.request', async (data: any) => {
+client.on('event:human.request', async (data: any) =&gt; &#123;
   // Custom modal/dialog instead of prompt()
-  const response = await showCustomDialog({
+  const response = await showCustomDialog(&#123;
     title: "Agent Request",
     message: data.request.message,
     type: data.request.type
-  });
+  &#125;);
   client.sendHumanResponse(data.sequence, response);
-});
+&#125;);
 ```
 
 ## File Structure

@@ -20,7 +20,7 @@ The `@tokenring-ai/mcp` package provides MCP client functionality to connect Tok
 Main service for managing MCP server connections and tool registration.
 
 ```typescript
-import { MCPService } from '@tokenring-ai/mcp';
+import &#123; MCPService &#125; from '@tokenring-ai/mcp';
 import TokenRingApp from '@tokenring-ai/app';
 
 const mcpService = new MCPService();
@@ -38,18 +38,18 @@ const mcpService = new MCPService();
 #### MCPConfigSchema
 
 ```typescript
-export const MCPConfigSchema = z.object({
+export const MCPConfigSchema = z.object(&#123;
   transports: z.record(z.string(), MCPTransportConfigSchema)
-}).optional();
+&#125;).optional();
 ```
 
 #### MCPTransportConfigSchema
 
 ```typescript
 export const MCPTransportConfigSchema = z.discriminatedUnion("type", [
-  z.object({type: z.literal("stdio")}).passthrough(),
-  z.object({type: z.literal("sse"), url: z.url()}).passthrough(),
-  z.object({type: z.literal("http"), url: z.url()}).passthrough(),
+  z.object(&#123;type: z.literal("stdio")&#125;).passthrough(),
+  z.object(&#123;type: z.literal("sse"), url: z.url()&#125;).passthrough(),
+  z.object(&#123;type: z.literal("http"), url: z.url()&#125;).passthrough(),
 ]);
 ```
 
@@ -57,9 +57,9 @@ export const MCPTransportConfigSchema = z.discriminatedUnion("type", [
 
 ```typescript
 type MCPTransportConfig = 
-  | { type: "stdio"; command: string; args?: string[]; env?: Record<string, string>; cwd?: string }
-  | { type: "sse"; url: string; headers?: Record<string, string>; timeout?: number }
-  | { type: "http"; url: string; method?: "GET" | "POST" | "PUT" | "DELETE"; headers?: Record<string, string>; timeout?: number };
+  | &#123; type: "stdio"; command: string; args?: string[]; env?: Record&lt;string, string&gt;; cwd?: string &#125;
+  | &#123; type: "sse"; url: string; headers?: Record&lt;string, string&gt;; timeout?: number &#125;
+  | &#123; type: "http"; url: string; method?: "GET" | "POST" | "PUT" | "DELETE"; headers?: Record&lt;string, string&gt;; timeout?: number &#125;;
 ```
 
 ## Usage Examples
@@ -70,65 +70,65 @@ Configure MCP servers in your TokenRing application:
 
 ```typescript
 // In your TokenRing app configuration
-{
+&#123;
   plugins: [
-    {
+    &#123;
       name: "@tokenring-ai/mcp",
-      config: {
-        mcp: {
-          transports: {
-            myserver: {
+      config: &#123;
+        mcp: &#123;
+          transports: &#123;
+            myserver: &#123;
               type: "stdio",
               command: "mcp-server",
               args: ["--config", "config.json"],
-              env: {
+              env: &#123;
                 DEBUG: "true"
-              }
-            },
-            remoteserver: {
+              &#125;
+            &#125;,
+            remoteserver: &#123;
               type: "sse",
               url: "http://localhost:3000/sse",
-              headers: {
+              headers: &#123;
                 "Authorization": "Bearer token123"
-              }
-            },
-            apiserver: {
+              &#125;
+            &#125;,
+            apiserver: &#123;
               type: "http",
               url: "http://localhost:3001/api/mcp",
               method: "POST",
-              headers: {
+              headers: &#123;
                 "Content-Type": "application/json"
-              }
-            }
-          }
-        }
-      }
-    }
+              &#125;
+            &#125;
+          &#125;
+        &#125;
+      &#125;
+    &#125;
   ]
-}
+&#125;
 ```
 
 ### Programmatic Integration
 
 ```typescript
-import { MCPService } from '@tokenring-ai/mcp';
+import &#123; MCPService &#125; from '@tokenring-ai/mcp';
 import TokenRingApp from '@tokenring-ai/app';
 
 const app = new TokenRingApp();
 const mcpService = new MCPService();
 
 // Register an MCP server with stdio transport
-await mcpService.register('myserver', {
+await mcpService.register('myserver', &#123;
   type: 'stdio',
   command: 'node',
   args: ['path/to/mcp-server.js']
-}, app);
+&#125;, app);
 
 // Register an MCP server with SSE transport
-await mcpService.register('another-server', {
+await mcpService.register('another-server', &#123;
   type: 'sse',
   url: 'http://localhost:3000/sse'
-}, app);
+&#125;, app);
 ```
 
 ## Configuration
@@ -144,61 +144,61 @@ bun install @tokenring-ai/mcp
 #### Stdio Transport
 
 ```typescript
-{
+&#123;
   type: 'stdio',
   command: 'mcp-server',           // Required: Command to execute
   args?: string[],                 // Optional: Command arguments
-  env?: Record<string, string>,    // Optional: Environment variables
+  env?: Record&lt;string, string&gt;,    // Optional: Environment variables
   cwd?: string                     // Optional: Working directory
-}
+&#125;
 ```
 
 #### SSE Transport
 
 ```typescript
-{
+&#123;
   type: 'sse',
   url: 'http://localhost:3000/sse', // Required: SSE endpoint URL
-  headers?: Record<string, string>, // Optional: Custom headers
+  headers?: Record&lt;string, string&gt;, // Optional: Custom headers
   timeout?: number                  // Optional: Connection timeout in ms
-}
+&#125;
 ```
 
 #### HTTP Transport
 
 ```typescript
-{
+&#123;
   type: 'http',
   url: 'http://localhost:3001/api/mcp', // Required: HTTP endpoint URL
   method?: 'GET' | 'POST' | 'PUT' | 'DELETE', // Optional: HTTP method (default: GET)
-  headers?: Record<string, string>,     // Optional: Custom headers
+  headers?: Record&lt;string, string&gt;,     // Optional: Custom headers
   timeout?: number                      // Optional: Connection timeout in ms
-}
+&#125;
 ```
 
 ### Complete Configuration Example
 
 ```json
-{
-  "mcp": {
-    "transports": {
-      "stdio-server": {
+&#123;
+  "mcp": &#123;
+    "transports": &#123;
+      "stdio-server": &#123;
         "type": "stdio",
         "command": "node",
         "args": ["path/to/mcp-server.js"]
-      },
-      "sse-server": {
+      &#125;,
+      "sse-server": &#123;
         "type": "sse",
         "url": "http://localhost:3000/sse"
-      },
-      "http-server": {
+      &#125;,
+      "http-server": &#123;
         "type": "http",
         "url": "http://localhost:3001/api/mcp",
         "method": "POST"
-      }
-    }
-  }
-}
+      &#125;
+    &#125;
+  &#125;
+&#125;
 ```
 
 ## Integration
@@ -208,7 +208,7 @@ bun install @tokenring-ai/mcp
 The MCP plugin integrates with the TokenRing application framework through the standard plugin pattern:
 
 ```typescript
-import { default as MCPPlugin } from '@tokenring-ai/mcp';
+import &#123; default as MCPPlugin &#125; from '@tokenring-ai/mcp';
 
 // In your TokenRing application configuration
 plugins: [MCPPlugin]
@@ -219,17 +219,17 @@ plugins: [MCPPlugin]
 The plugin automatically registers the `MCPService` with the TokenRing application when the configuration is provided:
 
 ```typescript
-async install(app: TokenRingApp) {
+async install(app: TokenRingApp) &#123;
   const config = app.getConfigSlice('mcp', MCPConfigSchema);
-  if (config) {
+  if (config) &#123;
     const mcpService = new MCPService();
     app.addServices(mcpService);
 
-    for (const name in config.transports) {
+    for (const name in config.transports) &#123;
       await mcpService.register(name, config.transports[name] as any, app);
-    }
-  }
-}
+    &#125;
+  &#125;
+&#125;
 ```
 
 ## API Reference
@@ -246,7 +246,7 @@ async install(app: TokenRingApp) {
 
 ### MCPService Methods
 
-#### `register(name: string, config: MCPTransportConfig, app: TokenRingApp): Promise<void>`
+#### `register(name: string, config: MCPTransportConfig, app: TokenRingApp): Promise&lt;void&gt;`
 
 Registers an MCP server with the TokenRing application.
 
@@ -261,37 +261,37 @@ Registers an MCP server with the TokenRing application.
 **Example:**
 
 ```typescript
-import { MCPService } from '@tokenring-ai/mcp';
+import &#123; MCPService &#125; from '@tokenring-ai/mcp';
 import TokenRingApp from '@tokenring-ai/app';
 
 const mcpService = new MCPService();
 const app = new TokenRingApp();
 
 // Register with stdio transport
-await mcpService.register('myserver', {
+await mcpService.register('myserver', &#123;
   type: 'stdio',
   command: 'mcp-server',
   args: ['--config', 'config.json']
-}, app);
+&#125;, app);
 
 // Register with SSE transport
-await mcpService.register('remoteserver', {
+await mcpService.register('remoteserver', &#123;
   type: 'sse',
   url: 'http://localhost:3000/sse',
-  headers: {
+  headers: &#123;
     'Authorization': 'Bearer token123'
-  }
-}, app);
+  &#125;
+&#125;, app);
 
 // Register with HTTP transport
-await mcpService.register('apiserver', {
+await mcpService.register('apiserver', &#123;
   type: 'http',
   url: 'http://localhost:3001/api/mcp',
   method: 'POST',
-  headers: {
+  headers: &#123;
     'Content-Type': 'application/json'
-  }
-}, app);
+  &#125;
+&#125;, app);
 ```
 
 ## Development
@@ -342,4 +342,4 @@ The package provides comprehensive error handling:
 
 ## License
 
-MIT License - see [LICENSE](https://github.com/tokenring-ai/tokenring/blob/main/pkg/mcp/LICENSE) file for details.
+MIT License - see [LICENSE](https://github.com/tokenring-ai/monorepo/blob/main/LICENSE) for details.

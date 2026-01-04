@@ -22,22 +22,22 @@ The Web Search plugin provides comprehensive web search capabilities for the Tok
 The main service that coordinates web search operations. It manages a registry of providers and delegates search requests to the active provider.
 
 ```typescript
-class WebSearchService implements TokenRingService {
+class WebSearchService implements TokenRingService &#123;
   name = "WebSearchService";
   description = "Service for Web Search";
 
   // Provider management
-  registerProvider: (provider: WebSearchProvider, name: string) => void;
-  getAvailableProviders: () => string[];
-  setActiveProvider: (name: string, agent: Agent) => void;
-  requireActiveProvider: (agent: Agent) => WebSearchProvider;
+  registerProvider: (provider: WebSearchProvider, name: string) =&gt; void;
+  getAvailableProviders: () =&gt; string[];
+  setActiveProvider: (name: string, agent: Agent) =&gt; void;
+  requireActiveProvider: (agent: Agent) =&gt; WebSearchProvider;
 
   // Search operations
-  searchWeb: (query: string, options?: WebSearchProviderOptions, agent: Agent) => Promise<WebSearchResult>;
-  searchNews: (query: string, options?: WebSearchProviderOptions, agent: Agent) => Promise<NewsSearchResult>;
-  fetchPage: (url: string, options?: WebPageOptions, agent: Agent) => Promise<WebPageResult>;
-  deepSearch: (query: string, options?: DeepSearchOptions, agent: Agent) => Promise<DeepSearchResult>;
-}
+  searchWeb: (query: string, options?: WebSearchProviderOptions, agent: Agent) =&gt; Promise&lt;WebSearchResult&gt;;
+  searchNews: (query: string, options?: WebSearchProviderOptions, agent: Agent) =&gt; Promise&lt;NewsSearchResult&gt;;
+  fetchPage: (url: string, options?: WebPageOptions, agent: Agent) =&gt; Promise&lt;WebPageResult&gt;;
+  deepSearch: (query: string, options?: DeepSearchOptions, agent: Agent) =&gt; Promise&lt;DeepSearchResult&gt;;
+&#125;
 ```
 
 ### WebSearchProvider (Abstract Class)
@@ -45,11 +45,11 @@ class WebSearchService implements TokenRingService {
 The base class that all search providers must implement. This abstract class defines the interface for concrete provider implementations.
 
 ```typescript
-abstract class WebSearchProvider {
-  abstract searchWeb(query: string, options?: WebSearchProviderOptions): Promise<WebSearchResult>;
-  abstract searchNews(query: string, options?: WebSearchProviderOptions): Promise<NewsSearchResult>;
-  abstract fetchPage(url: string, options?: WebPageOptions): Promise<WebPageResult>;
-}
+abstract class WebSearchProvider &#123;
+  abstract searchWeb(query: string, options?: WebSearchProviderOptions): Promise&lt;WebSearchResult&gt;;
+  abstract searchNews(query: string, options?: WebSearchProviderOptions): Promise&lt;NewsSearchResult&gt;;
+  abstract fetchPage(url: string, options?: WebPageOptions): Promise&lt;WebPageResult&gt;;
+&#125;
 ```
 
 ### WebSearchState
@@ -57,14 +57,14 @@ abstract class WebSearchProvider {
 Agent state slice for managing web search state including the active provider.
 
 ```typescript
-class WebSearchState implements AgentStateSlice {
+class WebSearchState implements AgentStateSlice &#123;
   name = "WebSearchState";
   provider: string | null;
 
   serialize(): object;
   deserialize(data: any): void;
   show(): string[];
-}
+&#125;
 ```
 
 ## Chat Commands
@@ -75,26 +75,26 @@ Interactive command for performing web search operations in chat interfaces.
 
 **Usage:**
 ```
-/websearch <action> <query|url> [options]
+/websearch &lt;action&gt; &lt;query|url&gt; [options]
 ```
 
 **Actions:**
-- `search <query>` - Perform a general web search
-- `news <query>` - Search for news articles
-- `fetch <url>` - Fetch and extract content from a web page
-- `deep <query>` - Perform comprehensive search with content fetching
+- `search &lt;query&gt;` - Perform a general web search
+- `news &lt;query&gt;` - Search for news articles
+- `fetch &lt;url&gt;` - Fetch and extract content from a web page
+- `deep &lt;query&gt;` - Perform comprehensive search with content fetching
 - `provider` - Manage the active search provider
 
-### `/websearch search <query>`
+### `/websearch search &lt;query&gt;`
 
 Perform a general web search and return results with titles, URLs, and descriptions.
 
 **Flags:**
-- `--country <code>` - Country code for localized results (e.g., 'us', 'uk', 'de')
-- `--language <code>` - Language code for content (e.g., 'en', 'es', 'fr')
-- `--location <name>` - Location name for geo-targeted results
-- `--num <n>` - Number of results to return
-- `--page <n>` - Page number for pagination
+- `--country &lt;code&gt;` - Country code for localized results (e.g., 'us', 'uk', 'de')
+- `--language &lt;code&gt;` - Language code for content (e.g., 'en', 'es', 'fr')
+- `--location &lt;name&gt;` - Location name for geo-targeted results
+- `--num &lt;n&gt;` - Number of results to return
+- `--page &lt;n&gt;` - Page number for pagination
 
 **Examples:**
 ```bash
@@ -102,16 +102,16 @@ Perform a general web search and return results with titles, URLs, and descripti
 /websearch search restaurants --location 'New York' --country us --num 10
 ```
 
-### `/websearch news <query>`
+### `/websearch news &lt;query&gt;`
 
 Search for current news articles on a topic.
 
 **Flags:**
-- `--country <code>` - Country code for localized results
-- `--language <code>` - Language code for content
-- `--location <name>` - Location name for geo-targeted results
-- `--num <n>` - Number of results to return
-- `--page <n>` - Page number for pagination
+- `--country &lt;code&gt;` - Country code for localized results
+- `--language &lt;code&gt;` - Language code for content
+- `--location &lt;name&gt;` - Location name for geo-targeted results
+- `--num &lt;n&gt;` - Number of results to return
+- `--page &lt;n&gt;` - Page number for pagination
 
 **Examples:**
 ```bash
@@ -119,12 +119,12 @@ Search for current news articles on a topic.
 /websearch news cryptocurrency --num 5
 ```
 
-### `/websearch fetch <url>`
+### `/websearch fetch &lt;url&gt;`
 
 Fetch and extract content from a specific web page.
 
 **Flags:**
-- `--country <code>` - Country code for the request
+- `--country &lt;code&gt;` - Country code for the request
 - `--render` - Enable JavaScript rendering for dynamic content
 
 **Examples:**
@@ -133,17 +133,17 @@ Fetch and extract content from a specific web page.
 /websearch fetch https://example.com --render
 ```
 
-### `/websearch deep <query>`
+### `/websearch deep &lt;query&gt;`
 
 Perform a comprehensive search combining web search, news search, and content fetching.
 
 **Flags:**
-- `--country <code>` - Country code for localized results
-- `--language <code>` - Language code for content
-- `--location <name>` - Location name for geo-targeted results
-- `--search <n>` - Number of web search results (default: 10)
-- `--news <n>` - Number of news results (default: 0)
-- `--fetch <n>` - Number of pages to fetch (default: 5)
+- `--country &lt;code&gt;` - Country code for localized results
+- `--language &lt;code&gt;` - Language code for content
+- `--location &lt;name&gt;` - Location name for geo-targeted results
+- `--search &lt;n&gt;` - Number of web search results (default: 10)
+- `--news &lt;n&gt;` - Number of news results (default: 0)
+- `--fetch &lt;n&gt;` - Number of pages to fetch (default: 5)
 
 **Examples:**
 ```bash
@@ -157,7 +157,7 @@ Manage the active web search provider.
 
 **Subcommands:**
 - `/websearch provider get` - Display the currently active provider
-- `/websearch provider set <name>` - Set a specific provider by name
+- `/websearch provider set &lt;name&gt;` - Set a specific provider by name
 - `/websearch provider select` - Select a provider interactively
 - `/websearch provider reset` - Reset to the initial configured provider
 
@@ -178,18 +178,18 @@ The plugin provides four tools that can be used through the chat service:
 Search the web using the active web search provider.
 
 ```typescript
-{
+&#123;
   name: "websearch_searchWeb",
   description: "Search the web using the active web search provider",
-  inputSchema: z.object({
+  inputSchema: z.object(&#123;
     query: z.string().min(1).describe("Search query"),
     countryCode: z.string().optional().describe("Country code"),
     language: z.string().optional().describe("Language code"),
     location: z.string().optional().describe("Location string"),
     num: z.number().int().positive().optional().describe("Number of results"),
     page: z.number().int().positive().optional().describe("Page number"),
-  })
-}
+  &#125;)
+&#125;
 ```
 
 ### websearch_searchNews
@@ -197,18 +197,18 @@ Search the web using the active web search provider.
 Search news using the active web search provider.
 
 ```typescript
-{
+&#123;
   name: "websearch_searchNews",
   description: "Search news using the active web search provider",
-  inputSchema: z.object({
+  inputSchema: z.object(&#123;
     query: z.string().min(1).describe("News search query"),
     countryCode: z.string().optional().describe("Country code"),
     language: z.string().optional().describe("Language code"),
     location: z.string().optional().describe("Location string"),
     num: z.number().int().positive().optional().describe("Number of results"),
     page: z.number().int().positive().optional().describe("Page number"),
-  })
-}
+  &#125;)
+&#125;
 ```
 
 ### websearch_fetchPage
@@ -216,15 +216,15 @@ Search news using the active web search provider.
 Fetch a web page using the active web search provider.
 
 ```typescript
-{
+&#123;
   name: "websearch_fetchPage",
   description: "Fetch a web page using the active web search provider",
-  inputSchema: z.object({
+  inputSchema: z.object(&#123;
     url: z.string().describe("URL to fetch"),
     render: z.boolean().optional().describe("Enable JavaScript rendering"),
     countryCode: z.string().optional().describe("Country code"),
-  })
-}
+  &#125;)
+&#125;
 ```
 
 ### websearch_deepSearch
@@ -232,10 +232,10 @@ Fetch a web page using the active web search provider.
 Perform a deep search: search the web, then fetch and return full page content for top results.
 
 ```typescript
-{
+&#123;
   name: "websearch_deepSearch",
   description: "Perform a deep search: search the web, then fetch and return full page content for top results",
-  inputSchema: z.object({
+  inputSchema: z.object(&#123;
     query: z.string().min(1).describe("A short search query to perform"),
     searchCount: z.number().int().positive().optional().describe("Number of general search results links to include"),
     newsCount: z.number().int().positive().optional().describe("Number of news articles to search for"),
@@ -243,8 +243,8 @@ Perform a deep search: search the web, then fetch and return full page content f
     countryCode: z.string().optional().describe("Country code"),
     language: z.string().optional().describe("Language code"),
     location: z.string().optional().describe("Location string"),
-  })
-}
+  &#125;)
+&#125;
 ```
 
 ## API Reference
@@ -260,25 +260,25 @@ Performs a web search using the active provider.
 - `options` (WebSearchProviderOptions): Optional search configuration
 - `agent` (Agent): The agent context
 
-**Returns:** Promise<WebSearchResult>
+**Returns:** Promise&lt;WebSearchResult&gt;
 
 ```typescript
-interface WebSearchResult {
+interface WebSearchResult &#123;
   knowledgeGraph?: KnowledgeGraph;
   organic: OrganicResult[];
   peopleAlsoAsk?: PeopleAlsoAsk[];
   relatedSearches?: RelatedSearch[];
-}
+&#125;
 
-interface OrganicResult {
+interface OrganicResult &#123;
   title: string;
   link: string;
   snippet: string;
   sitelinks?: Sitelink[];
   position: number;
   date?: string;
-  attributes?: Record<string, string>;
-}
+  attributes?: Record&lt;string, string&gt;;
+&#125;
 ```
 
 #### `searchNews(query, options, agent)`
@@ -290,21 +290,21 @@ Performs a news search using the active provider.
 - `options` (WebSearchProviderOptions): Optional search configuration
 - `agent` (Agent): The agent context
 
-**Returns:** Promise<NewsSearchResult>
+**Returns:** Promise&lt;NewsSearchResult&gt;
 
 ```typescript
-interface NewsSearchResult {
+interface NewsSearchResult &#123;
   news: NewsItem[];
-}
+&#125;
 
-interface NewsItem {
+interface NewsItem &#123;
   title: string;
   link: string;
   snippet?: string;
   date: string;
   source: string;
   position?: number;
-}
+&#125;
 ```
 
 #### `fetchPage(url, options, agent)`
@@ -316,13 +316,13 @@ Fetches a web page using the active provider.
 - `options` (WebPageOptions): Optional fetch configuration
 - `agent` (Agent): The agent context
 
-**Returns:** Promise<WebPageResult>
+**Returns:** Promise&lt;WebPageResult&gt;
 
 ```typescript
-interface WebPageResult {
+interface WebPageResult &#123;
   markdown: string;
-  metadata?: Record<string, string>;
-}
+  metadata?: Record&lt;string, string&gt;;
+&#125;
 ```
 
 #### `deepSearch(query, options, agent)`
@@ -334,52 +334,52 @@ Performs a comprehensive search combining web search, news search, and page fetc
 - `options` (DeepSearchOptions): Optional configuration
 - `agent` (Agent): The agent context
 
-**Returns:** Promise<DeepSearchResult>
+**Returns:** Promise&lt;DeepSearchResult&gt;
 
 ```typescript
-interface DeepSearchResult {
+interface DeepSearchResult &#123;
   results: any[];
   news: NewsItem[];
-  pages: Array<{
+  pages: Array&lt;&#123;
     url: string;
     markdown: string;
-    metadata?: Record<string, string>;
-  }>;
-}
+    metadata?: Record&lt;string, string&gt;;
+  &#125;&gt;;
+&#125;
 ```
 
 ### WebSearchProviderOptions
 
 ```typescript
-interface WebSearchProviderOptions {
+interface WebSearchProviderOptions &#123;
   countryCode?: string;    // Country code (e.g., 'US')
   language?: string;       // Language code (e.g., 'en')
   location?: string;       // Location string (e.g., 'New York,US')
   num?: number;            // Number of results (positive integer)
   page?: number;           // Page number (positive integer)
   timeout?: number;        // Request timeout in milliseconds
-}
+&#125;
 ```
 
 ### WebPageOptions
 
 ```typescript
-interface WebPageOptions {
+interface WebPageOptions &#123;
   render?: boolean;        // Enable JavaScript rendering
   countryCode?: string;    // Country code
   timeout?: number;        // Request timeout in milliseconds
-}
+&#125;
 ```
 
 ### DeepSearchOptions
 
 ```typescript
-interface DeepSearchOptions extends WebSearchProviderOptions {
+interface DeepSearchOptions extends WebSearchProviderOptions &#123;
   searchCount?: number;    // Number of web results (default: 10)
   newsCount?: number;      // Number of news results (default: 0)
   fetchCount?: number;     // Number of pages to fetch (default: 5)
-  rerank?: (results: any[]) => Promise<any[]>;  // Optional result reranking
-}
+  rerank?: (results: any[]) =&gt; Promise&lt;any[]&gt;;  // Optional result reranking
+&#125;
 ```
 
 ## Plugin Configuration
@@ -387,34 +387,34 @@ interface DeepSearchOptions extends WebSearchProviderOptions {
 The plugin is configured through the application's configuration object under the `websearch` key.
 
 ```typescript
-const WebSearchConfigSchema = z.object({
+const WebSearchConfigSchema = z.object(&#123;
   providers: z.record(z.string(), z.any()),
-  agentDefaults: z.object({
+  agentDefaults: z.object(&#123;
     provider: z.string()
-  })
-});
+  &#125;)
+&#125;);
 ```
 
 ### Configuration Example
 
 ```typescript
-const config = {
-  websearch: {
-    providers: {
-      "serper": {
+const config = &#123;
+  websearch: &#123;
+    providers: &#123;
+      "serper": &#123;
         type: "SerperWebSearchProvider",
         apiKey: "your-api-key"
-      },
-      "tavily": {
+      &#125;,
+      "tavily": &#123;
         type: "TavilyWebSearchProvider",
         apiKey: "your-tavily-key"
-      }
-    },
-    agentDefaults: {
+      &#125;
+    &#125;,
+    agentDefaults: &#123;
       provider: "serper"
-    }
-  }
-};
+    &#125;
+  &#125;
+&#125;;
 ```
 
 ### Agent Configuration
@@ -422,11 +422,11 @@ const config = {
 Individual agents can override the default provider:
 
 ```typescript
-const agentConfig = {
-  websearch: {
+const agentConfig = &#123;
+  websearch: &#123;
     provider: "tavily"
-  }
-};
+  &#125;
+&#125;;
 ```
 
 ## Plugin Integration
@@ -434,25 +434,25 @@ const agentConfig = {
 The plugin automatically integrates with Token Ring applications:
 
 ```typescript
-export default {
+export default &#123;
   name: "@tokenring-ai/websearch",
   version: "0.2.0",
   description: "Abstract web search interface for Token Ring",
-  install(app, config) {
+  install(app, config) &#123;
     if (!config.websearch) return;
     app.addServices(new WebSearchService(config.websearch));
-    app.waitForService(ScriptingService, (scriptingService) => {
+    app.waitForService(ScriptingService, (scriptingService) =&gt; &#123;
       // Register scripting functions
-    });
-    app.waitForService(ChatService, chatService =>
+    &#125;);
+    app.waitForService(ChatService, chatService =&gt;
       chatService.addTools(packageJSON.name, tools)
     );
-    app.waitForService(AgentCommandService, agentCommandService =>
+    app.waitForService(AgentCommandService, agentCommandService =&gt;
       agentCommandService.addAgentCommands(chatCommands)
     );
-  },
+  &#125;,
   config: packageConfigSchema
-} satisfies TokenRingPlugin<typeof packageConfigSchema>;
+&#125; satisfies TokenRingPlugin&lt;typeof packageConfigSchema&gt;;
 ```
 
 ## Usage Examples
@@ -460,24 +460,24 @@ export default {
 ### Basic Plugin Usage
 
 ```typescript
-import { TokenRingApp } from '@tokenring-ai/app';
+import &#123; TokenRingApp &#125; from '@tokenring-ai/app';
 import websearch from '@tokenring-ai/websearch';
-import { WebSearchService } from '@tokenring-ai/websearch';
+import &#123; WebSearchService &#125; from '@tokenring-ai/websearch';
 
-const app = new TokenRingApp({
-  config: {
-    websearch: {
-      providers: {
-        google: {
+const app = new TokenRingApp(&#123;
+  config: &#123;
+    websearch: &#123;
+      providers: &#123;
+        google: &#123;
           type: "GoogleSearchProvider"
-        }
-      },
-      agentDefaults: {
+        &#125;
+      &#125;,
+      agentDefaults: &#123;
         provider: "google"
-      }
-    }
-  }
-});
+      &#125;
+    &#125;
+  &#125;
+&#125;);
 
 app.registerPlugin(websearch);
 await app.start();
@@ -491,13 +491,13 @@ console.log(results);
 ### Using Tools in Agent Tasks
 
 ```typescript
-import { searchWeb } from '@tokenring-ai/websearch/tools/searchWeb';
+import &#123; searchWeb &#125; from '@tokenring-ai/websearch/tools/searchWeb';
 
 const searchResults = await searchWeb.execute(
-  { query: 'latest AI news', num: 3 },
+  &#123; query: 'latest AI news', num: 3 &#125;,
   agent
 );
-agent.infoLine(`Found ${searchResults.organic.length} results`);
+agent.infoLine(`Found $&#123;searchResults.organic.length&#125; results`);
 ```
 
 ### Deep Search Example
@@ -505,17 +505,17 @@ agent.infoLine(`Found ${searchResults.organic.length} results`);
 ```typescript
 const deepResults = await webSearchService.deepSearch(
   'machine learning trends 2024',
-  {
+  &#123;
     searchCount: 15,
     newsCount: 5,
     fetchCount: 3
-  },
+  &#125;,
   agent
 );
 
-console.log(`Found ${deepResults.results.length} web results`);
-console.log(`Found ${deepResults.news.length} news articles`);
-console.log(`Fetched ${deepResults.pages.length} pages`);
+console.log(`Found $&#123;deepResults.results.length&#125; web results`);
+console.log(`Found $&#123;deepResults.news.length&#125; news articles`);
+console.log(`Fetched $&#123;deepResults.pages.length&#125; pages`);
 ```
 
 ### Provider Management

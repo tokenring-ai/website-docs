@@ -12,7 +12,7 @@ The Iterables plugin enables efficient batch processing of data collections thro
 - **Provider Architecture**: Support for multiple data sources through pluggable providers
 - **Batch Processing**: Process entire collections with custom prompts using `/foreach`
 - **State Management**: Persistent iterable definitions across agent sessions
-- **Template Variables**: Dynamic variable substitution in prompts using `{variable}` syntax
+- **Template Variables**: Dynamic variable substitution in prompts using `&#123;variable&#125;` syntax
 - **Checkpoint Preservation**: Maintains state between iterations for consistent processing
 - **Error Isolation**: Individual item failures don't stop batch processing
 - **Streaming Generation**: Efficient memory usage with async generators
@@ -47,19 +47,19 @@ pkg/iterables/
 Main service that manages iterable definitions and provides the core API.
 
 ```typescript
-class IterableService implements TokenRingService {
+class IterableService implements TokenRingService &#123;
   name = "IterableService";
   description = "Manages named iterables for batch operations";
 
   registerProvider(provider: IterableProvider): void;
   getProvider(type: string): IterableProvider | undefined;
 
-  async define(name: string, type: string, spec: IterableSpec, agent: Agent): Promise<void>;
+  async define(name: string, type: string, spec: IterableSpec, agent: Agent): Promise&lt;void&gt;;
   get(name: string, agent: Agent): StoredIterable | undefined;
   list(agent: Agent): StoredIterable[];
   delete(name: string, agent: Agent): boolean;
-  async* generate(name: string, agent: Agent): AsyncGenerator<IterableItem>;
-}
+  async* generate(name: string, agent: Agent): AsyncGenerator&lt;IterableItem&gt;;
+&#125;
 ```
 
 #### Methods
@@ -79,13 +79,13 @@ class IterableService implements TokenRingService {
 Defines the contract for iterable providers that can generate items from various data sources.
 
 ```typescript
-interface IterableProvider {
+interface IterableProvider &#123;
   readonly type: string;
   readonly description: string;
 
-  getArgsConfig(): { options: Record<string, { type: 'string' | 'boolean', multiple?: boolean }> };
-  generate(spec: IterableSpec, agent: Agent): AsyncGenerator<IterableItem>;
-}
+  getArgsConfig(): &#123; options: Record&lt;string, &#123; type: 'string' | 'boolean', multiple?: boolean &#125;&gt; &#125;;
+  generate(spec: IterableSpec, agent: Agent): AsyncGenerator&lt;IterableItem&gt;;
+&#125;
 ```
 
 #### Required Properties
@@ -107,10 +107,10 @@ interface IterableProvider {
 Items yielded by providers:
 
 ```typescript
-interface IterableItem {
+interface IterableItem &#123;
   value: any;                    // Raw item data
-  variables: Record<string, any>; // Variables for prompt interpolation
-}
+  variables: Record&lt;string, any&gt;; // Variables for prompt interpolation
+&#125;
 ```
 
 #### IterableSpec Interface
@@ -118,9 +118,9 @@ interface IterableItem {
 Configuration parameters for an iterable:
 
 ```typescript
-interface IterableSpec {
+interface IterableSpec &#123;
   [key: string]: any;           // Provider-specific configuration
-}
+&#125;
 ```
 
 #### StoredIterable Interface
@@ -128,13 +128,13 @@ interface IterableSpec {
 Stored iterable definitions:
 
 ```typescript
-interface StoredIterable {
+interface StoredIterable &#123;
   name: string;
   type: string;
   spec: IterableSpec;
   createdAt: Date;
   updatedAt: Date;
-}
+&#125;
 ```
 
 ### IterableState
@@ -142,16 +142,16 @@ interface StoredIterable {
 State management class for persisting iterable definitions:
 
 ```typescript
-class IterableState implements AgentStateSlice {
+class IterableState implements AgentStateSlice &#123;
   name = "IterableState";
-  iterables: Map<string, StoredIterable> = new Map();
+  iterables: Map&lt;string, StoredIterable&gt; = new Map();
 
-  constructor({iterables?: StoredIterable[]});
+  constructor(&#123;iterables?: StoredIterable[]&#125;);
   reset(what: ResetWhat[]): void;
   serialize(): object;
   deserialize(data: any): void;
   show(): string[];
-}
+&#125;
 ```
 
 ## Chat Commands
@@ -164,10 +164,10 @@ Manage named iterables - collections of data that can be processed iteratively.
 
 | Command | Description |
 |---------|-------------|
-| `define <name> --type <type> [options]` | Create a new iterable |
+| `define &lt;name&gt; --type &lt;type&gt; [options]` | Create a new iterable |
 | `list` | Show all defined iterables |
-| `show <name>` | Display detailed information about an iterable |
-| `delete <name>` | Remove a defined iterable |
+| `show &lt;name&gt;` | Display detailed information about an iterable |
+| `delete &lt;name&gt;` | Remove a defined iterable |
 
 #### Usage Examples
 
@@ -195,48 +195,48 @@ Manage named iterables - collections of data that can be processed iteratively.
 | `--type` | string | Required. Provider type to use |
 | `--description` | string | Optional description |
 
-### `/foreach @<iterable> <prompt>` - Process Each Item
+### `/foreach @&lt;iterable&gt; &lt;prompt&gt;` - Process Each Item
 
 Run a prompt on each item in an iterable.
 
 #### Usage
 
 ```bash
-/foreach @<iterable> <prompt>
+/foreach @&lt;iterable&gt; &lt;prompt&gt;
 ```
 
 #### Arguments
 
 | Argument | Description |
 |----------|-------------|
-| `@<iterable>` | Name of the iterable to process (prefixed with @) |
-| `<prompt>` | Template prompt to execute for each item |
+| `@&lt;iterable&gt;` | Name of the iterable to process (prefixed with @) |
+| `&lt;prompt&gt;` | Template prompt to execute for each item |
 
 #### Prompt Template Variables
 
 | Syntax | Description |
 |--------|-------------|
-| `{variable}` | Access item properties |
-| `{variable:default}` | Access with fallback value |
-| `{nested.value}` | Nested property access |
+| `&#123;variable&#125;` | Access item properties |
+| `&#123;variable:default&#125;` | Access with fallback value |
+| `&#123;nested.value&#125;` | Nested property access |
 
 #### Examples
 
 ```bash
 # Process files in the 'ts-files' iterable
-/foreach @ts-files "Add JSDoc comments to {file}"
+/foreach @ts-files "Add JSDoc comments to &#123;file&#125;"
 
 # Process users with custom welcome messages
-/foreach @users "Welcome {name} from {city} to our platform"
+/foreach @users "Welcome &#123;name&#125; from &#123;city&#125; to our platform"
 
 # Process projects with fallback descriptions
-/foreach @projects "Review {name}: {description:No description available}"
+/foreach @projects "Review &#123;name&#125;: &#123;description:No description available&#125;"
 
 # Access nested properties with fallback
-/foreach @data "Process {nested.value:default value}"
+/foreach @data "Process &#123;nested.value:default value&#125;"
 
 # Process with item index
-/foreach @files "File {index}: {file} (size: {size} bytes)"
+/foreach @files "File &#123;index&#125;: &#123;file&#125; (size: &#123;size&#125; bytes)"
 ```
 
 ## Common Iterable Types
@@ -283,7 +283,7 @@ Process items from JSON files.
 ### Service Integration
 
 ```typescript
-import { Agent } from '@tokenring-ai/agent';
+import &#123; Agent &#125; from '@tokenring-ai/agent';
 import IterableService from '@tokenring-ai/iterables/IterableService';
 
 // Create agent with IterableService
@@ -291,44 +291,44 @@ const service = new IterableService();
 agent.attach(service);
 
 // Define an iterable programmatically
-await service.define('files', 'file', {
+await service.define('files', 'file', &#123;
   pattern: '**/*.ts'
-}, agent);
+&#125;, agent);
 
 // Generate and process items
-for await (const item of service.generate('files', agent)) {
+for await (const item of service.generate('files', agent)) &#123;
   console.log('Processing:', item.variables.file);
-}
+&#125;
 ```
 
 ### Custom Provider Creation
 
 ```typescript
 import Agent from "@tokenring-ai/agent/Agent";
-import {IterableItem, IterableProvider, IterableSpec} from "@tokenring-ai/iterables";
+import &#123;IterableItem, IterableProvider, IterableSpec&#125; from "@tokenring-ai/iterables";
 
-export default class CustomProvider implements IterableProvider {
+export default class CustomProvider implements IterableProvider &#123;
   readonly type = 'custom';
   readonly description = 'Custom data source';
 
-  getArgsConfig() {
-    return {
-      options: {
-        source: { type: 'string' as const },
-        limit: { type: 'string' as const, multiple: true },
-      }
-    };
-  }
+  getArgsConfig() &#123;
+    return &#123;
+      options: &#123;
+        source: &#123; type: 'string' as const &#125;,
+        limit: &#123; type: 'string' as const, multiple: true &#125;,
+      &#125;
+    &#125;;
+  &#125;
 
-  async* generate(spec: IterableSpec, agent: Agent): AsyncGenerator<IterableItem> {
+  async* generate(spec: IterableSpec, agent: Agent): AsyncGenerator&lt;IterableItem&gt; &#123;
     const source = spec.source;
     const limit = spec.limit;
 
     // Implementation to generate items
-    yield { value: 'item1', variables: { custom: 'value1' } };
-    yield { value: 'item2', variables: { custom: 'value2' } };
-  }
-}
+    yield &#123; value: 'item1', variables: &#123; custom: 'value1' &#125; &#125;;
+    yield &#123; value: 'item2', variables: &#123; custom: 'value2' &#125; &#125;;
+  &#125;
+&#125;
 
 // Register the provider
 service.registerProvider('custom', new CustomProvider());
@@ -339,9 +339,9 @@ service.registerProvider('custom', new CustomProvider());
 The iterables plugin uses a minimal configuration schema:
 
 ```typescript
-import {z} from "zod";
+import &#123;z&#125; from "zod";
 
-const packageConfigSchema = z.object({});
+const packageConfigSchema = z.object(&#123;&#125;);
 ```
 
 No configuration is required by default. The plugin automatically:
@@ -354,7 +354,7 @@ No configuration is required by default. The plugin automatically:
 
 Iterables are stored in agent state and persist across sessions. The `IterableState` class manages:
 
-- `iterables: Map<string, StoredIterable>`: Collection of defined iterables
+- `iterables: Map&lt;string, StoredIterable&gt;`: Collection of defined iterables
 - Automatic serialization/deserialization
 - State preservation during agent resets
 - Checkpoint generation and recovery
@@ -368,7 +368,7 @@ state.reset(resetTypes);
 
 // Serialize state
 const serialized = state.serialize();
-// { iterables: [...] }
+// &#123; iterables: [...] &#125;
 
 // Deserialize state
 state.deserialize(serialized);
@@ -380,10 +380,10 @@ Common error scenarios:
 
 | Error | Description |
 |-------|-------------|
-| `Unknown iterable type: {type}` | Provider not registered |
-| `Iterable not found: {name}` | Name doesn't exist |
-| `Usage: /iterable define <name> --type <type> [options]` | Missing required parameters |
-| `Error processing item {n}: {error}` | Individual item processing failures |
+| `Unknown iterable type: &#123;type&#125;` | Provider not registered |
+| `Iterable not found: &#123;name&#125;` | Name doesn't exist |
+| `Usage: /iterable define &lt;name&gt; --type &lt;type&gt; [options]` | Missing required parameters |
+| `Error processing item &#123;n&#125;: &#123;error&#125;` | Individual item processing failures |
 | `Generation failed` | Provider generation errors |
 
 ## Integration Patterns
@@ -406,18 +406,18 @@ The iterables plugin integrates seamlessly with:
 
 ```typescript
 // In your plugin
-import {AgentCommandService} from "@tokenring-ai/agent";
+import &#123;AgentCommandService&#125; from "@tokenring-ai/agent";
 import IterableService from "./IterableService";
 
-export default {
+export default &#123;
   name: '@tokenring-ai/iterables',
-  install(app, config) {
-    app.waitForService(AgentCommandService, agentCommandService =>
+  install(app, config) &#123;
+    app.waitForService(AgentCommandService, agentCommandService =&gt;
       agentCommandService.addAgentCommands(chatCommands)
     );
     app.addServices(new IterableService());
-  },
-} satisfies TokenRingPlugin;
+  &#125;,
+&#125; satisfies TokenRingPlugin;
 ```
 
 ## Development
@@ -444,45 +444,45 @@ bun run build
 ### Example: Database Provider
 
 ```typescript
-export default class SqlIterableProvider implements IterableProvider {
+export default class SqlIterableProvider implements IterableProvider &#123;
   readonly type = "sql";
   readonly description = "Iterate over SQL query results";
 
-  getArgsConfig() {
-    return {
-      options: {
-        query: { type: 'string' as const },
-        database: { type: 'string' as const }
-      }
-    };
-  }
+  getArgsConfig() &#123;
+    return &#123;
+      options: &#123;
+        query: &#123; type: 'string' as const &#125;,
+        database: &#123; type: 'string' as const &#125;
+      &#125;
+    &#125;;
+  &#125;
 
-  async* generate(spec: IterableSpec, agent: Agent): AsyncGenerator<IterableItem> {
+  async* generate(spec: IterableSpec, agent: Agent): AsyncGenerator&lt;IterableItem&gt; &#123;
     const dbService = agent.requireServiceByType(DatabaseService);
     const db = dbService.getDatabase(spec.database || 'default');
 
     const rows = await db.query(spec.query);
 
-    for (let i = 0; i < rows.length; i++) {
-      yield {
+    for (let i = 0; i &lt; rows.length; i++) &#123;
+      yield &#123;
         value: rows[i],
-        variables: {
+        variables: &#123;
           row: rows[i],
           rowNumber: i + 1,
           totalRows: rows.length,
           ...rows[i]  // Flatten columns as variables
-        }
-      };
-    }
-  }
-}
+        &#125;
+      &#125;;
+    &#125;
+  &#125;
+&#125;
 ```
 
 **Usage:**
 
 ```bash
 /iterable define users --type sql --query "SELECT * FROM users WHERE active=1"
-/foreach @users "Send email to {email} for user {name}"
+/foreach @users "Send email to &#123;email&#125; for user &#123;name&#125;"
 ```
 
 ## Common Use Cases
@@ -502,4 +502,4 @@ export default class SqlIterableProvider implements IterableProvider {
 
 ## License
 
-MIT License - see [LICENSE](https://github.com/tokenring-ai/tokenring/blob/main/pkg/iterables/LICENSE) for details.
+MIT License - see [LICENSE](https://github.com/tokenring-ai/monorepo/blob/main/LICENSE) for details.

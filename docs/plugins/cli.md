@@ -24,10 +24,10 @@ The `@tokenring-ai/cli` package provides a comprehensive command-line interface 
 The main service that manages CLI operations, including user input, agent selection, and interaction handling.
 
 ```typescript
-export default class AgentCLI implements TokenRingService {
+export default class AgentCLI implements TokenRingService &#123;
   name = "AgentCLI";
   description = "Command-line interface for interacting with agents";
-}
+&#125;
 ```
 
 ### CommandPrompt
@@ -35,18 +35,18 @@ export default class AgentCLI implements TokenRingService {
 A custom prompt implementation using Node.js readline interface with history and auto-completion support.
 
 ```typescript
-export interface CommandPromptOptions {
+export interface CommandPromptOptions &#123;
   rl: readline.Interface;
   message: string;
   prefix?: string;
   history?: string[];
-  autoCompletion?: string[] | ((line: string) => Promise<string[]> | string[]);
+  autoCompletion?: string[] | ((line: string) =&gt; Promise&lt;string[]&gt; | string[]);
   signal?: AbortSignal;
-}
+&#125;
 
-export class PartialInputError extends Error {
+export class PartialInputError extends Error &#123;
   constructor(public buffer: string);
-}
+&#125;
 ```
 
 ### SimpleSpinner
@@ -54,11 +54,11 @@ export class PartialInputError extends Error {
 A custom spinner class for rendering loading animations in the terminal.
 
 ```typescript
-export class SimpleSpinner {
+export class SimpleSpinner &#123;
   start(message?: string): void;
   stop(): void;
   updateMessage(message: string): void;
-}
+&#125;
 ```
 
 ### Theme
@@ -66,7 +66,7 @@ export class SimpleSpinner {
 Color theme configuration for the CLI interface.
 
 ```typescript
-export const theme = {
+export const theme = &#123;
   agentSelectionBanner: '#cf6e32',
   chatOutputText: '#66BB6AFF',
   chatReasoningText: '#FFEB3BFF',
@@ -76,7 +76,7 @@ export const theme = {
   chatSystemErrorMessage: '#EF5350FF',
   chatDivider: '#9E9E9EFF',
   chatSpinner: '#FFEB3BFF',
-} as const;
+&#125; as const;
 ```
 
 ## API Reference
@@ -86,24 +86,24 @@ export const theme = {
 **Constructor**
 
 ```typescript
-constructor(app: TokenRingApp, config: z.infer<typeof CLIConfigSchema>)
+constructor(app: TokenRingApp, config: z.infer&lt;typeof CLIConfigSchema&gt;)
 ```
 
 Initializes the CLI service with the application instance and configuration.
 
 **Methods**
 
-- `async run(): Promise<void>` - Starts the main CLI loop, handling user input and agent interactions
+- `async run(): Promise&lt;void&gt;` - Starts the main CLI loop, handling user input and agent interactions
 
-- `private async selectOrCreateAgent(): Promise<Agent | null>` - Displays the agent selection screen and handles agent creation
+- `private async selectOrCreateAgent(): Promise&lt;Agent | null&gt;` - Displays the agent selection screen and handles agent creation
 
-- `private async runAgentLoop(agent: Agent): Promise<void>` - Main interaction loop for a selected agent
+- `private async runAgentLoop(agent: Agent): Promise&lt;void&gt;` - Main interaction loop for a selected agent
 
-- `private async gatherInput(agent: Agent, signal: AbortSignal): Promise<string>` - Collects user input with history and auto-completion
+- `private async gatherInput(agent: Agent, signal: AbortSignal): Promise&lt;string&gt;` - Collects user input with history and auto-completion
 
-- `private async handleHumanRequest({ request, id }: { request: HumanInterfaceRequest, id: string }, signal: AbortSignal): Promise<[id: string, reply: any]>` - Processes human interface requests
+- `private async handleHumanRequest(&#123; request, id &#125;: &#123; request: HumanInterfaceRequest, id: string &#125;, signal: AbortSignal): Promise&lt;[id: string, reply: any]&gt;` - Processes human interface requests
 
-- `private async withAbortSignal<T>(fn: (signal: AbortSignal) => Promise<T>): Promise<T>` - Executes a function with abort signal management
+- `private async withAbortSignal&lt;T&gt;(fn: (signal: AbortSignal) =&gt; Promise&lt;T&gt;): Promise&lt;T&gt;` - Executes a function with abort signal management
 
 ### Chat Commands
 
@@ -151,11 +151,11 @@ The CLI renders the following event types from the agent state:
 ### Configuration Schema
 
 ```typescript
-export const CLIConfigSchema = z.object({
+export const CLIConfigSchema = z.object(&#123;
   bannerNarrow: z.string(),
   bannerWide: z.string(),
   bannerCompact: z.string(),
-});
+&#125;);
 ```
 
 - **bannerNarrow**: Banner message for narrow terminal windows
@@ -169,19 +169,19 @@ export const CLIConfigSchema = z.object({
 ```typescript
 import TokenRingApp from "@tokenring-ai/app";
 import cliPlugin from "@tokenring-ai/cli";
-import { AgentCommandService } from "@tokenring-ai/agent";
+import &#123; AgentCommandService &#125; from "@tokenring-ai/agent";
 
 // Create and configure the app
 const app = new TokenRingApp();
 
 // Plugin configuration
-const config = {
-  cli: {
+const config = &#123;
+  cli: &#123;
     bannerNarrow: "[TokenRing AI]",
     bannerWide: "[TokenRing AI - Command Line Interface]",
     bannerCompact: "[TokenRing AI]",
-  }
-};
+  &#125;
+&#125;;
 
 app.install(cliPlugin, config);
 
@@ -192,44 +192,44 @@ await app.start();
 ### Plugin Integration
 
 ```typescript
-import { AgentCommandService } from "@tokenring-ai/agent";
-import { TokenRingPlugin } from "@tokenring-ai/app";
-import { z } from "zod";
-import AgentCLI, { CLIConfigSchema } from "./AgentCLI.ts";
+import &#123; AgentCommandService &#125; from "@tokenring-ai/agent";
+import &#123; TokenRingPlugin &#125; from "@tokenring-ai/app";
+import &#123; z &#125; from "zod";
+import AgentCLI, &#123; CLIConfigSchema &#125; from "./AgentCLI.ts";
 import chatCommands from "./chatCommands.ts";
-import packageJSON from './package.json' with { type: 'json' };
+import packageJSON from './package.json' with &#123; type: 'json' &#125;;
 
-const packageConfigSchema = z.object({
+const packageConfigSchema = z.object(&#123;
   cli: CLIConfigSchema.optional()
-});
+&#125;);
 
-export default {
+export default &#123;
   name: packageJSON.name,
   version: packageJSON.version,
   description: packageJSON.description,
-  install(app, config) {
-    if (config.cli) {
-      app.waitForService(AgentCommandService, agentCommandService =>
+  install(app, config) &#123;
+    if (config.cli) &#123;
+      app.waitForService(AgentCommandService, agentCommandService =&gt;
         agentCommandService.addAgentCommands(chatCommands)
       );
       app.addServices(new AgentCLI(app, config.cli));
-    }
-  },
+    &#125;
+  &#125;,
   config: packageConfigSchema
-} satisfies TokenRingPlugin<typeof packageConfigSchema>;
+&#125; satisfies TokenRingPlugin&lt;typeof packageConfigSchema&gt;;
 ```
 
 ### Custom Command Integration
 
 ```typescript
-import { Agent } from "@tokenring-ai/agent";
-import { TokenRingAgentCommand } from "@tokenring-ai/agent/types";
+import &#123; Agent &#125; from "@tokenring-ai/agent";
+import &#123; TokenRingAgentCommand &#125; from "@tokenring-ai/agent/types";
 
-const customCommand = {
+const customCommand = &#123;
   description: "/custom - Execute custom functionality",
-  async execute(args: string, agent: Agent): Promise<void> {
-    agent.handleInput({ message: `Custom command: ${args}` });
-  },
+  async execute(args: string, agent: Agent): Promise&lt;void&gt; &#123;
+    agent.handleInput(&#123; message: `Custom command: $&#123;args&#125;` &#125;);
+  &#125;,
   help: `# /custom - Execute custom functionality
 
 ## Description
@@ -240,7 +240,7 @@ Execute custom functionality with the provided arguments.
 
 ## Examples
 /custom hello world`,
-} satisfies TokenRingAgentCommand;
+&#125; satisfies TokenRingAgentCommand;
 
 export default customCommand;
 ```
@@ -265,13 +265,13 @@ The AgentCLI subscribes to agent state events and renders them:
 The CLI plugin uses the following configuration schema in the application config:
 
 ```typescript
-const config = {
-  cli: {
+const config = &#123;
+  cli: &#123;
     bannerNarrow: "Your narrow banner text",
     bannerWide: "Your wide banner text (shown by default)",
     bannerCompact: "Your compact banner text",
-  }
-};
+  &#125;
+&#125;;
 ```
 
 ### Package Dependencies
@@ -304,7 +304,7 @@ const config = {
 Chat commands are registered via the AgentCommandService:
 
 ```typescript
-app.waitForService(AgentCommandService, agentCommandService =>
+app.waitForService(AgentCommandService, agentCommandService =&gt;
   agentCommandService.addAgentCommands(chatCommands)
 );
 ```
@@ -314,15 +314,15 @@ app.waitForService(AgentCommandService, agentCommandService =>
 Screens are registered through the ScreenRegistry type:
 
 ```typescript
-type ScreenRegistry = {
-  AgentSelectionScreen: ScreenRegistryEntry<{ agentManager, webHostService?, banner }, Agent | null>;
-  AskScreen: ScreenRegistryEntry<{ request }, string>;
-  ConfirmationScreen: ScreenRegistryEntry<{ message, defaultValue?, timeout? }, boolean>;
-  TreeSelectionScreen: { props: { request }, response, component };
-  WebPageScreen: ScreenRegistryEntry<{ request }, void>;
-  PasswordScreen: ScreenRegistryEntry<{ request }, string>;
-  FormScreen: ScreenRegistryEntry<{ request }, Record<string, any>>;
-};
+type ScreenRegistry = &#123;
+  AgentSelectionScreen: ScreenRegistryEntry&lt;&#123; agentManager, webHostService?, banner &#125;, Agent | null&gt;;
+  AskScreen: ScreenRegistryEntry&lt;&#123; request &#125;, string&gt;;
+  ConfirmationScreen: ScreenRegistryEntry&lt;&#123; message, defaultValue?, timeout? &#125;, boolean&gt;;
+  TreeSelectionScreen: &#123; props: &#123; request &#125;, response, component &#125;;
+  WebPageScreen: ScreenRegistryEntry&lt;&#123; request &#125;, void&gt;;
+  PasswordScreen: ScreenRegistryEntry&lt;&#123; request &#125;, string&gt;;
+  FormScreen: ScreenRegistryEntry&lt;&#123; request &#125;, Record&lt;string, any&gt;&gt;;
+&#125;;
 ```
 
 ## Development
@@ -377,15 +377,15 @@ pkg/cli/
 2. Implement the command interface:
 
 ```typescript
-import { Agent } from "@tokenring-ai/agent";
-import { TokenRingAgentCommand } from "@tokenring-ai/agent/types";
+import &#123; Agent &#125; from "@tokenring-ai/agent";
+import &#123; TokenRingAgentCommand &#125; from "@tokenring-ai/agent/types";
 
 const description: string = "/mycommand - Description of your command";
 
-async function execute(args: string, agent: Agent): Promise<void> {
+async function execute(args: string, agent: Agent): Promise&lt;void&gt; &#123;
   // Command implementation
-  agent.handleInput({ message: args });
-}
+  agent.handleInput(&#123; message: args &#125;);
+&#125;
 
 const help: string = `# /mycommand - Description
 
@@ -398,11 +398,11 @@ Detailed description of the command.
 ## Examples
 /mycommand example`;
 
-export default {
+export default &#123;
   description,
   execute,
   help,
-} satisfies TokenRingAgentCommand;
+&#125; satisfies TokenRingAgentCommand;
 ```
 
 3. Export the command in `chatCommands.ts`:
@@ -412,11 +412,11 @@ import edit from "./commands/edit.ts";
 import multi from "./commands/multi.ts";
 import mycommand from "./commands/mycommand.ts";
 
-export default {
+export default &#123;
   edit,
   multi,
   mycommand,
-};
+&#125;;
 ```
 
 ### Adding New Screens

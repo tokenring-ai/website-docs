@@ -64,11 +64,11 @@ const provider = cdnService.getCDNByName('s3');
 Uploads data to a specific CDN provider.
 
 ```typescript
-const result = await cdnService.upload('s3', fileBuffer, {
+const result = await cdnService.upload('s3', fileBuffer, &#123;
   filename: 'example.txt',
   contentType: 'text/plain',
-  metadata: { author: 'test' }
-});
+  metadata: &#123; author: 'test' &#125;
+&#125;);
 ```
 
 **Parameters:**
@@ -135,9 +135,9 @@ Abstract base class for implementing CDN providers. Subclass this to create cust
 ```typescript
 import CDNProvider from "@tokenring-ai/cdn/CDNProvider.ts";
 
-class MyCDNProvider extends CDNProvider {
+class MyCDNProvider extends CDNProvider &#123;
   // Implementation here
-}
+&#125;
 ```
 
 #### Required Methods
@@ -147,11 +147,11 @@ class MyCDNProvider extends CDNProvider {
 Implement upload logic for your CDN provider.
 
 ```typescript
-async upload(data: Buffer, options?: UploadOptions): Promise<UploadResult> {
+async upload(data: Buffer, options?: UploadOptions): Promise&lt;UploadResult&gt; &#123;
   // Implement your upload logic
   const url = await this.uploadToCustomCDN(data, options);
-  return { url };
-}
+  return &#123; url &#125;;
+&#125;
 ```
 
 **Parameters:**
@@ -169,10 +169,10 @@ async upload(data: Buffer, options?: UploadOptions): Promise<UploadResult> {
 Delete a file from the CDN. Override this method if your provider supports deletion.
 
 ```typescript
-async delete(url: string): Promise<DeleteResult> {
+async delete(url: string): Promise&lt;DeleteResult&gt; &#123;
   const success = await this.deleteFromCustomCDN(url);
-  return { success };
-}
+  return &#123; success &#125;;
+&#125;
 ```
 
 **Parameters:**
@@ -187,13 +187,13 @@ async delete(url: string): Promise<DeleteResult> {
 Download a file from the CDN. Default implementation uses HTTP GET via fetch.
 
 ```typescript
-async download(url: string): Promise<Buffer> {
+async download(url: string): Promise&lt;Buffer&gt; &#123;
   const response = await fetch(url);
-  if (!response.ok) {
-    throw new Error(`Failed to download file: ${response.statusText}`);
-  }
+  if (!response.ok) &#123;
+    throw new Error(`Failed to download file: $&#123;response.statusText&#125;`);
+  &#125;
   return Buffer.from(await response.arrayBuffer());
-}
+&#125;
 ```
 
 **Parameters:**
@@ -201,21 +201,21 @@ async download(url: string): Promise<Buffer> {
 
 **Returns:** Promise resolving to Buffer containing file data
 
-**Throws:** "Failed to download file: {statusText}" on HTTP errors
+**Throws:** "Failed to download file" on HTTP errors
 
 ##### exists
 
 Check if a file exists in the CDN. Default implementation uses HTTP HEAD via fetch.
 
 ```typescript
-async exists(url: string): Promise<boolean> {
-  try {
-    const response = await fetch(url, { method: 'HEAD' });
+async exists(url: string): Promise&lt;boolean&gt; &#123;
+  try &#123;
+    const response = await fetch(url, &#123; method: 'HEAD' &#125;);
     return response.ok;
-  } catch (error) {
+  &#125; catch (error) &#123;
     return false;
-  }
-}
+  &#125;
+&#125;
 ```
 
 **Parameters:**
@@ -230,30 +230,30 @@ async exists(url: string): Promise<boolean> {
 ### UploadOptions
 
 ```typescript
-export interface UploadOptions {
+export interface UploadOptions &#123;
   filename?: string;
   contentType?: string;
-  metadata?: Record<string, string>;
-}
+  metadata?: Record&lt;string, string&gt;;
+&#125;
 ```
 
 ### UploadResult
 
 ```typescript
-export interface UploadResult {
+export interface UploadResult &#123;
   url: string;
   id?: string;
-  metadata?: Record<string, any>;
-}
+  metadata?: Record&lt;string, any&gt;;
+&#125;
 ```
 
 ### DeleteResult
 
 ```typescript
-export interface DeleteResult {
+export interface DeleteResult &#123;
   success: boolean;
   message?: string;
-}
+&#125;
 ```
 
 ### CDNConfigSchema
@@ -261,9 +261,9 @@ export interface DeleteResult {
 Zod schema for validating CDN configuration:
 
 ```typescript
-export const CDNConfigSchema = z.object({
+export const CDNConfigSchema = z.object(&#123;
   providers: z.record(z.string(), z.any())
-}).optional();
+&#125;).optional();
 ```
 
 ## Configuration
@@ -272,13 +272,13 @@ Configure the CDN service through the Token Ring application configuration:
 
 ```typescript
 // In your app configuration
-const config = {
-  cdn: {
-    providers: {
+const config = &#123;
+  cdn: &#123;
+    providers: &#123;
       // Your CDN provider configurations here
-    }
-  }
-};
+    &#125;
+  &#125;
+&#125;;
 ```
 
 **Configuration Structure:**
@@ -288,22 +288,22 @@ const config = {
 Example provider configuration:
 
 ```typescript
-{
-  cdn: {
-    providers: {
-      s3: {
+&#123;
+  cdn: &#123;
+    providers: &#123;
+      s3: &#123;
         bucket: 'my-bucket',
         region: 'us-east-1',
         // Provider-specific settings
-      },
-      cloudflare: {
+      &#125;,
+      cloudflare: &#123;
         accountId: 'my-account',
         zoneId: 'my-zone',
         // Provider-specific settings
-      }
-    }
-  }
-}
+      &#125;
+    &#125;
+  &#125;
+&#125;
 ```
 
 ## Plugin Integration
@@ -316,13 +316,13 @@ As a Token Ring plugin, the CDN service automatically:
 ```typescript
 import plugin from "@tokenring-ai/cdn/plugin.ts";
 
-app.use(plugin, {
-  cdn: {
-    providers: {
+app.use(plugin, &#123;
+  cdn: &#123;
+    providers: &#123;
       // Provider configurations
-    }
-  }
-});
+    &#125;
+  &#125;
+&#125;);
 
 // Access the CDN service from the app
 const cdnService = app.getService('CDNService');
@@ -364,28 +364,28 @@ const s3Exists = await cdnService.exists('s3', s3Result.url);
 
 ```typescript
 import CDNProvider from "@tokenring-ai/cdn";
-import type { UploadOptions, UploadResult, DeleteResult } from "@tokenring-ai/cdn/types.ts";
+import type &#123; UploadOptions, UploadResult, DeleteResult &#125; from "@tokenring-ai/cdn/types.ts";
 
-class MyCustomCDNProvider extends CDNProvider {
-  async upload(data: Buffer, options?: UploadOptions): Promise<UploadResult> {
+class MyCustomCDNProvider extends CDNProvider &#123;
+  async upload(data: Buffer, options?: UploadOptions): Promise&lt;UploadResult&gt; &#123;
     // Implement your upload logic
     const url = await this.uploadToCustomCDN(data, options);
-    return {
+    return &#123;
       url,
       id: options?.filename,
       metadata: options?.metadata
-    };
-  }
+    &#125;;
+  &#125;
 
-  async delete?(url: string): Promise<DeleteResult> {
+  async delete?(url: string): Promise&lt;DeleteResult&gt; &#123;
     // Implement your delete logic
     const success = await this.deleteFromCustomCDN(url);
-    return {
+    return &#123;
       success,
       message: success ? 'File deleted successfully' : 'Failed to delete file'
-    };
-  }
-}
+    &#125;;
+  &#125;
+&#125;
 
 // Register the provider
 cdnService.registerProvider('custom', new MyCustomCDNProvider());
@@ -396,29 +396,29 @@ cdnService.registerProvider('custom', new MyCustomCDNProvider());
 CDNProvider provides default implementations for `download` and `exists` using fetch:
 
 ```typescript
-class HTTPCDNProvider extends CDNProvider {
-  async upload(data: Buffer, options?: UploadOptions): Promise<UploadResult> {
+class HTTPCDNProvider extends CDNProvider &#123;
+  async upload(data: Buffer, options?: UploadOptions): Promise&lt;UploadResult&gt; &#123;
     // Implement only upload - download and exists use defaults
-    const url = `https://my-cdn.com/${options?.filename || 'default.txt'}`;
-    return { url };
-  }
+    const url = `https://my-cdn.com/$&#123;options?.filename || 'default.txt'&#125;`;
+    return &#123; url &#125;;
+  &#125;
   // download() uses default fetch implementation
   // exists() uses default HEAD implementation
-}
+&#125;
 ```
 
 ## Error Handling
 
 The CDN service provides clear error handling for common scenarios:
 
-| Scenario | Error Message |
-|----------|---------------|
-| Provider Not Found | `CDN {name} not found. Please register it first with registerCDN(cdnName, cdnProvider).` |
-| No Active CDN | `No active CDN set. Please set an active CDN before {operation}.` |
-| Method Not Implemented | `Method '{method}' must be implemented by subclasses` |
-| Download Failures | `Failed to download file: {statusText}` |
-| Configuration Errors | Validation errors for invalid provider configurations |
-| Delete Not Supported | `Active CDN does not support deletion` |
+| Scenario               | Error Message                                                                            |
+|------------------------|------------------------------------------------------------------------------------------|
+| Provider Not Found     | `CDN [name] not found. Please register it first with registerCDN(cdnName, cdnProvider).` |
+| No Active CDN          | `No active CDN set. Please set an active CDN before [operation].`                        |
+| Method Not Implemented | `Method '[method]' must be implemented by subclasses`                                    |
+| Download Failures      | `Failed to download file: [statusText]`                                                  |
+| Configuration Errors   | Validation errors for invalid provider configurations                                    |
+| Delete Not Supported   | `Active CDN does not support deletion`                                                   |
 
 ## Integration
 
@@ -479,4 +479,4 @@ pkg/cdn/
 
 ## License
 
-MIT License - see [LICENSE](https://github.com/tokenring-ai/tokenring/blob/main/pkg/cdn/LICENSE) for details.
+MIT License - see [LICENSE](https://github.com/tokenring-ai/monorepo/blob/main/LICENSE) for details.

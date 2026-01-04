@@ -121,7 +121,7 @@ Returns currently enabled resources for the specified agent.
 #### getEnabledResourceNames
 
 ```typescript
-getEnabledResourceNames(agent: Agent): Set<string>
+getEnabledResourceNames(agent: Agent): Set&lt;string&gt;
 ```
 
 Returns the names of currently enabled resources.
@@ -129,7 +129,7 @@ Returns the names of currently enabled resources.
 #### enableResources
 
 ```typescript
-enableResources(resourceNames: string[], agent: Agent): Set<string>
+enableResources(resourceNames: string[], agent: Agent): Set&lt;string&gt;
 ```
 
 Enables specified resources by name. Returns the updated enabled set.
@@ -137,7 +137,7 @@ Enables specified resources by name. Returns the updated enabled set.
 #### disableResources
 
 ```typescript
-disableResources(resourceNames: string[], agent: Agent): Set<string>
+disableResources(resourceNames: string[], agent: Agent): Set&lt;string&gt;
 ```
 
 Disables specified resources by name. Returns the updated enabled set.
@@ -145,7 +145,7 @@ Disables specified resources by name. Returns the updated enabled set.
 #### setEnabledResources
 
 ```typescript
-setEnabledResources(resourceNames: string[], agent: Agent): Set<string>
+setEnabledResources(resourceNames: string[], agent: Agent): Set&lt;string&gt;
 ```
 
 Sets the enabled resources to the provided list, replacing any existing enabled resources.
@@ -154,10 +154,10 @@ Sets the enabled resources to the provided list, replacing any existing enabled 
 
 ```typescript
 generateRepoMap(
-  files: Set<string>,
+  files: Set&lt;string&gt;,
   fileSystem: FileSystemService,
   agent: Agent
-): Promise<string | null>
+): Promise&lt;string | null&gt;
 ```
 
 Generates a repository map from specified files, showing symbol snippets. Uses code-chopper for parsing and supports multiple languages.
@@ -176,7 +176,7 @@ Maps file extensions to language types. Returns the language enum for the extens
 
 Resources extend `FileMatchResource` which provides:
 
-- `addFilesToSet(fileSet: Set<string>, agent: Agent)`: Adds files matching the resource criteria to the set
+- `addFilesToSet(fileSet: Set&lt;string&gt;, agent: Agent)`: Adds files matching the resource criteria to the set
 
 ## Usage Examples
 
@@ -185,24 +185,24 @@ Resources extend `FileMatchResource` which provides:
 ```typescript
 import codeBasePlugin from "@tokenring-ai/codebase";
 
-const appConfig = {
-  codebase: {
-    resources: {
-      "src": {
+const appConfig = &#123;
+  codebase: &#123;
+    resources: &#123;
+      "src": &#123;
         type: "fileTree",
-      },
-      "api": {
+      &#125;,
+      "api": &#123;
         type: "repoMap",
-      },
-      "config": {
+      &#125;,
+      "config": &#123;
         type: "wholeFile",
-      },
-    },
-    agentDefaults: {
+      &#125;,
+    &#125;,
+    agentDefaults: &#123;
       enabledResources: ["src", "api"],
-    },
-  },
-};
+    &#125;,
+  &#125;,
+&#125;;
 
 app.addPlugin(codeBasePlugin, appConfig.codebase);
 ```
@@ -210,8 +210,8 @@ app.addPlugin(codeBasePlugin, appConfig.codebase);
 ### Enabling Resources Programmatically
 
 ```typescript
-import { CodeBaseService } from "@tokenring-ai/codebase";
-import { Agent } from "@tokenring-ai/agent";
+import &#123; CodeBaseService &#125; from "@tokenring-ai/codebase";
+import &#123; Agent &#125; from "@tokenring-ai/agent";
 
 // Get the CodeBaseService from the agent
 const codebaseService = agent.requireServiceByType(CodeBaseService);
@@ -227,8 +227,8 @@ console.log("Enabled resources:", enabled);
 ### Generating Repository Map
 
 ```typescript
-import { CodeBaseService } from "@tokenring-ai/codebase";
-import { FileSystemService } from "@tokenring-ai/filesystem";
+import &#123; CodeBaseService &#125; from "@tokenring-ai/codebase";
+import &#123; FileSystemService &#125; from "@tokenring-ai/filesystem";
 
 const codebaseService = agent.requireServiceByType(CodeBaseService);
 const fileSystem = agent.requireServiceByType(FileSystemService);
@@ -249,31 +249,31 @@ The plugin automatically adds context items when the chat session starts. Contex
 
 ```typescript
 // Context generation flow
-for (const fileTreeFile of fileTreeFiles) {
+for (const fileTreeFile of fileTreeFiles) &#123;
   // File tree context: directory structure
-  yield {
+  yield &#123;
     role: "user",
-    content: `// Directory Tree of project files:\n${fileTreeFiles.sort().join("\n")}`,
-  };
-}
+    content: `// Directory Tree of project files:\n$&#123;fileTreeFiles.sort().join("\n")&#125;`,
+  &#125;;
+&#125;
 
-for (const repoMapFile of repoMapFiles) {
+for (const repoMapFile of repoMapFiles) &#123;
   // Repo map context: symbol information
   const repoMap = await codebaseService.generateRepoMap(repoMapFiles, fileSystem, agent);
-  yield {
+  yield &#123;
     role: "user",
     content: repoMap,
-  };
-}
+  &#125;;
+&#125;
 
-for (const wholeFile of wholeFiles) {
+for (const wholeFile of wholeFiles) &#123;
   // Whole file context: complete file contents
   const content = await fileSystem.getFile(wholeFile, agent);
-  yield {
+  yield &#123;
     role: "user",
-    content: `// Complete contents of file: ${wholeFile}\n${content}`,
-  };
-}
+    content: `// Complete contents of file: $&#123;wholeFile&#125;\n$&#123;content&#125;`,
+  &#125;;
+&#125;
 ```
 
 ### Multi-language Repository Mapping
@@ -303,56 +303,56 @@ The Codebase service is configured via the `codebase` section in the agent's con
 ### Configuration Schema
 
 ```typescript
-import { z } from "zod";
+import &#123; z &#125; from "zod";
 
-const CodeBaseAgentConfigSchema = z.object({
+const CodeBaseAgentConfigSchema = z.object(&#123;
   enabledResources: z.array(z.string()).optional()
-}).default({});
+&#125;).default(&#123;&#125;);
 
-const CodeBaseServiceConfigSchema = z.object({
+const CodeBaseServiceConfigSchema = z.object(&#123;
   resources: z.record(z.string(), z.any()),
-  agentDefaults: z.object({
+  agentDefaults: z.object(&#123;
     enabledResources: z.array(z.string()).default([])
-  }).default({ enabledResources: [] })
-});
+  &#125;).default(&#123; enabledResources: [] &#125;)
+&#125;);
 ```
 
 ### Configuration Options
 
 | Option | Type | Description |
 |--------|------|-------------|
-| `resources` | `Record<string, ResourceConfig>` | Registry of available resources |
+| `resources` | `Record&lt;string, ResourceConfig&gt;` | Registry of available resources |
 | `agentDefaults.enabledResources` | `string[]` | Resources enabled by default for agents |
 
 ### Resource Configuration
 
 ```json
-{
-  "codebase": {
-    "resources": {
-      "src": {
+&#123;
+  "codebase": &#123;
+    "resources": &#123;
+      "src": &#123;
         "type": "fileTree"
-      },
-      "api-docs": {
+      &#125;,
+      "api-docs": &#123;
         "type": "repoMap"
-      },
-      "config": {
+      &#125;,
+      "config": &#123;
         "type": "wholeFile"
-      }
-    },
-    "agentDefaults": {
+      &#125;
+    &#125;,
+    "agentDefaults": &#123;
       "enabledResources": ["src", "api-docs"]
-    }
-  }
-}
+    &#125;
+  &#125;
+&#125;
 ```
 
 ### Plugin Configuration
 
 ```typescript
-const packageConfigSchema = z.object({
+const packageConfigSchema = z.object(&#123;
   codebase: CodeBaseServiceConfigSchema.optional(),
-});
+&#125;);
 ```
 
 ## Integration
@@ -393,18 +393,18 @@ chatService.registerContextHandlers(contextHandlers);
 State is managed through `CodeBaseState` which implements `AgentStateSlice`:
 
 ```typescript
-class CodeBaseState implements AgentStateSlice {
+class CodeBaseState implements AgentStateSlice &#123;
   name = "CodeBaseState";
-  enabledResources = new Set<string>([]);
+  enabledResources = new Set&lt;string&gt;([]);
 
-  serialize(): object {
-    return { enabledResources: Array.from(this.enabledResources) };
-  }
+  serialize(): object &#123;
+    return &#123; enabledResources: Array.from(this.enabledResources) &#125;;
+  &#125;
 
-  deserialize(data: any): void {
+  deserialize(data: any): void &#123;
     this.enabledResources = new Set(data.enabledResources || []);
-  }
-}
+  &#125;
+&#125;
 ```
 
 ## Best Practices
@@ -443,16 +443,16 @@ bun test
 
 ```typescript
 // vitest.config.ts
-import { defineConfig } from "vitest/config";
+import &#123; defineConfig &#125; from "vitest/config";
 
-export default defineConfig({
-  test: {
+export default defineConfig(&#123;
+  test: &#123;
     include: ["**/*.test.ts"],
     environment: "node",
     globals: true,
     isolate: true,
-  },
-});
+  &#125;,
+&#125;);
 ```
 
 ### Test Coverage

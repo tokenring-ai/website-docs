@@ -11,22 +11,22 @@ This plugin allows AI agents to query Kubernetes clusters without direct kubectl
 ### Basic Agent Setup
 
 ```typescript
-import { Agent } from '@tokenring-ai/agent';
+import &#123; Agent &#125; from '@tokenring-ai/agent';
 import KubernetesService from '@tokenring-ai/kubernetes';
 import listKubernetesApiResources from '@tokenring-ai/kubernetes/tools/listKubernetesApiResources';
 
-const agent = new Agent({
-  services: [new KubernetesService({
+const agent = new Agent(&#123;
+  services: [new KubernetesService(&#123;
     clusterName: 'my-cluster',
     apiServerUrl: 'https://api.example.com:6443',
     namespace: 'default',
     token: process.env.K8S_TOKEN,
-  })],
+  &#125;)],
   tools: [listKubernetesApiResources],
-});
+&#125;);
 
 // Execute the tool through the agent
-const result = await agent.executeTool('kubernetes/listKubernetesApiResources', {});
+const result = await agent.executeTool('kubernetes/listKubernetesApiResources', &#123;&#125;);
 const resources = JSON.parse(result.output);
 console.log(resources);
 ```
@@ -36,16 +36,16 @@ console.log(resources);
 ```typescript
 import TokenRingApp from '@tokenring-ai/app';
 
-const app = new TokenRingApp({
-  config: {
-    kubernetes: {
+const app = new TokenRingApp(&#123;
+  config: &#123;
+    kubernetes: &#123;
       clusterName: 'my-cluster',
       apiServerUrl: 'https://api.example.com:6443',
       namespace: 'production',
       token: process.env.K8S_TOKEN,
-    }
-  }
-});
+    &#125;
+  &#125;
+&#125;);
 ```
 
 ## Core Properties
@@ -105,23 +105,23 @@ constructor(params: KubernetesServiceParams)
 ### listAllApiResourceTypes
 
 ```typescript
-listAllApiResourceTypes(agent: Agent): Promise<K8sResourceInfo[]>
+listAllApiResourceTypes(agent: Agent): Promise&lt;K8sResourceInfo[]&gt;
 ```
 
 Discovers and lists all API resources in the configured Kubernetes cluster.
 
-**Returns:** `Promise<K8sResourceInfo[]>` - Array of discovered resources
+**Returns:** `Promise&lt;K8sResourceInfo[]&gt;` - Array of discovered resources
 
 **Response Format:**
 ```typescript
-interface K8sResourceInfo {
+interface K8sResourceInfo &#123;
   group?: string;      // API group (e.g., "apps" or "" for core)
   version?: string;    // API version (e.g., "v1")
   kind?: string;       // Resource kind (e.g., "Pod")
   namespace?: string;  // Namespace for namespaced resources
   name?: string;       // Resource name
   error?: string;      // Error message if listing failed
-}
+&#125;
 ```
 
 ### Tools
@@ -133,12 +133,12 @@ TokenRing AI tool for listing Kubernetes resources without direct service access
 **Tool Definition:**
 - **Internal Name:** `kubernetes_listKubernetesApiResources`
 - **Public Name:** `kubernetes/listKubernetesApiResources` (when registered)
-- **Input Schema:** `z.object({})` (no inputs required)
+- **Input Schema:** `z.object(&#123;&#125;)` (no inputs required)
 - **Description:** "Lists all instances of all accessible API resource types in the configured Kubernetes cluster. Fetches resources from all discoverable namespaces if the service is configured to do so, or from the default/specified namespace."
 
 **Execution:**
 ```typescript
-execute({}, agent: Agent): Promise<{ output: string }>
+execute(&#123;&#125;, agent: Agent): Promise&lt;&#123; output: string &#125;&gt;
 ```
 
 Returns JSON-stringified results from `KubernetesService.listAllApiResourceTypes(agent)`.
@@ -148,7 +148,7 @@ Returns JSON-stringified results from `KubernetesService.listAllApiResourceTypes
 ### KubernetesServiceParams Schema
 
 ```typescript
-const schema = z.object({
+const schema = z.object(&#123;
   clusterName: z.string(),
   apiServerUrl: z.string(),
   namespace: z.string().optional(),
@@ -156,7 +156,7 @@ const schema = z.object({
   clientCertificate: z.string().optional(),
   clientKey: z.string().optional(),
   caCertificate: z.string().optional(),
-});
+&#125;);
 ```
 
 ### Configuration Options
@@ -176,23 +176,23 @@ const schema = z.object({
 1. **Token Authentication** (Recommended):
 
 ```typescript
-{
+&#123;
   clusterName: 'cluster',
   apiServerUrl: 'https://api.example.com:6443',
   token: 'your-bearer-token',
-}
+&#125;
 ```
 
 2. **Certificate Authentication**:
 
 ```typescript
-{
+&#123;
   clusterName: 'cluster',
   apiServerUrl: 'https://api.example.com:6443',
   clientCertificate: 'cert-data',
   clientKey: 'key-data',
   caCertificate: 'ca-cert-data', // optional
-}
+&#125;
 ```
 
 ### Namespace Handling
@@ -230,12 +230,12 @@ The service follows TokenRing's event-driven architecture. While specific event 
 ### Plugin Integration
 
 ```typescript
-const kubernetesPlugin = {
+const kubernetesPlugin = &#123;
   name: "@tokenring-ai/kubernetes",
   version: "0.2.0",
   description: "Kubernetes resources integration",
-  install: (app: TokenRingApp) => void
-};
+  install: (app: TokenRingApp) =&gt; void
+&#125;;
 ```
 
 ## Best Practices
