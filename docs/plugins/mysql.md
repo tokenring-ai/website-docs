@@ -24,7 +24,7 @@ Extends `DatabaseProvider` to manage MySQL connections and queries using mysql2'
 **Constructor:**
 
 ```typescript
-new MySQLProvider(&#123;
+new MySQLProvider({
   allowWrites?: boolean,        // default: false
   host: string,                 // required
   port?: number,                // default: 3306
@@ -32,19 +32,19 @@ new MySQLProvider(&#123;
   password: string,             // required
   databaseName: string,         // required
   connectionLimit?: number      // default: 10
-&#125;)
+})
 ```
 
 **Key Methods:**
 
-- `executeSql(sqlQuery: string): Promise&lt;ExecuteSqlResult&gt;`
+- `executeSql(sqlQuery: string): Promise<ExecuteSqlResult>`
   - Executes a raw SQL query using a connection from the pool
-  - Returns: `&#123; rows: RowDataPacket[], fields: string[] &#125;`
+  - Returns: `{ rows: RowDataPacket[], fields: string[] }`
   - Supports all SQL operations based on allowWrites configuration
   - Auto-manages connection pooling and release
   - Handles result set metadata and field names
 
-- `showSchema(): Promise&lt;Record&lt;string, string&gt;&gt;`
+- `showSchema(): Promise<Record<string, string>>`
   - Retrieves CREATE TABLE statements for all tables in the database
   - Returns object mapping table names to CREATE TABLE SQL statements
   - Uses SHOW TABLES and SHOW CREATE TABLE queries for comprehensive schema inspection
@@ -55,9 +55,9 @@ The plugin automatically registers MySQL providers with the DatabaseService base
 
 ```typescript
 // In your application configuration (database section)
-&#123;
-  "providers": &#123;
-    "mysql-primary": &#123;
+{
+  "providers": {
+    "mysql-primary": {
       "type": "mysql",
       "host": "localhost",
       "port": 3306,
@@ -66,9 +66,9 @@ The plugin automatically registers MySQL providers with the DatabaseService base
       "databaseName": "my_database",
       "connectionLimit": 10,
       "allowWrites": true
-    &#125;
-  &#125;
-&#125;
+    }
+  }
+}
 ```
 
 ## Plugin Configuration
@@ -76,13 +76,13 @@ The plugin automatically registers MySQL providers with the DatabaseService base
 ### Configuration Schema
 
 ```typescript
-import &#123; z &#125; from "zod";
+import { z } from "zod";
 
-const packageConfigSchema = z.object(&#123;
-  database: z.object(&#123;
+const packageConfigSchema = z.object({
+  database: z.object({
     providers: z.record(z.string(), z.any())
-  &#125;)
-&#125;);
+  })
+});
 ```
 
 ### Example Configuration
@@ -92,11 +92,11 @@ import TokenRingApp from "@tokenring-ai/app";
 import databasePlugin from "@tokenring-ai/database";
 import mysqlPlugin from "@tokenring-ai/mysql";
 
-const app = new TokenRingApp(&#123;
-  config: &#123;
-    database: &#123;
-      providers: &#123;
-        mysqlPrimary: &#123;
+const app = new TokenRingApp({
+  config: {
+    database: {
+      providers: {
+        mysqlPrimary: {
           type: "mysql",
           host: "localhost",
           port: 3306,
@@ -105,11 +105,11 @@ const app = new TokenRingApp(&#123;
           databaseName: "myapp",
           connectionLimit: 10,
           allowWrites: false
-        &#125;
-      &#125;
-    &#125;
-  &#125;
-&#125;);
+        }
+      }
+    }
+  }
+});
 
 app.use(databasePlugin);
 app.use(mysqlPlugin);
@@ -155,11 +155,11 @@ import TokenRingApp from "@tokenring-ai/app";
 import databasePlugin from "@tokenring-ai/database";
 import mysqlPlugin from "@tokenring-ai/mysql";
 
-const app = new TokenRingApp(&#123;
-  config: &#123;
-    database: &#123;
-      providers: &#123;
-        mymysql: &#123;
+const app = new TokenRingApp({
+  config: {
+    database: {
+      providers: {
+        mymysql: {
           type: "mysql",
           host: "localhost",
           port: 3306,
@@ -168,11 +168,11 @@ const app = new TokenRingApp(&#123;
           databaseName: "myapp",
           connectionLimit: 10,
           allowWrites: false
-        &#125;
-      &#125;
-    &#125;
-  &#125;
-&#125;);
+        }
+      }
+    }
+  }
+});
 
 app.use(databasePlugin);
 app.use(mysqlPlugin);
@@ -184,7 +184,7 @@ await app.start();
 ```typescript
 import MySQLProvider from "@tokenring-ai/mysql";
 
-const mysqlProvider = new MySQLProvider(&#123;
+const mysqlProvider = new MySQLProvider({
   host: "localhost",
   port: 3306,
   user: "root",
@@ -192,7 +192,7 @@ const mysqlProvider = new MySQLProvider(&#123;
   databaseName: "myapp",
   connectionLimit: 10,
   allowWrites: true
-&#125;);
+});
 
 // Execute SQL query
 const result = await mysqlProvider.executeSql("SELECT * FROM users");
@@ -209,7 +209,7 @@ console.log("Table schemas:", schema);
 Access MySQL providers through the DatabaseService:
 
 ```typescript
-import &#123; DatabaseService &#125; from "@tokenring-ai/database";
+import { DatabaseService } from "@tokenring-ai/database";
 
 // Get DatabaseService from app
 const databaseService = app.getServiceByType(DatabaseService);
@@ -226,23 +226,23 @@ const result = await mysqlProvider.executeSql("SELECT * FROM users");
 ### MySQLResourceProps Interface
 
 ```typescript
-interface MySQLResourceProps extends DatabaseProviderOptions &#123;
+interface MySQLResourceProps extends DatabaseProviderOptions {
   host: string;
   port?: number;
   user: string;
   password: string;
   databaseName: string;
   connectionLimit?: number;
-&#125;
+}
 ```
 
 ### ExecuteSqlResult Interface
 
 ```typescript
-interface ExecuteSqlResult &#123;
+interface ExecuteSqlResult {
   rows: RowDataPacket[];
   fields: string[];
-&#125;
+}
 ```
 
 ## Error Handling

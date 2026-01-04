@@ -28,30 +28,30 @@ bun install @tokenring-ai/file-index
 The base interface for all file indexing providers. Defines the contract that all implementations must follow.
 
 ```typescript
-export interface SearchResult &#123;
+export interface SearchResult {
   path: string;           // Full path to the file
   chunk_index: number;    // Index of the chunk in the file
   content: string;        // Content of the chunk
   relevance?: number;     // Relevance score (full-text search)
   distance?: number;      // Distance score (semantic search)
-&#125;
+}
 
-export default abstract class FileIndexProvider &#123;
+export default abstract class FileIndexProvider {
   // Core search methods
-  abstract search(query: string, limit?: number): Promise&lt;SearchResult[]&gt;;
-  abstract fullTextSearch(query: string, limit?: number): Promise&lt;SearchResult[]&gt;;
+  abstract search(query: string, limit?: number): Promise<SearchResult[]>;
+  abstract fullTextSearch(query: string, limit?: number): Promise<SearchResult[]>;
 
   // Lifecycle methods
-  abstract waitReady(): Promise&lt;void&gt;;
-  abstract processFile(filePath: string): Promise&lt;void&gt;;
+  abstract waitReady(): Promise<void>;
+  abstract processFile(filePath: string): Promise<void>;
   abstract onFileChanged(type: string, filePath: string): void;
-  abstract close(): Promise&lt;void&gt;;
+  abstract close(): Promise<void>;
 
   // Current file context
   abstract setCurrentFile(filePath: string): void;
   abstract clearCurrentFile(): void;
   abstract getCurrentFile(): string | null;
-&#125;
+}
 ```
 
 **Key Methods:**
@@ -84,7 +84,7 @@ await provider.start();
 A registry service that manages multiple providers and allows dynamic switching between them.
 
 ```typescript
-export default class FileIndexService implements TokenRingService &#123;
+export default class FileIndexService implements TokenRingService {
   name = "FileIndexService";
   description = "Provides FileIndex functionality";
 
@@ -92,24 +92,24 @@ export default class FileIndexService implements TokenRingService &#123;
   registerFileIndexProvider = this.providers.register;
   getAvailableFileIndexProviders = this.providers.getAllItemNames;
 
-  constructor(readonly options: FileIndexServiceConfigSchema) &#123;&#125;
+  constructor(readonly options: FileIndexServiceConfigSchema) {}
 
   // Provider activation
   setActiveProvider(name: string, agent: Agent): void;
 
   // Search operations
-  search(query: string, limit?: number, agent?: Agent): Promise&lt;SearchResult[]&gt;;
-  fullTextSearch(query: string, limit?: number, agent?: Agent): Promise&lt;SearchResult[]&gt;;
+  search(query: string, limit?: number, agent?: Agent): Promise<SearchResult[]>;
+  fullTextSearch(query: string, limit?: number, agent?: Agent): Promise<SearchResult[]>;
 
   // Lifecycle
-  waitReady(agent: Agent): Promise&lt;void&gt;;
-  close(agent: Agent): Promise&lt;void&gt;;
+  waitReady(agent: Agent): Promise<void>;
+  close(agent: Agent): Promise<void>;
 
   // File context
   setCurrentFile(filePath: string, agent: Agent): void;
   clearCurrentFile(agent: Agent): void;
   getCurrentFile(agent: Agent): string | null;
-&#125;
+}
 ```
 
 **Key Methods:**
@@ -127,18 +127,18 @@ export default class FileIndexService implements TokenRingService &#123;
 Advanced search tool that combines semantic, full-text, and token overlap searching with result merging.
 
 ```typescript
-const hybridSearchFileIndex = &#123;
+const hybridSearchFileIndex = {
   name: "file-index_hybridSearchFileIndex",
   description: "Hybrid semantic+full-text+keyword search with merging/deduplication",
-  inputSchema: z.object(&#123;
+  inputSchema: z.object({
     query: z.string().describe("Text or code query"),
     topK: z.number().int().default(10).describe("Number of results to return"),
     textWeight: z.number().default(0.3).describe("Weight for token overlap"),
     fullTextWeight: z.number().default(0.3).describe("Weight for full-text search"),
     mergeRadius: z.number().int().default(1).describe("Merge radius for adjacent chunks")
-  &#125;),
-  execute: async (params, agent: Agent) =&gt; HybridSearchResult[]
-&#125;;
+  }),
+  execute: async (params, agent: Agent) => HybridSearchResult[]
+};
 ```
 
 **Input Parameters:**
@@ -174,13 +174,13 @@ Manages file index providers and performs searches.
 #### Provider Management
 
 - `/fileindex provider get` - Display the currently active file index provider
-- `/fileindex provider set &lt;name&gt;` - Set a specific file index provider by name
+- `/fileindex provider set <name>` - Set a specific file index provider by name
 - `/fileindex provider default` - Reset to the default provider from configuration
 - `/fileindex provider select` - Interactively select a provider from available options
 
 #### Search
 
-- `/fileindex search &lt;query&gt;` - Search for text across indexed files
+- `/fileindex search <query>` - Search for text across indexed files
   - Searches across all indexed files
   - Returns up to 10 matching results by default
   - Shows file paths and matching content
@@ -199,31 +199,31 @@ Manages file index providers and performs searches.
 ### Plugin Configuration Schema
 
 ```typescript
-const packageConfigSchema = z.object(&#123;
-  fileIndex: z.object(&#123;
+const packageConfigSchema = z.object({
+  fileIndex: z.object({
     providers: z.record(z.string(), z.any()),
-    agentDefaults: z.object(&#123;
+    agentDefaults: z.object({
       provider: z.string(),
-    &#125;),
-  &#125;).optional(),
-&#125;);
+    }),
+  }).optional(),
+});
 ```
 
 ### Configuration Example
 
 ```typescript
-const config = &#123;
-  fileIndex: &#123;
-    providers: &#123;
-      ephemeral: &#123;
+const config = {
+  fileIndex: {
+    providers: {
+      ephemeral: {
         type: 'ephemeral',
-      &#125;,
-    &#125;,
-    agentDefaults: &#123;
+      },
+    },
+    agentDefaults: {
       provider: 'ephemeral',
-    &#125;,
-  &#125;,
-&#125;;
+    },
+  },
+};
 ```
 
 ### Provider Configuration
@@ -232,10 +232,10 @@ Providers are configured as a record where the key is the provider name and the 
 
 **Ephemeral Provider:**
 ```typescript
-&#123;
+{
   type: 'ephemeral',
   // No additional configuration required
-&#125;
+}
 ```
 
 ### Agent Configuration
@@ -243,9 +243,9 @@ Providers are configured as a record where the key is the provider name and the 
 Agents can override the default provider:
 
 ```typescript
-const FileIndexAgentConfigSchema = z.object(&#123;
+const FileIndexAgentConfigSchema = z.object({
   provider: z.string().optional()
-&#125;);
+});
 ```
 
 ## API Reference
@@ -253,25 +253,25 @@ const FileIndexAgentConfigSchema = z.object(&#123;
 ### Search Results
 
 ```typescript
-interface SearchResult &#123;
+interface SearchResult {
   path: string;          // Full path to the file
   chunk_index: number;   // Index of the chunk in the file
   content: string;       // Content of the chunk
   relevance?: number;    // Relevance score (full-text search)
   distance?: number;     // Distance score (semantic search)
-&#125;
+}
 ```
 
 ### Hybrid Search Results
 
 ```typescript
-interface HybridSearchResult &#123;
+interface HybridSearchResult {
   path: string;         // Full path to the file
   start: number;        // Starting chunk index
   end: number;          // Ending chunk index
   hybridScore: number;  // Combined relevance score
   content: string;      // Merged content of all chunks
-&#125;
+}
 ```
 
 ### FileIndexState
@@ -279,18 +279,18 @@ interface HybridSearchResult &#123;
 Manages the agent-specific state for file indexing.
 
 ```typescript
-export class FileIndexState implements AgentStateSlice &#123;
+export class FileIndexState implements AgentStateSlice {
   name = "FileIndexState";
   activeProvider: string | null;
 
-  constructor(readonly initialConfig: AgentDefaults) &#123;
+  constructor(readonly initialConfig: AgentDefaults) {
     this.activeProvider = initialConfig.provider;
-  &#125;
+  }
 
   serialize(): object;
   deserialize(data: any): void;
   show(): string[];
-&#125;
+}
 ```
 
 ## Usage Examples
@@ -300,19 +300,19 @@ export class FileIndexState implements AgentStateSlice &#123;
 ```typescript
 import FileIndexService from '@tokenring-ai/file-index/FileIndexService.ts';
 import EphemeralFileIndexProvider from '@tokenring-ai/file-index/EphemeralFileIndexProvider.ts';
-import &#123; FileIndexServiceConfigSchema &#125; from '@tokenring-ai/file-index/schema.ts';
-import &#123; z &#125; from 'zod';
+import { FileIndexServiceConfigSchema } from '@tokenring-ai/file-index/schema.ts';
+import { z } from 'zod';
 
-const config: z.input&lt;typeof FileIndexServiceConfigSchema&gt; = &#123;
-  providers: &#123;
-    ephemeral: &#123;
+const config: z.input<typeof FileIndexServiceConfigSchema> = {
+  providers: {
+    ephemeral: {
       type: 'ephemeral',
-    &#125;,
-  &#125;,
-  agentDefaults: &#123;
+    },
+  },
+  agentDefaults: {
     provider: 'ephemeral',
-  &#125;,
-&#125;;
+  },
+};
 
 const fileIndexService = new FileIndexService(config);
 app.addServices(fileIndexService);
@@ -321,17 +321,17 @@ app.addServices(fileIndexService);
 ### Using the Hybrid Search Tool
 
 ```typescript
-import &#123; hybridSearchFileIndex &#125; from '@tokenring-ai/file-index/tools.ts';
+import { hybridSearchFileIndex } from '@tokenring-ai/file-index/tools.ts';
 
 // Perform hybrid search
 const results = await hybridSearchFileIndex.execute(
-  &#123;
+  {
     query: 'implement user authentication',
     topK: 5,
     textWeight: 0.3,
     fullTextWeight: 0.3,
     mergeRadius: 1,
-  &#125;,
+  },
   agent
 );
 
@@ -344,75 +344,75 @@ console.log(results);
 ```typescript
 import FileIndexProvider from '@tokenring-ai/file-index/FileIndexProvider.ts';
 
-class CustomFileIndexProvider extends FileIndexProvider &#123;
-  async search(query: string, limit?: number): Promise&lt;SearchResult[]&gt; &#123;
+class CustomFileIndexProvider extends FileIndexProvider {
+  async search(query: string, limit?: number): Promise<SearchResult[]> {
     // Implement your search logic
     return [];
-  &#125;
+  }
 
-  async fullTextSearch(query: string, limit?: number): Promise&lt;SearchResult[]&gt; &#123;
+  async fullTextSearch(query: string, limit?: number): Promise<SearchResult[]> {
     // Implement your full-text search logic
     return [];
-  &#125;
+  }
 
-  async waitReady(): Promise&lt;void&gt; &#123;
+  async waitReady(): Promise<void> {
     // Initialize your provider
-  &#125;
+  }
 
-  async processFile(filePath: string): Promise&lt;void&gt; &#123;
+  async processFile(filePath: string): Promise<void> {
     // Process and index a file
-  &#125;
+  }
 
-  onFileChanged(type: string, filePath: string): void &#123;
+  onFileChanged(type: string, filePath: string): void {
     // Handle file changes
-  &#125;
+  }
 
-  async close(): Promise&lt;void&gt; &#123;
+  async close(): Promise<void> {
     // Cleanup
-  &#125;
+  }
 
-  setCurrentFile(filePath: string): void &#123;
+  setCurrentFile(filePath: string): void {
     // Set current file context
-  &#125;
+  }
 
-  clearCurrentFile(): void &#123;
+  clearCurrentFile(): void {
     // Clear current file context
-  &#125;
+  }
 
-  getCurrentFile(): string | null &#123;
+  getCurrentFile(): string | null {
     return null;
-  &#125;
-&#125;
+  }
+}
 ```
 
 ## Plugin Integration
 
 ```typescript
 import FileIndexPlugin from '@tokenring-ai/file-index';
-import &#123; z &#125; from 'zod';
+import { z } from 'zod';
 
-const configSchema = z.object(&#123;
-  fileIndex: z.object(&#123;
+const configSchema = z.object({
+  fileIndex: z.object({
     providers: z.record(z.string(), z.any()),
-    agentDefaults: z.object(&#123;
+    agentDefaults: z.object({
       provider: z.string(),
-    &#125;),
-  &#125;).optional(),
-&#125;);
+    }),
+  }).optional(),
+});
 
 // In your app configuration
-app.install(FileIndexPlugin, &#123;
-  fileIndex: &#123;
-    providers: &#123;
-      ephemeral: &#123;
+app.install(FileIndexPlugin, {
+  fileIndex: {
+    providers: {
+      ephemeral: {
         type: 'ephemeral',
-      &#125;,
-    &#125;,
-    agentDefaults: &#123;
+      },
+    },
+    agentDefaults: {
       provider: 'ephemeral',
-    &#125;,
-  &#125;,
-&#125;);
+    },
+  },
+});
 ```
 
 ## Package Structure

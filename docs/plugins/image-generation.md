@@ -19,29 +19,29 @@ The Image Generation plugin provides AI-powered image generation capabilities wi
 The main service class that handles image generation operations:
 
 ```typescript
-class ImageGenerationService implements TokenRingService &#123;
+class ImageGenerationService implements TokenRingService {
   name: string = "ImageGenerationService";
   description: string = "Image generation with configurable output directories";
   
   outputDirectory: string;
   model: string;
   
-  constructor(config: z.infer&lt;typeof ImageGenerationConfigSchema&gt;);
+  constructor(config: z.infer<typeof ImageGenerationConfigSchema>);
   
   getOutputDirectory(): string;
   getModel(): string;
-  addToIndex(directory: string, filename: string, mimeType: string, width: number, height: number, keywords: string[], agent: Agent): Promise&lt;void&gt;;
-  reindex(directory: string, agent: Agent): Promise&lt;void&gt;;
-&#125;
+  addToIndex(directory: string, filename: string, mimeType: string, width: number, height: number, keywords: string[], agent: Agent): Promise<void>;
+  reindex(directory: string, agent: Agent): Promise<void>;
+}
 ```
 
 ### Configuration Schema
 
 ```typescript
-const ImageGenerationConfigSchema = z.object(&#123;
+const ImageGenerationConfigSchema = z.object({
   outputDirectory: z.string(),
   model: z.string(),
-&#125;);
+});
 ```
 
 ### Available Tools
@@ -51,16 +51,16 @@ const ImageGenerationConfigSchema = z.object(&#123;
 Generate an AI image and save it to a configured output directory:
 
 ```typescript
-const generateImage: TokenRingToolDefinition = &#123;
+const generateImage: TokenRingToolDefinition = {
   name: "image_generate",
   description: "Generate an AI image and save it to a configured output directory",
-  inputSchema: z.object(&#123;
+  inputSchema: z.object({
     prompt: z.string().describe("Description of the image to generate"),
     aspectRatio: z.enum(["square", "tall", "wide"]).default("square").optional(),
     outputDirectory: z.string().describe("Output directory (will prompt if not provided)").optional(),
     model: z.string().describe("Image generation model to use").optional(),
     keywords: z.array(z.string()).describe("Keywords to add to image EXIF/IPTC metadata").optional(),
-  &#125;);
+  });
 ```
 
 #### searchImages
@@ -68,13 +68,13 @@ const generateImage: TokenRingToolDefinition = &#123;
 Search for images in the index based on keyword similarity:
 
 ```typescript
-const searchImages: TokenRingToolDefinition = &#123;
+const searchImages: TokenRingToolDefinition = {
   name: "image_search",
   description: "Search for images in the index based on keyword similarity",
-  inputSchema: z.object(&#123;
+  inputSchema: z.object({
     query: z.string().describe("Search query to match against image keywords"),
     limit: z.number().int().positive().default(10).describe("Maximum number of results to return").optional(),
-  &#125;);
+  });
 ```
 
 ### Chat Commands
@@ -95,10 +95,10 @@ The plugin registers the following services when installed:
 
 ```typescript
 app.addServices(new ImageGenerationService(config));
-app.waitForService(ChatService, chatService =&gt; 
+app.waitForService(ChatService, chatService => 
   chatService.addTools(packageJSON.name, tools)
 );
-app.waitForService(AgentCommandService, agentCommandService =&gt; 
+app.waitForService(AgentCommandService, agentCommandService => 
   agentCommandService.addAgentCommands(chatCommands)
 );
 ```
@@ -115,13 +115,13 @@ The plugin uses a configuration schema with the following properties:
 The service automatically maintains an index of generated images in `image_index.json` format:
 
 ```json
-&#123;
+{
   "filename": "generated-image.jpg",
   "mimeType": "image/jpeg", 
   "width": 1024,
   "height": 1024,
   "keywords": ["AI", "generated", "art"]
-&#125;
+}
 ```
 
 ## Commands and Tools
@@ -154,11 +154,11 @@ The service automatically maintains an index of generated images in `image_index
 
 **Example Usage**:
 ```typescript
-await agent.useTool('image_generate', &#123;
+await agent.useTool('image_generate', {
   prompt: 'A beautiful sunset over mountains',
   aspectRatio: 'wide',
   keywords: ['nature', 'landscape', 'sunset']
-&#125;);
+});
 ```
 
 #### image_search
@@ -171,10 +171,10 @@ await agent.useTool('image_generate', &#123;
 
 **Example Usage**:
 ```typescript
-const results = await agent.useTool('image_search', &#123;
+const results = await agent.useTool('image_search', {
   query: 'nature landscape',
   limit: 5
-&#125;);
+});
 ```
 
 ## Configuration
@@ -184,10 +184,10 @@ const results = await agent.useTool('image_search', &#123;
 The plugin requires the following configuration:
 
 ```typescript
-const config = &#123;
+const config = {
   outputDirectory: './generated-images',
   model: 'dall-e-3'
-&#125;;
+};
 ```
 
 ### Environment Variables
@@ -204,10 +204,10 @@ No specific environment variables are required, but the plugin depends on:
 
 ```typescript
 // Generate an image using the default configuration
-const result = await agent.useTool('image_generate', &#123;
+const result = await agent.useTool('image_generate', {
   prompt: 'A futuristic cityscape at night',
   aspectRatio: 'wide'
-&#125;);
+});
 
 console.log(result.path); // Path to the generated image
 ```
@@ -216,28 +216,28 @@ console.log(result.path); // Path to the generated image
 
 ```typescript
 // Generate an image with specific metadata
-const result = await agent.useTool('image_generate', &#123;
+const result = await agent.useTool('image_generate', {
   prompt: 'A beautiful forest with sunlight filtering through trees',
   aspectRatio: 'tall',
   keywords: ['nature', 'forest', 'sunlight', 'peaceful']
-&#125;);
+});
 
-console.log(`Image saved to: $&#123;result.path&#125;`);
-console.log(`Metadata added: $&#123;result.message&#125;`);
+console.log(`Image saved to: ${result.path}`);
+console.log(`Metadata added: ${result.message}`);
 ```
 
 ### Searching Images
 
 ```typescript
 // Search for images with specific keywords
-const searchResults = await agent.useTool('image_search', &#123;
+const searchResults = await agent.useTool('image_search', {
   query: 'nature landscape',
   limit: 10
-&#125;);
+});
 
-searchResults.results.forEach(result =&gt; &#123;
-  console.log(`Found: $&#123;result.filename&#125; (score: $&#123;result.score&#125;)`);
-&#125;);
+searchResults.results.forEach(result => {
+  console.log(`Found: ${result.filename} (score: ${result.score})`);
+});
 ```
 
 ### Reindexing Images
@@ -280,7 +280,7 @@ addToIndex(
   height: number,
   keywords: string[],
   agent: Agent
-): Promise&lt;void&gt;;
+): Promise<void>;
 ```
 
 #### reindex(directory, agent)
@@ -288,7 +288,7 @@ addToIndex(
 Regenerates the image index by scanning all images and reading their metadata.
 
 ```typescript
-reindex(directory: string, agent: Agent): Promise&lt;void&gt;;
+reindex(directory: string, agent: Agent): Promise<void>;
 ```
 
 ### Tool Definitions
@@ -296,28 +296,28 @@ reindex(directory: string, agent: Agent): Promise&lt;void&gt;;
 #### generateImage Tool
 
 ```typescript
-const generateImage: TokenRingToolDefinition = &#123;
+const generateImage: TokenRingToolDefinition = {
   name: "image_generate",
   description: "Generate an AI image and save it to a configured output directory",
-  inputSchema: z.object(&#123;
+  inputSchema: z.object({
     prompt: z.string().describe("Description of the image to generate"),
     aspectRatio: z.enum(["square", "tall", "wide"]).default("square").optional(),
     outputDirectory: z.string().describe("Output directory (will prompt if not provided)").optional(),
     model: z.string().describe("Image generation model to use").optional(),
     keywords: z.array(z.string()).describe("Keywords to add to image EXIF/IPTC metadata").optional(),
-  &#125;);
+  });
 ```
 
 #### searchImages Tool
 
 ```typescript
-const searchImages: TokenRingToolDefinition = &#123;
+const searchImages: TokenRingToolDefinition = {
   name: "image_search",
   description: "Search for images in the index based on keyword similarity",
-  inputSchema: z.object(&#123;
+  inputSchema: z.object({
     query: z.string().describe("Search query to match against image keywords"),
     limit: z.number().int().positive().default(10).describe("Maximum number of results to return").optional(),
-  &#125;);
+  });
 ```
 
 ## Integration
@@ -342,9 +342,9 @@ The plugin depends on:
 ### Import Patterns
 
 ```typescript
-import &#123;ImageGenerationService&#125; from "@tokenring-ai/image-generation";
-import &#123;generateImage, searchImages&#125; from "@tokenring-ai/image-generation/tools";
-import &#123;image&#125; from "@tokenring-ai/image-generation/commands";
+import {ImageGenerationService} from "@tokenring-ai/image-generation";
+import {generateImage, searchImages} from "@tokenring-ai/image-generation/tools";
+import {image} from "@tokenring-ai/image-generation/commands";
 ```
 
 ## Monitoring and Debugging

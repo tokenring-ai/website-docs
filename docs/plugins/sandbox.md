@@ -22,40 +22,40 @@ The `SandboxProvider` interface defines the contract for any concrete sandbox im
 **Interface Definition:**
 
 ```typescript
-interface SandboxProvider &#123;
-  createContainer(options?: SandboxOptions): Promise&lt;SandboxResult&gt;;
-  executeCommand(containerId: string, command: string): Promise&lt;ExecuteResult&gt;;
-  stopContainer(containerId: string): Promise&lt;void&gt;;
-  getLogs(containerId: string): Promise&lt;LogsResult&gt;;
-  removeContainer(containerId: string): Promise&lt;void&gt;;
-&#125;
+interface SandboxProvider {
+  createContainer(options?: SandboxOptions): Promise<SandboxResult>;
+  executeCommand(containerId: string, command: string): Promise<ExecuteResult>;
+  stopContainer(containerId: string): Promise<void>;
+  getLogs(containerId: string): Promise<LogsResult>;
+  removeContainer(containerId: string): Promise<void>;
+}
 ```
 
 **Type Definitions:**
 
 ```typescript
-interface SandboxOptions &#123;
+interface SandboxOptions {
   label?: string;
   image?: string;
   workingDir?: string;
-  environment?: Record&lt;string, string&gt;;
+  environment?: Record<string, string>;
   timeout?: number;
-&#125;
+}
 
-interface SandboxResult &#123;
+interface SandboxResult {
   containerId: string;
   status: string;
-&#125;
+}
 
-interface ExecuteResult &#123;
+interface ExecuteResult {
   stdout: string;
   stderr: string;
   exitCode: number;
-&#125;
+}
 
-interface LogsResult &#123;
+interface LogsResult {
   logs: string;
-&#125;
+}
 ```
 
 ### SandboxService
@@ -67,7 +67,7 @@ The `SandboxService` manages multiple providers and tracks the active container 
 - `registerProvider(name: string, resource: SandboxProvider): void`
   - Registers a provider in the internal registry
 
-- `attach(agent: Agent): Promise&lt;void&gt;`
+- `attach(agent: Agent): Promise<void>`
   - Attaches the service to an agent and initializes agent state
 
 - `requireActiveProvider(agent: Agent): SandboxProvider`
@@ -85,22 +85,22 @@ The `SandboxService` manages multiple providers and tracks the active container 
 - `setActiveContainer(containerId: string, agent: Agent): void`
   - Sets the active container
 
-- `createContainer(options: SandboxOptions | undefined, agent: Agent): Promise&lt;SandboxResult&gt;`
+- `createContainer(options: SandboxOptions | undefined, agent: Agent): Promise<SandboxResult>`
   - Creates a container using the active provider
   - Sets the created container as active with label mapping
 
-- `executeCommand(label: string, command: string, agent: Agent): Promise&lt;ExecuteResult&gt;`
+- `executeCommand(label: string, command: string, agent: Agent): Promise<ExecuteResult>`
   - Executes a command in the specified container
   - Uses label-to-container ID mapping
 
-- `stopContainer(label: string, agent: Agent): Promise&lt;void&gt;`
+- `stopContainer(label: string, agent: Agent): Promise<void>`
   - Stops the specified container
   - Clears active container if it matches
 
-- `getLogs(label: string, agent: Agent): Promise&lt;LogsResult&gt;`
+- `getLogs(label: string, agent: Agent): Promise<LogsResult>`
   - Retrieves logs from the specified container
 
-- `removeContainer(label: string, agent: Agent): Promise&lt;void&gt;`
+- `removeContainer(label: string, agent: Agent): Promise<void>`
   - Removes the specified container and its label mapping
 
 ### SandboxState
@@ -111,7 +111,7 @@ The `SandboxState` class manages agent state for sandbox operations, implementin
 
 - `provider: string | null` - Current active provider name
 - `activeContainer: string | null` - Current active container label
-- `labelToContainerId: Map&lt;string, string&gt;` - Maps labels to container IDs
+- `labelToContainerId: Map<string, string>` - Maps labels to container IDs
 
 **State Methods:**
 
@@ -142,21 +142,21 @@ The `/sandbox` command provides interactive control in agent chats.
 **Syntax:**
 
 ```
-/sandbox &lt;action&gt; [arguments]
+/sandbox <action> [arguments]
 ```
 
 **Available Actions:**
 
 | Action | Description |
 |--------|-------------|
-| `create &lt;label&gt; [image]` | Create a new container with label and optional image |
-| `exec &lt;command&gt;` | Execute command in active container |
+| `create <label> [image]` | Create a new container with label and optional image |
+| `exec <command>` | Execute command in active container |
 | `stop [label]` | Stop container (uses active if unspecified) |
 | `logs [label]` | Get container logs (uses active if unspecified) |
 | `remove [label]` | Remove container (uses active if unspecified) |
 | `status` | Show active container and provider |
 | `provider get` | Show current provider |
-| `provider set &lt;name&gt;` | Set provider by name |
+| `provider set <name>` | Set provider by name |
 | `provider reset` | Reset provider to initial configuration |
 | `provider select` | Interactively select provider from available list |
 
@@ -193,37 +193,37 @@ The sandbox plugin uses a configuration schema defined in `schema.ts` for valida
 **Configuration Schema:**
 
 ```typescript
-const packageConfigSchema = z.object(&#123;
+const packageConfigSchema = z.object({
   sandbox: SandboxServiceConfigSchema
-&#125;);
+});
 
-const SandboxServiceConfigSchema = z.object(&#123;
+const SandboxServiceConfigSchema = z.object({
   providers: z.record(z.string(), z.any()).optional(),
-  agentDefaults: z.object(&#123;
+  agentDefaults: z.object({
     provider: z.string()
-  &#125;)
-&#125;);
+  })
+});
 
-const SandboxAgentConfigSchema = z.object(&#123;
+const SandboxAgentConfigSchema = z.object({
   provider: z.string().optional()
-&#125;).default(&#123;&#125;);
+}).default({});
 ```
 
 ### Example Configuration
 
 ```json
-&#123;
-  "sandbox": &#123;
-    "providers": &#123;
-      "docker": &#123;
+{
+  "sandbox": {
+    "providers": {
+      "docker": {
         "type": "docker"
-      &#125;
-    &#125;,
-    "agentDefaults": &#123;
+      }
+    },
+    "agentDefaults": {
       "provider": "docker"
-    &#125;
-  &#125;
-&#125;
+    }
+  }
+}
 ```
 
 ## Configuration Options
@@ -235,7 +235,7 @@ const SandboxAgentConfigSchema = z.object(&#123;
 | `label` | `string` | Optional label for container reference |
 | `image` | `string` | Container image to use (e.g., 'ubuntu:latest') |
 | `workingDir` | `string` | Working directory in container |
-| `environment` | `Record&lt;string, string&gt;` | Environment variables |
+| `environment` | `Record<string, string>` | Environment variables |
 | `timeout` | `number` | Timeout in seconds for operations |
 
 ### Provider Configuration
@@ -245,19 +245,19 @@ Providers are configured through the app's sandbox configuration. The package cu
 **Configuration Schema:**
 
 ```typescript
-const config = &#123;
-  sandbox: &#123;
-    providers: &#123;
-      [providerName]: &#123;
+const config = {
+  sandbox: {
+    providers: {
+      [providerName]: {
         type: "docker",
         // Provider-specific configuration
-      &#125;
-    &#125;,
-    agentDefaults: &#123;
+      }
+    },
+    agentDefaults: {
       provider: "docker"
-    &#125;
-  &#125;
-&#125;;
+    }
+  }
+};
 ```
 
 ## Usage Examples
@@ -271,56 +271,56 @@ import TokenRingApp from "@tokenring-ai/app";
 import sandboxPlugin from "@tokenring-ai/sandbox";
 
 const app = new TokenRingApp();
-app.install(sandboxPlugin, &#123;
-  providers: &#123;
-    docker: &#123; type: "docker" &#125;
-  &#125;,
-  agentDefaults: &#123;
+app.install(sandboxPlugin, {
+  providers: {
+    docker: { type: "docker" }
+  },
+  agentDefaults: {
     provider: "docker"
-  &#125;
-&#125;);
+  }
+});
 ```
 
 ### 2. Using the Service Directly
 
 ```typescript
-import &#123; SandboxService &#125; from "@tokenring-ai/sandbox";
-import &#123; DockerSandboxProvider &#125; from "@tokenring-ai/docker";
+import { SandboxService } from "@tokenring-ai/sandbox";
+import { DockerSandboxProvider } from "@tokenring-ai/docker";
 
-const sandboxService = new SandboxService(&#123;
-  providers: &#123;&#125;,
-  agentDefaults: &#123; provider: "docker" &#125;
-&#125;);
+const sandboxService = new SandboxService({
+  providers: {},
+  agentDefaults: { provider: "docker" }
+});
 
 // Register a provider
 sandboxService.registerProvider('docker', new DockerSandboxProvider());
 
 // Create and use container
-const result = await sandboxService.createContainer(&#123; 
+const result = await sandboxService.createContainer({ 
   label: 'myapp',
   image: 'ubuntu:latest' 
-&#125;, agent);
-console.log(`Created: $&#123;result.containerId&#125;`);
+}, agent);
+console.log(`Created: ${result.containerId}`);
 
 const execResult = await sandboxService.executeCommand(
   result.containerId, 
   'ls -la',
   agent
 );
-console.log(`Stdout: $&#123;execResult.stdout&#125;`);
+console.log(`Stdout: ${execResult.stdout}`);
 ```
 
 ### 3. Using Tools in Agent Workflow
 
 ```typescript
 // Agent invokes tool
-await agent.executeTool('sandbox_createContainer', &#123; 
+await agent.executeTool('sandbox_createContainer', { 
   label: 'myapp',
   image: 'node:18' 
-&#125;);
-await agent.executeTool('sandbox_executeCommand', &#123; 
+});
+await agent.executeTool('sandbox_executeCommand', { 
   command: 'node --version'
-&#125;);
+});
 ```
 
 ## API Reference
@@ -331,27 +331,27 @@ await agent.executeTool('sandbox_executeCommand', &#123;
 |--------|------------|---------|-------------|
 | `registerProvider(name, resource)` | `name`, `resource` | `void` | Registers a provider |
 | `getAvailableProviders()` | - | `string[]` | Lists registered providers |
-| `attach(agent)` | `agent` | `Promise&lt;void&gt;` | Attaches service to agent |
+| `attach(agent)` | `agent` | `Promise<void>` | Attaches service to agent |
 | `requireActiveProvider(agent)` | `agent` | `SandboxProvider` | Gets active provider or throws |
 | `getActiveProvider(agent)` | `agent` | `SandboxProvider \| null` | Returns the active provider |
 | `setActiveProvider(name, agent)` | `name`, `agent` | `void` | Sets the active provider |
 | `getActiveContainer(agent)` | `agent` | `string \| null` | Returns active container |
 | `setActiveContainer(containerId, agent)` | `containerId`, `agent` | `void` | Sets the active container |
-| `createContainer(options, agent)` | `options`, `agent` | `Promise&lt;SandboxResult&gt;` | Creates a container |
-| `executeCommand(label, command, agent)` | `label`, `command`, `agent` | `Promise&lt;ExecuteResult&gt;` | Executes a command |
-| `stopContainer(label, agent)` | `label`, `agent` | `Promise&lt;void&gt;` | Stops a container |
-| `getLogs(label, agent)` | `label`, `agent` | `Promise&lt;LogsResult&gt;` | Retrieves logs |
-| `removeContainer(label, agent)` | `label`, `agent` | `Promise&lt;void&gt;` | Removes a container |
+| `createContainer(options, agent)` | `options`, `agent` | `Promise<SandboxResult>` | Creates a container |
+| `executeCommand(label, command, agent)` | `label`, `command`, `agent` | `Promise<ExecuteResult>` | Executes a command |
+| `stopContainer(label, agent)` | `label`, `agent` | `Promise<void>` | Stops a container |
+| `getLogs(label, agent)` | `label`, `agent` | `Promise<LogsResult>` | Retrieves logs |
+| `removeContainer(label, agent)` | `label`, `agent` | `Promise<void>` | Removes a container |
 
 ### SandboxProvider Interface
 
 | Method | Parameters | Returns | Description |
 |--------|------------|---------|-------------|
-| `createContainer(options)` | `options` | `Promise&lt;SandboxResult&gt;` | Creates a container |
-| `executeCommand(containerId, command)` | `containerId`, `command` | `Promise&lt;ExecuteResult&gt;` | Executes a command |
-| `stopContainer(containerId)` | `containerId` | `Promise&lt;void&gt;` | Stops a container |
-| `getLogs(containerId)` | `containerId` | `Promise&lt;LogsResult&gt;` | Retrieves logs |
-| `removeContainer(containerId)` | `containerId` | `Promise&lt;void&gt;` | Removes a container |
+| `createContainer(options)` | `options` | `Promise<SandboxResult>` | Creates a container |
+| `executeCommand(containerId, command)` | `containerId`, `command` | `Promise<ExecuteResult>` | Executes a command |
+| `stopContainer(containerId)` | `containerId` | `Promise<void>` | Stops a container |
+| `getLogs(containerId)` | `containerId` | `Promise<LogsResult>` | Retrieves logs |
+| `removeContainer(containerId)` | `containerId` | `Promise<void>` | Removes a container |
 
 ## Integration
 
@@ -395,29 +395,29 @@ To add new sandbox providers:
 **Example:**
 
 ```typescript
-import &#123; SandboxProvider &#125; from "@tokenring-ai/sandbox";
+import { SandboxProvider } from "@tokenring-ai/sandbox";
 
-class MyCustomProvider implements SandboxProvider &#123;
-  async createContainer(options?: SandboxOptions): Promise&lt;SandboxResult&gt; &#123;
+class MyCustomProvider implements SandboxProvider {
+  async createContainer(options?: SandboxOptions): Promise<SandboxResult> {
     // Implementation
-  &#125;
+  }
   
-  async executeCommand(containerId: string, command: string): Promise&lt;ExecuteResult&gt; &#123;
+  async executeCommand(containerId: string, command: string): Promise<ExecuteResult> {
     // Implementation
-  &#125;
+  }
   
-  async stopContainer(containerId: string): Promise&lt;void&gt; &#123;
+  async stopContainer(containerId: string): Promise<void> {
     // Implementation
-  &#125;
+  }
   
-  async getLogs(containerId: string): Promise&lt;LogsResult&gt; &#123;
+  async getLogs(containerId: string): Promise<LogsResult> {
     // Implementation
-  &#125;
+  }
   
-  async removeContainer(containerId: string): Promise&lt;void&gt; &#123;
+  async removeContainer(containerId: string): Promise<void> {
     // Implementation
-  &#125;
-&#125;
+  }
+}
 ```
 
 ## License

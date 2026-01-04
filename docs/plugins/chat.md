@@ -77,7 +77,7 @@ The state management class that tracks:
 | Method | Description |
 |--------|-------------|
 | `getChatConfig(agent: Agent)` | Get current chat configuration |
-| `updateChatConfig(aiConfig: Partial&lt;ChatConfig&gt;, agent: Agent)` | Update configuration with partial updates |
+| `updateChatConfig(aiConfig: Partial<ChatConfig>, agent: Agent)` | Update configuration with partial updates |
 
 #### Message History Management
 
@@ -93,7 +93,7 @@ The state management class that tracks:
 
 | Method | Description |
 |--------|-------------|
-| `addTools(pkgName: string, tools: Record&lt;string, TokenRingToolDefinition&gt;)` | Register tools from a package |
+| `addTools(pkgName: string, tools: Record<string, TokenRingToolDefinition>)` | Register tools from a package |
 | `getAvailableToolNames()` | Get all available tool names |
 | `getEnabledTools(agent: Agent)` | Get enabled tool names |
 | `setEnabledTools(toolNames: string[], agent: Agent)` | Set exact enabled tools |
@@ -109,7 +109,7 @@ The state management class that tracks:
 | `getContextHandlerByName(name: string)` | Get a context handler by name |
 | `requireContextHandlerByName(name: string)` | Get a context handler or throw |
 | `registerContextHandler(name: string, handler: ContextHandler)` | Register a single context handler |
-| `registerContextHandlers(handlers: Record&lt;string, ContextHandler&gt;)` | Register multiple context handlers |
+| `registerContextHandlers(handlers: Record<string, ContextHandler>)` | Register multiple context handlers |
 
 #### Message Building
 
@@ -128,7 +128,7 @@ async function runChat(
   input: string,
   chatConfig: ChatConfig,
   agent: Agent,
-): Promise&lt;[string, AIResponse]&gt;
+): Promise<[string, AIResponse]>
 ```
 
 **Parameters:**
@@ -146,18 +146,18 @@ async function runChat(
 Converts a tool definition to TokenRing format:
 
 ```typescript
-import &#123;tokenRingTool&#125; from "@tokenring-ai/chat";
+import {tokenRingTool} from "@tokenring-ai/chat";
 
-const tool = tokenRingTool(&#123;
+const tool = tokenRingTool({
   name: "my-tool",
   description: "Does something useful",
-  inputSchema: z.object(&#123;
+  inputSchema: z.object({
     param: z.string()
-  &#125;),
-  async execute(input, agent) &#123;
+  }),
+  async execute(input, agent) {
     return "result";
-  &#125;
-&#125;);
+  }
+});
 ```
 
 #### outputChatAnalytics
@@ -165,7 +165,7 @@ const tool = tokenRingTool(&#123;
 Outputs token usage and cost analytics:
 
 ```typescript
-import &#123;outputChatAnalytics&#125; from "@tokenring-ai/chat";
+import {outputChatAnalytics} from "@tokenring-ai/chat";
 
 outputChatAnalytics(response, agent, "Chat Complete");
 ```
@@ -175,7 +175,7 @@ outputChatAnalytics(response, agent, "Chat Complete");
 Manually compacts conversation context:
 
 ```typescript
-import &#123;compactContext&#125; from "@tokenring-ai/chat/util/compactContext.ts";
+import {compactContext} from "@tokenring-ai/chat/util/compactContext.ts";
 
 await compactContext("focus topic", agent);
 ```
@@ -185,33 +185,33 @@ await compactContext("focus topic", agent);
 ### Basic Chat Setup
 
 ```typescript
-import &#123;TokenRingApp&#125; from "@tokenring-ai/app";
+import {TokenRingApp} from "@tokenring-ai/app";
 import ChatService from "@tokenring-ai/chat";
 
 const app = new TokenRingApp();
 
 // Add chat service with configuration
-app.addServices(new ChatService(app, &#123;
+app.addServices(new ChatService(app, {
   defaultModels: ["auto"],
-  agentDefaults: &#123;
+  agentDefaults: {
     model: "auto",
     autoCompact: true,
     maxSteps: 30,
     enabledTools: [],
-    context: &#123;
+    context: {
       initial: [
-        &#123;type: "system-message"&#125;,
-        &#123;type: "tool-context"&#125;,
-        &#123;type: "prior-messages"&#125;,
-        &#123;type: "current-message"&#125;
+        {type: "system-message"},
+        {type: "tool-context"},
+        {type: "prior-messages"},
+        {type: "current-message"}
       ],
       followUp: [
-        &#123;type: "prior-messages"&#125;,
-        &#123;type: "current-message"&#125;
+        {type: "prior-messages"},
+        {type: "current-message"}
       ]
-    &#125;
-  &#125;
-&#125;));
+    }
+  }
+}));
 
 await app.start();
 ```
@@ -222,25 +222,25 @@ await app.start();
 import runChat from "@tokenring-ai/chat/runChat.ts";
 
 // Build chat configuration
-const chatConfig = &#123;
+const chatConfig = {
   model: "auto",
   systemPrompt: "You are a helpful assistant",
   maxSteps: 30,
   autoCompact: true,
   enabledTools: [],
-  context: &#123;
+  context: {
     initial: [
-      &#123;type: "system-message"&#125;,
-      &#123;type: "tool-context"&#125;,
-      &#123;type: "prior-messages"&#125;,
-      &#123;type: "current-message"&#125;
+      {type: "system-message"},
+      {type: "tool-context"},
+      {type: "prior-messages"},
+      {type: "current-message"}
     ],
     followUp: [
-      &#123;type: "prior-messages"&#125;,
-      &#123;type: "current-message"&#125;
+      {type: "prior-messages"},
+      {type: "current-message"}
     ]
-  &#125;
-&#125;;
+  }
+};
 
 // Run a chat message
 const [response, aiResponse] = await runChat(
@@ -333,23 +333,23 @@ chatService.ensureToolNamesLike("web-*"); // Expands to all web-* tools
 The chat plugin is configured through the application's plugin configuration:
 
 ```typescript
-import &#123;z&#125; from "zod";
+import {z} from "zod";
 
-const configSchema = z.object(&#123;
-  chat: z.object(&#123;
+const configSchema = z.object({
+  chat: z.object({
     defaultModels: z.array(z.string()),
-    agentDefaults: z.object(&#123;
+    agentDefaults: z.object({
       model: z.string().default("auto"),
       autoCompact: z.boolean().default(true),
       enabledTools: z.array(z.string()).default([]),
       maxSteps: z.number().default(30),
-      context: z.object(&#123;
+      context: z.object({
         initial: z.array(ContextSourceSchema).default(initialContextItems),
         followUp: z.array(ContextSourceSchema).default(followUpContextItems),
-      &#125;).optional(),
-    &#125;),
-  &#125;),
-&#125;);
+      }).optional(),
+    }),
+  }),
+});
 ```
 
 ### Chat Configuration Properties
@@ -415,27 +415,27 @@ The plugin automatically registers:
 Agents can have their own chat configuration merged with service defaults:
 
 ```typescript
-const agentConfig = &#123;
-  chat: &#123;
+const agentConfig = {
+  chat: {
     model: "gpt-4",
     systemPrompt: "You are a helpful assistant",
     maxSteps: 50,
     autoCompact: true,
     enabledTools: ["web-search", "calculator"],
-    context: &#123;
+    context: {
       initial: [
-        &#123;type: "system-message"&#125;,
-        &#123;type: "tool-context"&#125;,
-        &#123;type: "prior-messages"&#125;,
-        &#123;type: "current-message"&#125;
+        {type: "system-message"},
+        {type: "tool-context"},
+        {type: "prior-messages"},
+        {type: "current-message"}
       ],
       followUp: [
-        &#123;type: "prior-messages"&#125;,
-        &#123;type: "current-message"&#125;
+        {type: "prior-messages"},
+        {type: "current-message"}
       ]
-    &#125;
-  &#125;
-&#125;;
+    }
+  }
+};
 ```
 
 ### Tool Integration
@@ -443,19 +443,19 @@ const agentConfig = &#123;
 Tools are registered through packages using the `addTools` method:
 
 ```typescript
-chatService.addTools("my-package", &#123;
-  "my-tool": &#123;
+chatService.addTools("my-package", {
+  "my-tool": {
     name: "my-tool",
     description: "Does something useful",
-    inputSchema: z.object(&#123;
+    inputSchema: z.object({
       param: z.string()
-    &#125;),
-    async execute(input, agent) &#123;
+    }),
+    async execute(input, agent) {
       // Tool implementation
       return "result";
-    &#125;
-  &#125;
-&#125;);
+    }
+  }
+});
 ```
 
 ## Monitoring and Debugging
@@ -484,7 +484,7 @@ Use `/compact` to summarize messages and reduce token usage:
 The `outputChatAnalytics` function provides detailed token usage and cost information:
 
 ```typescript
-import &#123;outputChatAnalytics&#125; from "@tokenring-ai/chat";
+import {outputChatAnalytics} from "@tokenring-ai/chat";
 
 outputChatAnalytics(response, agent, "Chat Complete");
 ```

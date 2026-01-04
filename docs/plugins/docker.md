@@ -29,15 +29,15 @@ bun install @tokenring-ai/docker
 **Constructor Parameters**:
 
 ```typescript
-interface DockerConfig &#123;
+interface DockerConfig {
   host?: string;                    // Docker daemon address (e.g., "unix:///var/run/docker.sock")
-  tls?: &#123;
+  tls?: {
     verify?: boolean;              // Default: false
     caCert?: string;               // Path to CA certificate
     cert?: string;                 // Path to client certificate
     key?: string;                  // Path to client key
-  &#125;;
-&#125;
+  };
+}
 ```
 
 **Key Methods**:
@@ -55,15 +55,15 @@ interface DockerConfig &#123;
 ```typescript
 import DockerService from "@tokenring-ai/docker/DockerService.ts";
 
-const dockerService = new DockerService(&#123;
+const dockerService = new DockerService({
   host: "unix:///var/run/docker.sock",
-  tls: &#123;
+  tls: {
     verify: true,
     caCert: "/path/to/ca.crt",
     cert: "/path/to/client.crt",
     key: "/path/to/client.key",
-  &#125;,
-&#125;);
+  },
+});
 
 const dockerCmd = dockerService.buildDockerCmd();
 // Returns: "docker --tls --tlscacert=/path/to/ca.crt --tlscert=/path/to/client.crt --tlskey=/path/to/client.key"
@@ -76,26 +76,26 @@ const dockerCmd = dockerService.buildDockerCmd();
 **Constructor Parameters**:
 
 ```typescript
-constructor(readonly dockerService: DockerService) &#123;&#125;
+constructor(readonly dockerService: DockerService) {}
 ```
 
 **Key Methods**:
 
-- `createContainer(options: SandboxOptions): Promise&lt;SandboxResult&gt;` - Create a new persistent container
-- `executeCommand(containerId: string, command: string): Promise&lt;ExecuteResult&gt;` - Execute a command in a running container
-- `stopContainer(containerId: string): Promise&lt;void&gt;` - Stop a running container
-- `getLogs(containerId: string): Promise&lt;LogsResult&gt;` - Get container logs
-- `removeContainer(containerId: string): Promise&lt;void&gt;` - Remove a container
+- `createContainer(options: SandboxOptions): Promise<SandboxResult>` - Create a new persistent container
+- `executeCommand(containerId: string, command: string): Promise<ExecuteResult>` - Execute a command in a running container
+- `stopContainer(containerId: string): Promise<void>` - Stop a running container
+- `getLogs(containerId: string): Promise<LogsResult>` - Get container logs
+- `removeContainer(containerId: string): Promise<void>` - Remove a container
 
 **SandboxOptions**:
 
 ```typescript
-interface SandboxOptions &#123;
+interface SandboxOptions {
   image?: string;                  // Docker image (default: "ubuntu:latest")
   workingDir?: string;            // Working directory inside the container
-  environment?: Record&lt;string, string&gt;;  // Environment variables
+  environment?: Record<string, string>;  // Environment variables
   timeout?: number;               // Timeout in seconds (default: 30)
-&#125;
+}
 ```
 
 **Example Usage**:
@@ -104,15 +104,15 @@ interface SandboxOptions &#123;
 import DockerSandboxProvider from "@tokenring-ai/docker/DockerSandboxProvider.ts";
 import DockerService from "@tokenring-ai/docker/DockerService.ts";
 
-const dockerService = new DockerService(&#123;&#125;);
+const dockerService = new DockerService({});
 const provider = new DockerSandboxProvider(dockerService);
 
 // Create a persistent container
-const &#123; containerId &#125; = await provider.createContainer(&#123;
+const { containerId } = await provider.createContainer({
   image: "python:3.9",
-  environment: &#123; PYTHONPATH: "/app" &#125;,
+  environment: { PYTHONPATH: "/app" },
   workingDir: "/app"
-&#125;);
+});
 
 const result = await provider.executeCommand(
   containerId,
@@ -147,79 +147,79 @@ The tools directory contains additional Docker operations that can be extended:
 ### 1. Ephemeral Container Execution
 
 ```typescript
-import &#123; Agent &#125; from "@tokenring-ai/agent";
-import &#123; dockerRun &#125; from "@tokenring-ai/docker/tools";
+import { Agent } from "@tokenring-ai/agent";
+import { dockerRun } from "@tokenring-ai/docker/tools";
 
 const agent = new Agent(registry);
-const result = await dockerRun.execute(&#123;
+const result = await dockerRun.execute({
   image: "ubuntu:22.04",
   cmd: "ls -la /usr/bin",
   timeoutSeconds: 30
-&#125;, agent);
+}, agent);
 
-if (result.ok) &#123;
+if (result.ok) {
   console.log("Command output:", result.stdout);
-&#125; else &#123;
+} else {
   console.error("Error:", result.stderr);
-&#125;
+}
 ```
 
 ### 2. Container Management
 
 ```typescript
-import &#123; listContainers, execInContainer &#125; from "@tokenring-ai/docker/tools";
+import { listContainers, execInContainer } from "@tokenring-ai/docker/tools";
 
 // List all containers
-const containers = await listContainers.execute(&#123;
+const containers = await listContainers.execute({
   all: true,
   format: "json"
-&#125;, agent);
+}, agent);
 
 // Execute command in a running container
-if (containers.containers && containers.containers.length &gt; 0) &#123;
+if (containers.containers && containers.containers.length > 0) {
   const containerId = containers.containers[0].Id;
-  const result = await execInContainer.execute(&#123;
+  const result = await execInContainer.execute({
     container: containerId,
     command: "cat /etc/os-release",
     timeoutSeconds: 30
-  &#125;, agent);
+  }, agent);
 
   console.log(result.stdout);
-&#125;
+}
 ```
 
 ### 3. Image Building
 
 ```typescript
-import &#123; buildImage &#125; from "@tokenring-ai/docker/tools";
+import { buildImage } from "@tokenring-ai/docker/tools";
 
-const result = await buildImage.execute(&#123;
+const result = await buildImage.execute({
   context: "./myapp",
   tag: "myrepo/myapp:v1.0.0",
   dockerfile: "Dockerfile",
-  buildArgs: &#123; NODE_VERSION: "18" &#125;,
+  buildArgs: { NODE_VERSION: "18" },
   noCache: true,
   timeoutSeconds: 600
-&#125;, agent);
+}, agent);
 
-if (result.ok) &#123;
+if (result.ok) {
   console.log("Image built successfully:", result.tag);
-&#125;
+}
 ```
 
 ### 4. Persistent Container Management
 
 ```typescript
-import &#123; DockerSandboxProvider &#125; from "@tokenring-ai/docker";
+import { DockerSandboxProvider } from "@tokenring-ai/docker";
 
 const provider = new DockerSandboxProvider(dockerService);
 
 // Create a persistent container
-const &#123; containerId &#125; = await provider.createContainer(&#123;
+const { containerId } = await provider.createContainer({
   image: "node:18",
-  environment: &#123; NODE_ENV: "production" &#125;,
+  environment: { NODE_ENV: "production" },
   workingDir: "/app"
-&#125;);
+});
 
 // Execute multiple commands
 const commands = [
@@ -228,10 +228,10 @@ const commands = [
   "bun test"
 ];
 
-for (const cmd of commands) &#123;
+for (const cmd of commands) {
   const result = await provider.executeCommand(containerId, cmd);
-  console.log(`$&#123;cmd&#125;:`, result.stdout);
-&#125;
+  console.log(`${cmd}:`, result.stdout);
+}
 
 // Clean up
 await provider.stopContainer(containerId);
@@ -243,15 +243,15 @@ await provider.removeContainer(containerId);
 ### DockerService Configuration
 
 ```typescript
-const DockerConfigSchema = z.object(&#123;
+const DockerConfigSchema = z.object({
   host: z.string().optional(),
-  tls: z.object(&#123;
+  tls: z.object({
     verify: z.boolean().default(false),
     caCert: z.string().optional(),
     cert: z.string().optional(),
     key: z.string().optional(),
-  &#125;).optional(),
-&#125;);
+  }).optional(),
+});
 ```
 
 **Configuration Options**:
@@ -265,10 +265,10 @@ const DockerConfigSchema = z.object(&#123;
 ### Plugin Configuration
 
 ```typescript
-const packageConfigSchema = z.object(&#123;
+const packageConfigSchema = z.object({
   docker: DockerConfigSchema.optional(),
   sandbox: SandboxServiceConfigSchema.optional(),
-&#125;);
+});
 ```
 
 ### Tool-Specific Configuration
@@ -284,29 +284,29 @@ const packageConfigSchema = z.object(&#123;
 
 ```typescript
 // Main service and provider
-export &#123; default as DockerService &#125; from "./DockerService.ts";
-export &#123; default as DockerSandboxProvider &#125; from "./DockerSandboxProvider.ts";
+export { default as DockerService } from "./DockerService.ts";
+export { default as DockerSandboxProvider } from "./DockerSandboxProvider.ts";
 
 // Configuration schema
-export &#123; DockerConfigSchema &#125; from "./schema.ts";
+export { DockerConfigSchema } from "./schema.ts";
 
 // Currently exported tools
 export default from "./tools.ts";
 
 // Types
-export &#123; DockerCommandResult &#125; from "./types.ts";
+export { DockerCommandResult } from "./types.ts";
 ```
 
 ### DockerCommandResult Interface
 
 ```typescript
-interface DockerCommandResult &#123;
+interface DockerCommandResult {
   ok?: boolean;
   exitCode?: number;
   stdout?: string;
   stderr?: string;
   error?: string;
-&#125;
+}
 ```
 
 ### Tool Interface
@@ -314,12 +314,12 @@ interface DockerCommandResult &#123;
 All tools follow this pattern:
 
 ```typescript
-interface TokenRingToolDefinition&lt;T = z.ZodType&gt; &#123;
+interface TokenRingToolDefinition<T = z.ZodType> {
   name: string;                    // Tool name (e.g., "docker_dockerRun")
   description: string;            // Tool description
   inputSchema: T;                 // Zod schema for input validation
-  execute: (args: any, agent: Agent) =&gt; Promise&lt;DockerCommandResult&gt;;
-&#125;
+  execute: (args: any, agent: Agent) => Promise<DockerCommandResult>;
+}
 ```
 
 ## Plugin Integration
@@ -328,74 +328,74 @@ The package automatically integrates with Token Ring applications:
 
 ```typescript
 // In plugin.ts
-import &#123; TokenRingPlugin &#125; from "@tokenring-ai/app";
-import &#123; ChatService &#125; from "@tokenring-ai/chat";
-import &#123; SandboxService &#125; from "@tokenring-ai/sandbox";
-import &#123; SandboxServiceConfigSchema &#125; from "@tokenring-ai/sandbox/schema";
-import &#123; z &#125; from "zod";
+import { TokenRingPlugin } from "@tokenring-ai/app";
+import { ChatService } from "@tokenring-ai/chat";
+import { SandboxService } from "@tokenring-ai/sandbox";
+import { SandboxServiceConfigSchema } from "@tokenring-ai/sandbox/schema";
+import { z } from "zod";
 import DockerSandboxProvider from "./DockerSandboxProvider.ts";
 import DockerService from "./DockerService.ts";
-import packageJSON from './package.json' with &#123;type: 'json'&#125;;
-import &#123; DockerConfigSchema &#125; from "./schema.ts";
+import packageJSON from './package.json' with {type: 'json'};
+import { DockerConfigSchema } from "./schema.ts";
 import tools from "./tools.ts";
 
-const packageConfigSchema = z.object(&#123;
+const packageConfigSchema = z.object({
   docker: DockerConfigSchema.optional(),
   sandbox: SandboxServiceConfigSchema.optional(),
-&#125;);
+});
 
-export default &#123;
+export default {
   name: packageJSON.name,
   version: packageJSON.version,
   description: packageJSON.description,
-  install(app, config) &#123;
+  install(app, config) {
     if (! config.docker) return;
-    app.waitForService(ChatService, chatService =&gt;
+    app.waitForService(ChatService, chatService =>
       chatService.addTools(packageJSON.name, tools)
     );
     const dockerService = new DockerService(config.docker);
     app.addServices(dockerService);
 
-    if (config.sandbox) &#123;
-      app.waitForService(SandboxService, sandboxService =&gt; &#123;
-        for (const name in config.sandbox!.providers) &#123;
+    if (config.sandbox) {
+      app.waitForService(SandboxService, sandboxService => {
+        for (const name in config.sandbox!.providers) {
           const provider = config.sandbox!.providers[name];
-          if (provider.type === "docker") &#123;
+          if (provider.type === "docker") {
             sandboxService.registerProvider(name, new DockerSandboxProvider(dockerService));
-          &#125;
-        &#125;
-      &#125;);
-    &#125;
-  &#125;,
+          }
+        }
+      });
+    }
+  },
   config: packageConfigSchema
-&#125; satisfies TokenRingPlugin&lt;typeof packageConfigSchema&gt;;
+} satisfies TokenRingPlugin<typeof packageConfigSchema>;
 ```
 
 ### Integration Example
 
 ```typescript
-import &#123; TokenRingApp &#125; from "@tokenring-ai/app";
+import { TokenRingApp } from "@tokenring-ai/app";
 import dockerPlugin from "@tokenring-ai/docker";
 
 const app = new TokenRingApp();
-app.use(dockerPlugin, &#123;
-  docker: &#123;
+app.use(dockerPlugin, {
+  docker: {
     host: "unix:///var/run/docker.sock",
-    tls: &#123;
+    tls: {
       verify: false,
       caCert: "/path/to/ca.crt",
       cert: "/path/to/client.crt",
       key: "/path/to/client.key",
-    &#125;,
-  &#125;,
-  sandbox: &#123;
-    providers: &#123;
-      myDocker: &#123;
+    },
+  },
+  sandbox: {
+    providers: {
+      myDocker: {
         type: "docker",
-      &#125;,
-    &#125;,
-  &#125;,
-&#125;);
+      },
+    },
+  },
+});
 ```
 
 ## Development and Testing

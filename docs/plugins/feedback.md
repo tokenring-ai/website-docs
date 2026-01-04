@@ -31,16 +31,16 @@ The Feedback plugin consists of three main tools for handling human feedback:
 
 **Input Schema** (Zod):
 ```typescript
-&#123;
+{
   question: string,           // Required: The question to ask
   choices?: string[],         // Optional: List of choices for selection
   response_type?: "text" | "single" | "multiple"  // Optional: Response type
-&#125;
+}
 ```
 
 **Response Types**:
-- `AskHumanTextResult`: `&#123; status: "question_asked_text", question, response_type, timestamp, message &#125;`
-- `AskHumanChoicesResult`: `&#123; status: "question_asked_choices", question, choices, response_type, timestamp, message &#125;`
+- `AskHumanTextResult`: `{ status: "question_asked_text", question, response_type, timestamp, message }`
+- `AskHumanChoicesResult`: `{ status: "question_asked_choices", question, choices, response_type, timestamp, message }`
 
 **Error Handling**: Throws exceptions for missing required parameters (e.g., empty question)
 
@@ -50,11 +50,11 @@ The Feedback plugin consists of three main tools for handling human feedback:
 
 **Input Schema** (Zod):
 ```typescript
-&#123;
+{
   filePath: string,          // Required: Target path for accepted content
   content: string,           // Required: File content to review
   contentType?: string       // Optional: MIME type (default: "text/plain")
-&#125;
+}
 ```
 
 **Supported Content Types**:
@@ -65,12 +65,12 @@ The Feedback plugin consists of three main tools for handling human feedback:
 
 **Response Format**:
 ```typescript
-&#123;
+{
   status: "accepted" | "rejected",
   comment?: string,          // User's comment if provided
   filePath?: string,         // Path where content was saved (if accepted)
   rejectedFilePath?: string  // Path where content was saved (if rejected)
-&#125;
+}
 ```
 
 **Implementation Details**:
@@ -86,18 +86,18 @@ The Feedback plugin consists of three main tools for handling human feedback:
 
 **Input Schema** (Zod):
 ```typescript
-&#123;
+{
   code: string,              // Required: JSX/TSX code to preview
   file?: string              // Optional: Target file path (auto-generated if not provided)
-&#125;
+}
 ```
 
 **Response Format**:
 ```typescript
-&#123;
+{
   status: "accept" | "reject",
   comment?: string           // User's optional comment
-&#125;
+}
 ```
 
 **Implementation Details**:
@@ -113,42 +113,42 @@ The Feedback plugin consists of three main tools for handling human feedback:
 
 ```typescript
 // Ask an open-ended question
-const result = await agent.executeTool('feedback_askHuman', &#123;
+const result = await agent.executeTool('feedback_askHuman', {
   question: "What improvements would you suggest for this feature?"
-&#125;);
+});
 
 // Review Markdown content
-const result = await agent.executeTool('feedback_getFileFeedback', &#123;
+const result = await agent.executeTool('feedback_getFileFeedback', {
   filePath: "docs/sample.md",
   content: "# Sample Markdown\nThis is **bold** text.",
   contentType: "text/markdown"
-&#125;);
+});
 
 // Preview React component
-const jsxCode = `\nimport React from 'react';\n\nexport default function MyComponent() &#123;\n  return (\n    &lt;div style=&#123;&#123; padding: '20px', border: '1px solid #ccc' &#125;&#125;\n      &lt;h1&gt;Hello, Feedback!&lt;/h1&gt;\n      &lt;p&gt;This component can be reviewed and accepted or rejected.&lt;/p&gt;\n    &lt;/div&gt;\n  );\n&#125;\n`;
+const jsxCode = `\nimport React from 'react';\n\nexport default function MyComponent() {\n  return (\n    <div style={{ padding: '20px', border: '1px solid #ccc' }}\n      <h1>Hello, Feedback!</h1>\n      <p>This component can be reviewed and accepted or rejected.</p>\n    </div>\n  );\n}\n`;
 
-const result = await agent.executeTool('feedback_reactFeedback', &#123;
+const result = await agent.executeTool('feedback_reactFeedback', {
   code: jsxCode,
   file: "src/components/MyComponent.tsx"
-&#125;);
+});
 ```
 
 ### Advanced Usage with Custom Error Handling
 
 ```typescript
-try &#123;
-  const feedbackResult = await agent.executeTool('feedback_askHuman', &#123;
+try {
+  const feedbackResult = await agent.executeTool('feedback_askHuman', {
     question: "Please confirm this design",
     choices: ["Yes", "No", "Maybe"],
     response_type: "single"
-  &#125;);
+  });
 
-  if (feedbackResult.status === "question_asked_choices") &#123;
+  if (feedbackResult.status === "question_asked_choices") {
     // Process the user's choice
-  &#125;
-&#125; catch (error) &#123;
+  }
+} catch (error) {
   agent.errorLine(`[feedback_askHuman] Error occurred:`, error);
-&#125;
+}
 ```
 
 ## Configuration
@@ -158,16 +158,16 @@ The Feedback plugin automatically registers with Token Ring applications. No add
 ### Plugin Registration
 
 ```typescript
-export default &#123;
+export default {
   name: "@tokenring-ai/feedback",
   version: "0.2.0",
   description: "Feedback package for Token Ring",
-  install(app: TokenRingApp) &#123;
-    app.waitForService(ChatService, chatService =&gt; 
+  install(app: TokenRingApp) {
+    app.waitForService(ChatService, chatService => 
       chatService.addTools(packageJSON.name, tools)
     );
-  &#125;,
-&#125; satisfies TokenRingPlugin;
+  },
+} satisfies TokenRingPlugin;
 ```
 
 ## Integration
@@ -199,25 +199,25 @@ All tools follow consistent error handling patterns:
 
 ```typescript
 // Parameter validation with Zod schemas
-if (!question) &#123;
+if (!question) {
   throw new Error(`[feedback_askHuman] Question is required.`);
-&#125;
+}
 
 // Proper error messages
-if (!filePath || !content) &#123;
+if (!filePath || !content) {
   throw new Error(
     `[feedback_getFileFeedback] filePath and content are required parameters.`
   );
-&#125;
+}
 
 // Agent integration with error propagation
-try &#123;
+try {
   const result = await tool.execute(params, agent);
   return result;
-&#125; catch (error) &#123;
+} catch (error) {
   agent.errorLine(`[tool-name] Operation failed:`, error);
   throw error;
-&#125;
+}
 ```
 
 ### State Management

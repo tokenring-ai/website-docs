@@ -1,4 +1,4 @@
-# JavaScript Plugin for TokenRing AI
+# JavaScript Plugin
 
 ## Overview
 
@@ -20,25 +20,25 @@ The JavaScript plugin provides comprehensive JavaScript/TypeScript development t
 The plugin registers tools with the TokenRing chat service during installation:
 
 ```typescript
-import &#123;TokenRingPlugin&#125; from "@tokenring-ai/app";
-import &#123;ChatService&#125; from "@tokenring-ai/chat";
-import &#123;z&#125; from "zod";
-import packageJSON from './package.json' with &#123;type: 'json'&#125;;
+import {TokenRingPlugin} from "@tokenring-ai/app";
+import {ChatService} from "@tokenring-ai/chat";
+import {z} from "zod";
+import packageJSON from './package.json' with {type: 'json'};
 import tools from "./tools.ts";
 
-const packageConfigSchema = z.object(&#123;&#125;);
+const packageConfigSchema = z.object({});
 
-export default &#123;
+export default {
   name: packageJSON.name,
   version: packageJSON.version,
   description: packageJSON.description,
-  install(app, config) &#123;
-    app.waitForService(ChatService, chatService =&gt;
+  install(app, config) {
+    app.waitForService(ChatService, chatService =>
       chatService.addTools(packageJSON.name, tools)
     );
-  &#125;,
+  },
   config: packageConfigSchema
-&#125; satisfies TokenRingPlugin&lt;typeof packageConfigSchema&gt;;```
+} satisfies TokenRingPlugin<typeof packageConfigSchema>;```
 
 ### Available Tools
 
@@ -49,7 +49,7 @@ export default &#123;
 **Parameters**:
 - `files` (string[]): Array of file paths to apply ESLint fixes to
 
-**Returns**: Array of `&#123; file: string; output?: string; error?: string &#125;` objects
+**Returns**: Array of `{ file: string; output?: string; error?: string }` objects
 
 **Functionality**:
 - Reads source files from the filesystem
@@ -96,7 +96,7 @@ export default &#123;
 - `format` ('esm' | 'commonjs', optional): Module format (default: 'esm')
 - `timeoutSeconds` (number, optional): Timeout in seconds (default: 30, min: 5, max: 300)
 
-**Returns**: `&#123; ok: boolean; exitCode?: number; stdout?: string; stderr?: string; format: string &#125;`
+**Returns**: `{ ok: boolean; exitCode?: number; stdout?: string; stderr?: string; format: string }`
 
 **Features**:
 - Creates temporary files for script execution
@@ -110,109 +110,109 @@ export default &#123;
 ### Tool: eslint (`javascript_eslint`)
 
 ```typescript
-interface EslintResult &#123;
+interface EslintResult {
   file: string;
   output?: string;
   error?: string;
-&#125;
+}
 
 async function eslint(
-  &#123; files &#125;: &#123; files: string[] &#125;,
+  { files }: { files: string[] },
   agent: Agent
-): Promise&lt;EslintResult[]&gt;;
+): Promise<EslintResult[]>;
 
 // Example usage
-const results = await agent.tools.javascript_eslint.execute(&#123;
+const results = await agent.tools.javascript_eslint.execute({
   files: ['src/main.ts', 'utils/helper.js']
-&#125;, agent);
+}, agent);
 
-results.forEach(result =&gt; &#123;
-  if (result.output) &#123;
-    console.log(`$&#123;result.file&#125;: $&#123;result.output&#125;`);
-  &#125; else if (result.error) &#123;
-    console.error(`$&#123;result.file&#125;: $&#123;result.error&#125;`);
-  &#125;
-&#125;);
+results.forEach(result => {
+  if (result.output) {
+    console.log(`${result.file}: ${result.output}`);
+  } else if (result.error) {
+    console.error(`${result.file}: ${result.error}`);
+  }
+});
 ```
 
 ### Tool: installPackages (`javascript_installPackages`)
 
 ```typescript
-interface InstallPackagesArgs &#123;
+interface InstallPackagesArgs {
   packageName: string;
   isDev?: boolean;
-&#125;
+}
 
 async function installPackages(
-  &#123; packageName, isDev &#125;: InstallPackagesArgs,
+  { packageName, isDev }: InstallPackagesArgs,
   agent: Agent
-): Promise&lt;ExecuteCommandResult&gt;;
+): Promise<ExecuteCommandResult>;
 
 // Example usage
-const result = await agent.tools.javascript_installPackages.execute(&#123;
+const result = await agent.tools.javascript_installPackages.execute({
   packageName: 'lodash',
   isDev: false
-&#125;, agent);
+}, agent);
 
-if (result.ok) &#123;
+if (result.ok) {
   console.log('Package installed successfully');
-&#125;
+}
 ```
 
 ### Tool: removePackages (`javascript_removePackages`)
 
 ```typescript
-interface RemovePackagesArgs &#123;
+interface RemovePackagesArgs {
   packageName: string;
-&#125;
+}
 
 async function removePackages(
-  &#123; packageName &#125;: RemovePackagesArgs,
+  { packageName }: RemovePackagesArgs,
   agent: Agent
-): Promise&lt;ExecuteCommandResult&gt;;
+): Promise<ExecuteCommandResult>;
 
 // Example usage
-const result = await agent.tools.javascript_removePackages.execute(&#123;
+const result = await agent.tools.javascript_removePackages.execute({
   packageName: 'lodash'
-&#125;, agent);
+}, agent);
 
-if (result.ok) &#123;
+if (result.ok) {
   console.log('Package removed successfully');
-&#125;
+}
 ```
 
 ### Tool: runJavaScriptScript (`javascript_runJavaScriptScript`)
 
 ```typescript
-interface RunJavaScriptResult &#123;
+interface RunJavaScriptResult {
   ok: boolean;
   exitCode?: number;
   stdout?: string;
   stderr?: string;
   format: 'esm' | 'commonjs';
-&#125;
+}
 
 async function runJavaScriptScript(
-  &#123; script, format, timeoutSeconds &#125;: &#123;
+  { script, format, timeoutSeconds }: {
     script: string;
     format?: 'esm' | 'commonjs';
     timeoutSeconds?: number;
-  &#125;,
+  },
   agent: Agent
-): Promise&lt;RunJavaScriptResult&gt;;
+): Promise<RunJavaScriptResult>;
 
 // Example usage
-const result = await agent.tools.javascript_runJavaScriptScript.execute(&#123;
+const result = await agent.tools.javascript_runJavaScriptScript.execute({
   script: 'console.log("Hello from JavaScript!"); console.log(2 + 2);',
   format: 'esm',
   timeoutSeconds: 10
-&#125;, agent);
+}, agent);
 
 console.log('Exit code:', result.exitCode);
 console.log('Output:', result.stdout);
-if (result.stderr) &#123;
+if (result.stderr) {
   console.error('Error:', result.stderr);
-&#125;
+}
 ```
 
 ## Usage Examples
@@ -221,68 +221,68 @@ if (result.stderr) &#123;
 
 ```typescript
 // Run a simple JavaScript script
-const result = await agent.tools.javascript_runJavaScriptScript.execute(&#123;
+const result = await agent.tools.javascript_runJavaScriptScript.execute({
   script: 'console.log("Hello, World!"); console.log(2 * 2);',
   format: 'esm',
   timeoutSeconds: 5
-&#125;, agent);
+}, agent);
 
-if (result.ok) &#123;
+if (result.ok) {
   console.log('Script executed successfully');
   console.log('Output:', result.stdout);
-&#125;
+}
 ```
 
 ### Package Installation
 
 ```typescript
 // Install a production package
-const installResult = await agent.tools.javascript_installPackages.execute(&#123;
+const installResult = await agent.tools.javascript_installPackages.execute({
   packageName: 'lodash',
   isDev: false
-&#125;, agent);
+}, agent);
 
-if (installResult.ok) &#123;
+if (installResult.ok) {
   console.log('Package installed successfully');
   console.log('Output:', installResult.stdout);
-&#125;
+}
 
 // Install a dev dependency
-const devInstallResult = await agent.tools.javascript_installPackages.execute(&#123;
+const devInstallResult = await agent.tools.javascript_installPackages.execute({
   packageName: 'typescript',
   isDev: true
-&#125;, agent);
+}, agent);
 ```
 
 ### Package Removal
 
 ```typescript
 // Remove a package
-const removeResult = await agent.tools.javascript_removePackages.execute(&#123;
+const removeResult = await agent.tools.javascript_removePackages.execute({
   packageName: 'lodash'
-&#125;, agent);
+}, agent);
 
-if (removeResult.ok) &#123;
+if (removeResult.ok) {
   console.log('Package removed successfully');
   console.log('Output:', removeResult.stdout);
-&#125;
+}
 ```
 
 ### Code Linting and Fixing
 
 ```typescript
 // Run ESLint with auto-fix on multiple files
-const lintResults = await agent.tools.javascript_eslint.execute(&#123;
+const lintResults = await agent.tools.javascript_eslint.execute({
   files: ['src/main.ts', 'utils/helper.js', 'components/button.tsx']
-&#125;, agent);
+}, agent);
 
-lintResults.forEach(result =&gt; &#123;
-  if (result.output) &#123;
-    console.log(`$&#123;result.file&#125;: $&#123;result.output&#125;`);
-  &#125; else if (result.error) &#123;
-    console.error(`$&#123;result.file&#125;: $&#123;result.error&#125;`);
-  &#125;
-&#125;);
+lintResults.forEach(result => {
+  if (result.output) {
+    console.log(`${result.file}: ${result.output}`);
+  } else if (result.error) {
+    console.error(`${result.file}: ${result.error}`);
+  }
+});
 ```
 
 ## Configuration
@@ -312,10 +312,10 @@ The plugin integrates with TokenRing agents by registering tools that can be cal
 const javascriptTools = agent.tools;
 
 // Execute any of the available tools
-await javascriptTools.javascript_eslint.execute(&#123; files: ['file.ts'] &#125;, agent);
-await javascriptTools.javascript_installPackages.execute(&#123; packageName: 'lodash' &#125;, agent);
-await javascriptTools.javascript_removePackages.execute(&#123; packageName: 'lodash' &#125;, agent);
-await javascriptTools.javascript_runJavaScriptScript.execute(&#123; script: 'console.log("test")' &#125;, agent);
+await javascriptTools.javascript_eslint.execute({ files: ['file.ts'] }, agent);
+await javascriptTools.javascript_installPackages.execute({ packageName: 'lodash' }, agent);
+await javascriptTools.javascript_removePackages.execute({ packageName: 'lodash' }, agent);
+await javascriptTools.javascript_runJavaScriptScript.execute({ script: 'console.log("test")' }, agent);
 ```
 
 ### With Filesystem Service

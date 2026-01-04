@@ -38,12 +38,12 @@ The primary service class responsible for managing Discord bot interactions.
 Configuration schema for the Discord service, defined using Zod:
 
 ```typescript
-const DiscordServiceConfigSchema = z.object(&#123;
+const DiscordServiceConfigSchema = z.object({
   botToken: z.string().min(1, "Bot token is required"),
   channelId: z.string().optional(),
   authorizedUserIds: z.array(z.string()).optional(),
   defaultAgentType: z.string().optional()
-&#125;);
+});
 ```
 
 ### DiscordServiceConfig
@@ -51,12 +51,12 @@ const DiscordServiceConfigSchema = z.object(&#123;
 Type definition for the configuration:
 
 ```typescript
-type DiscordServiceConfig = &#123;
+type DiscordServiceConfig = {
   botToken: string;
   channelId?: string;
   authorizedUserIds?: string[];
   defaultAgentType?: string;
-&#125;;
+};
 ```
 
 ## Services and APIs
@@ -84,11 +84,11 @@ constructor(app: TokenRingApp, config: DiscordServiceConfig)
 
 | Method | Signature | Description |
 |--------|-----------|-------------|
-| `run` | `run(signal: AbortSignal): Promise&lt;void&gt;` | Starts the Discord bot and begins listening for messages. The service will automatically handle cleanup when the signal is aborted. |
-| `handleChatOutput` | `handleChatOutput(message: Message, content: string): Promise&lt;void&gt;` | Formats and sends chat messages to Discord, splitting long messages into chunks to respect Discord's character limits. |
-| `handleSystemOutput` | `handleSystemOutput(message: Message, messageText: string, level: string): Promise&lt;void&gt;` | Formats system messages (info, warning, error) with appropriate labels. |
+| `run` | `run(signal: AbortSignal): Promise<void>` | Starts the Discord bot and begins listening for messages. The service will automatically handle cleanup when the signal is aborted. |
+| `handleChatOutput` | `handleChatOutput(message: Message, content: string): Promise<void>` | Formats and sends chat messages to Discord, splitting long messages into chunks to respect Discord's character limits. |
+| `handleSystemOutput` | `handleSystemOutput(message: Message, messageText: string, level: string): Promise<void>` | Formats system messages (info, warning, error) with appropriate labels. |
 | `chunkText` | `chunkText(text: string, maxLength: number): string[]` | Splits text into chunks of specified maximum length. |
-| `getOrCreateAgentForUser` | `getOrCreateAgentForUser(userId: string): Promise&lt;Agent&gt;` | Gets or creates an agent for the specified user. |
+| `getOrCreateAgentForUser` | `getOrCreateAgentForUser(userId: string): Promise<Agent>` | Gets or creates an agent for the specified user. |
 
 #### Properties
 
@@ -103,17 +103,17 @@ constructor(app: TokenRingApp, config: DiscordServiceConfig)
 The plugin provides a TokenRingPlugin that:
 
 ```typescript
-export default &#123;
+export default {
   name: packageJSON.name,
   version: packageJSON.version,
   description: packageJSON.description,
-  install(app, config) &#123;
-    if (config.discord) &#123;
+  install(app, config) {
+    if (config.discord) {
       app.addServices(new DiscordService(app, config.discord));
-    &#125;
-  &#125;,
+    }
+  },
   config: packageConfigSchema
-&#125; satisfies TokenRingPlugin&lt;typeof packageConfigSchema&gt;;
+} satisfies TokenRingPlugin<typeof packageConfigSchema>;
 ```
 
 ## Commands and Tools
@@ -163,33 +163,33 @@ The Discord service can be configured via the TokenRing app configuration or man
 ```typescript
 import TokenRingApp from "@tokenring-ai/app";
 
-const app = new TokenRingApp(&#123;
+const app = new TokenRingApp({
   plugins: ["@tokenring-ai/discord"]
-&#125;);
+});
 
-app.config(&#123;
-  discord: &#123;
+app.config({
+  discord: {
     botToken: process.env.DISCORD_BOT_TOKEN!,
     channelId: process.env.DISCORD_CHANNEL_ID,
     authorizedUserIds: ['123456789012345678'],
     defaultAgentType: 'teamLeader'
-  &#125;
-&#125;);
+  }
+});
 ```
 
 #### Manual Usage
 
 ```typescript
 import TokenRingApp from "@tokenring-ai/app";
-import &#123; DiscordService &#125; from "@tokenring-ai/discord";
+import { DiscordService } from "@tokenring-ai/discord";
 
 const app = new TokenRingApp();
-const discordService = new DiscordService(app, &#123;
+const discordService = new DiscordService(app, {
   botToken: process.env.DISCORD_BOT_TOKEN!,
   channelId: process.env.DISCORD_CHANNEL_ID,
   authorizedUserIds: ['123456789012345678'],
   defaultAgentType: 'teamLeader'
-&#125;);
+});
 
 app.addServices(discordService);
 await app.start();
@@ -232,22 +232,22 @@ DISCORD_DEFAULT_AGENT_TYPE=teamLeader
 ```typescript
 import TokenRingApp from "@tokenring-ai/app";
 
-const app = new TokenRingApp(&#123;
+const app = new TokenRingApp({
   name: "My Discord Bot",
   plugins: [
     "@tokenring-ai/discord",
     // other plugins...
   ]
-&#125;);
+});
 
-app.config(&#123;
-  discord: &#123;
+app.config({
+  discord: {
     botToken: process.env.DISCORD_BOT_TOKEN!,
     channelId: process.env.DISCORD_CHANNEL_ID,
     authorizedUserIds: ['123456789012345678'],
     defaultAgentType: 'teamLeader'
-  &#125;
-&#125;);
+  }
+});
 
 await app.start();
 ```
@@ -330,16 +330,16 @@ bun test
 The plugin uses Vitest with the following configuration:
 
 ```typescript
-import &#123;defineConfig&#125; from "vitest/config";
+import {defineConfig} from "vitest/config";
 
-export default defineConfig(&#123;
-  test: &#123;
+export default defineConfig({
+  test: {
     include: ["**/*.test.ts"],
     environment: "node",
     globals: true,
     isolate: true,
-  &#125;,
-&#125;);
+  },
+});
 ```
 
 ### Test Coverage
@@ -375,9 +375,9 @@ pkg/discord/
 ### Exports
 
 ```typescript
-export &#123;default as DiscordService&#125; from "./DiscordService.ts";
-export type &#123; DiscordServiceConfig &#125; from "./DiscordService.ts";
-export &#123; DiscordServiceConfigSchema &#125; from "./DiscordService.ts";
+export {default as DiscordService} from "./DiscordService.ts";
+export type { DiscordServiceConfig } from "./DiscordService.ts";
+export { DiscordServiceConfigSchema } from "./DiscordService.ts";
 ```
 
 ## Best Practices

@@ -29,19 +29,19 @@ Key capabilities include:
 The main service that handles research requests:
 
 ```typescript
-export default class ResearchService implements TokenRingService &#123;
+export default class ResearchService implements TokenRingService {
   name = "ResearchService";
   description = "Provides Research functionality";
   researchModel: string;
 
-  constructor(&#123; researchModel &#125;: ResearchServiceConfig) &#123;
+  constructor({ researchModel }: ResearchServiceConfig) {
     this.researchModel = researchModel;
-  &#125;
+  }
 
-  async runResearch(topic: string, prompt: string, agent: Agent): Promise&lt;string&gt; &#123;
+  async runResearch(topic: string, prompt: string, agent: Agent): Promise<string> {
     // Implementation details...
-  &#125;
-&#125;
+  }
+}
 ```
 
 **Methods:**
@@ -52,24 +52,24 @@ export default class ResearchService implements TokenRingService &#123;
 The research tool is automatically registered with chat services and provides:
 
 ```typescript
-interface ResearchArgs &#123;
+interface ResearchArgs {
   topic: string;      // The main topic or subject to research
   prompt: string;     // Detailed research questions to investigate
-&#125;
+}
 
-export interface ResearchSuccessResult &#123;
+export interface ResearchSuccessResult {
   status: "completed";
   topic: string;
   research: string;
   message: string;
-&#125;
+}
 
-export interface ResearchErrorResult &#123;
+export interface ResearchErrorResult {
   status: "error";
   topic: string;
   error: string;
   message: string;
-&#125;
+}
 
 export type ResearchResult = ResearchSuccessResult | ResearchErrorResult;
 ```
@@ -79,7 +79,7 @@ export type ResearchResult = ResearchSuccessResult | ResearchErrorResult;
 ### ResearchService.runResearch()
 
 ```typescript
-async runResearch(topic: string, prompt: string, agent: Agent): Promise&lt;string&gt;
+async runResearch(topic: string, prompt: string, agent: Agent): Promise<string>
 ```
 
 **Parameters:**
@@ -88,7 +88,7 @@ async runResearch(topic: string, prompt: string, agent: Agent): Promise&lt;strin
 - `agent` (Agent): The current agent instance for service access
 
 **Returns:**
-- `Promise&lt;string&gt;`: Generated research content
+- `Promise<string>`: Generated research content
 
 **Process:**
 1. Retrieves AI client from model registry using configured research model
@@ -102,17 +102,17 @@ async runResearch(topic: string, prompt: string, agent: Agent): Promise&lt;strin
 
 ```typescript
 async function execute(
-  &#123;topic, prompt&#125;: z.infer&lt;typeof inputSchema&gt;,
+  {topic, prompt}: z.infer<typeof inputSchema>,
   agent: Agent
-): Promise&lt;ResearchResult&gt;
+): Promise<ResearchResult>
 ```
 
 **Input Schema:**
 ```typescript
-const inputSchema = z.object(&#123;
+const inputSchema = z.object({
   topic: z.string().describe("The main topic or subject to research"),
   prompt: z.string().describe("The detailed research prompt or specific questions to investigate about the topic")
-&#125;);
+});
 ```
 
 **Error Handling:**
@@ -127,19 +127,19 @@ The research plugin requires configuration through the Token Ring application's 
 
 ```typescript
 // Example configuration
-&#123;
-  research: &#123;
+{
+  research: {
     researchModel: "gemini-2.5-flash-web-search" // Required: AI model name
-  &#125;
-&#125;
+  }
+}
 ```
 
 ### Configuration Schema
 
 ```typescript
-const ResearchServiceConfigSchema = z.object(&#123;
+const ResearchServiceConfigSchema = z.object({
   researchModel: z.string(), // Required: Name of the AI model for research
-&#125;);
+});
 ```
 
 **Required Configuration:**
@@ -151,17 +151,17 @@ const ResearchServiceConfigSchema = z.object(&#123;
 
 ```typescript
 // Using the research tool through chat service
-const result = await chatService.executeTool("research", &#123;
+const result = await chatService.executeTool("research", {
   topic: "Large Language Models",
   prompt: "Compare safety techniques and cite recent sources"
-&#125;);
+});
 
 // Result handling
-if (result.status === "completed") &#123;
+if (result.status === "completed") {
   console.log(result.research);
-&#125; else &#123;
+} else {
   console.error(result.error);
-&#125;
+}
 ```
 
 ### Direct Service Usage
@@ -169,9 +169,9 @@ if (result.status === "completed") &#123;
 ```typescript
 import ResearchService from "@tokenring-ai/research";
 
-const researchService = new ResearchService(&#123;
+const researchService = new ResearchService({
   researchModel: "gemini-2.5-flash-web-search"
-&#125;);
+});
 
 const agent = /* your agent instance */;
 const research = await researchService.runResearch(
@@ -189,7 +189,7 @@ When `@tokenring-ai/scripting` is available, the research package registers a gl
 
 ```javascript
 // Global function signature
-research(topic: string, prompt: string): Promise&lt;string&gt;
+research(topic: string, prompt: string): Promise<string>
 
 // Usage in scripting context
 const research = await research(
@@ -212,21 +212,21 @@ const research = await researchService.runResearch(topic, prompt, agent);
 
 ```typescript
 // Automatic tool registration
-chatService.addTools("@tokenring-ai/research", &#123; research &#125;);
+chatService.addTools("@tokenring-ai/research", { research });
 
 // Tool execution through chat
-const result = await chatService.executeTool("research", &#123; topic, prompt &#125;);
+const result = await chatService.executeTool("research", { topic, prompt });
 ```
 
 ### Scripting Integration
 
 ```typescript
 // Global function registration (when scripting available)
-scriptingService.registerFunction("research", &#123;
+scriptingService.registerFunction("research", {
   type: 'native',
   params: ["topic", "prompt"],
   async execute(/* ... */)
-&#125;);
+});
 ```
 
 ### Plugin Integration
@@ -234,43 +234,43 @@ scriptingService.registerFunction("research", &#123;
 The research package automatically integrates with Token Ring applications through its plugin:
 
 ```typescript
-import &#123; TokenRingPlugin &#125; from "@tokenring-ai/app";
-import &#123; ChatService &#125; from "@tokenring-ai/chat";
-import &#123; ScriptingService &#125; from "@tokenring-ai/scripting";
-import &#123; ScriptingThis &#125; from "@tokenring-ai/scripting/ScriptingService";
-import &#123; z &#125; from "zod";
-import packageJSON from './package.json' with &#123; type: 'json' &#125;;
-import ResearchService, &#123; ResearchServiceConfigSchema &#125; from "./ResearchService.ts";
+import { TokenRingPlugin } from "@tokenring-ai/app";
+import { ChatService } from "@tokenring-ai/chat";
+import { ScriptingService } from "@tokenring-ai/scripting";
+import { ScriptingThis } from "@tokenring-ai/scripting/ScriptingService";
+import { z } from "zod";
+import packageJSON from './package.json' with { type: 'json' };
+import ResearchService, { ResearchServiceConfigSchema } from "./ResearchService.ts";
 import tools from "./tools.ts";
 
-const packageConfigSchema = z.object(&#123;
+const packageConfigSchema = z.object({
   research: ResearchServiceConfigSchema.optional()
-&#125;);
+});
 
-export default &#123;
+export default {
   name: packageJSON.name,
   version: packageJSON.version,
   description: packageJSON.description,
-  install(app, config) &#123;
-    app.services.waitForItemByType(ScriptingService, (scriptingService: ScriptingService) =&gt; &#123;
-      scriptingService.registerFunction("research", &#123;
+  install(app, config) {
+    app.services.waitForItemByType(ScriptingService, (scriptingService: ScriptingService) => {
+      scriptingService.registerFunction("research", {
           type: 'native',
           params: ["topic", "prompt"],
-          async execute(this: ScriptingThis, topic: string, prompt: string): Promise&lt;string&gt; &#123;
+          async execute(this: ScriptingThis, topic: string, prompt: string): Promise<string> {
             return await this.agent.requireServiceByType(ResearchService).runResearch(topic, prompt, this.agent);
-          &#125;
-        &#125;
+          }
+        }
       );
-    &#125;);
-    app.waitForService(ChatService, chatService =&gt;
+    });
+    app.waitForService(ChatService, chatService =>
       chatService.addTools(packageJSON.name, tools)
     );
-    if (config.research) &#123;
+    if (config.research) {
       app.addServices(new ResearchService(config.research));
-    &#125;
-  &#125;,
+    }
+  },
   config: packageConfigSchema
-&#125; satisfies TokenRingPlugin&lt;typeof packageConfigSchema&gt;;
+} satisfies TokenRingPlugin<typeof packageConfigSchema>;
 ```
 
 ## Service Dependencies
@@ -342,4 +342,4 @@ bun run test:coverage
 
 ## License
 
-MIT License - See LICENSE file for details.
+MIT License - see [LICENSE](https://github.com/tokenring-ai/monorepo/blob/main/LICENSE) for details.

@@ -22,11 +22,11 @@ The primary service class responsible for handling all API communications with C
 
 **Configuration Schema:**
 ```typescript
-const CloudQuoteServiceOptionsSchema = z.object(&#123;
+const CloudQuoteServiceOptionsSchema = z.object({
   apiKey: z.string(),
-&#125;);
+});
 
-export type CloudQuoteServiceOptions = z.infer&lt;typeof CloudQuoteServiceOptionsSchema&gt;;
+export type CloudQuoteServiceOptions = z.infer<typeof CloudQuoteServiceOptionsSchema>;
 ```
 
 Only the `apiKey` is required for configuration. This is passed when initializing the service.
@@ -77,7 +77,7 @@ Retrieves real-time stock quotes for given symbols.
 
 - **Usage:**
 ```typescript
-const quotes = await getQuote(&#123; symbols: ["AAPL", "GOOGL", "MSFT"] &#125;);
+const quotes = await getQuote({ symbols: ["AAPL", "GOOGL", "MSFT"] });
 ```
 
 ### getLeaders
@@ -96,10 +96,10 @@ Fetches market leaders data (most active, gainers, losers).
 - **Usage:**
 ```typescript
 // Get most active stocks
-const active = await getLeaders(&#123; list: "MOSTACTIVE", limit: 25 &#125;);
+const active = await getLeaders({ list: "MOSTACTIVE", limit: 25 });
 
 // Get ETF percentage gainers
-const gainers = await getLeaders(&#123; list: "PERCENTGAINERS", type: "ETF", limit: 10 &#125;);
+const gainers = await getLeaders({ list: "PERCENTGAINERS", type: "ETF", limit: 10 });
 ```
 
 ### getPriceHistory
@@ -115,11 +115,11 @@ Fetches historical daily price data for a symbol.
 
 - **Usage:**
 ```typescript
-const history = await getPriceHistory(&#123;
+const history = await getPriceHistory({
   symbol: "AAPL",
   from: "2023-01-01",
   to: "2023-12-31"
-&#125;);
+});
 ```
 
 ### getPriceTicks
@@ -133,7 +133,7 @@ Fetches intraday price ticks (time, price, volume) for a symbol.
 
 - **Usage:**
 ```typescript
-const ticks = await getPriceTicks(&#123; symbol: "GOOGL" &#125;);
+const ticks = await getPriceTicks({ symbol: "GOOGL" });
 ```
 
 ### getHeadlinesBySecurity
@@ -151,11 +151,11 @@ Retrieves news headlines for ticker symbols.
 
 - **Usage:**
 ```typescript
-const headlines = await getHeadlinesBySecurity(&#123;
+const headlines = await getHeadlinesBySecurity({
   symbols: "AAPL,GOOGL",
   count: 20,
   minDate: "2023-01-01T00:00:00Z"
-&#125;);
+});
 ```
 
 ## Configuration
@@ -165,11 +165,11 @@ const headlines = await getHeadlinesBySecurity(&#123;
 The plugin requires an API key to access CloudQuote services. Configure it in your application:
 
 ```typescript
-const config = &#123;
-  cloudquote: &#123;
+const config = {
+  cloudquote: {
     apiKey: "your-cloudquote-api-key-here"
-  &#125;
-&#125;;
+  }
+};
 ```
 
 ### Environment Variables
@@ -196,9 +196,9 @@ app.use(cloudquotePlugin);
 Tools are automatically registered with the ChatService for chat command integration:
 
 ```
-&gt; /getQuote AAPL
-&gt; /getLeaders MOSTACTIVE
-&gt; /getHeadlinesBySecurity GOOGL
+> /getQuote AAPL
+> /getLeaders MOSTACTIVE
+> /getHeadlinesBySecurity GOOGL
 ```
 
 ### Error Handling
@@ -206,15 +206,15 @@ Tools are automatically registered with the ChatService for chat command integra
 The plugin throws `CloudQuoteError` for API-related issues:
 
 ```typescript
-try &#123;
-  const result = await getQuote(&#123; symbols: ["AAPL"] &#125;);
-&#125; catch (error) &#123;
-  if (error instanceof CloudQuoteError) &#123;
-    console.error(`CloudQuote Error: $&#123;error.message&#125;`);
-  &#125; else &#123;
-    console.error(`General error: $&#123;error.message&#125;`);
-  &#125;
-&#125;
+try {
+  const result = await getQuote({ symbols: ["AAPL"] });
+} catch (error) {
+  if (error instanceof CloudQuoteError) {
+    console.error(`CloudQuote Error: ${error.message}`);
+  } else {
+    console.error(`General error: ${error.message}`);
+  }
+}
 ```
 
 ## Monitoring and Debugging

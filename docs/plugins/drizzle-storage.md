@@ -23,14 +23,14 @@ The plugin integrates with Token Ring via the `install` function, which register
 
 ```javascript
 // .tokenring/coder-config.mjs
-export default &#123;
-  checkpoint: &#123;
-    provider: &#123;
+export default {
+  checkpoint: {
+    provider: {
       type: "postgres",
       connectionString: process.env.DATABASE_URL
-    &#125;
-  &#125;
-&#125;;
+    }
+  }
+};
 ```
 
 ### Configuration Schema
@@ -38,37 +38,37 @@ export default &#123;
 The package uses Zod schemas for configuration validation:
 
 ```typescript
-const packageConfigSchema = z.object(&#123;
+const packageConfigSchema = z.object({
   checkpoint: CheckpointConfigSchema.optional(),
-&#125;)
+})
 ```
 
 #### SQLite Configuration
 
 ```typescript
-const sqliteStorageConfigSchema = z.object(&#123;
+const sqliteStorageConfigSchema = z.object({
   type: z.literal("sqlite"),
   databasePath: z.string(),
   migrationsFolder: z.string().optional(),
-&#125;);
+});
 ```
 
 #### MySQL Configuration
 
 ```typescript
-const mysqlStorageConfigSchema = z.object(&#123;
+const mysqlStorageConfigSchema = z.object({
   type: z.literal("mysql"),
   connectionString: z.string(),
-&#125;);
+});
 ```
 
 #### PostgreSQL Configuration
 
 ```typescript
-const postgresStorageConfigSchema = z.object(&#123;
+const postgresStorageConfigSchema = z.object({
   type: z.literal("postgres"),
   connectionString: z.string(),
-&#125;);
+});
 ```
 
 ## Core Components
@@ -87,21 +87,21 @@ createPostgresStorage(config: PostgresConfig): AgentCheckpointProvider
 
 **Key Methods:**
 
-- `start(): Promise&lt;void&gt;`
+- `start(): Promise<void>`
   - Initializes database connection and creates tables if they don't exist
   - Must be called before using other storage methods
 
-- `storeCheckpoint(checkpoint: NamedAgentCheckpoint): Promise&lt;string&gt;`
+- `storeCheckpoint(checkpoint: NamedAgentCheckpoint): Promise<string>`
   - Stores a new checkpoint
-  - Parameters: `&#123; agentId, name, state, config?, createdAt &#125;`
+  - Parameters: `{ agentId, name, state, config?, createdAt }`
   - Returns: ID of stored checkpoint
 
-- `retrieveCheckpoint(id: string): Promise&lt;StoredAgentCheckpoint | null&gt;`
+- `retrieveCheckpoint(id: string): Promise<StoredAgentCheckpoint | null>`
   - Retrieves a checkpoint by ID
   - Parses JSON state from database
   - Returns checkpoint with parsed state, or null if not found
 
-- `listCheckpoints(): Promise&lt;AgentCheckpointListItem[]&gt;`
+- `listCheckpoints(): Promise<AgentCheckpointListItem[]>`
   - Lists all checkpoints ordered by creation time (descending)
   - Returns array with ID, name, agentId, createdAt (excludes state)
 
@@ -121,46 +121,46 @@ All databases use the same logical schema stored in the respective subdirectorie
 #### SQLite Schema (`sqlite/schema.ts`)
 
 ```typescript
-import &#123;integer, sqliteTable, text&#125; from "drizzle-orm/sqlite-core";
+import {integer, sqliteTable, text} from "drizzle-orm/sqlite-core";
 
-export const agentState = sqliteTable("AgentState", &#123;
-  id: integer("id").primaryKey(&#123;autoIncrement: true&#125;),
+export const agentState = sqliteTable("AgentState", {
+  id: integer("id").primaryKey({autoIncrement: true}),
   agentId: text("agentId").notNull(),
   name: text("name").notNull(),
   config: text("config").notNull(),
   state: text("state").notNull(),
   createdAt: integer("createdAt").notNull(),
-&#125;);
+});
 ```
 
 #### MySQL Schema (`mysql/schema.ts`)
 
 ```typescript
-import &#123;bigint, mysqlTable, text as mysqlText&#125; from "drizzle-orm/mysql-core";
+import {bigint, mysqlTable, text as mysqlText} from "drizzle-orm/mysql-core";
 
-export const agentState = mysqlTable("AgentState", &#123;
-  id: bigint("id", &#123;mode: "number"&#125;).primaryKey().autoincrement(),
+export const agentState = mysqlTable("AgentState", {
+  id: bigint("id", {mode: "number"}).primaryKey().autoincrement(),
   agentId: mysqlText("agentId").notNull(),
   name: mysqlText("name").notNull(),
   config: mysqlText("config").notNull(),
   state: mysqlText("state").notNull(),
-  createdAt: bigint("createdAt", &#123;mode: "number"&#125;).notNull(),
-&#125;);
+  createdAt: bigint("createdAt", {mode: "number"}).notNull(),
+});
 ```
 
 #### PostgreSQL Schema (`postgres/schema.ts`)
 
 ```typescript
-import &#123;bigint as pgBigint, bigserial, pgTable, text as pgText&#125; from "drizzle-orm/pg-core";
+import {bigint as pgBigint, bigserial, pgTable, text as pgText} from "drizzle-orm/pg-core";
 
-export const agentState = pgTable("AgentState", &#123;
-  id: bigserial("id", &#123;mode: "number"&#125;).primaryKey(),
+export const agentState = pgTable("AgentState", {
+  id: bigserial("id", {mode: "number"}).primaryKey(),
   agentId: pgText("agentId").notNull(),
   name: pgText("name").notNull(),
   config: pgText("config").notNull(),
   state: pgText("state").notNull(),
-  createdAt: pgBigint("createdAt", &#123;mode: "number"&#125;).notNull(),
-&#125;);
+  createdAt: pgBigint("createdAt", {mode: "number"}).notNull(),
+});
 ```
 
 ## Usage Examples
@@ -168,22 +168,22 @@ export const agentState = pgTable("AgentState", &#123;
 ### SQLite
 
 ```typescript
-import &#123; createSQLiteStorage &#125; from '@tokenring-ai/drizzle-storage/sqlite/createSQLiteStorage';
+import { createSQLiteStorage } from '@tokenring-ai/drizzle-storage/sqlite/createSQLiteStorage';
 
-const storage = createSQLiteStorage(&#123;
+const storage = createSQLiteStorage({
   type: "sqlite",
   databasePath: "./agent_state.db"
-&#125;);
+});
 
 // Initialize the storage
 await storage.start();
 
-const checkpoint = &#123;
+const checkpoint = {
   agentId: "agent-123",
   name: "session-1",
-  state: &#123; messages: ["Hello"], count: 1 &#125;,
+  state: { messages: ["Hello"], count: 1 },
   createdAt: Date.now()
-&#125;;
+};
 
 const id = await storage.storeCheckpoint(checkpoint);
 const retrieved = await storage.retrieveCheckpoint(id);
@@ -193,12 +193,12 @@ console.log('Retrieved state:', retrieved?.state);
 ### MySQL
 
 ```typescript
-import &#123; createMySQLStorage &#125; from '@tokenring-ai/drizzle-storage/mysql/createMySQLStorage';
+import { createMySQLStorage } from '@tokenring-ai/drizzle-storage/mysql/createMySQLStorage';
 
-const storage = createMySQLStorage(&#123;
+const storage = createMySQLStorage({
   type: "mysql",
   connectionString: "mysql://user:pass@localhost:3306/dbname"
-&#125;);
+});
 
 // Initialize the storage
 await storage.start();
@@ -209,12 +209,12 @@ const id = await storage.storeCheckpoint(checkpoint);
 ### PostgreSQL
 
 ```typescript
-import &#123; createPostgresStorage &#125; from '@tokenring-ai/drizzle-storage/postgres/createPostgresStorage';
+import { createPostgresStorage } from '@tokenring-ai/drizzle-storage/postgres/createPostgresStorage';
 
-const storage = createPostgresStorage(&#123;
+const storage = createPostgresStorage({
   type: "postgres",
   connectionString: "postgres://user:pass@localhost:5432/dbname"
-&#125;);
+});
 
 // Initialize the storage
 await storage.start();
@@ -225,36 +225,36 @@ const id = await storage.storeCheckpoint(checkpoint);
 ### Full Workflow
 
 ```typescript
-import &#123; createPostgresStorage &#125; from '@tokenring-ai/drizzle-storage/postgres/createPostgresStorage';
+import { createPostgresStorage } from '@tokenring-ai/drizzle-storage/postgres/createPostgresStorage';
 
-async function agentWorkflow() &#123;
-  const storage = createPostgresStorage(&#123;
+async function agentWorkflow() {
+  const storage = createPostgresStorage({
     type: "postgres",
     connectionString: process.env.DATABASE_URL
-  &#125;);
+  });
 
   // Initialize the storage
   await storage.start();
 
   // Store initial state
-  const id = await storage.storeCheckpoint(&#123;
+  const id = await storage.storeCheckpoint({
     agentId: 'my-agent',
     name: 'initial',
-    state: &#123; step: 0 &#125;,
+    state: { step: 0 },
     createdAt: Date.now()
-  &#125;);
+  });
 
   // Retrieve and update
   const current = await storage.retrieveCheckpoint(id);
-  if (current) &#123;
+  if (current) {
     current.state.step += 1;
-    await storage.storeCheckpoint(&#123; ...current, createdAt: Date.now() &#125;);
-  &#125;
+    await storage.storeCheckpoint({ ...current, createdAt: Date.now() });
+  }
 
   // List all checkpoints
   const checkpoints = await storage.listCheckpoints();
   console.log('All checkpoints:', checkpoints);
-&#125;
+}
 ```
 
 ## API Reference
@@ -263,57 +263,57 @@ async function agentWorkflow() &#123;
 
 ```typescript
 // SQLite
-createSQLiteStorage(config: &#123;
+createSQLiteStorage(config: {
   type: "sqlite",
   databasePath: string,
   migrationsFolder?: string
-&#125;): AgentCheckpointProvider
+}): AgentCheckpointProvider
 
 // MySQL
-createMySQLStorage(config: &#123;
+createMySQLStorage(config: {
   type: "mysql",
   connectionString: string
-&#125;): AgentCheckpointProvider
+}): AgentCheckpointProvider
 
 // PostgreSQL
-createPostgresStorage(config: &#123;
+createPostgresStorage(config: {
   type: "postgres",
   connectionString: string
-&#125;): AgentCheckpointProvider
+}): AgentCheckpointProvider
 ```
 
 ### AgentCheckpointProvider Interface
 
 ```typescript
-interface AgentCheckpointProvider &#123;
-  start(): Promise&lt;void&gt;;
-  storeCheckpoint(checkpoint: NamedAgentCheckpoint): Promise&lt;string&gt;;
-  retrieveCheckpoint(id: string): Promise&lt;StoredAgentCheckpoint | null&gt;;
-  listCheckpoints(): Promise&lt;AgentCheckpointListItem[]&gt;;
-&#125;
+interface AgentCheckpointProvider {
+  start(): Promise<void>;
+  storeCheckpoint(checkpoint: NamedAgentCheckpoint): Promise<string>;
+  retrieveCheckpoint(id: string): Promise<StoredAgentCheckpoint | null>;
+  listCheckpoints(): Promise<AgentCheckpointListItem[]>;
+}
 ```
 
 ### Types
 
 ```typescript
-interface NamedAgentCheckpoint &#123;
+interface NamedAgentCheckpoint {
   agentId: string;
   name: string;
   state: any;
   config?: any;
   createdAt: number;
-&#125;
+}
 
-interface StoredAgentCheckpoint extends NamedAgentCheckpoint &#123;
+interface StoredAgentCheckpoint extends NamedAgentCheckpoint {
   id: string;
-&#125;
+}
 
-interface AgentCheckpointListItem &#123;
+interface AgentCheckpointListItem {
   id: string;
   name: string;
   agentId: string;
   createdAt: number;
-&#125;
+}
 ```
 
 ## Testing
@@ -340,14 +340,14 @@ The test suite uses Vitest with the following configuration:
 
 ```typescript
 // vitest.config.ts
-export default defineConfig(&#123;
-  test: &#123;
+export default defineConfig({
+  test: {
     include: ["**/*.test.ts"],
     environment: "node",
     globals: true,
     isolate: true,
-  &#125;,
-&#125;);
+  },
+});
 ```
 
 ## Migration Management

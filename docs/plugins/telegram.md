@@ -41,7 +41,7 @@ To use the Telegram plugin, you need:
 
 To get a chat ID for announcements:
 1. Send a message to your bot
-2. Visit: `https://api.telegram.org/bot&lt;YOUR_BOT_TOKEN&gt;/getUpdates`
+2. Visit: `https://api.telegram.org/bot<YOUR_BOT_TOKEN>/getUpdates`
 3. Find the `chat.id` value in the response
 
 ### 3. Get User IDs (Optional)
@@ -66,14 +66,14 @@ The Telegram service uses Zod schema validation for configuration. Here are the 
 - **`defaultAgentType`** (string): Default agent type to create for users (defaults to "teamLeader").
 
 ```typescript
-import TelegramService, &#123; TelegramServiceConfigSchema &#125; from '@tokenring-ai/telegram';
+import TelegramService, { TelegramServiceConfigSchema } from '@tokenring-ai/telegram';
 
-const config: TelegramServiceConfig = &#123;
+const config: TelegramServiceConfig = {
   botToken: process.env.TELEGRAM_BOT_TOKEN!,
   chatId: process.env.TELEGRAM_CHAT_ID,
   authorizedUserIds: ['123456789', '987654321'],
   defaultAgentType: 'teamLeader'
-&#125;;
+};
 
 // Validate configuration
 const validatedConfig = TelegramServiceConfigSchema.parse(config);
@@ -89,9 +89,9 @@ The recommended way to use the Telegram service is through the TokenRing plugin 
 import TokenRingApp from '@tokenring-ai/app';
 import telegramPlugin from '@tokenring-ai/telegram';
 
-const app = new TokenRingApp(&#123;
+const app = new TokenRingApp({
   // Your app configuration
-&#125;);
+});
 
 // Install the Telegram plugin
 app.install(telegramPlugin);
@@ -111,18 +111,18 @@ For more control, you can create the service manually:
 
 ```typescript
 import TokenRingApp from '@tokenring-ai/app';
-import TelegramService, &#123; TelegramServiceConfigSchema &#125; from '@tokenring-ai/telegram';
+import TelegramService, { TelegramServiceConfigSchema } from '@tokenring-ai/telegram';
 
-const app = new TokenRingApp(&#123;
+const app = new TokenRingApp({
   // Your app configuration
-&#125;);
+});
 
-const config: TelegramServiceConfig = &#123;
+const config: TelegramServiceConfig = {
   botToken: process.env.TELEGRAM_BOT_TOKEN!,
   chatId: process.env.TELEGRAM_CHAT_ID,
   authorizedUserIds: ['123456789', '987654321'],
   defaultAgentType: 'teamLeader'
-&#125;;
+};
 
 // Validate configuration
 const validatedConfig = TelegramServiceConfigSchema.parse(config);
@@ -150,7 +150,7 @@ constructor(app: TokenRingApp, config: TelegramServiceConfig)
 - `running`: Service running status
 
 **Methods:**
-- `run(signal: AbortSignal): Promise&lt;void&gt;`: Starts the Telegram bot and begins polling for messages
+- `run(signal: AbortSignal): Promise<void>`: Starts the Telegram bot and begins polling for messages
 
 ## Message Processing Flow
 
@@ -174,10 +174,10 @@ constructor(app: TokenRingApp, config: TelegramServiceConfig)
 If `authorizedUserIds` is empty or not provided, all users can interact with the bot:
 
 ```typescript
-const telegramService = new TelegramService(app, &#123;
+const telegramService = new TelegramService(app, {
   botToken: process.env.TELEGRAM_BOT_TOKEN!
   // No authorizedUserIds = open to all
-&#125;);
+});
 ```
 
 ### Restricted Access
@@ -185,10 +185,10 @@ const telegramService = new TelegramService(app, &#123;
 Provide an array of Telegram user IDs to restrict access:
 
 ```typescript
-const telegramService = new TelegramService(app, &#123;
+const telegramService = new TelegramService(app, {
   botToken: process.env.TELEGRAM_BOT_TOKEN!,
   authorizedUserIds: ['123456789', '987654321']
-&#125;);
+});
 ```
 
 Only listed users will be able to interact with the bot. Unauthorized users will receive the message "Sorry, you are not authorized to use this bot."
@@ -231,7 +231,7 @@ export TELEGRAM_DEFAULT_AGENT_TYPE="teamLeader"  # Optional
 ### User-Level Errors
 
 - **Authorization**: Sends "Sorry, you are not authorized to use this bot." for unauthorized users
-- **Timeout**: Sends "Agent timed out after &#123;time&#125; seconds." when agents exceed max runtime
+- **Timeout**: `Sends "Agent timed out after {time} seconds." when agents exceed max runtime`
 - **No Response**: Sends "No response received from agent." when no output is generated
 
 ### Service-Level Errors
@@ -262,7 +262,7 @@ export TELEGRAM_DEFAULT_AGENT_TYPE="teamLeader"  # Optional
 Enable detailed logging to troubleshoot issues:
 
 ```typescript
-import &#123; setLogLevel &#125; from '@tokenring-ai/utility';
+import { setLogLevel } from '@tokenring-ai/utility';
 
 setLogLevel('debug');
 ```

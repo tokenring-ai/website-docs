@@ -18,35 +18,35 @@ The browser-agent-storage plugin integrates with the TokenRing checkpoint system
 
 ### Plugin Registration
 ```typescript
-import &#123; TokenRingApp, TokenRingPlugin &#125; from '@tokenring-ai/app';
-import &#123; CheckpointConfigSchema &#125; from '@tokenring-ai/checkpoint';
-import &#123; BrowserAgentStateStorage, BrowserAgentStateStorageOptionsSchema &#125; from './BrowserAgentStateStorage';
-import &#123; z &#125; from 'zod';
-import packageJSON from './package.json' with &#123; type: 'json' &#125;;
+import { TokenRingApp, TokenRingPlugin } from '@tokenring-ai/app';
+import { CheckpointConfigSchema } from '@tokenring-ai/checkpoint';
+import { BrowserAgentStateStorage, BrowserAgentStateStorageOptionsSchema } from './BrowserAgentStateStorage';
+import { z } from 'zod';
+import packageJSON from './package.json' with { type: 'json' };
 
-export default &#123;
+export default {
   name: packageJSON.name,
   version: packageJSON.version,
   description: packageJSON.description,
-  install(app, config) &#123;
-    if (config.checkpoint) &#123;
+  install(app, config) {
+    if (config.checkpoint) {
       app.services
-        .waitForItemByType(AgentCheckpointService, (checkpointService) =&gt; &#123;
+        .waitForItemByType(AgentCheckpointService, (checkpointService) => {
           const provider = config.checkpoint.provider;
-          if (provider.type === 'browser') &#123;
+          if (provider.type === 'browser') {
             checkpointService.setCheckpointProvider(
               new BrowserAgentStateStorage(
                 BrowserAgentStateStorageOptionsSchema.parse(provider)
               )
             );
-          &#125;
-        &#125;);
-    &#125;
-  &#125;,
-  config: z.object(&#123;
+          }
+        });
+    }
+  },
+  config: z.object({
     checkpoint: CheckpointConfigSchema.optional()
-  &#125;)
-&#125; satisfies TokenRingPlugin;
+  })
+} satisfies TokenRingPlugin;
 ```
 
 ## Core Components
@@ -69,37 +69,37 @@ The specific options for the browser provider are defined by `BrowserAgentStateS
 ## Usage Examples
 ### Basic Integration
 ```typescript
-import &#123; TokenRingApp &#125; from '@tokenring-ai/app';
+import { TokenRingApp } from '@tokenring-ai/app';
 import browserAgentStorage from '@tokenring-ai/browser-agent-storage';
 
 const app = new TokenRingApp();
-app.registerPlugin(browserAgentStorage, &#123;
-  checkpoint: &#123;
-    provider: &#123;
+app.registerPlugin(browserAgentStorage, {
+  checkpoint: {
+    provider: {
       type: 'browser',
       storageKeyPrefix: 'myProject_'
-    &#125;
-  &#125;
-&#125;);
+    }
+  }
+});
 ```
 
 ### Programmatic Usage
 ```typescript
-import &#123; BrowserAgentStateStorage, BrowserAgentStateStorageOptionsSchema &#125; from '@tokenring-ai/browser-agent-storage';
-import &#123; z &#125; from 'zod';
+import { BrowserAgentStateStorage, BrowserAgentStateStorageOptionsSchema } from '@tokenring-ai/browser-agent-storage';
+import { z } from 'zod';
 
 // Create a storage instance
-const storage = new BrowserAgentStateStorage(&#123;
+const storage = new BrowserAgentStateStorage({
   storageKeyPrefix: 'customPrefix_'
-&#125;);
+});
 
 // Store a checkpoint
-const checkpointId = await storage.storeCheckpoint(&#123;
+const checkpointId = await storage.storeCheckpoint({
   agentId: 'agent-123',
   name: 'Initial State',
-  config: &#123; /* agent configuration */ &#125;,
-  state: &#123; /* agent state data */ &#125;
-&#125;);
+  config: { /* agent configuration */ },
+  state: { /* agent state data */ }
+});
 
 // Retrieve a checkpoint
 const checkpoint = await storage.retrieveCheckpoint(checkpointId);
@@ -117,7 +117,7 @@ await storage.clearAllCheckpoints();
 ## Storage Structure
 The plugin uses localStorage with the following structure:
 
-- **Key**: `$&#123;storageKeyPrefix&#125;checkpoints`
+- **Key**: `${storageKeyPrefix}checkpoints`
 - **Value**: JSON string containing an array of stored checkpoints
 - **Format**: Each checkpoint includes:
   - `id`: Unique identifier

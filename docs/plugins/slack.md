@@ -50,7 +50,7 @@ Configure the following OAuth scopes:
 ### 3. Get Credentials
 
 - **Bot User OAuth Token**: From "OAuth & Permissions" page
-- **Signing Secret**: From "Basic Information" &gt; "App Credentials"
+- **Signing Secret**: From "Basic Information" > "App Credentials"
 - **App-Level Token**: Enable Socket Mode and generate token (optional)
 
 ### 4. Install to Workspace
@@ -66,22 +66,22 @@ Install the app to your workspace and invite the bot to channels:
 import TokenRingApp from "@tokenring-ai/app";
 import SlackPlugin from "@tokenring-ai/slack";
 
-const app = new TokenRingApp(&#123;
+const app = new TokenRingApp({
   plugins: [SlackPlugin] // or ["@tokenring-ai/slack"]
-&#125;);
+});
 
-const slackConfig = &#123;
+const slackConfig = {
   botToken: process.env.SLACK_BOT_TOKEN!,
   signingSecret: process.env.SLACK_SIGNING_SECRET!,
   appToken: process.env.SLACK_APP_TOKEN,
   channelId: process.env.SLACK_CHANNEL_ID,
   authorizedUserIds: ['U06T1LWJG', 'UABCDEF123'],
   defaultAgentType: 'teamLeader'
-&#125;;
+};
 
-app.config(&#123;
+app.config({
   slack: slackConfig
-&#125;);
+});
 
 await app.start();
 ```
@@ -242,54 +242,54 @@ export SLACK_CHANNEL_ID="C1234567890"  # Optional
 ### SlackServiceConfigSchema
 
 ```typescript
-import &#123; z &#125; from 'zod';
+import { z } from 'zod';
 
-export const SlackServiceConfigSchema = z.object(&#123;
-  botToken: z.string().min(1, "Bot token is required").refine(s =&gt; s.trim().length &gt; 0, "Bot token cannot be whitespace"),
-  signingSecret: z.string().min(1, "Signing secret is required").refine(s =&gt; s.trim().length &gt; 0, "Signing secret cannot be whitespace"),
+export const SlackServiceConfigSchema = z.object({
+  botToken: z.string().min(1, "Bot token is required").refine(s => s.trim().length > 0, "Bot token cannot be whitespace"),
+  signingSecret: z.string().min(1, "Signing secret is required").refine(s => s.trim().length > 0, "Signing secret cannot be whitespace"),
   appToken: z.string().optional(),
   channelId: z.string().optional(),
   authorizedUserIds: z.array(z.string()).default([]),
   defaultAgentType: z.string().default("teamLeader")
-&#125;);
+});
 ```
 
 ### SlackService Methods
 
 **Constructor:**
 ```typescript
-constructor(app: TokenRingApp, config: z.output&lt;typeof SlackServiceConfigSchema&gt;)
+constructor(app: TokenRingApp, config: z.output<typeof SlackServiceConfigSchema>)
 ```
 
-**run(signal: AbortSignal): Promise&lt;void&gt;**
+**`run(signal: AbortSignal): Promise<void>`**
 - Starts the Slack service
 - Sets up event listeners
 - Manages agent instances
 
-**getOrCreateAgentForUser(userId: string): Promise&lt;Agent&gt;**
+**`getOrCreateAgentForUser(userId: string): Promise<Agent>`**
 - Creates agent for new users
 - Returns existing agent for returning users
 - Maintains user-to-agent mapping
 
-**handleChatOutput(say: any, message: string): Promise&lt;void&gt;**
+**`handleChatOutput(say: any, message: string): Promise<void>`**
 - Sends chat messages to Slack
 - Marks response as sent
 
-**handleSystemOutput(say: any, message: string, level: string): Promise&lt;void&gt;**
+**`handleSystemOutput(say: any, message: string, level: string): Promise<void>`**
 - Formats and sends system messages
 - Adds appropriate prefix based on level
 
-**handleSlashCommands(command: any, respond: any): Promise&lt;void&gt;**
+**`handleSlashCommands(command: any, respond: any): Promise<void>`**
 - Handles slash commands
 - Forwards to agent's command system
 - Provides acknowledgment
 
-**handleAppMentions(event: any, say: any): Promise&lt;void&gt;**
+**`handleAppMentions(event: any, say: any): Promise<void>`**
 - Handles @mentions in channels
 - Creates or retrieves user's agent
 - Processes and responds to mentions
 
-**handleDirectMessages(event: any, say: any): Promise&lt;void&gt;**
+**`handleDirectMessages(event: any, say: any): Promise<void>`**
 - Handles direct messages
 - Creates or retrieves user's agent
 - Processes and responds to DMs
@@ -319,20 +319,20 @@ The service handles different response types with proper formatting:
 
 ```typescript
 import TokenRingApp from "@tokenring-ai/app";
-import &#123; SlackService &#125; from "@tokenring-ai/slack";
+import { SlackService } from "@tokenring-ai/slack";
 
-const app = new TokenRingApp(&#123;
+const app = new TokenRingApp({
   // app configuration
-&#125;);
+});
 
-const slackService = new SlackService(app, &#123;
+const slackService = new SlackService(app, {
   botToken: process.env.SLACK_BOT_TOKEN!,
   signingSecret: process.env.SLACK_SIGNING_SECRET!,
   appToken: process.env.SLACK_APP_TOKEN,
   channelId: process.env.SLACK_CHANNEL_ID,
   authorizedUserIds: ['U06T1LWJG', 'UABCDEF123'],
   defaultAgentType: 'teamLeader'
-&#125;);
+});
 
 app.addServices(slackService);
 await app.start();
@@ -344,20 +344,20 @@ await app.start();
 import TokenRingApp from "@tokenring-ai/app";
 import SlackPlugin from "@tokenring-ai/slack";
 
-const app = new TokenRingApp(&#123;
+const app = new TokenRingApp({
   plugins: ["@tokenring-ai/slack"]
-&#125;);
+});
 
-app.config(&#123;
-  slack: &#123;
+app.config({
+  slack: {
     botToken: process.env.SLACK_BOT_TOKEN!,
     signingSecret: process.env.SLACK_SIGNING_SECRET!,
     appToken: process.env.SLACK_APP_TOKEN,
     channelId: process.env.SLACK_CHANNEL_ID,
     authorizedUserIds: ['U06T1LWJG', 'UABCDEF123'],
     defaultAgentType: 'teamLeader'
-  &#125;
-&#125;);
+  }
+});
 
 await app.start();
 ```

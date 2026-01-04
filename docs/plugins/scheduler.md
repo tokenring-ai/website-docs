@@ -34,7 +34,7 @@ The main service that manages task scheduling and execution.
 Each task is defined with the following properties:
 
 ```typescript
-&#123;
+{
   name: string;                    // Task identifier
   agentType: string;               // Agent type to spawn
   every: string | undefined;       // Fixed interval between task starts (e.g., "1 hour" means the task starts every hour regardless of duration)
@@ -47,7 +47,7 @@ Each task is defined with the following properties:
   noLongerThan: string | undefined; // Maximum runtime duration (e.g., "1 hour")
   several: boolean | undefined;    // Allow multiple concurrent runs (default: false)
   message: string;                // Message to send to the agent
-&#125;
+}
 ```
 
 ### Task State Management
@@ -80,8 +80,8 @@ The scheduler maintains state for each task:
 ### Basic Configuration
 
 ```typescript
-import &#123; AgentTeam &#125; from "@tokenring-ai/agent";
-import &#123; packageInfo as schedulerPackage &#125; from "@tokenring-ai/scheduler";
+import { AgentTeam } from "@tokenring-ai/agent";
+import { packageInfo as schedulerPackage } from "@tokenring-ai/scheduler";
 
 const team = new AgentTeam();
 
@@ -89,31 +89,31 @@ const team = new AgentTeam();
 await team.addPackages([schedulerPackage]);
 
 // Configure scheduled tasks
-const config = &#123;
-  scheduler: &#123;
+const config = {
+  scheduler: {
     tasks: [
-      &#123;
+      {
         name: "daily-report",
         agentType: "reporting-agent",
         every: "1 day",
         message: "generate daily sales report"
-      &#125;,
-      &#123;
+      },
+      {
         name: "hourly-check",
         agentType: "monitoring-agent", 
         spaced: "1 hour",
         message: "check system health and performance"
-      &#125;,
-      &#123;
+      },
+      {
         name: "weekly-backup",
         agentType: "backup-agent",
         once: true,
         on: "sun",
         message: "perform weekly data backup"
-      &#125;
+      }
     ]
-  &#125;
-&#125;;
+  }
+};
 
 // Create agent and run with configuration
 const agent = await team.createAgent("interactive-code-agent");
@@ -123,10 +123,10 @@ await agent.initialize();
 ### Advanced Scheduling with Time Windows
 
 ```typescript
-const config = &#123;
-  scheduler: &#123;
+const config = {
+  scheduler: {
     tasks: [
-      &#123;
+      {
         name: "business-hours-report",
         agentType: "reporting-agent",
         every: "1 hour",
@@ -134,8 +134,8 @@ const config = &#123;
         to: "17:00",
         on: "mon tue wed thu fri",
         message: "generate hourly business report"
-      &#125;,
-      &#123;
+      },
+      {
         name: "end-of-day-summary", 
         agentType: "summary-agent",
         once: true,
@@ -143,62 +143,62 @@ const config = &#123;
         from: "17:00",
         to: "17:30",
         message: "generate end-of-day summary"
-      &#125;,
-      &#123;
+      },
+      {
         name: "monthly-statistics",
         agentType: "analytics-agent",
         once: true,
         dayOfMonth: 1,
         message: "generate monthly statistics report"
-      &#125;
+      }
     ]
-  &#125;
-&#125;;
+  }
+};
 ```
 
 ### Task with Runtime Limit
 
 ```typescript
-const config = &#123;
-  scheduler: &#123;
+const config = {
+  scheduler: {
     tasks: [
-      &#123;
+      {
         name: "data-processing",
         agentType: "processor-agent",
         every: "6 hours",
         noLongerThan: "2 hours",
         message: "process incoming data batches"
-      &#125;
+      }
     ]
-  &#125;
-&#125;;
+  }
+};
 ```
 
 ### Multiple Concurrent Runs
 
 ```typescript
-const config = &#123;
-  scheduler: &#123;
+const config = {
+  scheduler: {
     tasks: [
-      &#123;
+      {
         name: "api-health-check",
         agentType: "monitoring-agent",
         spaced: "5 minutes",
         several: true,
         message: "check API service health"
-      &#125;
+      }
     ]
-  &#125;
-&#125;;
+  }
+};
 ```
 
 ## Configuration Schema
 
 ```typescript
-import &#123; z &#125; from "zod";
+import { z } from "zod";
 
-const SchedulerConfigSchema = z.object(&#123;
-  tasks: z.array(z.object(&#123;
+const SchedulerConfigSchema = z.object({
+  tasks: z.array(z.object({
     name: z.string(),
     agentType: z.string(),
     every: z.string().optional(),
@@ -211,8 +211,8 @@ const SchedulerConfigSchema = z.object(&#123;
     noLongerThan: z.string().optional(),
     several: z.boolean().optional(),
     message: z.string()
-  &#125;))
-&#125;).optional();
+  }))
+}).optional();
 ```
 
 ## Time Interval Format

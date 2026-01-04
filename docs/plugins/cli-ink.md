@@ -1,4 +1,4 @@
-# cli-ink Plugin
+# CLI (Ink) Plugin
 
 The `cli-ink` plugin provides an interactive terminal interface for TokenRing AI agents using the Ink framework. It enables users to manage agents, execute commands, handle human interface requests, and interact with the system through a responsive command-line environment.
 
@@ -50,41 +50,41 @@ await app.start();
 
 ```typescript
 const app = new TokenRingApp();
-app.install(cliInkPlugin, &#123;
-  inkCLI: &#123;
+app.install(cliInkPlugin, {
+  inkCLI: {
     bannerNarrow: 'TokenRing CLI',
     bannerWide: 'TokenRing AI CLI',
     bannerCompact: 'CLI',
     bannerColor: 'cyan'
-  &#125;
-&#125;);
+  }
+});
 await app.start();
 ```
 
 ### Plugin Integration
 
 ```typescript
-import TokenRingApp, &#123; TokenRingPlugin &#125; from '@tokenring-ai/app';
-import AgentInkCLI, &#123; InkCLIConfigSchema &#125; from '@tokenring-ai/cli-ink';
-import &#123; z &#125; from 'zod';
+import TokenRingApp, { TokenRingPlugin } from '@tokenring-ai/app';
+import AgentInkCLI, { InkCLIConfigSchema } from '@tokenring-ai/cli-ink';
+import { z } from 'zod';
 
-import packageJSON from './package.json' with &#123; type: 'json' &#125;;
+import packageJSON from './package.json' with { type: 'json' };
 
-const packageConfigSchema = z.object(&#123;
+const packageConfigSchema = z.object({
   inkCLI: InkCLIConfigSchema.optional(),
-&#125;);
+});
 
-export default &#123;
+export default {
   name: packageJSON.name,
   version: packageJSON.version,
   description: packageJSON.description,
-  install(app, config) &#123;
-    if (config.inkCLI) &#123;
+  install(app, config) {
+    if (config.inkCLI) {
       app.addServices(new AgentInkCLI(app, config.inkCLI));
-    &#125;
-  &#125;,
+    }
+  },
   config: packageConfigSchema,
-&#125; satisfies TokenRingPlugin&lt;typeof packageConfigSchema&gt;;
+} satisfies TokenRingPlugin<typeof packageConfigSchema>;
 ```
 
 ## Configuration
@@ -92,12 +92,12 @@ export default &#123;
 ### CLI Configuration Schema
 
 ```typescript
-export const InkCLIConfigSchema = z.object(&#123;
+export const InkCLIConfigSchema = z.object({
   bannerNarrow: z.string(),
   bannerWide: z.string(),
   bannerCompact: z.string(),
   bannerColor: z.string().optional().default('cyan'),
-&#125;);
+});
 ```
 
 ### Configuration Options
@@ -116,14 +116,14 @@ export const InkCLIConfigSchema = z.object(&#123;
 Main service class implementing the CLI functionality.
 
 ```typescript
-export default class AgentInkCLI implements TokenRingService &#123;
+export default class AgentInkCLI implements TokenRingService {
   name = 'AgentInkCLI';
   description = 'Ink-based CLI for interacting with agents';
 
-  constructor(app: TokenRingApp, config: z.infer&lt;typeof InkCLIConfigSchema&gt;);
+  constructor(app: TokenRingApp, config: z.infer<typeof InkCLIConfigSchema>);
 
-  async run(): Promise&lt;void&gt;;
-&#125;
+  async run(): Promise<void>;
+}
 ```
 
 ### AgentCLI Component
@@ -131,10 +131,10 @@ export default class AgentInkCLI implements TokenRingService &#123;
 Top-level component managing screen state transitions and rendering.
 
 ```typescript
-interface AgentCLIProps extends z.infer&lt;typeof InkCLIConfigSchema&gt; &#123;
+interface AgentCLIProps extends z.infer<typeof InkCLIConfigSchema> {
   agentManager: AgentManager;
   app: TokenRingApp;
-&#125;
+}
 
 export default function AgentCLI(props: AgentCLIProps);
 ```
@@ -143,14 +143,14 @@ export default function AgentCLI(props: AgentCLIProps);
 
 ```typescript
 type Screen =
-  | &#123; name: 'selectAgent' &#125;
-  | &#123; name: 'chat'; agentId: string &#125;
-  | &#123; name: 'askForConfirmation'; request: HumanInterfaceRequestFor&lt;"askForConfirmation"&gt;, onResponse: (response: HumanInterfaceResponseFor&lt;'askForConfirmation'&gt;) =&gt; void &#125;
-  | &#123; name: 'askForPassword'; request: HumanInterfaceRequestFor&lt;"askForPassword"&gt;, onResponse: (response: HumanInterfaceResponseFor&lt;'askForPassword'&gt;) =&gt; void &#125;
-  | &#123; name: 'openWebPage'; request: HumanInterfaceRequestFor&lt;"openWebPage"&gt;, onResponse: (response: HumanInterfaceResponseFor&lt;'openWebPage'&gt;) =&gt; void &#125;
-  | &#123; name: 'askForSingleTreeSelection'; request: HumanInterfaceRequestFor&lt;"askForSingleTreeSelection"&gt;, onResponse: (response: HumanInterfaceResponseFor&lt;'askForSingleTreeSelection'&gt;) =&gt; void &#125;
-  | &#123; name: 'askForMultipleTreeSelection'; request: HumanInterfaceRequestFor&lt;"askForMultipleTreeSelection"&gt;, onResponse: (response: HumanInterfaceResponseFor&lt;'askForMultipleTreeSelection'&gt;) =&gt; void &#125;
-  | &#123; name: 'askForText'; request: HumanInterfaceRequestFor&lt;"askForText"&gt;, onResponse: (response: HumanInterfaceResponseFor&lt;'askForText'&gt;) =&gt; void &#125;;
+  | { name: 'selectAgent' }
+  | { name: 'chat'; agentId: string }
+  | { name: 'askForConfirmation'; request: HumanInterfaceRequestFor<"askForConfirmation">, onResponse: (response: HumanInterfaceResponseFor<'askForConfirmation'>) => void }
+  | { name: 'askForPassword'; request: HumanInterfaceRequestFor<"askForPassword">, onResponse: (response: HumanInterfaceResponseFor<'askForPassword'>) => void }
+  | { name: 'openWebPage'; request: HumanInterfaceRequestFor<"openWebPage">, onResponse: (response: HumanInterfaceResponseFor<'openWebPage'>) => void }
+  | { name: 'askForSingleTreeSelection'; request: HumanInterfaceRequestFor<"askForSingleTreeSelection">, onResponse: (response: HumanInterfaceResponseFor<'askForSingleTreeSelection'>) => void }
+  | { name: 'askForMultipleTreeSelection'; request: HumanInterfaceRequestFor<"askForMultipleTreeSelection">, onResponse: (response: HumanInterfaceResponseFor<'askForMultipleTreeSelection'>) => void }
+  | { name: 'askForText'; request: HumanInterfaceRequestFor<"askForText">, onResponse: (response: HumanInterfaceResponseFor<'askForText'>) => void };
 ```
 
 ## Screen Components
@@ -160,11 +160,11 @@ type Screen =
 Main chat interface displaying agent outputs and handling input.
 
 ```typescript
-interface AgentChatScreenProps &#123;
+interface AgentChatScreenProps {
   agentEventState: AgentEventState | null;
   currentAgent: Agent;
-  setScreen: (screen: Screen) =&gt; void;
-&#125;
+  setScreen: (screen: Screen) => void;
+}
 
 export default function AgentChatScreen(props: AgentChatScreenProps);
 ```
@@ -181,11 +181,11 @@ Features:
 For selecting agents from categories or connecting to existing ones.
 
 ```typescript
-interface AgentSelectionScreenProps &#123;
+interface AgentSelectionScreenProps {
   app: TokenRingApp;
-  setScreen: (screen: Screen) =&gt; void;
-  onCancel: () =&gt; void;
-&#125;
+  setScreen: (screen: Screen) => void;
+  onCancel: () => void;
+}
 
 export default function AgentSelectionScreen(props: AgentSelectionScreenProps);
 ```
@@ -214,16 +214,16 @@ Features:
 Input field with history and auto-completion.
 
 ```typescript
-export interface CommandInputProps &#123;
+export interface CommandInputProps {
   history?: string[];
   autoCompletion?: string[];
-  onSubmit: (value: string) =&gt; void;
-  onCancel?: () =&gt; void;
-  onCtrlC?: () =&gt; void;
+  onSubmit: (value: string) => void;
+  onCancel?: () => void;
+  onCtrlC?: () => void;
   prompt?: string;
-&#125;
+}
 
-export const CommandInput: React.FC&lt;CommandInputProps&gt;;
+export const CommandInput: React.FC<CommandInputProps>;
 ```
 
 Features:
@@ -237,19 +237,19 @@ Features:
 Generic selection input component.
 
 ```typescript
-export interface SelectOption&lt;T = string&gt; &#123;
+export interface SelectOption<T = string> {
   label: string;
   value: T;
-&#125;
+}
 
-export interface SelectInputProps&lt;T = string&gt; &#123;
+export interface SelectInputProps<T = string> {
   message?: string;
-  options: SelectOption&lt;T&gt;[];
-  onSelect: (value: T) =&gt; void;
-  onCancel?: () =&gt; void;
-&#125;
+  options: SelectOption<T>[];
+  onSelect: (value: T) => void;
+  onCancel?: () => void;
+}
 
-export function SelectInput&lt;T = string&gt;(props: SelectInputProps&lt;T&gt;): React.ReactElement;
+export function SelectInput<T = string>(props: SelectInputProps<T>): React.ReactElement;
 ```
 
 ### Markdown
@@ -257,10 +257,10 @@ export function SelectInput&lt;T = string&gt;(props: SelectInputProps&lt;T&gt;):
 Renders markdown with syntax highlighting.
 
 ```typescript
-export interface InkMarkdownProps &#123;
+export interface InkMarkdownProps {
   children: string;
   options?: InkMarkdownOptions;
-&#125;
+}
 
 export function InkMarkdown(props: InkMarkdownProps): React.ReactElement;
 ```
@@ -278,9 +278,9 @@ Features:
 Subscribes to agent event state.
 
 ```typescript
-export function useAgentEvents(agent: Agent | null) &#123;
+export function useAgentEvents(agent: Agent | null) {
   // Returns AgentEventState or null
-&#125;
+}
 ```
 
 ### useOutputBlocks
@@ -289,14 +289,14 @@ Processes agent events into structured output blocks.
 
 ```typescript
 export type OutputBlock =
-  | &#123; type: 'chat'; message: string &#125;
-  | &#123; type: 'reasoning'; message: string &#125;
-  | &#123; type: 'input'; message: string &#125;
-  | &#123; type: 'system'; message: string; level: 'info' | 'warning' | 'error' &#125;;
+  | { type: 'chat'; message: string }
+  | { type: 'reasoning'; message: string }
+  | { type: 'input'; message: string }
+  | { type: 'system'; message: string; level: 'info' | 'warning' | 'error' };
 
-export function useOutputBlocks(events: AgentEventState["events"] | null) &#123;
+export function useOutputBlocks(events: AgentEventState["events"] | null) {
   // Returns OutputBlock[]
-&#125;
+}
 ```
 
 ### useScreenSize
@@ -304,9 +304,9 @@ export function useOutputBlocks(events: AgentEventState["events"] | null) &#123;
 Tracks terminal dimensions for responsive layout.
 
 ```typescript
-export default function useScreenSize() &#123;
-  // Returns &#123; rows: number, columns: number &#125;
-&#125;
+export default function useScreenSize() {
+  // Returns { rows: number, columns: number }
+}
 ```
 
 ## Integration

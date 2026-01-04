@@ -50,7 +50,7 @@ Token Ring provides two primary CLI packages for different use cases:
 ### For Basic Terminal Interface
 
 ```typescript
-import &#123; TokenRingApp &#125; from '@tokenring-ai/app';
+import { TokenRingApp } from '@tokenring-ai/app';
 import cliPlugin from '@tokenring-ai/cli';
 
 const app = new TokenRingApp();
@@ -61,7 +61,7 @@ await app.start();
 ### For Enhanced Ink-based Interface
 
 ```typescript
-import &#123; TokenRingApp &#125; from '@tokenring-ai/app';
+import { TokenRingApp } from '@tokenring-ai/app';
 import cliInkPlugin from '@tokenring-ai/cli-ink';
 
 const app = new TokenRingApp();

@@ -41,14 +41,14 @@ Concrete implementation for running shell commands as tests.
 **Constructor Options:**
 
 ```typescript
-interface ShellCommandTestingResourceOptions &#123;
+interface ShellCommandTestingResourceOptions {
   type: "shell";
   name: string;
   description?: string;
   workingDirectory?: string;
   command: string;
   timeoutSeconds?: number;
-&#125;
+}
 ```
 
 **Properties:**
@@ -61,22 +61,22 @@ interface ShellCommandTestingResourceOptions &#123;
 Base interface for implementing custom test resources.
 
 ```typescript
-interface TestingResource &#123;
+interface TestingResource {
   description: string;
-  runTest: (agent: Agent) =&gt; Promise&lt;TestResult&gt;;
-&#125;
+  runTest: (agent: Agent) => Promise<TestResult>;
+}
 ```
 
 ### TestResult Interface
 
 ```typescript
-interface TestResult &#123;
+interface TestResult {
   startedAt: number;
   finishedAt: number;
   passed: boolean;
   output?: string;
   error?: unknown;
-&#125;
+}
 ```
 
 ## Commands and Tools
@@ -88,7 +88,7 @@ Run tests interactively through the chat interface.
 **Usage:**
 
 - `/test list` - Show available tests
-- `/test run &lt;test_name|*&gt;` - Run specific tests or all tests
+- `/test run <test_name|*>` - Run specific tests or all tests
 
 **Examples:**
 
@@ -108,28 +108,28 @@ Run tests interactively through the chat interface.
 The plugin is configured under the `testing` section in the application config.
 
 ```typescript
-import &#123; TokenRingApp &#125; from "@tokenring-ai/app";
+import { TokenRingApp } from "@tokenring-ai/app";
 
-const app = new TokenRingApp(&#123;
-  testing: &#123;
-    resources: &#123;
-      buildTest: &#123;
+const app = new TokenRingApp({
+  testing: {
+    resources: {
+      buildTest: {
         type: "shell",
         name: "build-test",
         command: "bun run build",
         workingDirectory: "./project",
         timeoutSeconds: 120
-      &#125;,
-      unitTests: &#123;
+      },
+      unitTests: {
         type: "shell",
         name: "unit-tests",
         command: "bun test",
         workingDirectory: "./project"
-      &#125;
-    &#125;,
+      }
+    },
     maxAutoRepairs: 5
-  &#125;
-&#125;);
+  }
+});
 ```
 
 ### Configuration Schema
@@ -137,23 +137,23 @@ const app = new TokenRingApp(&#123;
 The `testingConfigSchema` defines the structure for testing configuration:
 
 ```typescript
-const testingConfigSchema = z.object(&#123;
+const testingConfigSchema = z.object({
   resources: z.record(z.string(), z.any()).optional(),
   maxAutoRepairs: z.number().default(5),
-&#125;);
+});
 ```
 
 The `shellCommandTestingConfigSchema` defines the structure for shell resources:
 
 ```typescript
-const shellCommandTestingConfigSchema = z.object(&#123;
+const shellCommandTestingConfigSchema = z.object({
   type: z.literal("shell"),
   name: z.string(),
   description: z.string().optional(),
   workingDirectory: z.string().optional(),
   command: z.string(),
   timeoutSeconds: z.number().optional(),
-&#125;);
+});
 ```
 
 ## Usage Examples
@@ -163,17 +163,17 @@ const shellCommandTestingConfigSchema = z.object(&#123;
 Configure a shell resource in your app config:
 
 ```typescript
-const app = new TokenRingApp(&#123;
-  testing: &#123;
-    resources: &#123;
-      shellTest: &#123;
+const app = new TokenRingApp({
+  testing: {
+    resources: {
+      shellTest: {
         type: "shell",
         name: "shell-test",
         command: "echo 'Hello World'"
-      &#125;
-    &#125;
-  &#125;
-&#125;);
+      }
+    }
+  }
+});
 ```
 
 ### Programmatic Usage
@@ -182,26 +182,26 @@ const app = new TokenRingApp(&#123;
 import TestingService from '@tokenring-ai/testing/TestingService';
 import ShellCommandTestingResource from '@tokenring-ai/testing/ShellCommandTestingResource';
 
-const testingService = new TestingService(&#123;
-  resources: &#123;
-    buildTest: &#123;
+const testingService = new TestingService({
+  resources: {
+    buildTest: {
       type: "shell",
       name: "build-test",
       command: "bun run build",
       workingDirectory: "./project",
       timeoutSeconds: 120
-    &#125;
-  &#125;,
+    }
+  },
   maxAutoRepairs: 5
-&#125;);
+});
 
-const shellResource = new ShellCommandTestingResource(&#123;
+const shellResource = new ShellCommandTestingResource({
   type: "shell",
   name: 'build-test',
   command: 'bun run build',
   workingDirectory: './project',
   timeoutSeconds: 120
-&#125;);
+});
 
 testingService.registerResource('build-test', shellResource);
 
@@ -248,12 +248,12 @@ Automatically runs tests after chat completion when files have been modified.
 The TestingService manages state through the `TestingState` class:
 
 ```typescript
-class TestingState implements AgentStateSlice &#123;
+class TestingState implements AgentStateSlice {
   name: string = "TestingState";
-  testResults: Record&lt;string, TestResult&gt; = &#123;&#125;;
+  testResults: Record<string, TestResult> = {};
   repairCount: number = 0;
   maxAutoRepairs: number;
-&#125;
+}
 ```
 
 **State Preservation:**

@@ -37,7 +37,7 @@ Initializes the service with AWS credentials.
 
 #### Methods
 
-- `initializeAWSClient&lt;T&gt;(ClientClass, clientConfig)`: Initializes any AWS SDK client
+- `initializeAWSClient<T>(ClientClass, clientConfig)`: Initializes any AWS SDK client
   - `ClientClass`: The AWS SDK client class to initialize (e.g., S3Client, SNSClient)
   - `clientConfig`: Additional configuration for the client
   - Returns: Initialized AWS SDK client instance
@@ -52,7 +52,7 @@ Initializes the service with AWS credentials.
   - Returns: `boolean` indicating if credentials are properly configured
 
 - `getCallerIdentity()`: Retrieves AWS account identity via STS
-  - Returns: `&#123; Arn?: string; Account?: string; UserId?: string &#125;`
+  - Returns: `{ Arn?: string; Account?: string; UserId?: string }`
 
 - `run(signal: AbortSignal)`: Service startup with authentication check
   - `signal`: AbortSignal for service lifecycle management
@@ -60,17 +60,17 @@ Initializes the service with AWS credentials.
 
 - `status(agent: Agent)`: Returns service status and account information
   - `agent`: The agent instance
-  - Returns: `&#123; active: boolean; service: string; authenticated: boolean; accountInfo?: &#123; Arn?: string; Account?: string; UserId?: string &#125;; error?: string &#125;`
+  - Returns: `{ active: boolean; service: string; authenticated: boolean; accountInfo?: { Arn?: string; Account?: string; UserId?: string }; error?: string }`
 
 #### AWSCredentials Interface
 
 ```typescript
-interface AWSCredentials &#123;
+interface AWSCredentials {
   accessKeyId: string;
   secretAccessKey: string;
   sessionToken?: string;
   region: string;
-&#125;
+}
 ```
 
 ## Usage Examples
@@ -80,34 +80,34 @@ interface AWSCredentials &#123;
 ```typescript
 import AWSService from "@tokenring-ai/aws";
 
-const awsService = new AWSService(&#123;
+const awsService = new AWSService({
   accessKeyId: process.env.AWS_ACCESS_KEY_ID,
   secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY,
   region: process.env.AWS_REGION || 'us-east-1'
-&#125;);
+});
 
 // Check authentication status
-if (awsService.isAuthenticated()) &#123;
+if (awsService.isAuthenticated()) {
   const identity = await awsService.getCallerIdentity();
-  console.log(`Account: $&#123;identity.Account&#125;`);
-  console.log(`ARN: $&#123;identity.Arn&#125;`);
-&#125;
+  console.log(`Account: ${identity.Account}`);
+  console.log(`ARN: ${identity.Arn}`);
+}
 ```
 
 ### Using S3 Client
 
 ```typescript
-import &#123; ListBucketsCommand &#125; from "@aws-sdk/client-s3";
+import { ListBucketsCommand } from "@aws-sdk/client-s3";
 import AWSService from "@tokenring-ai/aws";
 
-const awsService = new AWSService(&#123;
+const awsService = new AWSService({
   accessKeyId: process.env.AWS_ACCESS_KEY_ID,
   secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY,
   region: process.env.AWS_REGION
-&#125;);
+});
 
 const s3Client = awsService.getS3Client();
-const command = new ListBucketsCommand(&#123;&#125;);
+const command = new ListBucketsCommand({});
 const response = await s3Client.send(command);
 console.log('S3 Buckets:', response.Buckets);
 ```
@@ -115,14 +115,14 @@ console.log('S3 Buckets:', response.Buckets);
 ### Generic AWS Client Initialization
 
 ```typescript
-import &#123; SNSClient &#125; from "@aws-sdk/client-sns";
+import { SNSClient } from "@aws-sdk/client-sns";
 import AWSService from "@tokenring-ai/aws";
 
-const awsService = new AWSService(&#123;
+const awsService = new AWSService({
   accessKeyId: process.env.AWS_ACCESS_KEY_ID,
   secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY,
   region: process.env.AWS_REGION
-&#125;);
+});
 
 const snsClient = awsService.initializeAWSClient(SNSClient);
 ```
@@ -130,43 +130,43 @@ const snsClient = awsService.initializeAWSClient(SNSClient);
 ### Using the S3 Buckets Tool
 
 ```typescript
-import &#123; TokenRingApp &#125; from "@tokenring-ai/app";
+import { TokenRingApp } from "@tokenring-ai/app";
 import awsPlugin from "@tokenring-ai/aws";
 
-const app = new TokenRingApp(&#123;
+const app = new TokenRingApp({
   plugins: [
-    awsPlugin.withConfig(&#123;
-      aws: &#123;
+    awsPlugin.withConfig({
+      aws: {
         accessKeyId: process.env.AWS_ACCESS_KEY_ID,
         secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY,
         region: process.env.AWS_REGION
-      &#125;
-    &#125;)
+      }
+    })
   ]
-&#125;);
+});
 
 const agent = app.createAgent();
-const result = await agent.executeTool("aws_listS3Buckets", &#123;&#125;);
+const result = await agent.executeTool("aws_listS3Buckets", {});
 console.log('S3 Buckets:', result.buckets);
 ```
 
 ### Using AWS Chat Commands
 
 ```typescript
-import &#123; TokenRingApp &#125; from "@tokenring-ai/app";
+import { TokenRingApp } from "@tokenring-ai/app";
 import awsPlugin from "@tokenring-ai/aws";
 
-const app = new TokenRingApp(&#123;
+const app = new TokenRingApp({
   plugins: [
-    awsPlugin.withConfig(&#123;
-      aws: &#123;
+    awsPlugin.withConfig({
+      aws: {
         accessKeyId: process.env.AWS_ACCESS_KEY_ID,
         secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY,
         region: process.env.AWS_REGION
-      &#125;
-    &#125;)
+      }
+    })
   ]
-&#125;);
+});
 
 const agent = app.createAgent();
 const result = await agent.executeCommand("aws status");
@@ -184,12 +184,12 @@ const result = await agent.executeCommand("aws status");
 ### Configuration Schema
 
 ```typescript
-interface AWSCredentials &#123;
+interface AWSCredentials {
   accessKeyId: string;
   secretAccessKey: string;
   sessionToken?: string;
   region: string;
-&#125;
+}
 ```
 
 ### Setup Requirements
@@ -212,21 +212,21 @@ interface AWSCredentials &#123;
 When added to a TokenRing application, the plugin automatically registers the AWSService, tools, and chat commands:
 
 ```typescript
-import &#123; TokenRingApp &#125; from '@tokenring-ai/app';
+import { TokenRingApp } from '@tokenring-ai/app';
 import awsPlugin from '@tokenring-ai/aws';
 
-const app = new TokenRingApp(&#123;
+const app = new TokenRingApp({
   plugins: [
-    awsPlugin.withConfig(&#123;
-      aws: &#123;
+    awsPlugin.withConfig({
+      aws: {
         accessKeyId: process.env.AWS_ACCESS_KEY_ID,
         secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY,
         region: process.env.AWS_REGION,
         sessionToken: process.env.AWS_SESSION_TOKEN // optional
-      &#125;
-    &#125;)
+      }
+    })
   ]
-&#125;);
+});
 ```
 
 ### Agent Usage

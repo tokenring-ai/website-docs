@@ -1,4 +1,4 @@
-# @tokenring-ai/audio
+# Audio Plugin
 
 ## Overview
 
@@ -38,18 +38,18 @@ The `AudioService` class is the primary service managing audio operations and pr
 - `getAvailableProviders()`: Returns list of registered provider names
 - `requireAudioProvider(agent)`: Retrieves the active provider for an agent
 - `setActiveProvider(name, agent)`: Sets the active provider for an agent
-- `convertAudioToText(audioFile, &#123; language &#125;, agent)`: Transcribes audio to text
-- `convertTextToSpeech(text, &#123; voice, speed &#125;, agent)`: Converts text to speech
+- `convertAudioToText(audioFile, { language }, agent)`: Transcribes audio to text
+- `convertTextToSpeech(text, { voice, speed }, agent)`: Converts text to speech
 
 ### AudioProvider
 
 Abstract interface for implementing audio providers. Providers must implement:
 
 ```typescript
-interface AudioProvider &#123;
-  record(abortSignal: AbortSignal, options: RecordingOptions): Promise&lt;RecordingResult&gt;;
-  playback(filename: string): Promise&lt;string&gt;;
-&#125;
+interface AudioProvider {
+  record(abortSignal: AbortSignal, options: RecordingOptions): Promise<RecordingResult>;
+  playback(filename: string): Promise<string>;
+}
 ```
 
 **RecordingOptions:**
@@ -73,9 +73,9 @@ The plugin provides `/audio` commands for audio operations:
 | Command | Description |
 |---------|-------------|
 | `/audio record [flags]` | Record audio from microphone |
-| `/audio play &lt;file&gt;` | Play audio file through speakers |
-| `/audio speak &lt;text&gt; [flags]` | Convert text to speech |
-| `/audio transcribe &lt;file&gt; [flags]` | Transcribe audio file to text |
+| `/audio play <file>` | Play audio file through speakers |
+| `/audio speak <text> [flags]` | Convert text to speech |
+| `/audio transcribe <file> [flags]` | Transcribe audio file to text |
 | `/audio model tts ...` | Manage TTS (text-to-speech) models |
 | `/audio model stt ...` | Manage STT (speech-to-text) models |
 
@@ -88,7 +88,7 @@ The plugin provides `/audio` commands for audio operations:
 ```
 
 **Options:**
-- `--format &lt;fmt&gt;` - Audio format (e.g., wav, mp3)
+- `--format <fmt>` - Audio format (e.g., wav, mp3)
 
 ### Play Command
 
@@ -107,8 +107,8 @@ The plugin provides `/audio` commands for audio operations:
 ```
 
 **Options:**
-- `--voice &lt;id&gt;` - Voice ID (e.g., alloy, echo, fable)
-- `--speed &lt;n&gt;` - Speech speed (e.g., 0.5, 1.0, 2.0)
+- `--voice <id>` - Voice ID (e.g., alloy, echo, fable)
+- `--speed <n>` - Speech speed (e.g., 0.5, 1.0, 2.0)
 
 ### Transcribe Command
 
@@ -119,7 +119,7 @@ The plugin provides `/audio` commands for audio operations:
 ```
 
 **Options:**
-- `--language &lt;code&gt;` - Language code (e.g., en, en-US, zh)
+- `--language <code>` - Language code (e.g., en, en-US, zh)
 
 ### Model Management
 
@@ -148,50 +148,50 @@ The plugin registers the following tools for agent use:
 Record audio using the active voice provider.
 
 ```typescript
-&#123;
+{
   name: "voice_record",
   description: "Record audio using the active voice provider",
-  inputSchema: z.object(&#123;
+  inputSchema: z.object({
     sampleRate: z.number().optional().describe("Sample rate for recording"),
     channels: z.number().optional().describe("Number of audio channels"),
     format: z.string().optional().describe("Audio format"),
     timeout: z.number().optional().describe("Recording timeout in milliseconds"),
-  &#125;)
-&#125;
+  })
+}
 ```
 
-**Returns:** `&#123; filePath: string &#125;`
+**Returns:** `{ filePath: string }`
 
 ### voice_transcribe
 
 Transcribe audio file to text.
 
 ```typescript
-&#123;
+{
   name: "voice_transcribe",
   description: "Transcribe audio using the active voice provider",
-  inputSchema: z.object(&#123;
+  inputSchema: z.object({
     audioFile: z.any().describe("Audio file to transcribe"),
     language: z.string().describe("Language to transcribe the audio to"),
-  &#125;)
-&#125;
+  })
+}
 ```
 
-**Returns:** `&#123; text: string &#125;`
+**Returns:** `{ text: string }`
 
 ### voice_speak
 
 Convert text to speech.
 
 ```typescript
-&#123;
+{
   name: "voice_speak",
   description: "Convert text to speech using the active voice provider",
-  inputSchema: z.object(&#123;
+  inputSchema: z.object({
     text: z.string().min(1).describe("Text to convert to speech"),
     speed: z.number().optional().describe("Speech speed"),
-  &#125;)
-&#125;
+  })
+}
 ```
 
 **Returns:** `string` - Confirmation message
@@ -201,16 +201,16 @@ Convert text to speech.
 Play audio file.
 
 ```typescript
-&#123;
+{
   name: "voice_playback",
   description: "Play audio file using the active voice provider",
-  inputSchema: z.object(&#123;
+  inputSchema: z.object({
     filename: z.string().min(1).describe("Audio filename to play"),
-  &#125;)
-&#125;
+  })
+}
 ```
 
-**Returns:** `&#123; filePath: string &#125;`
+**Returns:** `{ filePath: string }`
 
 ## Configuration
 
@@ -219,59 +219,59 @@ Play audio file.
 ```typescript
 import audioPlugin from '@tokenring-ai/audio';
 
-const app = new TokenRingApp(&#123;
+const app = new TokenRingApp({
   plugins: [
-    audioPlugin.withConfig(&#123;
-      audio: &#123;
+    audioPlugin.withConfig({
+      audio: {
         tmpDirectory: '/tmp',
-        providers: &#123;
-          linux: &#123; /* provider config */ &#125;
-        &#125;,
-        agentDefaults: &#123;
+        providers: {
+          linux: { /* provider config */ }
+        },
+        agentDefaults: {
           provider: 'linux',
-          transcribe: &#123;
+          transcribe: {
             model: 'whisper-1',
             prompt: 'Convert the audio to english',
             language: 'en',
-          &#125;,
-          speech: &#123;
+          },
+          speech: {
             model: 'OpenAI:tts-1',
             voice: 'alloy',
             speed: 1.0,
-          &#125;,
-        &#125;,
-      &#125;,
-    &#125;),
+          },
+        },
+      },
+    }),
   ],
-&#125;);
+});
 ```
 
 ### Configuration Schema
 
 ```typescript
-const AudioServiceConfigSchema = z.object(&#123;
+const AudioServiceConfigSchema = z.object({
   tmpDirectory: z.string().default('/tmp'),
   providers: z.record(z.string(), z.any()),
   agentDefaults: AudioAgentDefaultsSchema,
-&#125;);
+});
 
-const AudioAgentConfigSchema = z.object(&#123;
+const AudioAgentConfigSchema = z.object({
   provider: z.string().optional(),
   transcribe: AudioTranscriptionConfigSchema.optional(),
   speech: AudioSpeechConfigSchema.optional(),
-&#125;);
+});
 
-const AudioTranscriptionConfigSchema = z.object(&#123;
+const AudioTranscriptionConfigSchema = z.object({
   model: z.string().default('whisper-1'),
   prompt: z.string().default('Convert the audio to english'),
   language: z.string().default('en'),
-&#125;);
+});
 
-const AudioSpeechConfigSchema = z.object(&#123;
+const AudioSpeechConfigSchema = z.object({
   model: z.string().default('OpenAI:tts-1'),
   voice: z.string().default('alloy'),
   speed: z.number().default(1.0),
-&#125;);
+});
 ```
 
 ### Configuration Options
@@ -279,7 +279,7 @@ const AudioSpeechConfigSchema = z.object(&#123;
 | Option | Type | Default | Description |
 |--------|------|---------|-------------|
 | `tmpDirectory` | string | `/tmp` | Directory for temporary audio files |
-| `providers` | record | `&#123;&#125;` | Map of provider names to provider configs |
+| `providers` | record | `{}` | Map of provider names to provider configs |
 | `agentDefaults.provider` | string | - | Default audio provider |
 | `agentDefaults.transcribe.model` | string | `whisper-1` | Default STT model |
 | `agentDefaults.transcribe.prompt` | string | `Convert the audio to english` | Transcription prompt |
@@ -299,16 +299,16 @@ import AudioService from '@tokenring-ai/audio/AudioService.ts';
 const audioService = agent.requireServiceByType(AudioService);
 
 // Transcribe audio
-const result = await audioService.convertAudioToText(audioFile, &#123;
+const result = await audioService.convertAudioToText(audioFile, {
   language: 'en',
-&#125;, agent);
+}, agent);
 console.log('Transcription:', result.text);
 
 // Generate speech
-const speech = await audioService.convertTextToSpeech('Hello world', &#123;
+const speech = await audioService.convertTextToSpeech('Hello world', {
   voice: 'alloy',
   speed: 1.2,
-&#125;, agent);
+}, agent);
 ```
 
 ### Provider Management
@@ -317,16 +317,16 @@ const speech = await audioService.convertTextToSpeech('Hello world', &#123;
 const audioService = agent.requireServiceByType(AudioService);
 
 // Register a custom provider
-audioService.registerProvider('custom', &#123;
-  async record(signal, options) &#123;
+audioService.registerProvider('custom', {
+  async record(signal, options) {
     // Custom recording implementation
-    return &#123; filePath: '/path/to/recording.wav' &#125;;
-  &#125;,
-  async playback(filename) &#123;
+    return { filePath: '/path/to/recording.wav' };
+  },
+  async playback(filename) {
     // Custom playback implementation
     return filename;
-  &#125;,
-&#125;);
+  },
+});
 
 // Set the active provider
 audioService.setActiveProvider('custom', agent);
@@ -380,12 +380,12 @@ app.registerPlugin(audioPlugin);
 The `AudioState` class manages audio configuration persistence across agent sessions:
 
 ```typescript
-class AudioState implements AgentStateSlice &#123;
+class AudioState implements AgentStateSlice {
   name = "AudioState";
   activeProvider: string | null;
   transcribe: TranscriptionConfig;
   speech: SpeechConfig;
-&#125;
+}
 ```
 
 **State Properties:**
@@ -408,9 +408,9 @@ class AudioState implements AgentStateSlice &#123;
 ```typescript
 async convertAudioToText(
   audioFile: any,
-  &#123; language &#125;: &#123; language?: string &#125;,
+  { language }: { language?: string },
   agent: Agent
-): Promise&lt;TranscriptionResult&gt;
+): Promise<TranscriptionResult>
 ```
 
 Transcribes audio to text using the configured STT model.
@@ -420,16 +420,16 @@ Transcribes audio to text using the configured STT model.
 - `language`: Optional language override
 - `agent`: The agent context
 
-**Returns:** `&#123; text: string &#125;`
+**Returns:** `{ text: string }`
 
 #### convertTextToSpeech
 
 ```typescript
 async convertTextToSpeech(
   text: string,
-  &#123; voice, speed &#125;: &#123; voice?: string, speed?: number &#125;,
+  { voice, speed }: { voice?: string, speed?: number },
   agent: Agent
-): Promise&lt;AudioResult&gt;
+): Promise<AudioResult>
 ```
 
 Converts text to speech using the configured TTS model.
@@ -440,7 +440,7 @@ Converts text to speech using the configured TTS model.
 - `speed`: Optional speed override
 - `agent`: The agent context
 
-**Returns:** `&#123; data: Buffer &#125;`
+**Returns:** `{ data: Buffer }`
 
 #### setActiveProvider
 
@@ -461,25 +461,25 @@ Returns the list of registered provider names.
 ### Interface Definitions
 
 ```typescript
-interface RecordingOptions &#123;
+interface RecordingOptions {
   sampleRate?: number;
   channels?: number;
   format?: string;
   timeout?: number;
-&#125;
+}
 
-interface RecordingResult &#123;
+interface RecordingResult {
   filePath: string;
-&#125;
+}
 
-interface AudioResult &#123;
+interface AudioResult {
   data: any;
-&#125;
+}
 
-interface AudioProvider &#123;
-  record(abortSignal: AbortSignal, options: RecordingOptions): Promise&lt;RecordingResult&gt;;
-  playback(filename: string): Promise&lt;string&gt;;
-&#125;
+interface AudioProvider {
+  record(abortSignal: AbortSignal, options: RecordingOptions): Promise<RecordingResult>;
+  playback(filename: string): Promise<string>;
+}
 ```
 
 ## Development

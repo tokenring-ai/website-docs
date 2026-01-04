@@ -1,4 +1,4 @@
-# Agent
+# Agent Plugin
 
 ## Overview
 
@@ -29,17 +29,17 @@ The central agent implementation providing comprehensive AI agent functionality:
 ```typescript
 import Agent from "@tokenring-ai/agent";
 
-const agent = new Agent(app, &#123;
-  config: &#123;
+const agent = new Agent(app, {
+  config: {
     name: "My Agent",
     description: "Custom development agent",
     category: "development",
-    visual: &#123; color: "blue" &#125;,
+    visual: { color: "blue" },
     type: "interactive",
     initialCommands: ["/help"]
-  &#125;,
+  },
   headless: false
-&#125;);
+});
 ```
 
 **Key Properties:**
@@ -53,20 +53,20 @@ const agent = new Agent(app, &#123;
 - `stateManager`: State management system
 
 **State Management Methods:**
-- `initializeState&lt;T&gt;(ClassType, props)`: Initialize state slice
-- `getState&lt;T&gt;(ClassType)`: Retrieve state slice
-- `mutateState&lt;T&gt;(ClassType, callback)`: Modify state slice
-- `subscribeState&lt;T&gt;(ClassType, callback)`: Subscribe to state changes
-- `waitForState&lt;T&gt;(ClassType, predicate)`: Wait for state condition
-- `timedWaitForState&lt;T&gt;(ClassType, predicate, timeout)`: Wait with timeout
-- `subscribeStateAsync&lt;T&gt;(ClassType, callback)`: Subscribe asynchronously
+- `initializeState<T>(ClassType, props)`: Initialize state slice
+- `getState<T>(ClassType)`: Retrieve state slice
+- `mutateState<T>(ClassType, callback)`: Modify state slice
+- `subscribeState<T>(ClassType, callback)`: Subscribe to state changes
+- `waitForState<T>(ClassType, predicate)`: Wait for state condition
+- `timedWaitForState<T>(ClassType, predicate, timeout)`: Wait with timeout
+- `subscribeStateAsync<T>(ClassType, callback)`: Subscribe asynchronously
 - `generateCheckpoint()`: Create state checkpoint
 - `restoreState(state)`: Restore from checkpoint
 
 **Input Processing:**
-- `handleInput(&#123;message&#125;)`: Process user input with event emission
+- `handleInput({message})`: Process user input with event emission
 - `runCommand(command)`: Execute agent commands
-- `busyWhile&lt;T&gt;(message, awaitable)`: Execute with busy state
+- `busyWhile<T>(message, awaitable)`: Execute with busy state
 - `setBusyWith(message)`: Set busy status indicator
 - `setStatusLine(status)`: Set status line indicator
 
@@ -81,7 +81,7 @@ const agent = new Agent(app, &#123;
 - `emit(event)`: Emit custom events
 
 **Human Interface:**
-- `askHuman&lt;T&gt;(request)`: Request human input
+- `askHuman<T>(request)`: Request human input
 - `sendHumanResponse(requestId, response)`: Send human response
 
 **Lifecycle Management:**
@@ -93,10 +93,10 @@ const agent = new Agent(app, &#123;
 - `shutdown(reason)`: Shutdown agent completely
 
 **Configuration Access:**
-- `getAgentConfigSlice&lt;T&gt;(key, schema)`: Get config value with validation
+- `getAgentConfigSlice<T>(key, schema)`: Get config value with validation
 
 **Checkpoint Creation:**
-- `static createAgentFromCheckpoint(app, checkpoint, &#123;headless&#125;)`: Create agent from checkpoint
+- `static createAgentFromCheckpoint(app, checkpoint, {headless})`: Create agent from checkpoint
 
 ### AgentManager Service
 
@@ -106,22 +106,22 @@ Central service for managing agent lifecycles and configurations:
 const agentManager = new AgentManager(app);
 
 // Add agent configurations
-agentManager.addAgentConfigs(&#123;
-  myAgent: &#123;
+agentManager.addAgentConfigs({
+  myAgent: {
     name: "My Agent",
     description: "Custom agent description",
     category: "development",
-    visual: &#123; color: "blue" &#125;,
+    visual: { color: "blue" },
     type: "interactive",
     initialCommands: ["/help"]
-  &#125;
-&#125;);
+  }
+});
 
 // Spawn agents
-const agent = await agentManager.spawnAgent(&#123;
+const agent = await agentManager.spawnAgent({
   agentType: "myAgent",
   headless: false
-&#125;);
+});
 ```
 
 **Key Methods:**
@@ -129,10 +129,10 @@ const agent = await agentManager.spawnAgent(&#123;
 - `addAgentConfigs(configs)`: Register multiple agent configurations
 - `getAgentTypes()`: Get all available agent types
 - `getAgentConfigs()`: Get all agent configurations
-- `spawnAgent(&#123;agentType, headless&#125;)`: Create new agent
-- `spawnSubAgent(agent, &#123;agentType, headless&#125;)`: Create sub-agent
-- `spawnAgentFromConfig(config, &#123;headless&#125;)`: Create agent from config
-- `spawnAgentFromCheckpoint(app, checkpoint, &#123;headless&#125;)`: Create from checkpoint
+- `spawnAgent({agentType, headless})`: Create new agent
+- `spawnSubAgent(agent, {agentType, headless})`: Create sub-agent
+- `spawnAgentFromConfig(config, {headless})`: Create agent from config
+- `spawnAgentFromCheckpoint(app, checkpoint, {headless})`: Create from checkpoint
 - `getAgent(id)`: Get agent by ID
 - `getAgents()`: Get all active agents
 - `deleteAgent(agent)`: Shutdown and remove agent
@@ -208,60 +208,60 @@ import TokenRingApp from "@tokenring-ai/app";
 const app = new TokenRingApp();
 
 // Create agent
-const agent = new Agent(app, &#123;
-  config: &#123;
+const agent = new Agent(app, {
+  config: {
     name: "My Agent",
     description: "Custom development agent",
     category: "development",
-    visual: &#123; color: "blue" &#125;,
+    visual: { color: "blue" },
     type: "interactive",
     initialCommands: ["/help"]
-  &#125;,
+  },
   headless: false
-&#125;);
+});
 
 // Initialize agent
 await agent.initialize();
 
 // Handle user input
-const requestId = agent.handleInput(&#123; message: "Hello! How can you help me?" &#125;);
+const requestId = agent.handleInput({ message: "Hello! How can you help me?" });
 
 // Listen to events
-agent.subscribeState(AgentEventState, (state) =&gt; &#123;
-  for (const event of state.events) &#123;
+agent.subscribeState(AgentEventState, (state) => {
+  for (const event of state.events) {
     console.log("Event:", event.type, event);
-  &#125;
-&#125;);
+  }
+});
 ```
 
 ### State Management and Checkpointing
 
 ```typescript
 // Initialize custom state
-class MyCustomState implements AgentStateSlice &#123;
+class MyCustomState implements AgentStateSlice {
   name = "MyCustomState";
   data: string[] = [];
 
-  reset(what: ResetWhat[]) &#123;
+  reset(what: ResetWhat[]) {
     if (what.includes('chat')) this.data = [];
-  &#125;
+  }
 
-  show() &#123;
-    return [`Data items: $&#123;this.data.length&#125;`];
-  &#125;
+  show() {
+    return [`Data items: ${this.data.length}`];
+  }
 
-  serialize() &#123; return &#123; data: this.data &#125;; &#125;
+  serialize() { return { data: this.data }; }
 
-  deserialize(obj: any) &#123; this.data = obj.data || []; &#125;
-&#125;
+  deserialize(obj: any) { this.data = obj.data || []; }
+}
 
 // Use state in agent
-agent.initializeState(MyCustomState, &#123;&#125;);
+agent.initializeState(MyCustomState, {});
 
 // Modify state
-agent.mutateState(MyCustomState, (state) =&gt; &#123;
+agent.mutateState(MyCustomState, (state) => {
   state.data.push("item");
-&#125;);
+});
 
 // Create checkpoint
 const checkpoint = agent.generateCheckpoint();
@@ -271,7 +271,7 @@ console.log("Checkpoint:", checkpoint);
 const restoredAgent = await Agent.createAgentFromCheckpoint(
   app,
   checkpoint,
-  &#123; headless: false &#125;
+  { headless: false }
 );
 ```
 
@@ -279,13 +279,13 @@ const restoredAgent = await Agent.createAgentFromCheckpoint(
 
 ```typescript
 // Create sub-agent from parent
-const subAgent = await agentManager.spawnSubAgent(agent, &#123;
+const subAgent = await agentManager.spawnSubAgent(agent, {
   agentType: "backgroundWorker",
   headless: true
-&#125;);
+});
 
 // Send message to sub-agent
-await subAgent.handleInput(&#123; message: "Process this data" &#125;);
+await subAgent.handleInput({ message: "Process this data" });
 
 // Sub-agent state is automatically copied from parent
 await agentManager.deleteAgent(subAgent);
@@ -294,13 +294,13 @@ await agentManager.deleteAgent(subAgent);
 ### Advanced Sub-Agent Execution
 
 ```typescript
-import &#123; runSubAgent &#125; from "@tokenring-ai/agent/runSubAgent";
+import { runSubAgent } from "@tokenring-ai/agent/runSubAgent";
 
 // Run sub-agent with custom options
-const result = await runSubAgent(&#123;
+const result = await runSubAgent({
   agentType: "code-assistant",
   headless: true,
-  command: "/work Analyze this code: function test() &#123; return true; &#125;",
+  command: "/work Analyze this code: function test() { return true; }",
   forwardChatOutput: true,
   forwardSystemOutput: true,
   forwardReasoning: true,
@@ -310,7 +310,7 @@ const result = await runSubAgent(&#123;
   maxResponseLength: 1000,
   minContextLength: 300,
   background: false
-&#125;, agent, true);
+}, agent, true);
 
 console.log("Result:", result.status, result.response);
 ```
@@ -319,14 +319,14 @@ console.log("Result:", result.status, result.response);
 
 ```typescript
 // Built-in tool: runAgent
-const result = await agent.runAgent(&#123;
+const result = await agent.runAgent({
   agentType: "dataProcessor",
   message: "Analyze this dataset",
   context: "File: data.csv\nColumns: name,age,income",
   forwardChatOutput: true,
   forwardSystemOutput: true,
   timeout: 300
-&#125;);
+});
 
 console.log("Tool result:", result);
 ```
@@ -335,13 +335,13 @@ console.log("Tool result:", result);
 
 ```typescript
 // Register hook
-const hookConfig: HookConfig = &#123;
+const hookConfig: HookConfig = {
   name: "myPlugin/afterChatCompletion",
   description: "Custom after chat completion hook",
-  afterChatCompletion: async (agent, ...args) =&gt; &#123;
+  afterChatCompletion: async (agent, ...args) => {
     console.log("Chat completed:", args);
-  &#125;
-&#125;;
+  }
+};
 
 // Enable hook for agent
 lifecycleService.registerHook("myPlugin/afterChatCompletion", hookConfig);
@@ -354,62 +354,62 @@ lifecycleService.enableHooks(["myPlugin/afterChatCompletion"], agent);
 
 ```typescript
 // Simple confirmation
-const confirmed = await agent.askHuman(&#123;
+const confirmed = await agent.askHuman({
   type: "askForConfirmation",
   message: "Are you sure you want to proceed?"
-&#125;);
+});
 
 // Text input
-const text = await agent.askHuman(&#123;
+const text = await agent.askHuman({
   type: "askForText",
   message: "Enter your name:"
-&#125;);
+});
 
 // Single tree selection
-const selection = await agent.askHuman(&#123;
+const selection = await agent.askHuman({
   type: "askForSingleTreeSelection",
   title: "Choose an option",
-  tree: &#123;
+  tree: {
     name: "root",
     hasChildren: true,
     children: [
-      &#123; name: "Option 1", value: "opt1" &#125;,
-      &#123; name: "Option 2", value: "opt2" &#125;
+      { name: "Option 1", value: "opt1" },
+      { name: "Option 2", value: "opt2" }
     ]
-  &#125;
-&#125;);
+  }
+});
 
 // Complex form
-const formData = await agent.askHuman(&#123;
+const formData = await agent.askHuman({
   type: "askForForm",
   name: "contactForm",
   description: "Please fill out the contact form",
   sections: [
-    &#123;
+    {
       name: "personal",
       description: "Personal Information",
       fields: [
-        &#123; type: "text", label: "Full Name", key: "name", required: true &#125;,
-        &#123; type: "text", label: "Email", key: "email", required: true &#125;
+        { type: "text", label: "Full Name", key: "name", required: true },
+        { type: "text", label: "Email", key: "email", required: true }
       ]
-    &#125;,
-    &#123;
+    },
+    {
       name: "preferences",
       description: "Preferences",
       fields: [
-        &#123; 
+        { 
           type: "selectOne", 
           label: "Category", 
           key: "category", 
           options: [
-            &#123; label: "Support", value: "support" &#125;,
-            &#123; label: "Sales", value: "sales" &#125;
+            { label: "Support", value: "support" },
+            { label: "Sales", value: "sales" }
           ]
-        &#125;
+        }
       ]
-    &#125;
+    }
   ]
-&#125;);
+});
 
 // Handle human response
 agent.sendHumanResponse(requestId, selection);
@@ -445,14 +445,14 @@ agent.setStatusLine(null);
 ### AgentConfig Schema
 
 ```typescript
-const agentConfig = &#123;
+const agentConfig = {
   name: string,                    // Agent identifier
   description: string,             // Agent purpose
   category: string,                // Agent category
   debug?: boolean,                 // Enable debug logging (default: false)
-  visual: &#123;
+  visual: {
     color: string                  // UI color theme
-  &#125;,
+  },
   workHandler?: Function,          // Custom work handler
   initialCommands: string[],       // Startup commands
   persistent?: boolean,            // Enable checkpointing
@@ -461,7 +461,7 @@ const agentConfig = &#123;
   callable?: boolean,              // Enable tool calls (default: true)
   idleTimeout?: number,            // Idle timeout in seconds (default: 86400)
   maxRunTime?: number              // Max runtime in seconds (default: 0 = unlimited)
-&#125;;
+};
 ```
 
 ## Event System
@@ -491,11 +491,11 @@ const agentConfig = &#123;
 
 All events follow this structure:
 ```typescript
-&#123;
+{
   type: EventType,
   timestamp: number,
   // Event-specific fields
-&#125;
+}
 ```
 
 ## Human Interface Types
@@ -504,62 +504,62 @@ All events follow this structure:
 
 ```typescript
 // Text field
-&#123; type: 'text', label: 'Name', key: 'name', required: true &#125;
+{ type: 'text', label: 'Name', key: 'name', required: true }
 
 // Select one field
-&#123; 
+{ 
   type: 'selectOne', 
   label: 'Category', 
   key: 'category', 
-  options: [&#123; label: 'A', value: 'a' &#125;, &#123; label: 'B', value: 'b' &#125;] 
-&#125;
+  options: [{ label: 'A', value: 'a' }, { label: 'B', value: 'b' }] 
+}
 
 // Select many field
-&#123; 
+{ 
   type: 'selectMany', 
   label: 'Tags', 
   key: 'tags', 
-  options: [&#123; label: 'Tag 1', value: 't1' &#125;] 
-&#125;
+  options: [{ label: 'Tag 1', value: 't1' }] 
+}
 
 // Directory picker
-&#123; type: 'directory', label: 'Folder', key: 'folder' &#125;
+{ type: 'directory', label: 'Folder', key: 'folder' }
 
 // File picker
-&#123; type: 'file', label: 'File', key: 'file' &#125;
+{ type: 'file', label: 'File', key: 'file' }
 
 // Multiple file picker
-&#123; type: 'multipleFile', label: 'Files', key: 'files' &#125;
+{ type: 'multipleFile', label: 'Files', key: 'files' }
 
 // Tree selection (single)
-&#123; type: 'askForSingleTreeSelection', title: 'Select', tree: treeLeaf &#125;
+{ type: 'askForSingleTreeSelection', title: 'Select', tree: treeLeaf }
 
 // Tree selection (multiple)
-&#123; type: 'askForMultipleTreeSelection', title: 'Select', tree: treeLeaf &#125;
+{ type: 'askForMultipleTreeSelection', title: 'Select', tree: treeLeaf }
 ```
 
 ### Tree Leaf Structure
 
 ```typescript
-&#123;
+{
   name: string,
   value?: string,
   hasChildren?: boolean,
-  children?: TreeLeaf[] | (() =&gt; TreeLeaf[] | Promise&lt;TreeLeaf[]&gt;)
-&#125;
+  children?: TreeLeaf[] | (() => TreeLeaf[] | Promise<TreeLeaf[]>)
+}
 ```
 
 ### Request Types
 
 | Type | Request | Response |
 |------|---------|----------|
-| `askForConfirmation` | `&#123;type, message, default?, timeout?&#125;` | `boolean` |
-| `askForText` | `&#123;type, message&#125;` | `string \| null` |
-| `askForPassword` | `&#123;type, message&#125;` | `string \| null` |
-| `askForSingleTreeSelection` | `&#123;type, title, message?, tree, initialSelection?, loop?, default?, timeout?&#125;` | `string \| null` |
-| `askForMultipleTreeSelection` | `&#123;type, title, message?, tree, initialSelection?, loop?, default?, timeout?&#125;` | `string[] \| null` |
-| `openWebPage` | `&#123;type, url&#125;` | `boolean` |
-| `askForForm` | `&#123;type, name, description, sections&#125;` | `&#123;type, values&#125;` |
+| `askForConfirmation` | `{type, message, default?, timeout?}` | `boolean` |
+| `askForText` | `{type, message}` | `string \| null` |
+| `askForPassword` | `{type, message}` | `string \| null` |
+| `askForSingleTreeSelection` | `{type, title, message?, tree, initialSelection?, loop?, default?, timeout?}` | `string \| null` |
+| `askForMultipleTreeSelection` | `{type, title, message?, tree, initialSelection?, loop?, default?, timeout?}` | `string[] \| null` |
+| `openWebPage` | `{type, url}` | `boolean` |
+| `askForForm` | `{type, name, description, sections}` | `{type, values}` |
 
 ## Plugin Configuration
 
@@ -570,17 +570,17 @@ The agent package automatically integrates with TokenRing applications:
 const app = new TokenRingApp();
 
 // Agents configured in app config
-const config = &#123;
-  agents: &#123;
-    myAgent: &#123;
+const config = {
+  agents: {
+    myAgent: {
       name: "My Agent",
       description: "Custom agent",
       category: "development",
-      visual: &#123; color: "blue" &#125;,
+      visual: { color: "blue" },
       type: "interactive"
-    &#125;
-  &#125;
-&#125;;
+    }
+  }
+};
 ```
 
 ## Integration
@@ -617,8 +617,8 @@ The agent package automatically integrates with TokenRing applications:
 | Endpoint | Request Params | Response |
 |----------|---------------|----------|
 | `listAgents` | None | Array of agent information |
-| `spawnAgent` | `&#123;agentType, headless&#125;` | Created agent details |
-| `sendMessage` | `&#123;agentId, message&#125;` | Response from agent |
+| `spawnAgent` | `{agentType, headless}` | Created agent details |
+| `sendMessage` | `{agentId, message}` | Response from agent |
 
 ## State Management
 
@@ -635,21 +635,21 @@ Agents support multiple state slices for different concerns:
 
 **Custom State Slices:**
 ```typescript
-class CustomState implements AgentStateSlice &#123;
+class CustomState implements AgentStateSlice {
   name = "CustomState";
-  reset(what: ResetWhat[]) &#123;
+  reset(what: ResetWhat[]) {
     // Implementation
-  &#125;
-  show(): string[] &#123;
+  }
+  show(): string[] {
     return ["Custom state data"];
-  &#125;
-  serialize() &#123;
-    return &#123; data: this.data &#125;;
-  &#125;
-  deserialize(obj: any) &#123;
+  }
+  serialize() {
+    return { data: this.data };
+  }
+  deserialize(obj: any) {
     // Implementation
-  &#125;
-&#125;
+  }
+}
 ```
 
 ### Checkpointing
@@ -662,7 +662,7 @@ const checkpoint = agent.generateCheckpoint();
 const restoredAgent = await Agent.createAgentFromCheckpoint(
   app,
   checkpoint,
-  &#123; headless: false &#125;
+  { headless: false }
 );
 ```
 
@@ -691,17 +691,17 @@ bun run test:coverage
 Create custom plugins for agent functionality:
 
 ```typescript
-import &#123; TokenRingPlugin &#125; from "@tokenring-ai/app";
+import { TokenRingPlugin } from "@tokenring-ai/app";
 
-const myAgentPlugin: TokenRingPlugin = &#123;
+const myAgentPlugin: TokenRingPlugin = {
   name: "my-plugin",
-  install(app) &#123;
+  install(app) {
     // Register custom commands
     // Register custom tools
     // Register custom hooks
     // Register custom state slices
-  &#125;
-&#125;;
+  }
+};
 ```
 
 ### Package Structure

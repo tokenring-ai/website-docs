@@ -85,13 +85,13 @@ Executes a command with all vault secrets injected as environment variables. Onl
 Initialize a new encrypted vault file.
 
 **Options:**
-- `-f, --file &lt;path&gt;`: Specify vault file path (default: `.vault`)
+- `-f, --file <path>`: Specify vault file path (default: `.vault`)
 
-#### `vault get &lt;key&gt;`
+#### `vault get <key>`
 
 Retrieve a secret value by key.
 
-#### `vault set &lt;key&gt; &lt;value&gt;`
+#### `vault set <key> <value>`
 
 Store a secret value.
 
@@ -99,7 +99,7 @@ Store a secret value.
 
 List all secret keys (not values) stored in the vault.
 
-#### `vault remove &lt;key&gt;`
+#### `vault remove <key>`
 
 Remove a secret by key.
 
@@ -107,7 +107,7 @@ Remove a secret by key.
 
 Change the vault encryption password.
 
-#### `vault run &lt;command&gt; [args...]`
+#### `vault run <command> [args...]`
 
 Run a command with vault secrets injected as environment variables.
 
@@ -116,17 +116,17 @@ Run a command with vault secrets injected as environment variables.
 ### Configuration
 
 ```typescript
-import &#123; VaultService &#125; from '@tokenring-ai/vault';
+import { VaultService } from '@tokenring-ai/vault';
 
-const vault = new VaultService(&#123;
+const vault = new VaultService({
   vaultFile: '.vault',
   relockTime: 300000  // 5 minutes in milliseconds
-&#125;);
+});
 ```
 
 ### Service Methods
 
-#### unlockVault(agent: Agent): Promise&lt;Record&lt;string, string&gt;&gt;
+#### `unlockVault(agent: Agent): Promise<Record<string, string>>`
 
 Prompts for password and unlocks the vault. Returns the vault data.
 
@@ -138,9 +138,9 @@ const data = await vault.unlockVault(agent);
 - `agent`: The current agent instance for service access and human interaction
 
 **Returns:**
-- `Promise&lt;Record&lt;string, string&gt;&gt;`: The decrypted vault data as key-value pairs
+- `Promise<Record<string, string>>`: The decrypted vault data as key-value pairs
 
-#### lock(): Promise&lt;void&gt;
+#### `lock(): Promise<void>`
 
 Locks the vault and clears cached password and data.
 
@@ -148,7 +148,7 @@ Locks the vault and clears cached password and data.
 await vault.lock();
 ```
 
-#### getItem(key: string, agent: Agent): Promise&lt;string | undefined&gt;
+#### `getItem(key: string, agent: Agent): Promise<string | undefined>`
 
 Retrieves a value by key. Unlocks vault if needed. Returns string or undefined.
 
@@ -161,9 +161,9 @@ const apiKey = await vault.getItem('API_KEY', agent);
 - `agent`: The current agent instance
 
 **Returns:**
-- `Promise&lt;string | undefined&gt;`: The value or undefined if key doesn't exist
+- `Promise<string | undefined>`: The value or undefined if key doesn't exist
 
-#### setItem(key: string, value: string, agent: Agent): Promise&lt;void&gt;
+#### `setItem(key: string, value: string, agent: Agent): Promise<void>`
 
 Stores a string value by key. Unlocks vault if needed.
 
@@ -176,12 +176,12 @@ await vault.setItem('API_KEY', 'sk-1234567890', agent);
 - `value`: The string value to store
 - `agent`: The current agent instance
 
-#### save(vaultData: Record&lt;string, string&gt;, agent: Agent): Promise&lt;void&gt;
+#### `save(vaultData: Record<string, string>, agent: Agent): Promise<void>`
 
 Saves the entire vault data.
 
 ```typescript
-await vault.save(&#123; API_KEY: 'new-key', DB_PASSWORD: 'new-pass' &#125;, agent);
+await vault.save({ API_KEY: 'new-key', DB_PASSWORD: 'new-pass' }, agent);
 ```
 
 **Parameters:**
@@ -204,33 +204,33 @@ await vault.save(&#123; API_KEY: 'new-key', DB_PASSWORD: 'new-pass' &#125;, agen
 The vault package integrates with TokenRing applications through a plugin system:
 
 ```typescript
-import &#123; TokenRingPlugin &#125; from "@tokenring-ai/app";
-import &#123; VaultService &#125; from "@tokenring-ai/vault";
-import &#123; vaultConfigSchema &#125; from "./VaultService.ts";
+import { TokenRingPlugin } from "@tokenring-ai/app";
+import { VaultService } from "@tokenring-ai/vault";
+import { vaultConfigSchema } from "./VaultService.ts";
 import packageJSON from "./package.json";
 
-export default &#123;
+export default {
   name: packageJSON.name,
   version: packageJSON.version,
   description: packageJSON.description,
-  install(app, config) &#123;
-    if (config.vault) &#123;
+  install(app, config) {
+    if (config.vault) {
       app.addServices(new VaultService(config.vault));
-    &#125;
-  &#125;,
-  config: z.object(&#123; vault: vaultConfigSchema.optional() &#125;)
-&#125; satisfies TokenRingPlugin;
+    }
+  },
+  config: z.object({ vault: vaultConfigSchema.optional() })
+} satisfies TokenRingPlugin;
 ```
 
 ### Configuration Schema
 
 ```typescript
-import &#123; z &#125; from 'zod';
+import { z } from 'zod';
 
-export const vaultConfigSchema = z.object(&#123;
+export const vaultConfigSchema = z.object({
   vaultFile: z.string().min(1),
   relockTime: z.number().positive(),
-&#125;);
+});
 ```
 
 **Configuration Options:**
@@ -242,16 +242,16 @@ export const vaultConfigSchema = z.object(&#123;
 For direct vault file manipulation without the service layer:
 
 ```typescript
-import &#123; readVault, writeVault, initVault &#125; from '@tokenring-ai/vault/vault';
+import { readVault, writeVault, initVault } from '@tokenring-ai/vault/vault';
 
 // Initialize new vault
 await initVault('.vault', 'myPassword');
 
-// Read vault (returns Record&lt;string, string&gt;)
+// Read vault (returns Record<string, string>)
 const data = await readVault('.vault', 'myPassword');
 
-// Write vault (accepts Record&lt;string, string&gt;)
-await writeVault('.vault', 'myPassword', &#123; API_KEY: 'value' &#125;);
+// Write vault (accepts Record<string, string>)
+await writeVault('.vault', 'myPassword', { API_KEY: 'value' });
 ```
 
 ## Data Types
@@ -304,17 +304,17 @@ vault -f .production.vault run -- node server.js
 ### TokenRing Integration
 
 ```typescript
-import &#123; Agent &#125; from '@tokenring-ai/agent';
-import &#123; VaultService &#125; from '@tokenring-ai/vault';
+import { Agent } from '@tokenring-ai/agent';
+import { VaultService } from '@tokenring-ai/vault';
 
-const agent = new Agent(&#123;
+const agent = new Agent({
   services: [
-    new VaultService(&#123;
+    new VaultService({
       vaultFile: '.vault',
       relockTime: 300000
-    &#125;)
+    })
   ]
-&#125;);
+});
 
 // Access vault through agent
 const vault = agent.getService('VaultService');
@@ -345,12 +345,12 @@ The vault package provides comprehensive error handling:
 5. **File Permissions**: Proper error handling for file system issues
 
 ```typescript
-try &#123;
+try {
   const data = await readVault('.vault', password);
-&#125; catch (error) &#123;
+} catch (error) {
   // Handle invalid password or corrupted vault
   console.error('Failed to decrypt vault');
-&#125;
+}
 ```
 
 ## Package Structure
@@ -374,16 +374,16 @@ The package includes Vitest configuration for testing:
 
 ```typescript
 // vitest.config.ts
-import &#123; defineConfig &#125; from "vitest/config";
+import { defineConfig } from "vitest/config";
 
-export default defineConfig(&#123;
-  test: &#123;
+export default defineConfig({
+  test: {
     include: ["**/*.test.ts"],
     environment: "node",
     globals: true,
     isolate: true,
-  &#125;,
-&#125;);
+  },
+});
 ```
 
 ## License

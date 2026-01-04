@@ -32,23 +32,23 @@ The plugin registers the following tool with the chat service:
 ### Basic Scraping via Chat
 
 ```typescript
-const result = await tools.chrome_scrapePageText(&#123;
+const result = await tools.chrome_scrapePageText({
   url: 'https://example.com/article',
-&#125;);
+});
 console.log(result.text);
 ```
 
 ### Direct WebSearchService Usage
 
 ```typescript
-import &#123; WebSearchService &#125; from '@tokenring-ai/websearch';
-import &#123; ChromeWebSearchProvider &#125; from '@tokenring-ai/chrome';
+import { WebSearchService } from '@tokenring-ai/websearch';
+import { ChromeWebSearchProvider } from '@tokenring-ai/chrome';
 
 const webSearch = new WebSearchService();
-const chromeProvider = new ChromeWebSearchProvider(&#123; launch: true &#125;);
+const chromeProvider = new ChromeWebSearchProvider({ launch: true });
 webSearch.registerProvider('chrome', chromeProvider);
 
-const results = await webSearch.searchWeb('TypeScript documentation', &#123; countryCode: 'us' &#125;);
+const results = await webSearch.searchWeb('TypeScript documentation', { countryCode: 'us' });
 console.log(results.organic);
 ```
 
@@ -57,33 +57,33 @@ console.log(results.organic);
 The Chrome Plugin's configuration is structured under the `chrome` section of the Token Ring app configuration:
 
 ```typescript
-interface ChromeConfig &#123;
-  websearch?: &#123;
-    providers: &#123;
-      [name: string]: &#123;
+interface ChromeConfig {
+  websearch?: {
+    providers: {
+      [name: string]: {
         type: 'chrome';
         launch?: boolean;
-      &#125;;
-    &#125;;
-  &#125;;
-&#125;
+      };
+    };
+  };
+}
 ```
 
 Example configuration:
 
 ```typescript
-export default &#123;
-  chrome: &#123;
-    websearch: &#123;
-      providers: &#123;
-        'default-chrome': &#123;
+export default {
+  chrome: {
+    websearch: {
+      providers: {
+        'default-chrome': {
           type: 'chrome',
           launch: true,
-        &#125;,
-      &#125;,
-    &#125;,
-  &#125;,
-&#125; satisfies TokenRingPlugin;
+        },
+      },
+    },
+  },
+} satisfies TokenRingPlugin;
 ```
 
 ## API Reference
@@ -108,11 +108,11 @@ export default &#123;
 
 **Returns:**
 ```typescript
-&#123;
+{
   text: string;        // Extracted text content
   sourceSelector: string; // The selector that was used
   url: string;         // Original URL
-&#125;
+}
 ```
 
 ## Integration

@@ -54,20 +54,20 @@ bun install
 Add the ScraperAPI configuration to your Token Ring configuration file (e.g., `.tokenring/writer-config.js`):
 
 ```javascript
-export default &#123;
-  websearch: &#123;
-    providers: &#123;
-      scraperapi: &#123;
+export default {
+  websearch: {
+    providers: {
+      scraperapi: {
         type: "scraperapi",
         apiKey: process.env.SCRAPERAPI_KEY, // Required
         countryCode: "us",                  // Optional (e.g., 'us', 'gb', 'ca')
         tld: "com",                         // Optional (e.g., 'com', 'co.uk')
         render: false,                      // Optional (enable JS rendering)
         deviceType: "desktop",              // Optional ('desktop' or 'mobile')
-      &#125;
-    &#125;
-  &#125;
-&#125;;
+      }
+    }
+  }
+};
 ```
 
 ### Configuration Schema
@@ -75,13 +75,13 @@ export default &#123;
 The package uses Zod schema validation for configuration:
 
 ```typescript
-const ScraperAPIWebSearchProviderOptionsSchema = z.object(&#123;
+const ScraperAPIWebSearchProviderOptionsSchema = z.object({
   apiKey: z.string(),                                    // Required
   countryCode: z.string().optional(),                    // Optional
   tld: z.string().optional(),                            // Optional
   render: z.boolean().optional(),                        // Optional
   deviceType: z.enum(["desktop", "mobile"]).optional(),  // Optional
-&#125;);
+});
 ```
 
 ## Usage
@@ -92,34 +92,34 @@ const ScraperAPIWebSearchProviderOptionsSchema = z.object(&#123;
 import ScraperAPIWebSearchProvider from '@tokenring-ai/scraperapi';
 
 // Initialize the provider
-const provider = new ScraperAPIWebSearchProvider(&#123;
+const provider = new ScraperAPIWebSearchProvider({
   apiKey: 'your-api-key',
   countryCode: 'us',
   tld: 'com',
   render: false,
   deviceType: 'desktop'
-&#125;);
+});
 
 // Perform Google SERP search
-const searchResults = await provider.searchWeb('cherry tomatoes', &#123;
+const searchResults = await provider.searchWeb('cherry tomatoes', {
   countryCode: 'us'
-&#125;);
+});
 console.log(searchResults.organic);
 console.log(searchResults.knowledgeGraph);
 console.log(searchResults.relatedSearches);
 
 // Search Google News
-const newsResults = await provider.searchNews('Space exploration', &#123;
+const newsResults = await provider.searchNews('Space exploration', {
   countryCode: 'us',
   num: 10
-&#125;);
+});
 console.log(newsResults.news);
 
 // Fetch page content
-const pageContent = await provider.fetchPage('https://example.com', &#123;
+const pageContent = await provider.fetchPage('https://example.com', {
   render: true,
   countryCode: 'gb'
-&#125;);
+});
 console.log(pageContent.markdown);
 ```
 
@@ -129,29 +129,29 @@ The package supports comprehensive Google search parameters:
 
 ```typescript
 // Search with time filter
-const recentResults = await provider.searchWeb('technology news', &#123;
+const recentResults = await provider.searchWeb('technology news', {
   countryCode: 'us',
   gl: 'us'
-&#125;);
+});
 
 // Search with result limit and pagination
-const limitedResults = await provider.searchWeb('AI research', &#123;
+const limitedResults = await provider.searchWeb('AI research', {
   countryCode: 'us',
   num: 20,
   start: 10
-&#125;);
+});
 
 // News search with time range
-const weeklyNews = await provider.searchNews('climate change', &#123;
+const weeklyNews = await provider.searchNews('climate change', {
   countryCode: 'us',
   tbs: 'w'  // Past week
-&#125;);
+});
 
 // Fetch page with JavaScript rendering
-const renderedContent = await provider.fetchPage('https://example.com', &#123;
+const renderedContent = await provider.fetchPage('https://example.com', {
   render: true,
   countryCode: 'gb'
-&#125;);
+});
 ```
 
 ## API Reference
@@ -178,7 +178,7 @@ new ScraperAPIWebSearchProvider(config: ScraperAPIWebSearchProviderOptions)
 ##### searchWeb
 
 ```typescript
-async searchWeb(query: string, options?: WebSearchProviderOptions): Promise&lt;WebSearchResult&gt;
+async searchWeb(query: string, options?: WebSearchProviderOptions): Promise<WebSearchResult>
 ```
 
 Performs a Google SERP search and returns structured results.
@@ -195,7 +195,7 @@ Performs a Google SERP search and returns structured results.
 ##### searchNews
 
 ```typescript
-async searchNews(query: string, options?: WebSearchProviderOptions): Promise&lt;NewsSearchResult&gt;
+async searchNews(query: string, options?: WebSearchProviderOptions): Promise<NewsSearchResult>
 ```
 
 Performs a Google News search and returns structured results.
@@ -210,7 +210,7 @@ Performs a Google News search and returns structured results.
 ##### fetchPage
 
 ```typescript
-async fetchPage(url: string, options?: WebPageOptions): Promise&lt;WebPageResult&gt;
+async fetchPage(url: string, options?: WebPageOptions): Promise<WebPageResult>
 ```
 
 Fetches HTML content from a URL using ScraperAPI.
@@ -227,31 +227,31 @@ Fetches HTML content from a URL using ScraperAPI.
 ### Google SERP Response
 
 ```typescript
-interface GoogleSerpResponse &#123;
-  search_information: &#123;
+interface GoogleSerpResponse {
+  search_information: {
     query_displayed: string;
     total_results?: number;
     time_taken_displayed?: number;
-  &#125;;
-  knowledge_graph?: &#123;
+  };
+  knowledge_graph?: {
     position: number;
     title: string;
     image?: string;
     description: string;
-  &#125;;
-  organic_results: Array&lt;&#123;
+  };
+  organic_results: Array<{
     position: number;
     title: string;
     snippet: string;
     highlights?: string[];
     link: string;
     displayed_link: string;
-  &#125;&gt;;
-  related_questions?: Array&lt;&#123;
+  }>;
+  related_questions?: Array<{
     question: string;
     position: number;
-  &#125;&gt;;
-  videos?: Array&lt;&#123;
+  }>;
+  videos?: Array<{
     position: number;
     link: string;
     title: string;
@@ -260,48 +260,48 @@ interface GoogleSerpResponse &#123;
     publish_date: string;
     thumbnail: string;
     duration: string;
-  &#125;&gt;;
-  pagination: &#123;
+  }>;
+  pagination: {
     pages_count: number;
     current_page: number;
     next_page_url?: string;
     prev_page_url?: string;
-    pages: Array&lt;&#123;
+    pages: Array<{
       page: number;
       url: string;
-    &#125;&gt;;
-  &#125;;
-&#125;
+    }>;
+  };
+}
 ```
 
 ### Google News Response
 
 ```typescript
-interface GoogleNewsResponse &#123;
-  search_information: &#123;
+interface GoogleNewsResponse {
+  search_information: {
     query_displayed: string;
     total_results: number;
     time_taken_displayed: number;
-  &#125;;
-  articles: Array&lt;&#123;
+  };
+  articles: Array<{
     source: string;
     thumbnail?: string;
     title: string;
     description: string;
     date: string;
     link: string;
-  &#125;&gt;;
-  pagination: &#123;
+  }>;
+  pagination: {
     pagesCount: number;
     currentPage: number;
     nextPageUrl?: string;
     prevPageUrl?: string;
-    pages: Array&lt;&#123;
+    pages: Array<{
       page: number;
       url: string;
-    &#125;&gt;;
-  &#125;;
-&#125;
+    }>;
+  };
+}
 ```
 
 ## Error Handling
@@ -309,17 +309,17 @@ interface GoogleNewsResponse &#123;
 The package provides standardized error handling with detailed error information:
 
 ```typescript
-try &#123;
+try {
   const results = await provider.searchWeb('query');
-&#125; catch (error) &#123;
+} catch (error) {
   console.error('Search failed:', error.message);
   console.error('Status code:', error.status);
   console.error('Hint:', error.hint);
   // Handle specific error cases
-  if (error.status === 429) &#123;
+  if (error.status === 429) {
     console.log('Rate limit exceeded - consider upgrading your plan');
-  &#125;
-&#125;
+  }
+}
 ```
 
 **Error Types:**
@@ -333,48 +333,48 @@ The package includes automatic plugin integration:
 
 ```typescript
 // plugin.ts
-import &#123; TokenRingPlugin &#125; from '@tokenring-ai/app';
-import &#123; WebSearchConfigSchema, WebSearchService &#125; from '@tokenring-ai/websearch';
-import &#123; z &#125; from 'zod';
-import packageJSON from './package.json' with &#123; type: 'json' &#125;;
-import ScraperAPIWebSearchProvider, &#123; ScraperAPIWebSearchProviderOptionsSchema &#125; from './ScraperAPIWebSearchProvider.ts';
+import { TokenRingPlugin } from '@tokenring-ai/app';
+import { WebSearchConfigSchema, WebSearchService } from '@tokenring-ai/websearch';
+import { z } from 'zod';
+import packageJSON from './package.json' with { type: 'json' };
+import ScraperAPIWebSearchProvider, { ScraperAPIWebSearchProviderOptionsSchema } from './ScraperAPIWebSearchProvider.ts';
 
-const packageConfigSchema = z.object(&#123;
+const packageConfigSchema = z.object({
   websearch: WebSearchConfigSchema.optional()
-&#125;);
+});
 
-export default &#123;
+export default {
   name: packageJSON.name,
   version: packageJSON.version,
   description: packageJSON.description,
-  install(app, config) &#123;
-    if (config.websearch) &#123;
-      app.waitForService(WebSearchService, cdnService =&gt; &#123;
-        for (const name in config.websearch!.providers) &#123;
+  install(app, config) {
+    if (config.websearch) {
+      app.waitForService(WebSearchService, cdnService => {
+        for (const name in config.websearch!.providers) {
           const provider = config.websearch!.providers[name];
-          if (provider.type === "scraperapi") &#123;
+          if (provider.type === "scraperapi") {
             cdnService.registerProvider(name, new ScraperAPIWebSearchProvider(
               ScraperAPIWebSearchProviderOptionsSchema.parse(provider)
             ));
-          &#125;
-        &#125;
-      &#125;);
-    &#125;
-  &#125;,
+          }
+        }
+      });
+    }
+  },
   config: packageConfigSchema
-&#125; satisfies TokenRingPlugin&lt;typeof packageConfigSchema&gt;;
+} satisfies TokenRingPlugin<typeof packageConfigSchema>;
 ```
 
 ### Runtime Dependencies
 
 ```json
-&#123;
+{
   "@tokenring-ai/app": "0.2.0",
   "@tokenring-ai/chat": "0.2.0",
   "@tokenring-ai/agent": "0.2.0",
   "@tokenring-ai/websearch": "0.2.0",
   "@tokenring-ai/utility": "0.2.0"
-&#125;
+}
 ```
 
 ### Development Dependencies

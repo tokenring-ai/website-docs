@@ -36,7 +36,7 @@ bun install @tokenring-ai/tasks
 ### Basic Setup
 
 ```typescript
-import &#123; TokenRingApp &#125; from '@tokenring-ai/app';
+import { TokenRingApp } from '@tokenring-ai/app';
 import tasksPlugin from '@tokenring-ai/tasks';
 
 const app = new TokenRingApp();
@@ -46,22 +46,22 @@ app.install(tasksPlugin);
 ### Creating a Task Plan via AI Tool
 
 ```typescript
-await agent.executeTool('tasks_run', &#123;
+await agent.executeTool('tasks_run', {
   tasks: [
-    &#123;
+    {
       taskName: "Create user authentication system",
       agentType: "backend-developer",
       message: "Implement JWT-based authentication with login/logout endpoints",
       context: "Create auth middleware, user model, login/logout routes in Express.js. Use bcrypt for password hashing. Include proper error handling and validation. Set up appropriate HTTP status codes and response formats. Handle edge cases like expired tokens and concurrent requests."
-    &#125;,
-    &#123;
+    },
+    {
       taskName: "Design login UI components",
       agentType: "frontend-developer",
       message: "Create responsive login and registration forms",
       context: "Build React components with form validation, error handling, and responsive design using Tailwind CSS. Include loading states, proper accessibility attributes, and consistent styling with the application's design system. Implement proper error messaging and success states."
-    &#125;
+    }
   ]
-&#125;);
+});
 ```
 
 ### Managing Tasks via Slash Commands
@@ -98,12 +98,12 @@ import TaskService from '@tokenring-ai/tasks';
 const taskService = agent.requireServiceByType(TaskService);
 
 // Add individual tasks
-const taskId = taskService.addTask(&#123;
+const taskId = taskService.addTask({
   name: "Process user data",
   agentType: "data-processor",
   message: "Clean and validate user input data",
   context: "Parse CSV files, remove duplicates, validate email formats, and standardize data formats. Handle missing values appropriately and generate summary reports."
-&#125;, agent);
+}, agent);
 
 // Get all tasks
 const allTasks = taskService.getTasks(agent);
@@ -122,7 +122,7 @@ const results = await taskService.executeTasks([taskId], agent);
 Each task contains comprehensive information for execution:
 
 ```typescript
-interface Task &#123;
+interface Task {
   id: string;                    // Unique identifier (UUID)
   name: string;                  // Descriptive task name
   agentType: string;             // Type of agent to handle the task
@@ -130,7 +130,7 @@ interface Task &#123;
   context: string;               // Detailed execution instructions (3+ paragraphs)
   status: 'pending' | 'running' | 'completed' | 'failed';
   result?: string;               // Execution result if completed
-&#125;
+}
 ```
 
 ### TaskState
@@ -138,7 +138,7 @@ interface Task &#123;
 State management for persistence and serialization:
 
 ```typescript
-class TaskState implements AgentStateSlice &#123;
+class TaskState implements AgentStateSlice {
   tasks: Task[];                 // Array of all tasks
   autoApprove: number;           // Auto-approve timeout in seconds
   parallelTasks: number;         // Maximum parallel task execution
@@ -151,7 +151,7 @@ class TaskState implements AgentStateSlice &#123;
   // Reset and transfer methods
   transferStateFromParent(parent: Agent): void;
   reset(what: ResetWhat[]): void;
-&#125;
+}
 ```
 
 ## Key Features Summary
@@ -174,19 +174,19 @@ class TaskState implements AgentStateSlice &#123;
 Add a single task to the task list.
 
 **Parameters:**
-- `task`: `Omit&lt;Task, 'id' | 'status'&gt;` - Task data without ID and status
+- `task`: `Omit<Task, 'id' | 'status'>` - Task data without ID and status
 - `agent`: `Agent` - Current agent instance
 
 **Returns:** `string` - The generated task ID
 
 **Example:**
 ```typescript
-const taskId = taskService.addTask(&#123;
+const taskId = taskService.addTask({
   name: "Create user account",
   agentType: "backend-developer",
   message: "Implement user registration functionality",
   context: "Create user model, registration endpoint, validation, and error handling. Use bcrypt for password hashing and JWT for session management."
-&#125;, agent);
+}, agent);
 ```
 
 #### `getTasks(agent)`
@@ -201,7 +201,7 @@ Retrieve all tasks with their current status.
 **Example:**
 ```typescript
 const tasks = taskService.getTasks(agent);
-console.log(`Found $&#123;tasks.length&#125; tasks`);
+console.log(`Found ${tasks.length} tasks`);
 ```
 
 #### `updateTaskStatus(id, status, result?, agent)`
@@ -239,7 +239,7 @@ Execute a list of tasks with configured parallelism.
 - `taskIds`: `string[]` - IDs of tasks to execute
 - `parentAgent`: `Agent` - Current parent agent instance
 
-**Returns:** `Promise&lt;string[]&gt;` - Array of execution summaries
+**Returns:** `Promise<string[]>` - Array of execution summaries
 
 **Example:**
 ```typescript
@@ -348,14 +348,14 @@ Create and present a complete task plan to the user for approval. If approved, e
 
 **Input Schema:**
 ```typescript
-&#123;
-  tasks: z.array(z.object(&#123;
+{
+  tasks: z.array(z.object({
     taskName: z.string().describe("A descriptive name for the task"),
     agentType: z.string().describe("The type of agent that should handle this task"),
     message: z.string().describe("A one paragraph message/description of what needs to be done, to send to the agent."),
     context: z.string().describe("Three paragraphs of important contextual information to pass to the agent, such as file names, step by step instructions, descriptions, etc. of the exact steps the agent should take. This information is critical to proper agent functionality, and should be detailed and comprehensive. It needs to explain absolutely every aspect of how to complete the task to the agent that will be dispatched")
-  &#125;)).describe("Array of tasks to add to the task list")
-&#125;
+  })).describe("Array of tasks to add to the task list")
+}
 ```
 
 **Behavior:**
@@ -487,13 +487,13 @@ The plugin integrates seamlessly with the TokenRing ecosystem:
 
 ```typescript
 // Feature development
-await agent.executeTool('tasks_run', &#123;
+await agent.executeTool('tasks_run', {
   tasks: [
-    &#123;taskName: "Backend API", agentType: "backend-developer", message: "Create REST API endpoints", context: "..."&#125;,
-    &#123;taskName: "Frontend Components", agentType: "frontend-developer", message: "Build UI components", context: "..."&#125;,
-    &#123;taskName: "Integration Tests", agentType: "test-engineer", message: "Create integration tests", context: "..."&#125;
+    {taskName: "Backend API", agentType: "backend-developer", message: "Create REST API endpoints", context: "..."},
+    {taskName: "Frontend Components", agentType: "frontend-developer", message: "Build UI components", context: "..."},
+    {taskName: "Integration Tests", agentType: "test-engineer", message: "Create integration tests", context: "..."}
   ]
-&#125;);
+});
 ```
 
 ### Data Processing
@@ -501,15 +501,15 @@ await agent.executeTool('tasks_run', &#123;
 ```typescript
 // Batch data processing
 const taskIds = [];
-for (const file of dataFiles) &#123;
-  const taskId = taskService.addTask(&#123;
-    name: `Process $&#123;file&#125;`,
+for (const file of dataFiles) {
+  const taskId = taskService.addTask({
+    name: `Process ${file}`,
     agentType: "data-processor",
-    message: `Process $&#123;file&#125; and extract insights`,
-    context: `Load $&#123;file&#125;, apply transformation rules, validate data quality, and generate summary report.`
-  &#125;, agent);
+    message: `Process ${file} and extract insights`,
+    context: `Load ${file}, apply transformation rules, validate data quality, and generate summary report.`
+  }, agent);
   taskIds.push(taskId);
-&#125;
+}
 
 await taskService.executeTasks(taskIds, agent);
 ```
@@ -518,13 +518,13 @@ await taskService.executeTasks(taskIds, agent);
 
 ```typescript
 // Content production pipeline
-await agent.executeTool('tasks_run', &#123;
+await agent.executeTool('tasks_run', {
   tasks: [
-    &#123;taskName: "Research", agentType: "researcher", message: "Gather information on topic", context: "..."&#125;,
-    &#123;taskName: "Writing", agentType: "writer", message: "Create draft content", context: "..."&#125;,
-    &#123;taskName: "Review", agentType: "editor", message: "Review and edit content", context: "..."&#125;
+    {taskName: "Research", agentType: "researcher", message: "Gather information on topic", context: "..."},
+    {taskName: "Writing", agentType: "writer", message: "Create draft content", context: "..."},
+    {taskName: "Review", agentType: "editor", message: "Review and edit content", context: "..."}
   ]
-&#125;);
+});
 ```
 
 ## Error Handling

@@ -1,4 +1,4 @@
-# @tokenring-ai/local-filesystem
+# Local Filesystem Plugin
 
 A concrete implementation of the FileSystemProvider abstraction that provides safe, root-scoped access to your local filesystem for Token Ring apps and agents.
 
@@ -38,10 +38,10 @@ Main filesystem provider class implementing the FileSystemProvider interface.
 **Constructor:**
 
 ```typescript
-const provider = new LocalFileSystemProvider(&#123;
+const provider = new LocalFileSystemProvider({
   baseDirectory: string,          // Root directory for all operations (required)
   defaultSelectedFiles?: string[] // Default file patterns to select (optional)
-&#125;);
+});
 ```
 
 **Path Utilities:**
@@ -58,61 +58,61 @@ relativeOrAbsolutePathToRelativePath(p: string): string;
 
 ```typescript
 // Write/overwrite file content
-writeFile(filePath: string, content: string | Buffer): Promise&lt;boolean&gt;;
+writeFile(filePath: string, content: string | Buffer): Promise<boolean>;
 
 // Append content to file
-appendFile(filePath: string, content: string | Buffer): Promise&lt;boolean&gt;;
+appendFile(filePath: string, content: string | Buffer): Promise<boolean>;
 
 // Read file with optional encoding
-readFile(filePath: string, encoding?: BufferEncoding): Promise&lt;string&gt;;
+readFile(filePath: string, encoding?: BufferEncoding): Promise<string>;
 
 // Delete a file
-deleteFile(filePath: string): Promise&lt;boolean&gt;;
+deleteFile(filePath: string): Promise<boolean>;
 
 // Rename/move file
-rename(oldPath: string, newPath: string): Promise&lt;boolean&gt;;
+rename(oldPath: string, newPath: string): Promise<boolean>;
 
 // Check if file exists
-exists(filePath: string): Promise&lt;boolean&gt;;
+exists(filePath: string): Promise<boolean>;
 
 // Get file/directory statistics
-stat(filePath: string): Promise&lt;StatLike&gt;;
+stat(filePath: string): Promise<StatLike>;
 
 // Change file permissions
-chmod(filePath: string, mode: number): Promise&lt;boolean&gt;;
+chmod(filePath: string, mode: number): Promise<boolean>;
 
 // Copy file or directory with optional overwrite
-copy(source: string, destination: string, options?: &#123; overwrite?: boolean &#125;): Promise&lt;boolean&gt;;
+copy(source: string, destination: string, options?: { overwrite?: boolean }): Promise<boolean>;
 ```
 
 **Directory Operations:**
 
 ```typescript
 // Create directory with optional recursive creation
-createDirectory(dirPath: string, options?: &#123; recursive?: boolean &#125;): Promise&lt;boolean&gt;;
+createDirectory(dirPath: string, options?: { recursive?: boolean }): Promise<boolean>;
 
 // Find files matching glob patterns
-glob(pattern: string, options?: GlobOptions): Promise&lt;string[]&gt;;
+glob(pattern: string, options?: GlobOptions): Promise<string[]>;
 
 // Search for text content across files
-grep(searchString: string, options?: GrepOptions): Promise&lt;GrepResult[]&gt;;
+grep(searchString: string, options?: GrepOptions): Promise<GrepResult[]>;
 
 // Traverse directory tree
-getDirectoryTree(dir: string, options?: DirectoryTreeOptions): AsyncGenerator&lt;string&gt;;
+getDirectoryTree(dir: string, options?: DirectoryTreeOptions): AsyncGenerator<string>;
 ```
 
 **File Watching:**
 
 ```typescript
 // Watch directory for changes
-watch(dir: string, options?: WatchOptions): Promise&lt;FSWatcher&gt;;
+watch(dir: string, options?: WatchOptions): Promise<FSWatcher>;
 ```
 
 **Command Execution:**
 
 ```typescript
 // Execute shell commands with timeout and environment control
-executeCommand(command: string | string[], options?: ExecuteCommandOptions): Promise&lt;ExecuteCommandResult&gt;;
+executeCommand(command: string | string[], options?: ExecuteCommandOptions): Promise<ExecuteCommandResult>;
 ```
 
 ## Usage Examples
@@ -123,10 +123,10 @@ executeCommand(command: string | string[], options?: ExecuteCommandOptions): Pro
 import LocalFileSystemProvider from '@tokenring-ai/local-filesystem';
 
 // Create provider with root directory
-const provider = new LocalFileSystemProvider(&#123;
+const provider = new LocalFileSystemProvider({
   baseDirectory: process.cwd(),
   defaultSelectedFiles: ['**/*.ts', '**/*.js']
-&#125;);
+});
 
 // Write file
 await provider.writeFile('notes/todo.txt', '- [ ] Complete documentation');
@@ -143,7 +143,7 @@ console.log(exists); // true
 const info = await provider.stat('notes/todo.txt');
 console.log(info);
 /*
-&#123;
+{
   path: 'notes/todo.txt',
   absolutePath: '/path/to/project/notes/todo.txt',
   isFile: true,
@@ -153,7 +153,7 @@ console.log(info);
   created: Date,
   modified: Date,
   accessed: Date
-&#125;
+}
 */
 
 // Rename file
@@ -173,13 +173,13 @@ await provider.delete('notes/TODO.md');
 
 ```typescript
 // Create directory
-await provider.createDirectory('new-folder', &#123; recursive: true &#125;);
+await provider.createDirectory('new-folder', { recursive: true });
 
 // Create nested directory structure
-await provider.createDirectory('src/components/ui', &#123; recursive: true &#125;);
+await provider.createDirectory('src/components/ui', { recursive: true });
 
 // Copy entire directory
-await provider.copy('src', 'backup/src', &#123; overwrite: true &#125;);
+await provider.copy('src', 'backup/src', { overwrite: true });
 ```
 
 ### Pattern Matching and Search
@@ -189,76 +189,76 @@ await provider.copy('src', 'backup/src', &#123; overwrite: true &#125;);
 const tsFiles = await provider.glob('**/*.ts');
 
 // List all files excluding node_modules
-const allFiles = await provider.glob('**/*', &#123;
-  ignoreFilter: (file) =&gt; file.includes('node_modules'),
+const allFiles = await provider.glob('**/*', {
+  ignoreFilter: (file) => file.includes('node_modules'),
   includeDirectories: false
-&#125;);
+});
 
 // Search for TODO comments
-const results = await provider.grep('TODO', &#123;
-  includeContent: &#123; linesBefore: 2, linesAfter: 2 &#125;
-&#125;);
+const results = await provider.grep('TODO', {
+  includeContent: { linesBefore: 2, linesAfter: 2 }
+});
 console.log(results);
 /*
 [
-  &#123;
+  {
     file: 'notes/TODO.md',
     line: 1,
     match: '- [ ] Complete documentation',
     content: 'Project Notes\n- [ ] Complete documentation\n\nDone'
-  &#125;
+  }
 ]
 */
 
 // Traverse directory tree
-for await (const path of provider.getDirectoryTree('src', &#123; recursive: true &#125;)) &#123;
+for await (const path of provider.getDirectoryTree('src', { recursive: true })) {
   console.log(path);
-&#125;
+}
 ```
 
 ### File Watching
 
 ```typescript
-const watcher = await provider.watch('.', &#123;
-  ignoreFilter: (file) =&gt; file.includes('node_modules') || file.includes('.git'),
+const watcher = await provider.watch('.', {
+  ignoreFilter: (file) => file.includes('node_modules') || file.includes('.git'),
   pollInterval: 1000,
   stabilityThreshold: 2000
-&#125;);
+});
 
-watcher.on('change', (path) =&gt; &#123;
-  console.log(`File changed: $&#123;path&#125;`);
-&#125;);
+watcher.on('change', (path) => {
+  console.log(`File changed: ${path}`);
+});
 
-watcher.on('add', (path) =&gt; &#123;
-  console.log(`File added: $&#123;path&#125;`);
-&#125;);
+watcher.on('add', (path) => {
+  console.log(`File added: ${path}`);
+});
 
-watcher.on('unlink', (path) =&gt; &#123;
-  console.log(`File removed: $&#123;path&#125;`);
-&#125;);
+watcher.on('unlink', (path) => {
+  console.log(`File removed: ${path}`);
+});
 ```
 
 ### Shell Command Execution
 
 ```typescript
 // Run a simple command
-const result = await provider.executeCommand('ls -la', &#123;
+const result = await provider.executeCommand('ls -la', {
   workingDirectory: 'src',
   timeoutSeconds: 30
-&#125;);
+});
 
-if (result.ok) &#123;
+if (result.ok) {
   console.log('Command succeeded:', result.stdout);
-&#125; else &#123;
+} else {
   console.error('Command failed:', result.stderr);
-&#125;
+}
 
 // Run a command with arguments
-const cmdResult = await provider.executeCommand(['npm', ['list', '--depth=0']], &#123;
+const cmdResult = await provider.executeCommand(['npm', ['list', '--depth=0']], {
   workingDirectory: '.',
   timeoutSeconds: 60,
-  env: &#123; NODE_ENV: 'production' &#125;
-&#125;);
+  env: { NODE_ENV: 'production' }
+});
 ```
 
 ### Path Resolution
@@ -272,11 +272,11 @@ const relPath = provider.relativeOrAbsolutePathToRelativePath(absPath);
 console.log(relPath); // "file.txt"
 
 // Absolute paths outside baseDirectory throw an error
-try &#123;
+try {
   provider.relativeOrAbsolutePathToAbsolutePath('/etc/passwd');
-&#125; catch (error) &#123;
+} catch (error) {
   console.error(error.message); // "Path /etc/passwd is outside the root directory"
-&#125;
+}
 ```
 
 ## Plugin Integration
@@ -289,19 +289,19 @@ The package can be used as a plugin within a Token Ring application:
 import TokenRingApp from '@tokenring-ai/app';
 import localFilesystemPlugin from '@tokenring-ai/local-filesystem';
 
-const app = new TokenRingApp(&#123;
-  config: &#123;
-    filesystem: &#123;
-      providers: &#123;
-        local: &#123;
+const app = new TokenRingApp({
+  config: {
+    filesystem: {
+      providers: {
+        local: {
           type: 'local',
           baseDirectory: process.cwd(),
           defaultSelectedFiles: ['**/*.ts', '**/*.js', '**/*.md']
-        &#125;
-      &#125;
-    &#125;
-  &#125;
-&#125;);
+        }
+      }
+    }
+  }
+});
 
 app.use(localFilesystemPlugin);
 await app.start();
@@ -310,19 +310,19 @@ await app.start();
 ### Configuration Schema
 
 ```typescript
-import &#123; z &#125; from 'zod';
+import { z } from 'zod';
 
-const packageConfigSchema = z.object(&#123;
-  filesystem: z.object(&#123;
+const packageConfigSchema = z.object({
+  filesystem: z.object({
     providers: z.record(
-      z.object(&#123;
+      z.object({
         type: z.literal('local'),
         baseDirectory: z.string(),
         defaultSelectedFiles: z.array(z.string()).optional()
-      &#125;)
+      })
     ).optional()
-  &#125;).optional()
-&#125;);
+  }).optional()
+});
 ```
 
 ## Configuration Options
@@ -330,60 +330,60 @@ const packageConfigSchema = z.object(&#123;
 ### Provider Options
 
 ```typescript
-interface LocalFileSystemProviderOptions &#123;
+interface LocalFileSystemProviderOptions {
   baseDirectory: string;           // Base directory for all operations (required)
   defaultSelectedFiles?: string[]; // Default file patterns to select (optional)
-&#125;
+}
 ```
 
 ### Glob Options
 
 ```typescript
-interface GlobOptions &#123;
-  ignoreFilter?: (file: string) =&gt; boolean; // Filter function for ignored files
+interface GlobOptions {
+  ignoreFilter?: (file: string) => boolean; // Filter function for ignored files
   includeDirectories?: boolean;              // Include directories in results
-&#125;
+}
 ```
 
 ### Grep Options
 
 ```typescript
-interface GrepOptions &#123;
-  ignoreFilter?: (file: string) =&gt; boolean; // Filter function for ignored files
-  includeContent?: &#123;
+interface GrepOptions {
+  ignoreFilter?: (file: string) => boolean; // Filter function for ignored files
+  includeContent?: {
     linesBefore?: number;  // Lines before match (default: 0)
     linesAfter?: number;   // Lines after match (default: 0)
-  &#125;;
-&#125;
+  };
+}
 ```
 
 ### Watch Options
 
 ```typescript
-interface WatchOptions &#123;
-  ignoreFilter?: (file: string) =&gt; boolean; // Filter function for ignored files
+interface WatchOptions {
+  ignoreFilter?: (file: string) => boolean; // Filter function for ignored files
   pollInterval?: number;                    // Polling interval in ms (default: 1000)
   stabilityThreshold?: number;              // Stability threshold in ms (default: 2000)
-&#125;
+}
 ```
 
 ### Execute Command Options
 
 ```typescript
-interface ExecuteCommandOptions &#123;
+interface ExecuteCommandOptions {
   timeoutSeconds?: number;                    // Timeout in seconds (default: 60)
-  env?: Record&lt;string, string&gt;;               // Environment variables
+  env?: Record<string, string>;               // Environment variables
   workingDirectory?: string;                  // Working directory for command
-&#125;
+}
 ```
 
 ### Directory Tree Options
 
 ```typescript
-interface DirectoryTreeOptions &#123;
-  ignoreFilter?: (file: string) =&gt; boolean; // Filter function for ignored files
+interface DirectoryTreeOptions {
+  ignoreFilter?: (file: string) => boolean; // Filter function for ignored files
   recursive?: boolean;                      // Traverse recursively (default: true)
-&#125;
+}
 ```
 
 ## Type Definitions
@@ -391,7 +391,7 @@ interface DirectoryTreeOptions &#123;
 ### StatLike
 
 ```typescript
-interface StatLike &#123;
+interface StatLike {
   path: string;
   absolutePath: string;
   isFile: boolean;
@@ -401,30 +401,30 @@ interface StatLike &#123;
   created: Date;
   modified: Date;
   accessed: Date;
-&#125;
+}
 ```
 
 ### ExecuteCommandResult
 
 ```typescript
-interface ExecuteCommandResult &#123;
+interface ExecuteCommandResult {
   ok: boolean;
   exitCode: number;
   stdout: string;
   stderr: string;
   error?: string;
-&#125;
+}
 ```
 
 ### GrepResult
 
 ```typescript
-interface GrepResult &#123;
+interface GrepResult {
   file: string;
   line: number;
   match: string;
   content: string | null;
-&#125;
+}
 ```
 
 ## Error Handling
@@ -439,25 +439,25 @@ The provider includes comprehensive error handling:
 
 ```typescript
 // Security: Outside root directory
-try &#123;
+try {
   await provider.relativeOrAbsolutePathToAbsolutePath('/etc/passwd');
-&#125; catch (error) &#123;
+} catch (error) {
   // Error: "Path /etc/passwd is outside the root directory"
-&#125;
+}
 
 // Existence: Non-existent file
-try &#123;
+try {
   await provider.readFile('missing.txt');
-&#125; catch (error) &#123;
+} catch (error) {
   // Error: "File missing.txt does not exist"
-&#125;
+}
 
 // Type: Directory where file expected
-try &#123;
+try {
   await provider.deleteFile('src');
-&#125; catch (error) &#123;
+} catch (error) {
   // Error: "Path src is not a file"
-&#125;
+}
 ```
 
 ## Testing

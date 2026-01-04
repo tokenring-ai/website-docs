@@ -1,4 +1,4 @@
-# AI Client
+# AI Client Plugin
 
 ## Overview
 
@@ -66,10 +66,10 @@ const chatRegistry = app.getService(ChatModelRegistry);
 const client = await chatRegistry.getClient('openai:gpt-4.1');
 
 // Get cheapest model with high reasoning capability
-const cheapest = chatRegistry.getCheapestModelByRequirements(&#123;
+const cheapest = chatRegistry.getCheapestModelByRequirements({
   reasoningText: 4,
   contextLength: 100000
-&#125;);
+});
 ```
 
 ### EmbeddingModelRegistry
@@ -88,9 +88,9 @@ The `EmbeddingModelRegistry` manages text embedding models for generating vector
 const embeddingRegistry = app.getService(EmbeddingModelRegistry);
 const client = await embeddingRegistry.getClient('openai:text-embedding-3-small');
 
-const results = await client.getEmbeddings(&#123;
+const results = await client.getEmbeddings({
   input: ['Hello', 'World']
-&#125;);
+});
 console.log(results[0].embedding); // Vector array
 ```
 
@@ -109,11 +109,11 @@ The `ImageGenerationModelRegistry` manages image generation models.
 const imageRegistry = app.getService(ImageGenerationModelRegistry);
 const client = await imageRegistry.getClient('openai:gpt-image-1');
 
-const [image, result] = await client.generateImage(&#123;
+const [image, result] = await client.generateImage({
   prompt: 'A serene mountain landscape',
   size: '1024x1024',
   n: 1
-&#125;, agent);
+}, agent);
 ```
 
 ### SpeechModelRegistry
@@ -131,11 +131,11 @@ The `SpeechModelRegistry` manages text-to-speech models.
 const speechRegistry = app.getService(SpeechModelRegistry);
 const client = await speechRegistry.getClient('openai:tts-1-hd');
 
-const [audio, result] = await client.generateSpeech(&#123;
+const [audio, result] = await client.generateSpeech({
   text: 'Hello, welcome to Token Ring AI!',
   voice: 'alloy',
   speed: 1.0
-&#125;, agent);
+}, agent);
 ```
 
 ### TranscriptionModelRegistry
@@ -153,11 +153,11 @@ The `TranscriptionModelRegistry` manages audio transcription models.
 const transcriptionRegistry = app.getService(TranscriptionModelRegistry);
 const client = await transcriptionRegistry.getClient('openai:whisper-1');
 
-const [text, result] = await client.transcribe(&#123;
+const [text, result] = await client.transcribe({
   audio: audioBuffer,
   language: 'en',
   prompt: 'Context for better transcription'
-&#125;, agent);
+}, agent);
 ```
 
 ### RerankingModelRegistry
@@ -175,7 +175,7 @@ The `RerankingModelRegistry` manages document reranking models.
 const rerankingRegistry = app.getService(RerankingModelRegistry);
 const client = await rerankingRegistry.getClient('openai:rerank');
 
-const result = await client.rerank(&#123;
+const result = await client.rerank({
   query: 'What is AI?',
   documents: [
     'Artificial intelligence is...',
@@ -183,7 +183,7 @@ const result = await client.rerank(&#123;
     'Deep learning is...'
   ],
   topN: 2
-&#125;);
+});
 ```
 
 ## Usage Examples
@@ -191,8 +191,8 @@ const result = await client.rerank(&#123;
 ### Basic Chat Completion
 
 ```typescript
-import &#123; Agent &#125; from '@tokenring-ai/agent';
-import &#123; ChatModelRegistry &#125; from '@tokenring-ai/ai-client';
+import { Agent } from '@tokenring-ai/agent';
+import { ChatModelRegistry } from '@tokenring-ai/ai-client';
 
 const agent = new Agent();
 const chatRegistry = new ChatModelRegistry();
@@ -202,13 +202,13 @@ agent.registerService(chatRegistry);
 const chatClient = await chatRegistry.getClient('openai:gpt-4.1');
 
 // Stream chat completion
-const [text, response] = await chatClient.streamChat(&#123;
+const [text, response] = await chatClient.streamChat({
   messages: [
-    &#123; role: 'system', content: 'You are a helpful assistant.' &#125;,
-    &#123; role: 'user', content: 'Hello, how are you?' &#125;
+    { role: 'system', content: 'You are a helpful assistant.' },
+    { role: 'user', content: 'Hello, how are you?' }
   ],
-  tools: &#123;&#125;,
-&#125;, agent);
+  tools: {},
+}, agent);
 
 console.log('Chat response:', text);
 console.log('Cost:', response.cost.total);
@@ -217,32 +217,32 @@ console.log('Cost:', response.cost.total);
 ### Generating Embeddings
 
 ```typescript
-import &#123; EmbeddingModelRegistry &#125; from '@tokenring-ai/ai-client';
+import { EmbeddingModelRegistry } from '@tokenring-ai/ai-client';
 
 const embeddingRegistry = new EmbeddingModelRegistry();
 agent.registerService(embeddingRegistry);
 const embeddingClient = await embeddingRegistry.getClient('openai:text-embedding-3-large');
 
-const embeddings = await embeddingClient.getEmbeddings(&#123;
+const embeddings = await embeddingClient.getEmbeddings({
   input: ['Token Ring AI is a framework for building AI applications']
-&#125;);
+});
 ```
 
 ### Generating Images
 
 ```typescript
-import &#123; ImageGenerationModelRegistry &#125; from '@tokenring-ai/ai-client';
+import { ImageGenerationModelRegistry } from '@tokenring-ai/ai-client';
 
 const imageRegistry = new ImageGenerationModelRegistry();
 agent.registerService(imageRegistry);
 const imageClient = await imageRegistry.getClient('openai:gpt-image-1');
 
-const [image, result] = await imageClient.generateImage(&#123;
+const [image, result] = await imageClient.generateImage({
   prompt: 'A beautiful sunset over mountains',
   size: '1024x1024',
   quality: 'standard',
   n: 1
-&#125;, agent);
+}, agent);
 
 console.log('Generated image:', image);
 ```
@@ -250,17 +250,17 @@ console.log('Generated image:', image);
 ### Generating Speech
 
 ```typescript
-import &#123; SpeechModelRegistry &#125; from '@tokenring-ai/ai-client';
+import { SpeechModelRegistry } from '@tokenring-ai/ai-client';
 
 const speechRegistry = new SpeechModelRegistry();
 agent.registerService(speechRegistry);
 const speechClient = await speechRegistry.getClient('openai:tts-1-hd');
 
-const [audio, result] = await speechClient.generateSpeech(&#123;
+const [audio, result] = await speechClient.generateSpeech({
   text: 'Hello, welcome to Token Ring AI!',
   voice: 'alloy',
   speed: 1.0
-&#125;, agent);
+}, agent);
 
 console.log('Generated audio:', audio);
 ```
@@ -268,17 +268,17 @@ console.log('Generated audio:', audio);
 ### Transcribing Audio
 
 ```typescript
-import &#123; TranscriptionModelRegistry &#125; from '@tokenring-ai/ai-client';
+import { TranscriptionModelRegistry } from '@tokenring-ai/ai-client';
 
 const transcriptionRegistry = new TranscriptionModelRegistry();
 agent.registerService(transcriptionRegistry);
 const transcriptionClient = await transcriptionRegistry.getClient('openai:whisper-1');
 
-const [text, result] = await transcriptionClient.transcribe(&#123;
+const [text, result] = await transcriptionClient.transcribe({
   audio: new URL('audio.mp3'),
   language: 'en',
   prompt: 'Context for better transcription'
-&#125;, agent);
+}, agent);
 
 console.log('Transcribed text:', text);
 ```
@@ -289,7 +289,7 @@ console.log('Transcribed text:', text);
 const chatRegistry = app.getService(ChatModelRegistry);
 const client = await chatRegistry.getClient('openai:gpt-4.1');
 
-const rankings = await client.rerank(&#123;
+const rankings = await client.rerank({
   query: 'What is artificial intelligence?',
   documents: [
     'Artificial intelligence is the simulation of human intelligence in machines.',
@@ -297,7 +297,7 @@ const rankings = await client.rerank(&#123;
     'Deep learning is a type of machine learning.'
   ],
   topK: 2
-&#125;, agent);
+}, agent);
 
 console.log('Ranked documents:', rankings.rankings);
 ```
@@ -311,76 +311,76 @@ The plugin configuration is defined in `schema.ts` and can be set in the applica
 Configure providers in your `.tokenring/coder-config.mjs`:
 
 ```javascript
-export default &#123;
-  ai: &#123;
+export default {
+  ai: {
     defaultModel: "gpt-4.1",
     autoConfigure: true, // Set to true to auto-configure from environment variables
-    providers: &#123;
-      "OpenAI": &#123;
+    providers: {
+      "OpenAI": {
         provider: "openai",
         apiKey: process.env.OPENAI_API_KEY
-      &#125;,
-      "Anthropic": &#123;
+      },
+      "Anthropic": {
         provider: "anthropic",
         apiKey: process.env.ANTHROPIC_API_KEY
-      &#125;,
-      "Google": &#123;
+      },
+      "Google": {
         provider: "google",
         apiKey: process.env.GOOGLE_GENERATIVE_AI_API_KEY
-      &#125;,
-      "xAI": &#123;
+      },
+      "xAI": {
         provider: "xai",
         apiKey: process.env.XAI_API_KEY
-      &#125;,
-      "Perplexity": &#123;
+      },
+      "Perplexity": {
         provider: "perplexity",
         apiKey: process.env.PERPLEXITY_API_KEY
-      &#125;,
-      "Groq": &#123;
+      },
+      "Groq": {
         provider: "groq",
         apiKey: process.env.GROQ_API_KEY
-      &#125;,
-      "DeepSeek": &#123;
+      },
+      "DeepSeek": {
         provider: "deepseek",
         apiKey: process.env.DEEPSEEK_API_KEY
-      &#125;,
-      "Cerebras": &#123;
+      },
+      "Cerebras": {
         provider: "cerebras",
         apiKey: process.env.CEREBRAS_API_KEY
-      &#125;,
-      "Azure": &#123;
+      },
+      "Azure": {
         provider: "azure",
         apiKey: process.env.AZURE_API_KEY,
         baseURL: process.env.AZURE_API_ENDPOINT
-      &#125;,
-      "Ollama": &#123;
+      },
+      "Ollama": {
         provider: "ollama",
         baseURL: process.env.LLAMA_BASE_URL ?? "http://127.0.0.1:11434"
-      &#125;,
-      "OpenRouter": &#123;
+      },
+      "OpenRouter": {
         provider: "openrouter",
         apiKey: process.env.OPENROUTER_API_KEY
-      &#125;,
-      "Llama": &#123;
+      },
+      "Llama": {
         provider: "llama",
         apiKey: process.env.META_LLAMA_API_KEY
-      &#125;,
-      "OpenAI-Compatible": &#123;
+      },
+      "OpenAI-Compatible": {
         provider: "openaiCompatible",
         baseURL: "https://api.example.com/v1",
         apiKey: process.env.API_KEY
-      &#125;,
-      "Fal": &#123;
+      },
+      "Fal": {
         provider: "fal",
         apiKey: process.env.FAL_API_KEY
-      &#125;,
-      "ElevenLabs": &#123;
+      },
+      "ElevenLabs": {
         provider: "elevenlabs",
         apiKey: process.env.ELEVENLABS_API_KEY
-      &#125;
-    &#125;
-  &#125;
-&#125;;
+      }
+    }
+  }
+};
 ```
 
 ### Auto-Configuration
@@ -469,11 +469,11 @@ Models can have various features that can be enabled/disabled:
 const client = await chatRegistry.getClient('openai/gpt-5?websearch=1');
 
 // Set features on a client
-client.setFeatures(&#123;
+client.setFeatures({
   websearch: true,
   reasoningEffort: 'high',
   serviceTier: 'priority'
-&#125;);
+});
 ```
 
 ## Supported Providers
@@ -516,31 +516,31 @@ The package registers the following chat commands for interactive use:
 All responses include detailed cost information:
 
 ```typescript
-const [output, response] = await runChat(&#123; input: 'Hello' &#125;, agent);
+const [output, response] = await runChat({ input: 'Hello' }, agent);
 
-console.log(`Input: $$&#123;response.cost.input.toFixed(4)&#125;`);
-console.log(`Cached: $$&#123;response.cost.cachedInput?.toFixed(4) || 0&#125;`);
-console.log(`Output: $$&#123;response.cost.output.toFixed(4)&#125;`);
-console.log(`Reasoning: $$&#123;response.cost.reasoning?.toFixed(4) || 0&#125;`);
-console.log(`Total: $$&#123;response.cost.total.toFixed(4)&#125;`);
+console.log(`Input: $${response.cost.input.toFixed(4)}`);
+console.log(`Cached: $${response.cost.cachedInput?.toFixed(4) || 0}`);
+console.log(`Output: $${response.cost.output.toFixed(4)}`);
+console.log(`Reasoning: $${response.cost.reasoning?.toFixed(4) || 0}`);
+console.log(`Total: $${response.cost.total.toFixed(4)}`);
 ```
 
 **Cost Response Type:**
 
 ```typescript
-type AIResponseCost = &#123;
+type AIResponseCost = {
   input?: number;           // Cost of input tokens
   cachedInput?: number;     // Cost of cached input tokens
   output?: number;          // Cost of output tokens
   reasoning?: number;       // Cost of reasoning tokens
   total?: number;           // Total cost
-&#125;;
+};
 
-type AIResponseTiming = &#123;
+type AIResponseTiming = {
   elapsedMs: number;        // Time elapsed in milliseconds
   tokensPerSec?: number;    // Tokens processed per second
   totalTokens?: number;     // Total tokens processed
-&#125;;
+};
 ```
 
 ## Best Practices

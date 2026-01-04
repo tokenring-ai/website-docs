@@ -22,12 +22,12 @@ bun install @tokenring-ai/history
 ## Usage
 
 ```typescript
-import &#123; Agent &#125; from '@tokenring-ai/agent';
+import { Agent } from '@tokenring-ai/agent';
 import HistoryService from '@tokenring-ai/history';
 
-const agent = new Agent(&#123;
+const agent = new Agent({
   services: [new HistoryService()],
-&#125;);
+});
 ```
 
 ## Configuration

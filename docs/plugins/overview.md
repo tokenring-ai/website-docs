@@ -140,12 +140,12 @@ bun install
 Plugins are automatically loaded based on your configuration. To use a specific plugin:
 
 ```typescript
-import &#123; Agent &#125; from '@tokenring-ai/agent';
+import { Agent } from '@tokenring-ai/agent';
 import WikipediaService from '@tokenring-ai/wikipedia';
 
-const agent = new Agent(&#123;
+const agent = new Agent({
   services: [new WikipediaService()],
-&#125;);
+});
 ```
 
 ### Configuration
@@ -153,18 +153,18 @@ const agent = new Agent(&#123;
 Configure plugins in `.tokenring/coder-config.mjs`:
 
 ```javascript
-export default &#123;
-  defaults: &#123;
+export default {
+  defaults: {
     agent: "teamLeader",
     model: "gpt-4o"
-  &#125;,
-  models: &#123;
-    openai: &#123;
+  },
+  models: {
+    openai: {
       displayName: "OpenAI",
       apiKey: process.env.OPENAI_API_KEY
-    &#125;
-  &#125;
-&#125;;
+    }
+  }
+};
 ```
 
 ## 📚 Plugin Architecture

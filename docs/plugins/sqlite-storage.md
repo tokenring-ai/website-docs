@@ -1,8 +1,8 @@
 # SQLite Storage Plugin
 
-&gt; **DEPRECATED**: This package is deprecated and will be removed in a future release. Please
-&gt; use [@tokenring-ai/drizzle-storage](./drizzle-storage.md) instead, which provides enhanced database support including
-&gt; SQLite, MySQL, and PostgreSQL.
+> **DEPRECATED**: This package is deprecated and will be removed in a future release. Please
+> use [@tokenring-ai/drizzle-storage](./drizzle-storage.md) instead, which provides enhanced database support including
+> SQLite, MySQL, and PostgreSQL.
 
 SQLite-based storage for agent state checkpoints with persistent local database.
 
@@ -33,15 +33,15 @@ To migrate from sqlite-storage to drizzle-storage:
 3. Update initialization:
    ```typescript
    // Old
-   const storage = new SQLiteAgentStateStorage(&#123; 
+   const storage = new SQLiteAgentStateStorage({ 
      databasePath: './agent_state.db' 
-   &#125;);
+   });
 
    // New
-   const storage = new DrizzleAgentStateStorage(&#123; 
+   const storage = new DrizzleAgentStateStorage({ 
      type: 'sqlite',
      databasePath: './agent_state.db'
-   &#125;);
+   });
    ```
 
 The rest of your code using the AgentCheckpointProvider interface should work without changes.
@@ -63,12 +63,12 @@ Implements `AgentCheckpointProvider` for SQLite-based checkpoint management.
 
 **Constructor:**
 ```typescript
-new SQLiteAgentStateStorage(&#123; 
+new SQLiteAgentStateStorage({ 
   databasePath: string,
   busyTimeout?: number,
   maxRetries?: number,
   retryDelayMs?: number
-&#125;)
+})
 ```
 - Parameters:
   - `databasePath` (required): Path to the SQLite database file
@@ -78,18 +78,18 @@ new SQLiteAgentStateStorage(&#123;
 
 **Key Methods:**
 
-- `storeCheckpoint(checkpoint: NamedAgentCheckpoint): Promise&lt;string&gt;`
+- `storeCheckpoint(checkpoint: NamedAgentCheckpoint): Promise<string>`
   - Stores or updates a named checkpoint
-  - Parameters: `&#123; agentId, name, state, createdAt &#125;`
+  - Parameters: `{ agentId, name, state, createdAt }`
   - Uses `INSERT OR REPLACE INTO AgentState`
   - Returns: ID of stored checkpoint
 
-- `retrieveCheckpoint(agentId: string): Promise&lt;StoredAgentCheckpoint | null&gt;`
+- `retrieveCheckpoint(agentId: string): Promise<StoredAgentCheckpoint | null>`
   - Retrieves a checkpoint by agent ID
   - Parses JSON state from database
   - Returns checkpoint with parsed state, or null if not found
 
-- `listCheckpoints(): Promise&lt;AgentCheckpointListItem[]&gt;`
+- `listCheckpoints(): Promise<AgentCheckpointListItem[]>`
   - Lists all checkpoints ordered by creation time (descending)
   - Returns array with ID, name, agentId, createdAt (excludes state)
 
@@ -119,27 +119,27 @@ CREATE TABLE IF NOT EXISTS AgentState (
 import SQLiteAgentStateStorage from '@tokenring-ai/sqlite-storage';
 
 // Create storage instance with default options
-const storage = new SQLiteAgentStateStorage(&#123; 
+const storage = new SQLiteAgentStateStorage({ 
   databasePath: './agent_state.db' 
-&#125;);
+});
 
 // Or with custom configuration
-const storage = new SQLiteAgentStateStorage(&#123; 
+const storage = new SQLiteAgentStateStorage({ 
   databasePath: './agent_state.db',
   busyTimeout: 10000,
   maxRetries: 5,
   retryDelayMs: 200
-&#125;);
+});
 
 // Store a checkpoint
-const checkpoint = &#123;
+const checkpoint = {
   agentId: 'agent-123',
   name: 'session-1',
-  state: &#123; messages: ['Hello'], variables: &#123; count: 1 &#125; &#125;,
+  state: { messages: ['Hello'], variables: { count: 1 } },
   createdAt: Date.now()
-&#125;;
+};
 const id = await storage.storeCheckpoint(checkpoint);
-console.log(`Stored with ID: $&#123;id&#125;`);
+console.log(`Stored with ID: ${id}`);
 ```
 
 ### Retrieval and Listing
@@ -147,9 +147,9 @@ console.log(`Stored with ID: $&#123;id&#125;`);
 ```typescript
 // Retrieve a checkpoint
 const retrieved = await storage.retrieveCheckpoint('agent-123');
-if (retrieved) &#123;
+if (retrieved) {
   console.log('Retrieved state:', retrieved.state);
-&#125;
+}
 
 // List all checkpoints
 const list = await storage.listCheckpoints();
@@ -159,33 +159,33 @@ console.log('Checkpoints:', list);
 ### Full Workflow
 
 ```typescript
-import &#123; NamedAgentCheckpoint &#125; from '@tokenring-ai/checkpoint/AgentCheckpointProvider';
+import { NamedAgentCheckpoint } from '@tokenring-ai/checkpoint/AgentCheckpointProvider';
 import SQLiteAgentStateStorage from '@tokenring-ai/sqlite-storage';
 
-async function agentWorkflow() &#123;
-  const storage = new SQLiteAgentStateStorage(&#123; 
+async function agentWorkflow() {
+  const storage = new SQLiteAgentStateStorage({ 
     databasePath: './myapp.db' 
-  &#125;);
+  });
 
   // Store initial state
-  await storage.storeCheckpoint(&#123;
+  await storage.storeCheckpoint({
     agentId: 'my-agent',
     name: 'initial',
-    state: &#123; step: 0 &#125;,
+    state: { step: 0 },
     createdAt: Date.now()
-  &#125;);
+  });
 
   // Later, retrieve and update
   const current = await storage.retrieveCheckpoint('my-agent');
-  if (current) &#123;
+  if (current) {
     current.state.step += 1;
-    await storage.storeCheckpoint(&#123; ...current, createdAt: Date.now() &#125;);
-  &#125;
+    await storage.storeCheckpoint({ ...current, createdAt: Date.now() });
+  }
 
   // List for overview
   const checkpoints = await storage.listCheckpoints();
   console.log('All checkpoints:', checkpoints);
-&#125;
+}
 ```
 
 ## Configuration Options
@@ -210,18 +210,18 @@ The `SQLiteAgentStateStorage` constructor accepts the following configuration:
 ## API Reference
 
 ### SQLiteAgentStateStorage (implements AgentCheckpointProvider)
-- `constructor(&#123; databasePath, busyTimeout?, maxRetries?, retryDelayMs? &#125;)`
-- `storeCheckpoint(checkpoint: NamedAgentCheckpoint): Promise&lt;string&gt;`
-- `retrieveCheckpoint(agentId: string): Promise&lt;StoredAgentCheckpoint | null&gt;`
-- `listCheckpoints(): Promise&lt;AgentCheckpointListItem[]&gt;`
+- `constructor({ databasePath, busyTimeout?, maxRetries?, retryDelayMs? })`
+- `storeCheckpoint(checkpoint: NamedAgentCheckpoint): Promise<string>`
+- `retrieveCheckpoint(agentId: string): Promise<StoredAgentCheckpoint | null>`
+- `listCheckpoints(): Promise<AgentCheckpointListItem[]>`
 
 ### Utilities
 - `initializeLocalDatabase(databaseFile: string): Database`
 
 ### Types
-- `NamedAgentCheckpoint`: `&#123; agentId: string; name: string; state: any; createdAt: number &#125;`
-- `StoredAgentCheckpoint`: `&#123; id: string; name: string; agentId: string; state: any; createdAt: number &#125;`
-- `AgentCheckpointListItem`: `&#123; id: string; name: string; agentId: string; createdAt: number &#125;`
+- `NamedAgentCheckpoint`: `{ agentId: string; name: string; state: any; createdAt: number }`
+- `StoredAgentCheckpoint`: `{ id: string; name: string; agentId: string; state: any; createdAt: number }`
+- `AgentCheckpointListItem`: `{ id: string; name: string; agentId: string; createdAt: number }`
 
 ## Notes
 

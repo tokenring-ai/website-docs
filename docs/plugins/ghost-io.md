@@ -29,20 +29,20 @@ The plugin wraps Ghost's official Admin SDK and integrates with Token Ring's ser
 GhostBlogProvider implements the `BlogProvider` interface and provides blog service operations using Ghost's Admin API:
 
 ```typescript
-class GhostBlogProvider implements BlogProvider &#123;
+class GhostBlogProvider implements BlogProvider {
   constructor(options: GhostBlogProviderOptions);
 
   // State management
-  attach(agent: Agent): Promise&lt;void&gt;;
+  attach(agent: Agent): Promise<void>;
 
   // Post operations
   getCurrentPost(agent: Agent): BlogPost | null;
-  getAllPosts(): Promise&lt;BlogPost[]&gt;;
-  createPost(data: CreatePostData, agent: Agent): Promise&lt;BlogPost&gt;;
-  updatePost(data: UpdatePostData, agent: Agent): Promise&lt;BlogPost&gt;;
-  selectPostById(id: string, agent: Agent): Promise&lt;BlogPost&gt;;
-  clearCurrentPost(agent: Agent): Promise&lt;void&gt;;
-&#125;
+  getAllPosts(): Promise<BlogPost[]>;
+  createPost(data: CreatePostData, agent: Agent): Promise<BlogPost>;
+  updatePost(data: UpdatePostData, agent: Agent): Promise<BlogPost>;
+  selectPostById(id: string, agent: Agent): Promise<BlogPost>;
+  clearCurrentPost(agent: Agent): Promise<void>;
+}
 ```
 
 **Key Properties:**
@@ -56,12 +56,12 @@ class GhostBlogProvider implements BlogProvider &#123;
 GhostCDNProvider extends `CDNProvider` and handles CDN operations via Ghost's Admin API:
 
 ```typescript
-class GhostCDNProvider extends CDNProvider &#123;
+class GhostCDNProvider extends CDNProvider {
   constructor(options: GhostCDNProviderOptions);
 
   // Upload an image to Ghost CDN
-  upload(data: Buffer, options?: UploadOptions): Promise&lt;UploadResult&gt;;
-&#125;
+  upload(data: Buffer, options?: UploadOptions): Promise<UploadResult>;
+}
 ```
 
 ### GhostBlogState
@@ -69,7 +69,7 @@ class GhostCDNProvider extends CDNProvider &#123;
 GhostBlogState implements `AgentStateSlice` for state management:
 
 ```typescript
-class GhostBlogState implements AgentStateSlice &#123;
+class GhostBlogState implements AgentStateSlice {
   name: "GhostBlogState";
   currentPost: GhostPost | null;
 
@@ -77,7 +77,7 @@ class GhostBlogState implements AgentStateSlice &#123;
   serialize(): object;
   deserialize(data: any): void;
   show(): string[];
-&#125;
+}
 ```
 
 ## Configuration
@@ -91,13 +91,13 @@ ghost:
       ghost-cdn:
         type: "ghost"
         url: "https://your-site.ghost.io"
-        apiKey: "$&#123;GHOST_ADMIN_API_KEY&#125;"
+        apiKey: "${GHOST_ADMIN_API_KEY}"
   blog:
     providers:
       ghost-blog:
         type: "ghost"
         url: "https://your-site.ghost.io"
-        apiKey: "$&#123;GHOST_ADMIN_API_KEY&#125;"
+        apiKey: "${GHOST_ADMIN_API_KEY}"
         imageGenerationModel: "gpt-image-1"
         cdn: "ghost-cdn"
         description: "My Ghost Blog"
@@ -127,8 +127,8 @@ ghost:
 ### Basic Setup
 
 ```typescript
-import &#123; GhostBlogProvider, GhostCDNProvider &#125; from "@tokenring-ai/ghost-io";
-import &#123; BlogService, CDNService &#125; from "@tokenring-ai/blog";
+import { GhostBlogProvider, GhostCDNProvider } from "@tokenring-ai/ghost-io";
+import { BlogService, CDNService } from "@tokenring-ai/blog";
 
 // The plugin handles service registration automatically when configured
 // No manual service setup required - just configure and use
@@ -137,22 +137,22 @@ import &#123; BlogService, CDNService &#125; from "@tokenring-ai/blog";
 ### Creating a Draft Post
 
 ```typescript
-import &#123; GhostBlogProvider &#125; from "@tokenring-ai/ghost-io";
+import { GhostBlogProvider } from "@tokenring-ai/ghost-io";
 
-const provider = new GhostBlogProvider(&#123;
+const provider = new GhostBlogProvider({
   url: "https://your-ghost-site.com",
   apiKey: "your-admin-api-key",
   imageGenerationModel: "gpt-image-1",
   cdn: "ghost-cdn",
   description: "My Ghost Blog"
-&#125;);
+});
 
 // Create a new post
-const newPost = await provider.createPost(&#123;
+const newPost = await provider.createPost({
   title: "Hello Ghost from Token Ring",
   content: "# Heading\n\nThis was written by an agent.",
   tags: ["tokenring", "ghost"]
-&#125;, agent);
+}, agent);
 
 console.log("Created post:", newPost.id, newPost.title);
 ```
@@ -160,19 +160,19 @@ console.log("Created post:", newPost.id, newPost.title);
 ### Uploading an Image to CDN
 
 ```typescript
-import &#123; GhostCDNProvider &#125; from "@tokenring-ai/ghost-io";
+import { GhostCDNProvider } from "@tokenring-ai/ghost-io";
 
-const provider = new GhostCDNProvider(&#123;
+const provider = new GhostCDNProvider({
   url: "https://your-ghost-site.com",
   apiKey: "your-admin-api-key"
-&#125;);
+});
 
 // Assuming you have a file buffer from somewhere
 const imageBuffer = Buffer.from("image-data", "binary");
 
-const result = await provider.upload(imageBuffer, &#123;
+const result = await provider.upload(imageBuffer, {
   filename: "featured-image.jpg"
-&#125;);
+});
 
 console.log("Uploaded to:", result.url);
 ```
@@ -180,26 +180,26 @@ console.log("Uploaded to:", result.url);
 ### Selecting and Updating a Post
 
 ```typescript
-import &#123; GhostBlogProvider &#125; from "@tokenring-ai/ghost-io";
+import { GhostBlogProvider } from "@tokenring-ai/ghost-io";
 
-const provider = new GhostBlogProvider(&#123;
+const provider = new GhostBlogProvider({
   url: "https://your-ghost-site.com",
   apiKey: "your-admin-api-key",
   imageGenerationModel: "gpt-image-1",
   cdn: "ghost-cdn",
   description: "My Ghost Blog"
-&#125;);
+});
 
 // First select a post by ID
 const post = await provider.selectPostById("post-id-here", agent);
 
 // Then update it
-const updatedPost = await provider.updatePost(&#123;
+const updatedPost = await provider.updatePost({
   title: "Updated Title",
   content: "## Updated Content\n\nThis content was updated by an agent.",
   tags: ["updated", "tokenring"],
   status: "draft"
-&#125;, agent);
+}, agent);
 
 console.log("Updated post:", updatedPost.title);
 ```
@@ -246,17 +246,17 @@ The plugin integrates with Token Ring through:
 
 ```typescript
 // Plugin registration flow
-plugin.install(app, config) &#123;
+plugin.install(app, config) {
   // Wait for CDNService and register GhostCDNProvider
-  app.services.waitForItemByType(CDNService, cdnService =&gt; &#123;
+  app.services.waitForItemByType(CDNService, cdnService => {
     cdnService.registerProvider(name, new GhostCDNProvider(options));
-  &#125;);
+  });
 
   // Wait for BlogService and register GhostBlogProvider
-  app.services.waitForItemByType(BlogService, blogService =&gt; &#123;
+  app.services.waitForItemByType(BlogService, blogService => {
     blogService.registerBlog(name, new GhostBlogProvider(options));
-  &#125;;
-&#125;
+  };
+}
 ```
 
 ## Development

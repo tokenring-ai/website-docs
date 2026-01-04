@@ -23,11 +23,11 @@ The main service class that handles all API interactions with NewsRPM:
 ```typescript
 import NewsRPMService from "@tokenring-ai/newsrpm";
 
-const service = new NewsRPMService(&#123;
+const service = new NewsRPMService({
   apiKey: "your-api-key",
   authMode: 'privateHeader',
   baseUrl: 'https://api.newsrpm.com'
-&#125;);
+});
 ```
 
 #### Service Methods
@@ -36,22 +36,22 @@ const service = new NewsRPMService(&#123;
 
 - `searchIndexedData(body)`: Search indexed data by taxonomy keys
   ```typescript
-  await service.searchIndexedData(&#123;
+  await service.searchIndexedData({
     key: "NormalizedTicker",
     value: "AAPL",
     count: 25,
     minDate: "2024-01-01T00:00:00.000Z"
-  &#125;);
+  });
   ```
 
 - `searchArticles(body)`: Search articles with various filters
   ```typescript
-  await service.searchArticles(&#123;
+  await service.searchArticles({
     publisher: ["Reuters", "BBC"],
     type: "Press Release",
     sponsored: false,
     count: 50
-  &#125;);
+  });
   ```
 
 **Article Retrieval Methods:**
@@ -87,13 +87,13 @@ const service = new NewsRPMService(&#123;
 
 - `uploadArticle(article)`: Create or update articles
   ```typescript
-  const result = await service.uploadArticle(&#123;
+  const result = await service.uploadArticle({
     provider: "Tech News",
     headline: "Latest Technology Updates",
     slug: "tech-updates-2025",
     date: new Date().toISOString(),
     quality: 0.95
-  &#125;);
+  });
   ```
 
 ### Tools Integration
@@ -102,66 +102,66 @@ The package provides 8 tools for agent integration, automatically registered wit
 
 1. **newsrpm/searchIndexedData**
    ```typescript
-   &#123;
+   {
      key: "topic",
      value: "artificial intelligence",
      count: 10
-   &#125;
+   }
    ```
 
 2. **newsrpm/searchArticles**
    ```typescript
-   &#123;
+   {
      publisher: "Reuters",
      fullText: "AI technology",
      count: 25
-   &#125;
+   }
    ```
 
 3. **newsrpm/getArticleBySlug**
    ```typescript
-   &#123;
+   {
      slug: "example-article-slug"
-   &#125;
+   }
    ```
 
 4. **newsrpm/getArticleById**
    ```typescript
-   &#123;
+   {
      id: 12345
-   &#125;
+   }
    ```
 
 5. **newsrpm/uploadArticle**
    ```typescript
-   &#123;
-     article: &#123;
+   {
+     article: {
        provider: "News Source",
        headline: "Article Title",
        slug: "article-slug",
        date: "2025-01-01T00:00:00.000Z",
        quality: 0.9
-     &#125;
-   &#125;
+     }
+   }
    ```
 
 6. **newsrpm/listProviders**
    ```typescript
-   &#123;&#125;
+   {}
    ```
 
 7. **newsrpm/getBody**
    ```typescript
-   &#123;
+   {
      bodyId: "body-abc123"
-   &#125;
+   }
    ```
 
 8. **newsrpm/renderBody**
    ```typescript
-   &#123;
+   {
      bodyId: "body-abc123"
-   &#125;
+   }
    ```
 
 ### Chat Commands
@@ -177,15 +177,15 @@ The package provides a comprehensive `/newsrpm` command for interactive use in t
 
 #### Search Indexed Data
 ```bash
-/newsrpm index &lt;key&gt; [options]
+/newsrpm index <key> [options]
 ```
-- `--value &lt;values&gt;`: Filter by value(s), comma-separated for multiple
-- `--count &lt;n&gt;`: Limit number of results
-- `--offset &lt;n&gt;`: Skip number of results
-- `--min &lt;iso&gt;`: Minimum date (ISO format)
-- `--max &lt;iso&gt;`: Maximum date (ISO format)
-- `--order &lt;order&gt;`: Sort order (date or dateWithQuality)
-- `--save &lt;path&gt;`: Save response to JSON file
+- `--value <values>`: Filter by value(s), comma-separated for multiple
+- `--count <n>`: Limit number of results
+- `--offset <n>`: Skip number of results
+- `--min <iso>`: Minimum date (ISO format)
+- `--max <iso>`: Maximum date (ISO format)
+- `--order <order>`: Sort order (date or dateWithQuality)
+- `--save <path>`: Save response to JSON file
 
 **Example:**
 ```bash
@@ -196,17 +196,17 @@ The package provides a comprehensive `/newsrpm` command for interactive use in t
 ```bash
 /newsrpm search [options]
 ```
-- `--publisher &lt;names&gt;`: Filter by publisher(s), comma-separated
-- `--provider &lt;names&gt;`: Filter by provider(s), comma-separated
-- `--type &lt;types&gt;`: Filter by type(s), comma-separated
-- `--fulltext &lt;query&gt;`: Full-text search query
-- `--sponsored &lt;true|false&gt;`: Filter by sponsored status
-- `--language &lt;lang&gt;`: Filter by language
-- `--count &lt;n&gt;`: Limit number of results
-- `--offset &lt;n&gt;`: Skip number of results
-- `--min &lt;iso&gt;`: Minimum date (ISO format)
-- `--max &lt;iso&gt;`: Maximum date (ISO format)
-- `--save &lt;path&gt;`: Save response to JSON file
+- `--publisher <names>`: Filter by publisher(s), comma-separated
+- `--provider <names>`: Filter by provider(s), comma-separated
+- `--type <types>`: Filter by type(s), comma-separated
+- `--fulltext <query>`: Full-text search query
+- `--sponsored <true|false>`: Filter by sponsored status
+- `--language <lang>`: Filter by language
+- `--count <n>`: Limit number of results
+- `--offset <n>`: Skip number of results
+- `--min <iso>`: Minimum date (ISO format)
+- `--max <iso>`: Maximum date (ISO format)
+- `--save <path>`: Save response to JSON file
 
 **Example:**
 ```bash
@@ -216,9 +216,9 @@ The package provides a comprehensive `/newsrpm` command for interactive use in t
 #### Get Article
 ```bash
 # By slug
-/newsrpm article slug &lt;slug&gt;
+/newsrpm article slug <slug>
 # By ID
-/newsrpm article id &lt;id&gt;
+/newsrpm article id <id>
 ```
 
 **Examples:**
@@ -231,7 +231,7 @@ The package provides a comprehensive `/newsrpm` command for interactive use in t
 ```bash
 /newsrpm providers [options]
 ```
-- `--save &lt;path&gt;`: Save response to JSON file
+- `--save <path>`: Save response to JSON file
 
 **Example:**
 ```bash
@@ -240,10 +240,10 @@ The package provides a comprehensive `/newsrpm` command for interactive use in t
 
 #### Get Article Body
 ```bash
-/newsrpm body &lt;bodyId&gt; [options]
+/newsrpm body <bodyId> [options]
 ```
 - `--render`: Render the body content
-- `--save &lt;path&gt;`: Save response to JSON file
+- `--save <path>`: Save response to JSON file
 
 **Example:**
 ```bash
@@ -252,9 +252,9 @@ The package provides a comprehensive `/newsrpm` command for interactive use in t
 
 #### Upload Article
 ```bash
-/newsrpm upload --json &lt;path&gt;
+/newsrpm upload --json <path>
 ```
-- `--json &lt;path&gt;`: Path to JSON file containing article data
+- `--json <path>`: Path to JSON file containing article data
 
 **Example:**
 ```bash
@@ -295,33 +295,33 @@ The NewsRPMService accepts the following configuration schema (validated using Z
 ### Optional Configuration
 - `authMode: 'privateHeader' | 'publicHeader' | 'privateQuery' | 'publicQuery'` (default: 'privateHeader')
 - `baseUrl: string` (default: 'https://api.newsrpm.com')
-- `requestDefaults: &#123; headers?: Record&lt;string,string&gt;, timeoutMs?: number &#125;`
-- `retry: &#123; maxRetries?: number, baseDelayMs?: number, maxDelayMs?: number, jitter?: boolean &#125;`
+- `requestDefaults: { headers?: Record<string,string>, timeoutMs?: number }`
+- `retry: { maxRetries?: number, baseDelayMs?: number, maxDelayMs?: number, jitter?: boolean }`
 - `fetchImpl: any` - Custom fetch implementation for testing
 
 ### Configuration Example
 
 ```typescript
 // In your application configuration
-const config = &#123;
-  newsrpm: &#123;
+const config = {
+  newsrpm: {
     apiKey: process.env.NEWSRPM_API_KEY!,
     authMode: 'privateHeader',
     baseUrl: 'https://api.newsrpm.com',
-    requestDefaults: &#123;
+    requestDefaults: {
       timeoutMs: 20000,
-      headers: &#123;
+      headers: {
         'User-Agent': 'TokenRing-NewsRPM/1.0'
-      &#125;
-    &#125;,
-    retry: &#123;
+      }
+    },
+    retry: {
       maxRetries: 5,
       baseDelayMs: 400,
       maxDelayMs: 4000,
       jitter: true
-    &#125;
-  &#125;
-&#125;;
+    }
+  }
+};
 ```
 
 ### Environment Variables
@@ -332,10 +332,10 @@ const config = &#123;
 
 The package supports 4 authentication modes:
 
-1. **privateHeader** (default): `Authorization: privateKey &lt;apiKey&gt;`
-2. **publicHeader**: `Authorization: publicKey &lt;apiKey&gt;`
-3. **privateQuery**: Query parameter `T=&lt;apiKey&gt;`
-4. **publicQuery**: Query parameter `P=&lt;apiKey&gt;`
+1. **privateHeader** (default): `Authorization: privateKey <apiKey>`
+2. **publicHeader**: `Authorization: publicKey <apiKey>`
+3. **privateQuery**: Query parameter `T=<apiKey>`
+4. **publicQuery**: Query parameter `P=<apiKey>`
 
 Choose the mode that matches your NewsRPM deployment security requirements.
 
@@ -343,43 +343,43 @@ Choose the mode that matches your NewsRPM deployment security requirements.
 
 ### MultipleArticleResponse
 ```typescript
-&#123;
+{
   success: boolean;
-  rows: Array&lt;&#123;
+  rows: Array<{
     headline?: string;
     provider?: string;
     slug?: string;
     // ... other article fields
-  &#125;&gt;
-&#125;
+  }>
+}
 ```
 
 ### SingleArticleResponse
 ```typescript
-&#123;
+{
   success: boolean;
-  doc: &#123;
+  doc: {
     // Full article object
-  &#125;
-&#125;
+  }
+}
 ```
 
 ### ProviderListResponse
 ```typescript
-&#123;
+{
   success: boolean;
-  rows: Array&lt;&#123;
+  rows: Array<{
     provider: string;
-  &#125;&gt;
-&#125;
+  }>
+}
 ```
 
 ### ArticleBodyResponse
 ```typescript
-&#123;
+{
   success: boolean;
-  body: &#123; v: number; chunks: Array&lt;&#123; name: string; format: string; content: string &#125;&gt; &#125;
-&#125;
+  body: { v: number; chunks: Array<{ name: string; format: string; content: string }> }
+}
 ```
 
 ## Error Handling
@@ -393,13 +393,13 @@ The service implements comprehensive error handling:
 
 ### Error Response Format
 ```typescript
-&#123;
+{
   message: string;
   status?: number;
   code?: string;
   details?: any;
   hint?: string;
-&#125;
+}
 ```
 
 ## API Reference
@@ -423,29 +423,29 @@ Additional fields are documented in the OpenAPI schema.
 
 ### Basic Integration
 ```typescript
-import &#123; NewsRPMService &#125; from "@tokenring-ai/newsrpm";
+import { NewsRPMService } from "@tokenring-ai/newsrpm";
 
-const service = new NewsRPMService(&#123;
+const service = new NewsRPMService({
   apiKey: process.env.NEWSRPM_API_KEY!,
   authMode: 'privateHeader'
-&#125;);
+});
 
 // Search for technology articles
-const techNews = await service.searchArticles(&#123;
+const techNews = await service.searchArticles({
   type: "Technology",
   count: 10
-&#125;);
+});
 ```
 
 ### Advanced Integration with Agents
 ```typescript
 // Tools are automatically available to agents
 const agent = new Agent();
-const articles = await agent.callTool("newsrpm/searchArticles", &#123;
+const articles = await agent.callTool("newsrpm/searchArticles", {
   fullText: "artificial intelligence",
   publisher: "TechCrunch",
   count: 20
-&#125;);
+});
 ```
 
 ### File System Integration
