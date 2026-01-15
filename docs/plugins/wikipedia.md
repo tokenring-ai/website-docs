@@ -178,7 +178,7 @@ export const WikipediaConfigSchema = z.object({
   }),
   execute: async function({ query, limit, offset }, agent) {
     const wikipedia = agent.requireServiceByType(WikipediaService);
-    agent.infoLine(`[wikipediaSearch] Searching: ${query}`);
+    agent.infoMessage(`[wikipediaSearch] Searching: ${query}`);
     const results = await wikipedia.search(query, { limit, offset });
     return { results };
   }
@@ -196,7 +196,7 @@ export const WikipediaConfigSchema = z.object({
   }),
   execute: async function({ title }, agent) {
     const wikipedia = agent.requireServiceByType(WikipediaService);
-    agent.infoLine(`[wikipediaGetPage] Retrieving: ${title}`);
+    agent.infoMessage(`[wikipediaGetPage] Retrieving: ${title}`);
     const content = await wikipedia.getPage(title);
     return { content };
   }

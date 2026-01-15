@@ -310,9 +310,9 @@ The Discord client uses the following Gateway Intents:
 
 The service outputs logs via the agent's info/warning/error methods:
 
-- `agent.infoLine()`: General information about agent actions
-- `agent.warningLine()`: Warnings about agent configuration
-- `agent.errorLine()`: Errors during agent processing
+- `agent.infoMessage()`: General information about agent actions
+- `agent.warningMessage()`: Warnings about agent configuration
+- `agent.errorMessage()`: Errors during agent processing
 
 ## Development
 

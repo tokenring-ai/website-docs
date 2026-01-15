@@ -184,7 +184,7 @@ Available tools for agent execution:
 | `sandbox_getLogs` | Gets container logs (uses active if unspecified) | `label` (optional) |
 | `sandbox_removeContainer` | Removes a container (uses active if unspecified) | `label` (optional) |
 
-Each tool logs actions via the agent's infoLine and errorLine methods and handles errors (e.g., no active container, provider not found).
+Each tool logs actions via the agent's infoMessage and errorMessage methods and handles errors (e.g., no active container, provider not found).
 
 ## Plugin Configuration
 
@@ -366,7 +366,7 @@ The sandbox plugin integrates with the Token Ring agent system through the follo
 ## Monitoring and Debugging
 
 - **Error Handling**: Tools and commands throw errors when required resources are missing (e.g., no active container).
-- **Logging**: Actions are logged via agent's `infoLine` and `errorLine`.
+- **Logging**: Actions are logged via agent's `infoMessage` and `errorMessage`.
 - **Status Command**: `/sandbox status` shows current provider and container information.
 - **Provider Commands**: Use `/sandbox provider get`, `/sandbox provider set`, and `/sandbox provider reset` to manage providers.
 

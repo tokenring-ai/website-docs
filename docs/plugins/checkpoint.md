@@ -568,9 +568,9 @@ export default {
 ```typescript
 try {
   await checkpointService.restoreAgentCheckpoint(id, agent);
-  agent.infoLine(`Checkpoint ${id} restored`);
+  agent.infoMessage(`Checkpoint ${id} restored`);
 } catch (error) {
-  agent.errorLine(`Failed to restore checkpoint: ${error}`);
+  agent.errorMessage(`Failed to restore checkpoint: ${error}`);
   // Agent state remains unchanged
 }
 ```

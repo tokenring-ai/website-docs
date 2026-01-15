@@ -147,7 +147,7 @@ try {
     // Process the user's choice
   }
 } catch (error) {
-  agent.errorLine(`[feedback_askHuman] Error occurred:`, error);
+  agent.errorMessage(`[feedback_askHuman] Error occurred:`, error);
 }
 ```
 
@@ -187,8 +187,8 @@ Tools integrate with agents through the service system:
 const fileSystem = agent.requireServiceByType(FileSystemService);
 
 // Use agent logging methods
-agent.infoLine(`[tool-name] Operation started`);
-agent.errorLine(`[tool-name] Operation failed:`, error);
+agent.infoMessage(`[tool-name] Operation started`);
+agent.errorMessage(`[tool-name] Operation failed:`, error);
 ```
 
 ## Monitoring and Debugging
@@ -215,7 +215,7 @@ try {
   const result = await tool.execute(params, agent);
   return result;
 } catch (error) {
-  agent.errorLine(`[tool-name] Operation failed:`, error);
+  agent.errorMessage(`[tool-name] Operation failed:`, error);
   throw error;
 }
 ```
