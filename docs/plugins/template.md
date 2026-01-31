@@ -15,8 +15,6 @@ The `@tokenring-ai/template` package provides a comprehensive system for managin
 - **Multiple Inputs**: Process arrays of inputs within a single template execution
 - **Circular Reference Detection**: Prevent infinite template loops
 - **State Persistence**: Preserve and restore agent tool states during template execution
-- **Interactive Commands**: Chat-based template management via `/template` command
-- **Tool Integration**: Programmatic access through `template/run` and `template/list` tools
 
 ## Core Components
 
@@ -90,7 +88,7 @@ export async function myTemplate(input: string): Promise<TemplateChatRequest> {
 ### Basic Template Execution
 
 ```typescript
-// Run a template via tool
+// Run a template
 const result = await templateService.runTemplate(
   { templateName: "summarize", input: "Long article text..." },
   agent
@@ -145,63 +143,6 @@ export async function multiStepAnalysis(input: string): Promise<TemplateChatRequ
 }
 ```
 
-## Interactive Chat Commands
-
-The package provides the `/template` command with comprehensive subcommands:
-
-### `/template list`
-List all available templates.
-
-**Example:**
-```
-/template list
-```
-
-### `/template run <templateName> [input]`
-Run a template with optional input.
-
-**Arguments:**
-- `templateName`: Name of the template to run
-- `input`: Optional input text for the template
-
-**Example:**
-```
-/template run summarize This is the text to summarize
-```
-
-### `/template info <templateName>`
-Show information about a specific template.
-
-**Example:**
-```
-/template info summarize
-```
-
-## Programmatic Tools
-
-The package provides two main tools for programmatic access:
-
-### `template/list`
-Lists all available templates.
-
-**Parameters:** None
-**Returns:** Array of template names
-
-### `template/run`
-Runs a template with the given input.
-
-**Parameters:**
-- `templateName`: Name of the template to run
-- `input`: Input text for the template
-
-**Example Usage:**
-```typescript
-const result = await agent.runTool('template/run', {
-  templateName: 'summarize',
-  input: 'Long article text...'
-});
-```
-
 ## Configuration
 
 Templates are configured via the TokenRing configuration system:
@@ -209,7 +150,7 @@ Templates are configured via the TokenRing configuration system:
 ```typescript
 // Configuration schema is automatically validated
 export default {
-  template: {
+  templates: {
     // Template name -> Template function mapping
     summarize: async (input: string) => ({
       inputs: [input],
@@ -224,6 +165,20 @@ export default {
       nextTemplate: "summarizeFindings",
     }),
   }
+};
+```
+
+The package provides a configuration schema that can be used for validation:
+
+```typescript
+import { TemplateConfigSchema } from "@tokenring-ai/template";
+
+const config = {
+  templates: TemplateConfigSchema.parse({
+    summarize: async (input: string) => ({
+      inputs: [input],
+    }),
+  })
 };
 ```
 
@@ -257,15 +212,13 @@ const templateWithCircularRef = async (input: string) => ({
 
 ### Plugin Architecture
 
-The package automatically integrates with TokenRing applications via the plugin system:
+The package does not have a plugin.ts file. Templates must be registered manually in your application configuration, and the TemplateService can be accessed via the agent system:
 
 ```typescript
 export default {
-  name: "@tokenring-ai/template",
-  install(app: TokenRingApp) {
-    // Templates are automatically registered
-    // Tools and commands are automatically added
-    // Service is automatically attached to agents
+  templates: {
+    myTemplate: myTemplateFunction,
+    anotherTemplate: anotherTemplateFunction,
   }
 }
 ```
@@ -273,7 +226,6 @@ export default {
 ### Service Dependencies
 
 - **ChatService**: For chat execution and tool management
-- **AgentCommandService**: For command registration
 - **Agent**: For template execution context
 
 ### State Management
@@ -303,16 +255,19 @@ export async function myCustomTemplate(input: string): Promise<TemplateChatReque
 
 ```typescript
 export default {
-  template: {
+  templates: {
     myCustomTemplate: myCustomTemplate,
   }
 }
 ```
 
-3. Use it via chat command or tools:
+3. Use it via the TemplateService:
 
-```bash
-/template run myCustomTemplate "Your input here"
+```typescript
+const result = await templateService.runTemplate(
+  { templateName: "myCustomTemplate", input: "Your input here" },
+  agent
+);
 ```
 
 ### Testing Templates
@@ -322,6 +277,44 @@ export default {
 const chatRequest = await myCustomTemplate("test input");
 console.log(chatRequest.inputs); // ["test input"]
 console.log(chatRequest.nextTemplate); // undefined if no chaining
+```
+
+### Running Tests
+
+```bash
+bun run test
+```
+
+## API Reference
+
+### TemplateService Methods
+
+#### `listTemplates(): string[]`
+
+Returns an array of all registered template names.
+
+#### `getTemplateByName(name: string): TemplateFunction | undefined`
+
+Retrieves a template function by name.
+
+#### `runTemplate({ templateName, input, visitedTemplates? }, agent): Promise<TemplateResult>`
+
+Executes a template with the given input.
+
+**Parameters:**
+- `templateName`: Name of the template to run
+- `input`: Input text for the template
+- `visitedTemplates`: Array to track template chain (internal use)
+
+**Returns:**
+```typescript
+interface TemplateResult {
+  ok: boolean;
+  output?: string;
+  response?: any;
+  error?: string;
+  nextTemplateResult?: TemplateResult; // For chained templates
+}
 ```
 
 ## License

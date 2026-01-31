@@ -103,11 +103,10 @@ The plugin provides `/audio` commands for audio operations:
 ```bash
 # Convert text to speech
 /audio speak "Hello world"
-/audio speak "Welcome" --voice alloy --speed 1.2
+/audio speak "Welcome" --speed 1.2
 ```
 
 **Options:**
-- `--voice <id>` - Voice ID (e.g., alloy, echo, fable)
 - `--speed <n>` - Speech speed (e.g., 0.5, 1.0, 2.0)
 
 ### Transcribe Command
@@ -160,7 +159,7 @@ Record audio using the active voice provider.
 }
 ```
 
-**Returns:** `{ filePath: string }`
+**Returns:** `{ type: 'json', data: { filePath: string } }`
 
 ### voice_transcribe
 
@@ -177,11 +176,11 @@ Transcribe audio file to text.
 }
 ```
 
-**Returns:** `{ text: string }`
+**Returns:** `string` - The transcription text
 
 ### voice_speak
 
-Convert text to speech.
+Convert text to speech and play it.
 
 ```typescript
 {
@@ -194,15 +193,15 @@ Convert text to speech.
 }
 ```
 
-**Returns:** `string` - Confirmation message
+**Returns:** `string` - Confirmation message "Playback succeeded"
 
-### voice_playback
+### audio_playback
 
 Play audio file.
 
 ```typescript
 {
-  name: "voice_playback",
+  name: "audio_playback",
   description: "Play audio file using the active voice provider",
   inputSchema: z.object({
     filename: z.string().min(1).describe("Audio filename to play"),
@@ -210,7 +209,7 @@ Play audio file.
 }
 ```
 
-**Returns:** `{ filePath: string }`
+**Returns:** `{ type: 'json', data: { filePath: string } }`
 
 ## Configuration
 
@@ -258,8 +257,8 @@ const AudioServiceConfigSchema = z.object({
 const AudioAgentConfigSchema = z.object({
   provider: z.string().optional(),
   transcribe: AudioTranscriptionConfigSchema.optional(),
-  speech: AudioSpeechConfigSchema.optional(),
-});
+  speech: AudioSpeechConfigSchema.optional()
+}).prefault({});
 
 const AudioTranscriptionConfigSchema = z.object({
   model: z.string().default('whisper-1'),
@@ -343,7 +342,7 @@ audioService.setActiveProvider('custom', agent);
 
 # Text-to-speech
 /audio speak "Hello world"
-/audio speak "Welcome" --voice alloy --speed 1.2
+/audio speak "Welcome" --speed 1.2
 
 # Transcription
 /audio transcribe recording.wav
@@ -380,11 +379,12 @@ app.registerPlugin(audioPlugin);
 The `AudioState` class manages audio configuration persistence across agent sessions:
 
 ```typescript
-class AudioState implements AgentStateSlice {
+class AudioState implements AgentStateSlice<typeof serializationSchema> {
   name = "AudioState";
+  serializationSchema = serializationSchema;
   activeProvider: string | null;
-  transcribe: TranscriptionConfig;
-  speech: SpeechConfig;
+  transcribe: z.output<typeof AudioTranscriptionConfigSchema>;
+  speech: z.output<typeof AudioSpeechConfigSchema>;
 }
 ```
 

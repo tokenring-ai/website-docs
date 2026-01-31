@@ -145,12 +145,7 @@ export default function AgentCLI(props: AgentCLIProps);
 type Screen =
   | { name: 'selectAgent' }
   | { name: 'chat'; agentId: string }
-  | { name: 'askForConfirmation'; request: HumanInterfaceRequestFor<"askForConfirmation">, onResponse: (response: HumanInterfaceResponseFor<'askForConfirmation'>) => void }
-  | { name: 'askForPassword'; request: HumanInterfaceRequestFor<"askForPassword">, onResponse: (response: HumanInterfaceResponseFor<'askForPassword'>) => void }
-  | { name: 'openWebPage'; request: HumanInterfaceRequestFor<"openWebPage">, onResponse: (response: HumanInterfaceResponseFor<'openWebPage'>) => void }
-  | { name: 'askForSingleTreeSelection'; request: HumanInterfaceRequestFor<"askForSingleTreeSelection">, onResponse: (response: HumanInterfaceResponseFor<'askForSingleTreeSelection'>) => void }
-  | { name: 'askForMultipleTreeSelection'; request: HumanInterfaceRequestFor<"askForMultipleTreeSelection">, onResponse: (response: HumanInterfaceResponseFor<'askForMultipleTreeSelection'>) => void }
-  | { name: 'askForText'; request: HumanInterfaceRequestFor<"askForText">, onResponse: (response: HumanInterfaceResponseFor<'askForText'>) => void };
+  | { name: 'question'; request: ParsedQuestionRequest, onResponse: (response: any) => void };
 ```
 
 ## Screen Components
@@ -161,7 +156,6 @@ Main chat interface displaying agent outputs and handling input.
 
 ```typescript
 interface AgentChatScreenProps {
-  agentEventState: AgentEventState | null;
   currentAgent: Agent;
   setScreen: (screen: Screen) => void;
 }
@@ -197,15 +191,33 @@ Features:
 - Workflows
 - Error display for agent spawning failures
 
-### Human Interface Screens
+### QuestionInputScreen
 
-| Screen | Purpose |
-|--------|---------|
-| `AskScreen` | Multi-line text input (Ctrl+D to submit, Esc to cancel) |
-| `ConfirmationScreen` | Yes/no prompts with arrow key navigation and timeout support |
-| `PasswordScreen` | Secure input with masked characters |
-| `TreeSelectionScreen` | Hierarchical tree-based selection (single or multiple) |
-| `WebPageScreen` | Opens URLs in browser |
+Generic screen for handling various question types from agents.
+
+Supports:
+- Text input (multi-line)
+- Tree selection (single or multiple)
+- File selection (placeholder - not fully implemented)
+
+### ConfirmationScreen
+
+Confirmation prompt with timeout support.
+
+Features:
+- Yes/No toggle with arrow key navigation
+- Visual feedback for selection
+- Countdown timer for timeout
+
+### AskScreen
+
+Multi-line text input screen for agent questions.
+
+Features:
+- Multi-line text editing
+- Ctrl+D to submit
+- Esc or q to cancel
+- Cursor position indicator
 
 ## Reusable Components
 
@@ -232,6 +244,25 @@ Features:
 - Ctrl+C handling
 - Escape to cancel
 
+### Markdown
+
+Renders markdown with syntax highlighting.
+
+```typescript
+export interface InkMarkdownProps {
+  children: string;
+  options?: InkMarkdownOptions;
+}
+
+export function InkMarkdown(props: InkMarkdownProps): React.ReactElement;
+```
+
+Features:
+- Full markdown parsing using marked
+- Syntax highlighting for 40+ languages
+- Tables, lists, blockquotes, and code blocks
+- Responsive width handling
+
 ### SelectInput
 
 Generic selection input component.
@@ -252,40 +283,30 @@ export interface SelectInputProps<T = string> {
 export function SelectInput<T = string>(props: SelectInputProps<T>): React.ReactElement;
 ```
 
-### Markdown
-
-Renders markdown with syntax highlighting.
-
-```typescript
-export interface InkMarkdownProps {
-  children: string;
-  options?: InkMarkdownOptions;
-}
-
-export function InkMarkdown(props: InkMarkdownProps): React.ReactElement;
-```
-
-Features:
-- Full markdown parsing using marked
-- Syntax highlighting for 40+ languages
-- Tables, lists, blockquotes, and code blocks
-- Responsive width handling
-
 ## Custom Hooks
 
-### useAgentEvents
+### useAgentStateSlice
 
-Subscribes to agent event state.
+Subscribes to agent state slices for real-time updates.
 
 ```typescript
-export function useAgentEvents(agent: Agent | null) {
-  // Returns AgentEventState or null
-}
+export function useAgentStateSlice<T extends AgentStateSlice<any>>(
+  ClassType: new (...args: any[]) => T,
+  agent: Agent | null
+): T | null;
 ```
 
 ### useOutputBlocks
 
-Processes agent events into structured output blocks.
+Processes agent event state into structured output blocks.
+
+**Note**: This hook is available in the codebase but may not be used in the current implementation.
+
+Output Types:
+- `chat`: Chat messages from agent
+- `reasoning`: Agent reasoning process
+- `input`: User input echo
+- `system`: System messages (info, warning, error)
 
 ```typescript
 export type OutputBlock =
@@ -294,9 +315,7 @@ export type OutputBlock =
   | { type: 'input'; message: string }
   | { type: 'system'; message: string; level: 'info' | 'warning' | 'error' };
 
-export function useOutputBlocks(events: AgentEventState["events"] | null) {
-  // Returns OutputBlock[]
-}
+export function useOutputBlocks(events: AgentEventState["events"] | null): OutputBlock[];
 ```
 
 ### useScreenSize
@@ -342,7 +361,7 @@ The CLI processes various agent events with color-coded output:
 ### Navigation
 - `Up/Down Arrow` - Navigate lists and command history
 - `Tab` - Auto-complete commands
-- `Left/Right Arrow` - Expand/collapse tree nodes
+- `Left/Right Arrow` - Expand/collapse tree nodes (for tree selection screens)
 - `Space` - Toggle selections (multiple choice)
 - `Enter` - Select/submit
 - `Esc` or `q` - Cancel/cancel selection
@@ -375,7 +394,6 @@ vitest run:coverage # Coverage report
 
 1. Update `CommandInput.tsx` with command handlers
 2. Add documentation for the new command
-3. Register command names from the `AgentCommandService`
 
 ## Package Structure
 
@@ -387,10 +405,10 @@ pkg/cli-ink/
 ├── AgentCLI.tsx                # Core component managing screen state
 ├── components/                 # Reusable components
 │   ├── CommandInput.tsx        # Command input with history and auto-completion
-│   ├── SelectInput.tsx         # Selection input component
-│   └── Markdown.tsx            # Markdown rendering with syntax highlighting
+│   ├── Markdown.tsx            # Markdown rendering with syntax highlighting
+│   └── SelectInput.tsx         # Selection input component
 ├── hooks/                      # Custom hooks
-│   ├── useAgentEvents.ts       # Agent event state management
+│   ├── useAgentStateSlice.ts   # Agent event state management
 │   ├── useOutputBlocks.tsx     # Output block processing
 │   └── useScreenSize.ts        # Terminal size management
 ├── screens/                    # Screen components
@@ -398,9 +416,7 @@ pkg/cli-ink/
 │   ├── AgentSelectionScreen.tsx # Agent selection interface
 │   ├── AskScreen.tsx           # Text input screen
 │   ├── ConfirmationScreen.tsx  # Confirmation prompt screen
-│   ├── PasswordScreen.tsx      # Password input screen
-│   ├── TreeSelectionScreen.tsx # Tree-based selection
-│   └── WebPageScreen.tsx       # Web page opening screen
+│   └── QuestionInputScreen.tsx # Generic question input (handles text, treeSelect, fileSelect)
 ├── markdown.sample.md          # Markdown rendering sample
 ├── package.json
 ├── tsconfig.json

@@ -1,325 +1,645 @@
-# Ghost.io Plugin
-
-The Ghost.io Plugin integrates Ghost CMS services into the Token Ring ecosystem, enabling seamless blog management and CDN operations using Ghost's Admin API. This plugin provides providers for both blog and CDN services, allowing Token Ring applications to interact with Ghost instances for content management and asset delivery.
+# Ghost.io Integration
 
 ## Overview
 
-Ghost.io is a popular headless CMS and blogging platform. The Ghost.io Plugin enables Token Ring agents to:
+The @tokenring-ai/ghost-io package provides comprehensive integration with the Ghost.io blog platform for Token Ring AI agents. It wraps the Ghost Admin SDK to provide secure authentication and implements both the BlogProvider and CDNProvider interfaces for seamless blog management and content delivery.
 
-- Browse and select existing Ghost posts as working context
-- Create new draft posts from Markdown/HTML content
-- Read and update post details
-- Upload images to Ghost CDN
-- Track the currently selected post across chat sessions
+### Core Capabilities
 
-The plugin wraps Ghost's official Admin SDK and integrates with Token Ring's service architecture.
+- **Blog Management**: Create, update, select, and clear blog posts with full CRUD operations
+- **CDN Integration**: Upload images directly to Ghost's content delivery network
+- **Agent State Management**: Track currently selected post per agent session
+- **API Wrapping**: Secure access to Ghost v5.0 Admin API with proper authentication
+- **Post Conversion**: Automatic conversion between Ghost's data structures and Token Ring's blog provider model
 
-## Key Features
+### Integration Points
 
-- **Dual Provider Architecture**: Separate blog and CDN providers for content management and image uploads
-- **State Management**: Tracks the currently selected post across chat sessions via GhostBlogState
-- **Plugin Integration**: Automatically registers services with the application framework
-- **Type-Safe Configuration**: Uses Zod schemas for configuration validation
-- **Agent Integration**: Attaches state management to agents for seamless post tracking
+- **BlogService**: Registers GhostBlogProvider for blog post management
+- **CDNService**: Registers GhostCDNProvider for media content delivery
+- **Agent State**: Uses GhostBlogState to track active post per agent session
+- **Authentication**: Uses API key-based authentication via Ghost Admin SDK
+
+## Installation
+
+```bash
+bun add @tokenring-ai/ghost-io
+```
+
+## Configuration
+
+The plugin uses separate configuration schemas for blog and CDN providers:
+
+### Plugin Configuration
+
+```typescript
+import {TokenRingPlugin} from "@tokenring-ai/app";
+import {z} from "zod";
+import packageJSON from './package.json' with {type: 'json'};
+import GhostBlogProvider from "./GhostBlogProvider.ts";
+import GhostCDNProvider from "./GhostCDNProvider.ts";
+
+const packageConfigSchema = z.object({
+  cdn: z.object({
+    providers: z.record(z.string(), z.object({
+      type: z.literal("ghost"),
+      url: z.string(),
+      apiKey: z.string(),
+    })).optional(),
+  }).optional(),
+  blog: z.object({
+    providers: z.record(z.string(), z.object({
+      type: z.literal("ghost"),
+      url: z.string(),
+      apiKey: z.string(),
+      imageGenerationModel: z.string(),
+      cdn: z.string(),
+      description: z.string(),
+    })).optional(),
+  }).optional(),
+});
+
+export default {
+  name: packageJSON.name,
+  version: packageJSON.version,
+  description: packageJSON.description,
+  config: packageConfigSchema,
+  install(app, config) {
+    if (config.cdn?.providers) {
+      app.services.waitForItemByType(CDNService, cdnService => {
+        for (const [name, providerConfig] of Object.entries(config.cdn.providers)) {
+          if (providerConfig.type === "ghost") {
+            cdnService.registerProvider(name, new GhostCDNProvider(providerConfig));
+          }
+        }
+      });
+    }
+
+    if (config.blog?.providers) {
+      app.services.waitForItemByType(BlogService, blogService => {
+        for (const [name, providerConfig] of Object.entries(config.blog.providers)) {
+          if (providerConfig.type === "ghost") {
+            blogService.registerBlog(name, new GhostBlogProvider(providerConfig));
+          }
+        }
+      });
+    }
+  }
+} satisfies TokenRingPlugin<typeof packageConfigSchema>;
+```
+
+### Blog Provider Configuration
+
+```typescript
+{
+  "blog": {
+    "providers": {
+      "my-blog": {
+        "type": "ghost",
+        "url": "https://my-ghost-blog.com",
+        "apiKey": "your-api-key",
+        "imageGenerationModel": "gpt-4",
+        "cdn": "my-cdn",
+        "description": "Ghost blog at my-ghost-blog.com"
+      }
+    }
+  }
+}
+```
+
+### CDN Provider Configuration
+
+```typescript
+{
+  "cdn": {
+    "providers": {
+      "my-cdn": {
+        "type": "ghost",
+        "url": "https://my-ghost-blog.com",
+        "apiKey": "your-api-key"
+      }
+    }
+  }
+}
+```
 
 ## Core Components
 
 ### GhostBlogProvider
 
-GhostBlogProvider implements the `BlogProvider` interface and provides blog service operations using Ghost's Admin API:
+The GhostBlogProvider class implements the BlogProvider interface for Ghost.io blog management. All methods require the plugin's `attach(agent)` method to be called first.
 
 ```typescript
-class GhostBlogProvider implements BlogProvider {
-  constructor(options: GhostBlogProviderOptions);
+import {BlogService} from "@tokenring-ai/blog";
 
-  // State management
-  attach(agent: Agent): Promise<void>;
+const blogService = agent.requireServiceByType(BlogService);
+const provider = blogService.getCurrentProvider();
 
-  // Post operations
-  getCurrentPost(agent: Agent): BlogPost | null;
-  getAllPosts(): Promise<BlogPost[]>;
-  createPost(data: CreatePostData, agent: Agent): Promise<BlogPost>;
-  updatePost(data: UpdatePostData, agent: Agent): Promise<BlogPost>;
-  selectPostById(id: string, agent: Agent): Promise<BlogPost>;
-  clearCurrentPost(agent: Agent): Promise<void>;
+await provider.attach(agent);
+```
+
+#### Key Methods
+
+**attach(agent)**
+- Initializes GhostBlogState for the agent
+- REQUIRED before using any provider methods
+- No return value
+
+```typescript
+provider.attach(agent);
+```
+
+**getCurrentPost(agent)**
+- Retrieves the currently selected post from agent state
+- Returns BlogPost | null if no post is selected
+
+```typescript
+const post = provider.getCurrentPost(agent);
+if (post) {
+  console.log(post.title, post.status);
 }
 ```
 
-**Key Properties:**
+**getAllPosts()**
+- Fetches all blog posts from Ghost Admin API
+- Returns array of BlogPost objects
 
-- `description`: Human-readable description of the blog
-- `cdnName`: Name of the CDN provider for feature images
-- `imageGenerationModel`: AI model for generating featured images
+```typescript
+const allPosts = await provider.getAllPosts();
+console.log(`Found ${allPosts.length} posts`);
+```
+
+**createPost(data, agent)**
+- Creates a new draft post on Ghost.io
+- **REQUIRES**: attach(agent) called first
+- **REQUIRES**: No post currently selected (clearCurrentPost first)
+- Raises error if post already selected
+
+```typescript
+const newPost = await provider.createPost({
+  title: "My New Blog Post",
+  content: "<p>Welcome to my blog!</p>",
+  tags: ["tutorial", "guides"],
+  feature_image: {
+    url: "https://example.com/image.jpg"
+  }
+}, agent);
+
+console.log(`Created post: ${newPost.title} (ID: ${newPost.id})`);
+```
+
+**updatePost(data, agent)**
+- Updates the currently selected post
+- **REQUIRES**: attach(agent) called first
+- **REQUIRES**: A post must be selected (via selectPostById)
+- **LIMITATION**: Cannot use status 'pending' or 'private' (Ghost API limitation)
+
+```typescript
+const currentPost = provider.getCurrentPost(agent);
+if (!currentPost) {
+  throw new Error("No post selected. Call selectPostById() first.");
+}
+
+const updatedPost = await provider.updatePost({
+  title: "Updated Title",
+  content: "<p>Updated content...</p>",
+  status: "published"
+}, agent);
+
+console.log(`Updated post: ${updatedPost.title}`);
+```
+
+**selectPostById(id, agent)**
+- Fetches and selects a post by ID as the current post
+- **REQUIRES**: attach(agent) called first
+- Raises error if post not found
+
+```typescript
+const post = await provider.selectPostById("1e0b8941-1234-5678-90ab-cdef12345678", agent);
+console.log(`Selected post: ${post.title}`);
+```
+
+**clearCurrentPost(agent)**
+- Clears the current post selection from state
+
+```typescript
+await provider.clearCurrentPost(agent);
+```
 
 ### GhostCDNProvider
 
-GhostCDNProvider extends `CDNProvider` and handles CDN operations via Ghost's Admin API:
+The GhostCDNProvider class extends CDNProvider for image uploads to Ghost's CDN.
 
 ```typescript
-class GhostCDNProvider extends CDNProvider {
-  constructor(options: GhostCDNProviderOptions);
+import {CDNService} from "@tokenring-ai/cdn";
 
-  // Upload an image to Ghost CDN
-  upload(data: Buffer, options?: UploadOptions): Promise<UploadResult>;
+const cdnService = agent.requireServiceByType(CDNService);
+const provider = cdnService.getCurrentProvider();
+```
+
+#### Key Methods
+
+**upload(data, options)**
+- Uploads image buffer to Ghost CDN
+- Generates unique filename using uuid if not provided
+- Returns UploadResult with URL and metadata
+
+```typescript
+import fs from "fs";
+
+const imageBuffer = fs.readFileSync("path/to/image.jpg");
+const uploadResult = await provider.upload(imageBuffer, {
+  filename: "featured-image.jpg",
+  metadata: {
+    width: 1200,
+    height: 800
+  }
+});
+
+console.log(`Image uploaded to: ${uploadResult.url}`);
+console.log(`Image ID: ${uploadResult.id}`);
+```
+
+## GhostBlogState
+
+Each agent maintains its own GhostBlogState instance for tracking the currently selected post.
+
+### State Properties
+
+```typescript
+{
+  currentPost: GhostPost | null
 }
 ```
 
-### GhostBlogState
+### State Lifecycle
 
-GhostBlogState implements `AgentStateSlice` for state management:
+- **Initialization**: Created when attach(agent) is called
+- **Persistence**: Serialized/deserialized across agent sessions
+- **Reset**: Cleared when chat ends (chat reset)
+- **Inheritance**: Child agents inherit parent's currentPost selection
+
+### State Access
 
 ```typescript
-class GhostBlogState implements AgentStateSlice {
-  name: "GhostBlogState";
-  currentPost: GhostPost | null;
+// Initialize state
+agent.initializeState(GhostBlogState, {});
 
-  reset(what: ResetWhat[]): void;
-  serialize(): object;
-  deserialize(data: any): void;
-  show(): string[];
+// Access state
+const state = agent.getState(GhostBlogState);
+console.log(state.currentPost?.title);
+
+// Modify state
+agent.mutateState(GhostBlogState, (state) => {
+  state.currentPost = selectedPost;
+});
+
+// Serialize/deserialize
+const data = state.serialize();
+const newState = new GhostBlogState(data);
+
+// Reset on chat end
+state.reset(['chat']);
+```
+
+## Post Conversion
+
+GhostPost objects are automatically converted to BlogPost objects when using provider methods.
+
+### Conversion Requirements
+
+The converter validates:
+- **id**: Required field
+- **title**: Required field
+- **status**: Required field (draft, published, scheduled)
+
+### Conversion Behavior
+
+```typescript
+function GhostPostToBlogPost({
+  id,
+  title,
+  content,
+  html,
+  status,
+  created_at,
+  updated_at,
+  published_at,
+  feature_image,
+  // ... other fields
+}): BlogPost {
+  // Validates required fields
+  // Converts timestamps to Date objects
+  // Uses content or html as content property
+  // Converts feature_image string to { url } object
+  // Returns BlogPost-compatible object
 }
 ```
 
-## Configuration
+### Supported GhostPost Fields
 
-The plugin is configured through your application config with separate sections for CDN and blog providers:
+All GhostPost fields are supported:
+- **id**: Unique post identifier
+- **title**: Post title
+- **content**: Markdown content (if present)
+- **html**: HTML content (fallback)
+- **status**: draft | published | scheduled
+- **tags**: Array of tag names
+- **created_at**: Creation timestamp (ISO 8601)
+- **updated_at**: Last update timestamp (ISO 8601)
+- **published_at**: Publication timestamp (ISO 8601)
+- **feature_image**: Image URL string
+- **excerpt**: Post excerpt
+- **url**: Published URL
+- **slug**: URL slug
 
-```yaml
-ghost:
-  cdn:
-    providers:
-      ghost-cdn:
-        type: "ghost"
-        url: "https://your-site.ghost.io"
-        apiKey: "${GHOST_ADMIN_API_KEY}"
-  blog:
-    providers:
-      ghost-blog:
-        type: "ghost"
-        url: "https://your-site.ghost.io"
-        apiKey: "${GHOST_ADMIN_API_KEY}"
-        imageGenerationModel: "gpt-image-1"
-        cdn: "ghost-cdn"
-        description: "My Ghost Blog"
+## API Interface
+
+GhostBlogProvider wraps the Ghost Admin API v5.0 interface:
+
+```typescript
+interface GhostAdminAPI {
+  posts: {
+    browse: (params: { limit: string }) => Promise<GhostPost[]>;
+    add: (data: GhostPost, options?: { source: string }) => Promise<GhostPost>;
+    edit: (data: GhostPost) => Promise<GhostPost>;
+    read: (params: { id: string, formats?: string }) => Promise<GhostPost | null>;
+  };
+  tags: {
+    browse: () => Promise<string[]>;
+  };
+  images: {
+    upload: (data: Buffer, options?: { filename: string, purpose: string }) => Promise<{
+      url: string;
+      id: string;
+      metadata: any
+    }>;
+  }
+}
 ```
-
-### Configuration Options
-
-#### GhostCDNProvider Options
-
-| Property | Type | Description |
-|----------|------|-------------|
-| `url` | string | Ghost site URL (e.g., `https://demo.ghost.io`) |
-| `apiKey` | string | Admin API key for authentication |
-
-#### GhostBlogProvider Options
-
-| Property | Type | Description |
-|----------|------|-------------|
-| `url` | string | Ghost site URL |
-| `apiKey` | string | Admin API key for writes |
-| `imageGenerationModel` | string | AI model for generating featured images (e.g., `gpt-image-1`) |
-| `cdn` | string | CDN provider name for feature images |
-| `description` | string | Human-readable description |
 
 ## Usage Examples
 
-### Basic Setup
+### Full Blog Workflow
 
 ```typescript
-import { GhostBlogProvider, GhostCDNProvider } from "@tokenring-ai/ghost-io";
-import { BlogService, CDNService } from "@tokenring-ai/blog";
+import {BlogService} from "@tokenring-ai/blog";
 
-// The plugin handles service registration automatically when configured
-// No manual service setup required - just configure and use
-```
+// Access blog service
+const blogService = agent.requireServiceByType(BlogService);
+const provider = blogService.getCurrentProvider();
 
-### Creating a Draft Post
+// Initialize provider
+await provider.attach(agent);
 
-```typescript
-import { GhostBlogProvider } from "@tokenring-ai/ghost-io";
-
-const provider = new GhostBlogProvider({
-  url: "https://your-ghost-site.com",
-  apiKey: "your-admin-api-key",
-  imageGenerationModel: "gpt-image-1",
-  cdn: "ghost-cdn",
-  description: "My Ghost Blog"
-});
-
-// Create a new post
-const newPost = await provider.createPost({
-  title: "Hello Ghost from Token Ring",
-  content: "# Heading\n\nThis was written by an agent.",
-  tags: ["tokenring", "ghost"]
+// Create new post
+const post = await provider.createPost({
+  title: "Getting Started with Ghost",
+  content: "# Welcome\n\nThis is a sample blog post.",
+  tags: ["ghost", "tutorial"]
 }, agent);
 
-console.log("Created post:", newPost.id, newPost.title);
+// Select and update post
+const selected = await provider.selectPostById(post.id, agent);
+const updated = await provider.updatePost({
+  status: "published",
+  content: "# Welcome\n\nThis article explains how to get started."
+}, agent);
+
+// List all posts
+const allPosts = await provider.getAllPosts();
+console.log(`Active posts: ${allPosts.filter(p => p.status === 'published').length}`);
+
+// Cleanup
+await provider.clearCurrentPost(agent);
 ```
 
-### Uploading an Image to CDN
+### Image Upload Workflow
 
 ```typescript
-import { GhostCDNProvider } from "@tokenring-ai/ghost-io";
+import {CDNService} from "@tokenring-ai/cdn";
+import fs from "fs";
 
-const provider = new GhostCDNProvider({
-  url: "https://your-ghost-site.com",
-  apiKey: "your-admin-api-key"
-});
+// Access CDN service
+const cdnService = agent.requireServiceByType(CDNService);
+const provider = cdnService.getCurrentProvider();
 
-// Assuming you have a file buffer from somewhere
-const imageBuffer = Buffer.from("image-data", "binary");
-
+// Upload image
+const imageBuffer = fs.readFileSync("featured.jpg");
 const result = await provider.upload(imageBuffer, {
-  filename: "featured-image.jpg"
+  filename: "featured-image.jpg",
+  metadata: {
+    alt: "Featured image description"
+  }
 });
 
-console.log("Uploaded to:", result.url);
+console.log(`Image URL: ${result.url}`);
+console.log(`Image ID: ${result.id}`);
 ```
 
-### Selecting and Updating a Post
+### Agent Integration Pattern
 
 ```typescript
-import { GhostBlogProvider } from "@tokenring-ai/ghost-io";
+import {Agent} from "@tokenring-ai/agent";
+import {BlogService} from "@tokenring-ai/blog";
 
-const provider = new GhostBlogProvider({
-  url: "https://your-ghost-site.com",
-  apiKey: "your-admin-api-key",
-  imageGenerationModel: "gpt-image-1",
-  cdn: "ghost-cdn",
-  description: "My Ghost Blog"
-});
+async function agentWorkflow(agent: Agent) {
+  const blogService = agent.requireServiceByType(BlogService);
+  const provider = blogService.getCurrentProvider();
 
-// First select a post by ID
-const post = await provider.selectPostById("post-id-here", agent);
+  // Initialize state
+  provider.attach(agent);
 
-// Then update it
-const updatedPost = await provider.updatePost({
-  title: "Updated Title",
-  content: "## Updated Content\n\nThis content was updated by an agent.",
-  tags: ["updated", "tokenring"],
-  status: "draft"
-}, agent);
+  // Create content
+  const post = await provider.createPost({
+    title: "My Article",
+    content: "<p>Content here</p>"
+  }, agent);
 
-console.log("Updated post:", updatedPost.title);
-```
+  // Work with post
+  const current = provider.getCurrentPost(agent);
+  console.log(`Current: ${current?.title}`);
 
-## API Reference
-
-### GhostBlogProvider Methods
-
-| Method | Description |
-|--------|-------------|
-| `attach(agent)` | Initializes GhostBlogState for the agent |
-| `getCurrentPost(agent)` | Returns the currently selected post |
-| `getAllPosts()` | Fetches all posts from Ghost Admin API |
-| `createPost(data, agent)` | Creates a new draft post |
-| `updatePost(data, agent)` | Updates the currently selected post |
-| `selectPostById(id, agent)` | Fetches and selects a post by ID |
-| `clearCurrentPost(agent)` | Clears the current post selection |
-
-### GhostCDNProvider Methods
-
-| Method | Description |
-|--------|-------------|
-| `upload(data, options)` | Uploads an image buffer to Ghost CDN |
-
-### GhostBlogState Methods
-
-| Method | Description |
-|--------|-------------|
-| `reset(what)` | Resets state (triggers on 'chat' reset) |
-| `serialize()` | Returns serializable state |
-| `deserialize(data)` | Restores state from data |
-| `show()` | Returns display string for current post |
-
-## Integration
-
-The plugin integrates with Token Ring through:
-
-1. **Plugin Architecture**: Exports a `TokenRingPlugin` that handles service registration
-2. **Service Registry**: Uses `app.services.waitForItemByType()` to wait for BlogService and CDNService
-3. **Provider Registration**: Registers GhostBlogProvider and GhostCDNProvider with their respective services
-4. **State Management**: GhostBlogState attaches to agents for persistent post tracking
-
-### Service Integration Flow
-
-```typescript
-// Plugin registration flow
-plugin.install(app, config) {
-  // Wait for CDNService and register GhostCDNProvider
-  app.services.waitForItemByType(CDNService, cdnService => {
-    cdnService.registerProvider(name, new GhostCDNProvider(options));
-  });
-
-  // Wait for BlogService and register GhostBlogProvider
-  app.services.waitForItemByType(BlogService, blogService => {
-    blogService.registerBlog(name, new GhostBlogProvider(options));
-  };
+  // Clean up
+  await provider.clearCurrentPost(agent);
 }
 ```
 
-## Development
+## Error Handling
 
-### Testing
+### Common Errors
 
-```bash
-# Run all tests
-bun run test
+1. **Post Already Selected**
+   ```typescript
+   // Attempt to create post while one is selected
+   throw new Error("A post is currently selected. Clear the selection before creating a new post.");
+   ```
 
-# Run tests in watch mode
-bun run test:watch
+2. **No Post Selected**
+   ```typescript
+   // Attempt to update post without selecting first
+   throw new Error("No post is currently selected. Select a post before updating.");
+   ```
 
-# Run tests with coverage
-bun run test:coverage
+3. **Status Not Supported**
+   ```typescript
+   // Attempt to use 'pending' or 'private' status
+   throw new Error("Ghost does not support pending or private posts");
+   ```
+
+4. **Post Not Found**
+   ```typescript
+   // Attempt to select non-existent post
+   throw new Error(`Post with ID ${id} not found`);
+   ```
+
+5. **Missing Configuration**
+   ```typescript
+   // Missing required fields
+   throw new Error("Error in Ghost config: No url provided");
+   ```
+
+### Error Handling Pattern
+
+```typescript
+try {
+  const post = await provider.createPost(data, agent);
+  console.log(`Post created: ${post.title}`);
+} catch (error) {
+  if (error.message.includes("currently selected")) {
+    // Clear selection and retry
+    await provider.clearCurrentPost(agent);
+    const newPost = await provider.createPost(data, agent);
+  } else if (error.message.includes("No post is currently selected")) {
+    // Select post first
+    const post = await provider.selectPostById("some-id", agent);
+  } else {
+    console.error("Blog operation failed:", error.message);
+  }
+}
 ```
 
-### Building
+## Best Practices
 
-```bash
-# Type check the package
-bun run build
+### Required Operations
+
+1. **Always Call attach(agent) First**
+   - Required before any provider method
+   - Initializes state and hooks
+   ```typescript
+   provider.attach(agent);
+   ```
+
+2. **Select Post Before Update**
+   - Must call selectPostById before updatePost
+   - Keeps context clear and reduces errors
+   ```typescript
+   await provider.selectPostById(postId, agent);
+   await provider.updatePost(data, agent);
+   ```
+
+3. **Clear Selection After Use**
+   - Prevents selection conflicts
+   - Helps manage agent state lifecycle
+   ```typescript
+   await provider.clearCurrentPost(agent);
+   ```
+
+### Configuration Tips
+
+1. **Use Environment Variables**
+   - Store API keys securely
+   - Never hardcode in codebases
+   ```typescript
+   const config = {
+     url: process.env.GHOST_URL,
+     apiKey: process.env.GHOST_API_KEY
+   };
+   ```
+
+2. **Choose Appropriate CDN**
+   - Ensure blog and CDN providers reference the same Ghost site
+   - Use descriptive names for providers
+   ```typescript
+   {
+     blog: { providers: { "my-blog": { ... } } },
+     cdn: { providers: { "my-cdn": { ... } } }
+   }
+   ```
+
+### API Usage Tips
+
+1. **Status Best Practices**
+   - Use 'draft' for work-in-progress
+   - Use 'scheduled' for future publishing
+   - Avoid 'pending' and 'private' (not supported)
+
+2. **Content Handling**
+   - Use `content` (markdown) preferentially
+   - Use `html` as fallback
+   - Provide both for maximum compatibility
+
+3. **Image Metadata**
+   - Include relevant metadata when uploading
+   - Use descriptive filenames
+   - Maintain image quality settings
+
+## Dependencies
+
+### Core Dependencies
+
+- **@tokenring-ai/blog**: Blog provider interface and BlogService
+- **@tokenring-ai/cdn**: CDN provider interface and CDNService
+- **@tokenring-ai/agent**: Agent system and state management
+- **@tokenring-ai/app**: Plugin registration framework
+- **@tryghost/admin-api**: Official Ghost Admin SDK (v5.0)
+- **@lexical/headless**: Lexical editor integration
+- **@lexical/markdown**: Markdown content format
+
+### Utility Dependencies
+
+- **form-data**: Multipart form data for image uploads
+- **uuid**: Unique identifier generation
+- **zod**: Schema validation
+- **typescript**: Type definitions
+
+### Development Dependencies
+
+- **vitest**: Unit testing framework
+- **@vitest/coverage-v8**: Code coverage reporting
+
+## Testing
+
+### Example Test Setup
+
+```typescript
+import {describe, expect, it} from 'vitest';
+import GhostBlogProvider from "../src/GhostBlogProvider.ts";
+
+describe("GhostBlogProvider", () => {
+  it("should initialize with valid configuration", () => {
+    const provider = new GhostBlogProvider({
+      url: "https://test.ghost.io",
+      apiKey: "test-key",
+      imageGenerationModel: "gpt-4",
+      cdn: "test-cdn",
+      description: "Test blog"
+    });
+
+    expect(provider).toBeDefined();
+  });
+
+  it("should throw error when missing required config", () => {
+    expect(() => {
+      new GhostBlogProvider({
+        url: "https://test.ghost.io",
+        apiKey: "test-key"
+        // Missing imageGenerationModel, cdn, description
+      });
+    }).toThrow("Error in Ghost config");
+  });
+});
 ```
-
-### Package Structure
-
-```
-pkg/ghost-io/
-├── index.ts                 # Main exports
-├── plugin.ts                # Token Ring plugin for auto-registration
-├── GhostBlogProvider.ts     # Blog provider implementation
-├── GhostCDNProvider.ts      # CDN provider implementation
-├── state/
-│   └── GhostBlogState.ts    # State management for current post
-├── vitest.config.ts         # Vitest configuration
-├── package.json             # Package manifest
-└── docs/                    # Ghost API reference documentation
-```
-
-## Notes and Caveats
-
-- GhostBlogProvider only uses the Admin API (not Content API) for all operations
-- The `currentPost` selection is required for update operations; use `selectPostById` first
-- Ghost does not support "pending" or "private" post statuses
-- The package provides two distinct providers that must be configured separately
-- Ensure your Ghost site is running Ghost 5.0+ for full API compatibility
-- Admin API keys must be kept secure and are not suitable for client-side use
-
-## Related Components
-
-- [Blog Plugin](blog.md): Blog service abstraction and interfaces
-- [CDN Plugin](cdn.md): CDN service abstraction and interfaces
-- [Agent Plugin](agent.md): Agent system and state management
-- [Image Generation Plugin](image-generation.md): AI image generation for featured images
 
 ## License
 
-MIT License
-
-Copyright (c) 2025 Mark Dierolf
-
-Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files (the "Software"), to deal in the Software without restriction, including without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, and to permit persons to whom the Software is furnished to do so, subject to the following conditions:
-
-The above copyright notice and this permission notice shall be included in all copies or substantial portions of the Software.
-
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+MIT License - see LICENSE file for details.

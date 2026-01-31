@@ -14,7 +14,6 @@ The `@tokenring-ai/wordpress` package provides comprehensive WordPress integrati
 - **Tag Management**: Create and manage post tags dynamically
 - **State Preservation**: Maintain current post context across interactions
 - **Media Handling**: Upload images to WordPress media library
-- **AI Image Generation**: Generate featured images for posts (requires AI image client)
 - **Post Status Management**: Support for publish, future, draft, pending, and private statuses
 - **Current Post Tracking**: Maintain selected post context across agent sessions
 
@@ -25,6 +24,7 @@ The `@tokenring-ai/wordpress` package provides comprehensive WordPress integrati
 The main blog provider that implements the `BlogProvider` interface.
 
 **Constructor Options:**
+
 ```typescript
 {
   url: string,
@@ -37,6 +37,7 @@ The main blog provider that implements the `BlogProvider` interface.
 ```
 
 **Key Methods:**
+
 - `getAllPosts(): Promise<BlogPost[]>` - Get all posts with statuses (publish, future, draft, pending, private)
 - `getCurrentPost(agent: Agent): BlogPost | null` - Get currently selected post
 - `createPost(data: CreatePostData, agent: Agent): Promise<BlogPost>` - Create new draft post
@@ -49,6 +50,7 @@ The main blog provider that implements the `BlogProvider` interface.
 CDN provider that uses WordPress media library for file storage.
 
 **Constructor Options:**
+
 ```typescript
 {
   url: string,
@@ -58,6 +60,7 @@ CDN provider that uses WordPress media library for file storage.
 ```
 
 **Key Methods:**
+
 - `upload(data: Buffer, options?: UploadOptions): Promise<UploadResult>` - Upload file to WordPress media library
 - `name: string = "WordPressCDN"` - Provider name
 - `description: string = "CDN backed by a WordPress media library"` - Provider description
@@ -67,9 +70,11 @@ CDN provider that uses WordPress media library for file storage.
 State management for tracking the currently selected post.
 
 **Properties:**
+
 - `currentPost: WPPost | null` - Currently selected WordPress post
 
 **Methods:**
+
 - `reset(what: ResetWhat[]): void` - Reset state based on reset type
 - `serialize(): object` - Serialize state for persistence
 - `deserialize(data: any): void` - Deserialize state from persistence
@@ -78,6 +83,7 @@ State management for tracking the currently selected post.
 ### Data Models
 
 #### BlogPost
+
 ```typescript
 interface BlogPost {
   id: string;
@@ -91,6 +97,7 @@ interface BlogPost {
 ```
 
 #### CreatePostData
+
 ```typescript
 interface CreatePostData {
   title: string;
@@ -101,6 +108,7 @@ interface CreatePostData {
 ```
 
 #### UpdatePostData
+
 ```typescript
 interface UpdatePostData {
   title?: string;
@@ -109,83 +117,6 @@ interface UpdatePostData {
   feature_image?: { id: string };
   status?: "published" | "scheduled" | "draft" | "pending" | "private";
 }
-```
-
-### Tools
-
-**wordpress/createPost**: Create a new WordPress post from Markdown
-- Input: `{ title: string, content: string, tags?: string[], feature_image?: { id: string } }`
-- Converts Markdown to HTML and creates draft post
-
-**wordpress/getCurrentPost**: Return details of currently selected post
-
-**wordpress/updatePost**: Update selected post
-- Input: `{ title?: string, content?: string, tags?: string[], feature_image?: { id: string }, status?: 'published'|'scheduled'|'draft'|'pending'|'private' }`
-
-**wordpress/selectPostById**: Select post by ID
-- Input: `{ id: string }`
-
-**wordpress/clearCurrentPost**: Clear current post selection
-
-**wordpress/generateImageForPost**: Generate AI image and set as featured image
-- Input: `{ prompt: string, aspectRatio?: 'square'|'tall'|'wide' }`
-
-### Chat Commands
-
-**/wordpress**: WordPress post management
-- `post select`: Open tree selector to choose existing post
-- `post info`: Show details about currently selected post
-- `post new`: Clear selection for new post creation
-- `post update`: Update currently selected post
-- `post publish`: Publish currently selected post
-- `post clear`: Clear current post selection
-- `post tags add`: Add tags to current post
-- `post tags remove`: Remove tags from current post
-
-## Usage Example
-
-```typescript
-import { WordPressBlogProvider, WordPressCDNProvider } from '@tokenring-ai/wordpress';
-import { BlogService, CDNService } from '@tokenring-ai/blog';
-import { CDNService } from '@tokenring-ai/cdn';
-
-// Initialize WordPress blog provider
-const wpBlogProvider = new WordPressBlogProvider({
-  url: process.env.WORDPRESS_URL!,
-  username: process.env.WORDPRESS_USERNAME!,
-  password: process.env.WORDPRESS_PASSWORD!,
-  imageGenerationModel: process.env.AI_IMAGE_MODEL!,
-  cdn: 'wordpress',
-  description: 'WordPress Blog'
-});
-
-// Initialize WordPress CDN provider
-const wpCDNProvider = new WordPressCDNProvider({
-  url: process.env.WORDPRESS_URL!,
-  username: process.env.WORDPRESS_USERNAME!,
-  password: process.env.WORDPRESS_PASSWORD!
-});
-
-// Register with services
-app.services.waitForItemByType(BlogService, blogService => {
-  blogService.registerBlog('wordpress', wpBlogProvider);
-});
-
-app.services.waitForItemByType(CDNService, cdnService => {
-  cdnService.registerProvider('wordpress', wpCDNProvider);
-});
-
-// Create a post
-const result = await agent.executeTool('wordpress/createPost', {
-  title: 'Hello WordPress from Token Ring',
-  content: '# Hello World\n\nThis is a test post created by an agent.',
-  tags: ['tokenring', 'wordpress', 'test']
-});
-
-// Generate featured image
-await agent.executeTool('wordpress/generateImageForPost', {
-  prompt: 'A beautiful landscape image for a blog post'
-});
 ```
 
 ## Configuration Options
@@ -228,6 +159,7 @@ await agent.executeTool('wordpress/generateImageForPost', {
 ```
 
 **Environment Variables:**
+
 - `WORDPRESS_URL` - WordPress site URL
 - `WORDPRESS_USERNAME` - WordPress username
 - `WORDPRESS_PASSWORD` - WordPress application password (not regular password)
@@ -248,6 +180,128 @@ await agent.executeTool('wordpress/generateImageForPost', {
 
 - `vitest`: Testing framework
 - `@vitest/coverage-v8`: Coverage reporting
+
+## Usage Example
+
+### Basic Setup
+
+```typescript
+import { WordPressBlogProvider, WordPressCDNProvider } from '@tokenring-ai/wordpress';
+import { BlogService, CDNService } from '@tokenring-ai/blog';
+import { CDNService } from '@tokenring-ai/cdn';
+
+// Initialize WordPress blog provider
+const wpBlogProvider = new WordPressBlogProvider({
+  url: process.env.WORDPRESS_URL!,
+  username: process.env.WORDPRESS_USERNAME!,
+  password: process.env.WORDPRESS_PASSWORD!,
+  imageGenerationModel: process.env.AI_IMAGE_MODEL!,
+  cdn: 'wordpress',
+  description: 'WordPress Blog'
+});
+
+// Initialize WordPress CDN provider
+const wpCDNProvider = new WordPressCDNProvider({
+  url: process.env.WORDPRESS_URL!,
+  username: process.env.WORDPRESS_USERNAME!,
+  password: process.env.WORDPRESS_PASSWORD!
+});
+
+// Register with services
+app.services.waitForItemByType(BlogService, blogService => {
+  blogService.registerBlog('wordpress', wpBlogProvider);
+});
+
+app.services.waitForItemByType(CDNService, cdnService => {
+  cdnService.registerProvider('wordpress', wpCDNProvider);
+});
+```
+
+### Create a Post
+
+```typescript
+// Initialize state for the agent
+await wpBlogProvider.attach(agent);
+
+// Create a new post
+const result = await agent.executeTool('wordpress/createPost', {
+  title: 'Hello WordPress from Token Ring',
+  content: '# Hello World\n\nThis is a test post created by an agent.',
+  tags: ['tokenring', 'wordpress', 'test']
+});
+
+// The post is automatically set as current post
+const currentPost = wpBlogProvider.getCurrentPost(agent);
+```
+
+### Upload Media
+
+```typescript
+// Upload an image to WordPress media library
+const uploadResult = await wpCDNProvider.upload(imageBuffer, {
+  filename: 'featured-image.jpg'
+});
+
+// Result: { url: "https://site.com/wp-content/uploads/image.jpg", id: "123" }
+```
+
+### Update Post
+
+```typescript
+// Select a post by ID
+const post = await wpBlogProvider.selectPostById("123", agent);
+
+// Update the post
+await wpBlogProvider.updatePost({
+  title: 'Updated Title',
+  content: 'Updated content',
+  status: 'published'
+}, agent);
+```
+
+### Select Post
+
+```typescript
+// Select an existing post by ID
+const selectedPost = await wpBlogProvider.selectPostById("456", agent);
+
+// View current post
+const currentPost = wpBlogProvider.getCurrentPost(agent);
+
+// Clear current post selection
+await wpBlogProvider.clearCurrentPost(agent);
+```
+
+### Get All Posts
+
+```typescript
+// Retrieve all posts
+const allPosts = await wpBlogProvider.getAllPosts();
+
+// Posts include status: published, scheduled, draft, pending, private
+```
+
+## Plugin Integration
+
+The WordPress plugin automatically integrates with Token Ring applications through the plugin system. When installed via the plugin system, no manual service registration is required.
+
+### Auto-Registration Features
+
+- **Blog Service Integration**: Registers WordPress blog providers automatically
+- **CDN Service Integration**: Registers WordPress CDN providers automatically
+- **Configuration-Based Setup**: Reads configuration from app config slices
+- **Service Dependencies**: Handles service lifecycle and dependencies
+
+### Configuration Schema
+
+The plugin uses the following configuration schema:
+
+```typescript
+const packageConfigSchema = z.object({
+  cdn: CDNConfigSchema.optional(),
+  blog: BlogConfigSchema.optional(),
+});
+```
 
 ## WordPress REST API Integration
 
@@ -274,6 +328,7 @@ The package integrates with WordPress REST API endpoints:
 ## Status Mapping
 
 WordPress status → Blog status:
+
 - `publish` → `published`
 - `future` → `scheduled`
 - `draft` → `draft`
@@ -283,6 +338,7 @@ WordPress status → Blog status:
 ## Error Handling
 
 Common error scenarios:
+
 - **Missing credentials**: Ensure WordPress application password is set
 - **Post already selected**: Clear current selection before creating new post
 - **No post selected**: Select a post before attempting updates
@@ -303,10 +359,6 @@ bun run build
 ```bash
 bun run test
 ```
-
-### Plugin Integration
-
-The package automatically integrates with Token Ring applications through the plugin system. No additional setup is required for standard usage.
 
 ## License
 

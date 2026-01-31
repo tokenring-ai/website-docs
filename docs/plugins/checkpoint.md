@@ -35,7 +35,7 @@ saveAgentCheckpoint(name: string, agent: Agent): Promise<string>
 restoreAgentCheckpoint(id: string, agent: Agent): Promise<void>
 
 // List all available checkpoints
-listCheckpoints(agent: Agent): Promise<AgentCheckpointListItem[]>
+listCheckpoints(): Promise<AgentCheckpointListItem[]>
 ```
 
 **Example Usage:**
@@ -57,7 +57,7 @@ const checkpointId = await checkpointService.saveAgentCheckpoint('Before Feature
 await checkpointService.restoreAgentCheckpoint(checkpointId, agent);
 
 // List all checkpoints
-const checkpoints = await checkpointService.listCheckpoints(agent);
+const checkpoints = await checkpointService.listCheckpoints();
 ```
 
 ### AgentCheckpointProvider Interface
@@ -66,6 +66,9 @@ The storage provider interface that users must implement for custom storage back
 
 ```typescript
 export interface AgentCheckpointProvider {
+  // Optional startup method
+  start?(): Promise<void>;
+
   // Save checkpoint and return its ID
   storeCheckpoint(data: NamedAgentCheckpoint): Promise<string>;
 
@@ -199,6 +202,7 @@ class DatabaseProvider implements AgentCheckpointProvider {
 Manage agent checkpoints - create, restore, or browse with interactive tree selection.
 
 **Syntax:**
+
 ```
 /checkpoint [action] [args...]
 ```
@@ -241,6 +245,7 @@ Show interactive tree selection of all checkpoints, grouped by date. Select one 
 ```
 
 **Output:**
+
 - Shows checkpoint ID when created
 - Displays grouped checkpoints by date with timestamps
 - Indicates most recent checkpoints first
@@ -251,6 +256,7 @@ Show interactive tree selection of all checkpoints, grouped by date. Select one 
 Browse and view checkpoint history grouped by agent session.
 
 **Syntax:**
+
 ```
 /history
 ```
@@ -267,6 +273,8 @@ For each selected checkpoint:
 - Agent ID
 - Full checkpoint details including state data (when retrievable)
 
+The `/history` command displays detailed checkpoint information, organized by agent sessions. It shows timestamps, checkpoint names, and allows viewing the full state of each checkpoint including agent-specific state data.
+
 ## Hooks
 
 ### `autoCheckpoint`
@@ -274,10 +282,12 @@ For each selected checkpoint:
 Automatically creates a checkpoint after each agent input is processed. Enabled by default when the plugin is installed.
 
 **Hook Points:**
+
 - `afterAgentInputComplete` - Triggered after agent successfully processes input
 - `beforeChatCompletion` - Triggered before chat response is generated
 
 **Behavior:**
+
 - Uses the input message as the checkpoint label
 - Runs silently without interrupting workflow
 - Can be disabled via agent hook management
@@ -303,6 +313,7 @@ The plugin provides JSON-RPC endpoints for remote checkpoint operations.
 Query all available checkpoints without state data.
 
 **Request:**
+
 ```json
 {
   "method": "listCheckpoints",
@@ -311,6 +322,7 @@ Query all available checkpoints without state data.
 ```
 
 **Response:**
+
 ```json
 {
   "result": [
@@ -329,6 +341,7 @@ Query all available checkpoints without state data.
 Retrieve a specific checkpoint with full state data.
 
 **Request:**
+
 ```json
 {
   "method": "getCheckpoint",
@@ -339,6 +352,7 @@ Retrieve a specific checkpoint with full state data.
 ```
 
 **Response:**
+
 ```json
 {
   "result": {
@@ -347,10 +361,10 @@ Retrieve a specific checkpoint with full state data.
     "agentId": "agent-456",
     "createdAt": 1640995200000,
     "state": {
-      "AgentEventState": {...},
-      "CommandHistoryState": {...},
-      "CostTrackingState": {...},
-      "HooksState": {...}
+      "AgentEventState": {},
+      "CommandHistoryState": {},
+      "CostTrackingState": {},
+      "HooksState": {}
     }
   }
 }
@@ -361,6 +375,7 @@ Retrieve a specific checkpoint with full state data.
 Create a new agent from a checkpoint.
 
 **Request:**
+
 ```json
 {
   "method": "launchAgentFromCheckpoint",
@@ -372,6 +387,7 @@ Create a new agent from a checkpoint.
 ```
 
 **Response:**
+
 ```json
 {
   "result": {
@@ -406,7 +422,7 @@ const id1 = await checkpointService.saveAgentCheckpoint('Before Changes', agent)
 const id2 = await checkpointService.saveAgentCheckpoint('After Changes', agent);
 
 // List all checkpoints
-const all = await checkpointService.listCheckpoints(agent);
+const all = await checkpointService.listCheckpoints();
 console.log(`Total checkpoints: ${all.length}`);
 
 // Restore from earlier checkpoint
@@ -502,6 +518,7 @@ checkpointService.setCheckpointProvider(new MemoryProvider());
 ```
 
 **Automatically Provides:**
+
 - Chat commands (`/checkpoint`, `/history`)
 - Auto-checkpoint hook
 - `AgentCheckpointService` service instance
@@ -515,6 +532,7 @@ The plugin uses a modular architecture for automatic integration:
 ```typescript
 import {AgentCommandService, AgentLifecycleService} from "@tokenring-ai/agent";
 import {TokenRingPlugin} from "@tokenring-ai/app";
+import {RpcService} from "@tokenring-ai/rpc";
 import {WebHostService} from "@tokenring-ai/web-host";
 import JsonRpcResource from "@tokenring-ai/web-host/JsonRpcResource";
 
@@ -544,8 +562,8 @@ export default {
     app.waitForService(AgentLifecycleService, lifecycleService =>
       lifecycleService.addHooks(packageJSON.name, hooks)
     );
-    app.waitForService(WebHostService, webHostService => {
-      webHostService.registerResource("Checkpoint RPC endpoint", new JsonRpcResource(app, checkpointRPC));
+    app.waitForService(RpcService, rpcService => {
+      rpcService.registerEndpoint(checkpointRPC);
     });
   },
   config: packageConfigSchema
@@ -588,7 +606,7 @@ bun run test:coverage     # Coverage report
 - **Name**: @tokenring-ai/checkpoint
 - **Version**: 0.2.0
 - **License**: MIT
-- **Dependencies**: @tokenring-ai/app, @tokenring-ai/chat, @tokenring-ai/agent, @tokenring-ai/utility, @tokenring-ai/web-host
+- **Dependencies**: @tokenring-ai/app, @tokenring-ai/chat, @tokenring-ai/agent, @tokenring-ai/utility, @tokenring-ai/rpc, @tokenring-ai/web-host
 - **Dev Dependencies**: typescript, vitest
 
 ## License

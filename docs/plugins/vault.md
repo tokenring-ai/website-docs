@@ -17,7 +17,38 @@ The `@tokenring-ai/vault` package provides a secure, encrypted vault for managin
 - **Interactive CLI**: Full featured command-line interface with password masking
 - **TokenRing Integration**: Seamless integration with TokenRing application framework
 - **Service Architecture**: Plugin-based service registration and configuration
+- **Chat Commands**: Integrated chat commands for agent interaction (/vault unlock, lock, list, store, get)
 - **Automatic Relocking**: Vault automatically locks after 5 minutes of inactivity
+- **Zod Configuration**: Type-safe configuration with schema validation
+
+## Chat Commands
+
+The vault package provides integrated chat commands for managing credentials within the agent interface:
+
+### `/vault unlock`
+Unlock the vault with password
+
+### `/vault lock`
+Lock the vault
+
+### `/vault list`
+List all credential keys in the vault
+
+### `/vault store <key>`
+Store a credential in the vault
+- Prompts for the credential value securely
+
+### `/vault get <key>`
+Retrieve and display a credential from the vault
+
+**Example usage:**
+```
+/vault unlock
+/vault list
+/vault store api_key
+/vault get api_key
+/vault lock
+```
 
 ## CLI Usage
 
@@ -117,6 +148,7 @@ Run a command with vault secrets injected as environment variables.
 
 ```typescript
 import { VaultService } from '@tokenring-ai/vault';
+import { vaultConfigSchema } from '@tokenring-ai/vault';
 
 const vault = new VaultService({
   vaultFile: '.vault',
@@ -195,9 +227,10 @@ await vault.save({ API_KEY: 'new-key', DB_PASSWORD: 'new-pass' }, agent);
 - **Session Management**: Relock timer resets on each access
 - **Plugin Integration**: Auto-registers with TokenRing application framework
 - **Agent Integration**: Uses Agent's human interaction for password prompts
+- **Chat Command Integration**: Provides subcommands for agent interaction
 - **Error Handling**: Comprehensive error handling with descriptive messages
 - **Configuration Validation**: Zod schema validation for configuration
-- **Human Interface**: Integrates with Agent's `askForPassword` request type
+- **Human Interface**: Integrates with Agent's `askForText` request type with masking
 
 ## Plugin Integration
 
@@ -206,8 +239,9 @@ The vault package integrates with TokenRing applications through a plugin system
 ```typescript
 import { TokenRingPlugin } from "@tokenring-ai/app";
 import { VaultService } from "@tokenring-ai/vault";
-import { vaultConfigSchema } from "./VaultService.ts";
-import packageJSON from "./package.json";
+import { VaultConfigSchema } from "@tokenring-ai/vault/schema";
+import chatCommands from "@tokenring-ai/vault/chatCommands";
+import packageJSON from "@tokenring-ai/vault/package.json";
 
 export default {
   name: packageJSON.name,
@@ -216,9 +250,12 @@ export default {
   install(app, config) {
     if (config.vault) {
       app.addServices(new VaultService(config.vault));
+      app.waitForService(AgentCommandService, commandService => {
+        commandService.addAgentCommands(chatCommands)
+      });
     }
   },
-  config: z.object({ vault: vaultConfigSchema.optional() })
+  config: z.object({ vault: VaultConfigSchema.optional() })
 } satisfies TokenRingPlugin;
 ```
 
@@ -227,9 +264,9 @@ export default {
 ```typescript
 import { z } from 'zod';
 
-export const vaultConfigSchema = z.object({
+export const VaultConfigSchema = z.object({
   vaultFile: z.string().min(1),
-  relockTime: z.number().positive(),
+  relockTime: z.number().positive().default(300 * 1000),
 });
 ```
 
@@ -242,7 +279,8 @@ export const vaultConfigSchema = z.object({
 For direct vault file manipulation without the service layer:
 
 ```typescript
-import { readVault, writeVault, initVault } from '@tokenring-ai/vault/vault';
+import { readVault, writeVault, initVault, deriveKey } from '@tokenring-ai/vault/vault';
+import fs from 'fs-extra';
 
 // Initialize new vault
 await initVault('.vault', 'myPassword');
@@ -252,6 +290,10 @@ const data = await readVault('.vault', 'myPassword');
 
 // Write vault (accepts Record<string, string>)
 await writeVault('.vault', 'myPassword', { API_KEY: 'value' });
+
+// Derive encryption key from password and salt
+const salt = crypto.randomBytes(16);
+const key = deriveKey('myPassword', salt);
 ```
 
 ## Data Types
@@ -280,6 +322,7 @@ The vault stores string key-value pairs:
 - Rotate secrets regularly
 - Use different vaults for different environments
 - Use the auto-lock feature to prevent unauthorized access
+- Use chat commands for secure credential management in agents
 
 ## Usage Example
 
@@ -319,6 +362,10 @@ const agent = new Agent({
 // Access vault through agent
 const vault = agent.getService('VaultService');
 const apiKey = await vault.getItem('API_KEY', agent);
+
+// Or use chat commands
+// /vault unlock
+// /vault get API_KEY
 ```
 
 ### Environment Variable Pattern
@@ -357,15 +404,24 @@ try {
 
 ```
 pkg/vault/
-├── cli.ts              # CLI implementation with Commander
-├── index.ts            # Package exports
-├── plugin.ts           # TokenRing plugin integration
-├── vault.ts            # Core encryption and file operations
-├── VaultService.ts     # TokenRing service implementation
-├── vitest.config.ts    # Vitest configuration
-├── LICENSE             # MIT license
-├── package.json        # Package configuration
-└── README.md           # Package documentation
+├── cli.ts                   # CLI implementation with Commander
+├── index.ts                 # Package exports
+├── plugin.ts                # TokenRing plugin integration
+├── VaultService.ts          # TokenRing service implementation
+├── vault.ts                 # Core encryption and file operations
+├── schema.ts                # Zod configuration schema
+├── chatCommands.ts          # Chat commands for agent integration
+├── commands/                # Chat command implementations
+│   ├── vault.ts            # Main command router
+│   ├── unlock.ts           # Unlock command
+│   ├── lock.ts             # Lock command
+│   ├── list.ts             # List command
+│   ├── store.ts            # Store command
+│   └── get.ts              # Get command
+├── vitest.config.ts        # Vitest configuration
+├── LICENSE                 # MIT license
+├── package.json            # Package configuration
+└── README.md               # Package documentation
 ```
 
 ## Testing

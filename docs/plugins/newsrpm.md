@@ -1,9 +1,11 @@
 # NewsRPM Plugin
 
 ## Overview
+
 The `@tokenring-ai/newsrpm` package provides comprehensive integration with NewsRPM, a powerful Cloud News Platform for ingesting, processing, storing, indexing, and distributing news articles and textual content. This package wraps common API calls and exposes them as services, tools, and chat commands for seamless integration with TokenRing agents and interactive use in the REPL.
 
 ## Key Features
+
 - **Comprehensive Search**: Search indexed data by taxonomy keys (ticker, topic, region) and articles by publisher, provider, type, full-text, and more
 - **Article Retrieval**: Retrieve articles by slug or numeric ID with full metadata
 - **Content Management**: Fetch article bodies in native format or rendered HTML
@@ -96,7 +98,7 @@ const service = new NewsRPMService({
   });
   ```
 
-### Tools Integration
+## Tools Integration
 
 The package provides 8 tools for agent integration, automatically registered with the TokenRing chat service:
 
@@ -164,7 +166,18 @@ The package provides 8 tools for agent integration, automatically registered wit
    }
    ```
 
-### Chat Commands
+### Tool Usage Example
+
+```typescript
+// In an agent context
+const results = await agent.callTool("newsrpm/searchArticles", {
+  fullText: "artificial intelligence",
+  publisher: "TechCrunch",
+  count: 20
+});
+```
+
+## Chat Commands
 
 The package provides a comprehensive `/newsrpm` command for interactive use in the TokenRing REPL:
 
@@ -422,6 +435,7 @@ Additional fields are documented in the OpenAPI schema.
 ## Integration Examples
 
 ### Basic Integration
+
 ```typescript
 import { NewsRPMService } from "@tokenring-ai/newsrpm";
 
@@ -438,6 +452,7 @@ const techNews = await service.searchArticles({
 ```
 
 ### Advanced Integration with Agents
+
 ```typescript
 // Tools are automatically available to agents
 const agent = new Agent();
@@ -449,12 +464,22 @@ const articles = await agent.callTool("newsrpm/searchArticles", {
 ```
 
 ### File System Integration
+
 ```typescript
 // Upload article from JSON file
 const fsService = agent.requireServiceByType(FileSystemService);
 const raw = await fsService.readFile('article.json', 'utf-8');
 const article = JSON.parse(raw);
 const result = await service.uploadArticle(article);
+```
+
+### Using Chat Command
+
+```typescript
+// When the app is running, access NewsRPM via:
+/newsrpm search --fulltext "AI" --count 10
+/newsrpm index NormalizedTicker --value GOOG --count 25
+/newsrpm upload --json article.json
 ```
 
 ## Best Practices
@@ -467,6 +492,71 @@ const result = await service.uploadArticle(article);
 6. **Date Filtering**: Use ISO 8601 format for date parameters
 7. **Provider Management**: Regularly check available providers
 
+## Testing
+
+The package uses vitest for unit testing. Test files are located in the `pkg/newsrpm/` directory.
+
+### Running Tests
+
+```bash
+# Run all tests
+bun run test
+
+# Run tests in watch mode
+bun run test:watch
+
+# Run tests with coverage
+bun run test:coverage
+```
+
+### Test Structure
+
+- **Unit Tests**: Test individual service methods and tool functions
+- **Integration Tests**: Test plugin registration and service initialization
+- **Configuration Tests**: Verify schema validation and configuration parsing
+
+### Example Test Setup
+
+```typescript
+import { describe, it, expect } from 'vitest';
+import NewsRPMService from '../NewsRPMService.ts';
+
+describe('NewsRPMService', () => {
+  it('should initialize with valid config', () => {
+    const service = new NewsRPMService({
+      apiKey: 'test-key',
+      authMode: 'privateHeader'
+    });
+    expect(service.name).toBe('NewsRPMService');
+  });
+
+  // Additional tests for service methods
+});
+```
+
+## Related Components
+
+The NewsRPM plugin integrates with several other TokenRing components and external services:
+
+### Core Services
+- **@tokenring-ai/agent**: Agent framework for tool execution and service management
+- **@tokenring-ai/chat**: Chat service for tool registration and command processing
+- **@tokenring-ai/scripting**: Scripting service for global function registration
+- **@tokenring-ai/filesystem**: File system service for file operations in chat commands
+- **@tokenring-ai/utility**: Utility functions including HttpService for HTTP requests
+
+### External Services
+- **NewsRPM API**: The NewsRPM service provides the actual news aggregation and storage functionality
+
+### Related Packages
+- **@tokenring-ai/websearch**: Alternative web search functionality for news discovery
+- **@tokenring-ai/serper**: Serper web search provider for enhanced search capabilities
+- **@tokenring-ai/scraperapi**: ScraperAPI web search provider for additional search options
+
+### Documentation
+- **Plugin Documentation**: See `pkg/newsrpm/README.md` for comprehensive package documentation
+- **API Reference**: OpenAPI specification available in `pkg/newsrpm/design/newsrpm.openapi.json`
+
 ## Notes and Limitations
 
 - Some server responses use "visiblity" (typo) in the schema; field names are preserved exactly
@@ -474,3 +564,8 @@ const result = await service.uploadArticle(article);
 - Timeout: Default timeout is 30 seconds; adjust based on your needs
 - Authentication: Choose appropriate authMode for your deployment (headers preferred for server-side)
 - The article upload schema requires specific fields including provider, headline, slug, date, and quality
+- The package exports both the service and the tools together through the plugin system
+
+## License
+
+MIT License - see the root LICENSE file for details.

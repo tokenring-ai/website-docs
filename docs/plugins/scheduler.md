@@ -14,7 +14,7 @@ The `@tokenring-ai/scheduler` package provides a scheduling system that runs wit
 - **One-time Tasks**: Execute tasks once per day
 - **Agent Integration**: Automatically spawn and run agents for scheduled tasks
 - **Monitoring**: Track task execution history and current status
-- **Chat Commands**: `/scheduler` command to manage and view scheduled tasks
+- **Chat Commands**: `/schedule` command to manage and view scheduled tasks
 - **Task Conditions**: Run tasks on specific days of the week or days of the month
 - **State Persistence**: Task state persists across agent restarts
 
@@ -45,29 +45,29 @@ The main service that manages task scheduling and execution within an agent.
 
 ## Chat Commands
 
-**/scheduler**: Manage and monitor scheduled tasks
+**/schedule**: Manage and monitor scheduled tasks
 
 **Usage:**
 ```bash
-/scheduler start              # Start the scheduler
-/scheduler stop               # Stop the scheduler
-/scheduler show               # Display current schedule and running status
-/scheduler history            # Display task execution history
-/scheduler add                # Add a new task (interactive)
-/scheduler remove <name>      # Remove a task by name
+/schedule start              # Start the scheduler
+/schedule stop               # Stop the scheduler
+/schedule show               # Display current schedule and running status
+/schedule history            # Display task execution history
+/schedule add                # Add a new task (interactive)
+/schedule remove <name>      # Remove a task by name
 ```
 
 **Output Example:**
 ```
 === Scheduled Tasks ===
 
-**Daily Report** (reportGenerator)
+**Daily Report**
   Message: /chat Generate daily report
   Status: pending
   Next Run: Mon, Jan 15, 2024, 9:00:00 AM
   Last Run: Sun, Jan 14, 2024, 9:00:00 AM
 
-**Health Check** (healthMonitor)
+**Health Check**
   Message: /chat Check system health
   Status: running
   Next Run: Mon, Jan 14, 2024, 2:30:00 PM
@@ -101,17 +101,17 @@ export default {
       autoStart: true,
       tasks: {
         "Daily Report": {
-          agentType: "reportGenerator",
           message: "/chat Generate daily report",
-          once: true,
-          from: "09:00",
-          on: "mon tue wed thu fri"
+          repeat: "1 day",
+          after: "09:00",
+          before: "17:00",
+          weekdays: "mon tue wed thu fri"
         },
         "Health Check": {
-          agentType: "healthMonitor",
           message: "/chat Check system health",
-          every: "30 minutes",
-          noLongerThan: "5 minutes"
+          repeat: "30 minutes",
+          after: "00:00",
+          before: "23:59"
         }
       }
     }
@@ -138,12 +138,11 @@ app.install(scheduler);
 
 ```javascript
 {
-  agentType: "syncAgent",
   message: "/chat Sync data",
-  every: "1 hour",
-  from: "09:00",
-  to: "17:00",
-  on: "mon tue wed thu fri"
+  repeat: "1 hour",
+  after: "09:00",
+  before: "17:00",
+  weekdays: "mon tue wed thu fri"
 }
 ```
 
@@ -151,21 +150,21 @@ app.install(scheduler);
 
 ```javascript
 {
-  agentType: "briefingAgent",
   message: "/chat Generate morning briefing",
-  once: true,
-  from: "08:00"
+  repeat: "1 day",
+  after: "08:00"
 }
 ```
 
-### Run Every 30 Minutes with Timeout
+### Run Every 30 Minutes with Timezone
 
 ```javascript
 {
-  agentType: "monitorAgent",
   message: "/chat Quick system check",
-  every: "30 minutes",
-  noLongerThan: "5 minutes"
+  repeat: "30 minutes",
+  after: "00:00",
+  before: "23:59",
+  timezone: "America/New_York"
 }
 ```
 
@@ -173,22 +172,9 @@ app.install(scheduler);
 
 ```javascript
 {
-  agentType: "reportAgent",
   message: "/chat Generate monthly report",
-  once: true,
-  dayOfMonth: 1,
-  from: "00:00"
-}
-```
-
-### Allow Multiple Concurrent Runs
-
-```javascript
-{
-  agentType: "processingAgent",
-  message: "/chat Process queue",
-  every: "5 minutes",
-  several: true
+  repeat: "1 week",
+  dayOfMonth: 1
 }
 ```
 
@@ -196,7 +182,7 @@ app.install(scheduler);
 
 ### Tools
 
-#### scheduler_add_task
+#### add_scheduled_task
 
 Add a new scheduled task to run an agent at specified intervals.
 
@@ -206,18 +192,20 @@ Add a new scheduled task to run an agent at specified intervals.
 
 **Example:**
 ```typescript
-await agent.executeTool('scheduler_add_task', {
+await agent.executeTool('add_scheduled_task', {
   taskName: "Daily Backup",
   task: {
-    agentType: "backupAgent",
-    message: "/chat Run daily backup",
-    once: true,
-    from: "02:00"
+    description: "Run a full backup of all critical data. This includes user documents, database exports, and configuration files. Ensure the backup completes within 30 minutes.",
+    context: "Backup should run after regular business hours to minimize system impact. Include checksum verification for data integrity.",
+    repeat: "1 day",
+    after: "02:00",
+    before: "03:00",
+    timezone: "America/New_York"
   }
 });
 ```
 
-#### scheduler_remove_task
+#### remove_scheduled_task
 
 Remove a scheduled task by name.
 
@@ -226,7 +214,7 @@ Remove a scheduled task by name.
 
 **Example:**
 ```typescript
-await agent.executeTool('scheduler_remove_task', {
+await agent.executeTool('remove_scheduled_task', {
   taskName: "Daily Backup"
 });
 ```
@@ -246,17 +234,12 @@ const schedule = await agent.executeTool('scheduler_get_schedule', {});
 
 ```typescript
 {
-  agentType: string;           // Agent type to spawn
   message: string;             // Message to send to the agent
-  every?: string;              // Fixed interval (e.g., "30 minutes")
-  once?: boolean;              // Run once per day
-  from?: string;               // Start time in HH:MM format
-  to?: string;                 // End time in HH:MM format
-  on?: string;                 // Days of week (e.g., "mon tue wed")
+  repeat?: string;              // Run at fixed intervals (e.g., "30 minutes")
+  after?: string;               // Start time in HH:MM format
+  before?: string;             // End time in HH:MM format
+  weekdays?: string;           // Days of week (e.g., "mon tue wed")
   dayOfMonth?: number;         // Specific day of month (1-31)
-  lastRunTime?: number;        // Timestamp of last execution
-  noLongerThan?: string;       // Maximum runtime duration
-  several?: boolean;           // Allow multiple concurrent runs
   timezone?: string;           // Timezone for scheduling
 }
 ```
@@ -288,11 +271,11 @@ The scheduler integrates with the agent system by:
 ## Best Practices
 
 - **Use descriptive task names**: Make task names clear for monitoring and debugging
-- **Set appropriate timeouts**: Use `noLongerThan` to prevent runaway tasks
-- **Monitor execution history**: Regularly check `/scheduler history` for failures
+- **Set appropriate timeouts**: Use `before` time window to prevent runaway tasks
+- **Monitor execution history**: Regularly check `/schedule history` for failures
 - **Stagger schedules**: Avoid running multiple heavy tasks simultaneously
 - **Use time windows**: Restrict tasks to business hours when appropriate
-- **Test before deploying**: Verify task configuration with `/scheduler show`
+- **Test before deploying**: Verify task configuration with `/schedule show`
 
 ## Testing and Development
 

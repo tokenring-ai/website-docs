@@ -1,37 +1,133 @@
-# Kubernetes Plugin
+# @tokenring-ai/kubernetes
 
-The `@tokenring-ai/kubernetes` package (v0.2.0) provides comprehensive Kubernetes cluster integration for TokenRing AI agents. It enables agents to discover and interact with Kubernetes clusters by listing all accessible API resources, including core and custom resources across namespaces.
+Kubernetes integration for TokenRing AI agents, enabling discovery and interaction with Kubernetes clusters.
 
 ## Overview
 
-This plugin allows AI agents to query Kubernetes clusters without direct kubectl access. It uses the official Kubernetes Node.js client library to connect to clusters via API server URLs, tokens, or certificates. The plugin automatically registers the KubernetesService and provides tools for resource discovery.
+The @tokenring-ai/kubernetes package provides comprehensive Kubernetes cluster integration for TokenRing AI agents. Agents can discover and query cluster resources including core and custom resources across namespaces. This package enables agents to interact with Kubernetes clusters without direct kubectl access, leveraging the official @kubernetes/client-node library.
+
+## Core Properties
+
+- **clusterName**: Unique identifier for the Kubernetes cluster configuration
+- **apiServerUrl**: Full URL to the Kubernetes API server (e.g., "https://api.example.com:6443")
+- **namespace**: Target namespace for resource discovery (defaults to "default")
+- **token**: Bearer token for authentication
+- **clientCertificate**: Client certificate in PEM format for certificate-based authentication
+- **clientKey**: Client private key in PEM format
+- **caCertificate**: CA certificate for server verification
+
+## Key Features
+
+- **Resource Discovery**: Discover and list all accessible API resources across the cluster
+- **Multi-Namespace Support**: Scan all namespaces or specify a single namespace
+- **Dual Authentication**: Support for both token-based and client certificate authentication
+- **Core and Custom Resources**: Access to both core K8s resources (v1 API group) and custom resources
+- **Error Resilience**: Graceful error handling with detailed error messages for each resource
+- **Smart Namespace Discovery**: Automatically discovers all namespaces if none is specified
+- **TokenRing Integration**: Seamless integration with TokenRing's service and tool framework
+
+## Core Methods/API
+
+### listAllApiResourceTypes(agent)
+
+Discovers and lists all API resources available in the Kubernetes cluster.
+
+**Method Signature:**
+```typescript
+async listAllApiResourceTypes(agent: Agent): Promise<K8sResourceInfo[]>
+```
+
+**Parameters:**
+- `agent: Agent` - The agent instance (required for service registry access)
+
+**Returns:**
+- `Promise<K8sResourceInfo[]>` - Array of resource information objects
+
+**Returns Structure:**
+```typescript
+interface K8sResourceInfo {
+  group?: string;       // API group (e.g., "apps")
+  version?: string;     // API version (e.g., "v1")
+  kind?: string;        // Resource kind (e.g., "Pod")
+  namespace?: string;   // Namespace for namespaced resources
+  name?: string;        // Resource name
+  error?: string;       // Error message if listing failed
+}
+```
+
+**Behavior:**
+- Scans core v1 API group first
+- Discovers and processes additional API groups
+- Supports both cluster-scoped and namespace-scoped resources
+- Attempts namespace discovery if not specified
+- Falls back to "default" namespace if discovery fails
+
+### Tool: Kubernetes/listKubernetesApiResources
+
+The primary tool for listing Kubernetes resources.
+
+**Tool Definition:**
+- **Name**: kubernetes_listKubernetesApiResources
+- **Display Name**: Kubernetes/listKubernetesApiResources
+- **Input Schema**: `z.object({})` (no parameters required)
+- **Returns**: JSON string containing array of K8sResourceInfo objects
+
+**Execution Flow:**
+1. Retrieves KubernetesService from agent's service registry
+2. Calls listAllApiResourceTypes() method
+3. Returns JSON string of resource data
+4. Agent receives clean output without tool name prefix
 
 ## Usage Examples
 
-### Basic Agent Setup
+### Basic Service Usage
+
+Create and configure a Kubernetes service:
+
+```typescript
+import KubernetesService from '@tokenring-ai/kubernetes';
+
+const service = new KubernetesService({
+  clusterName: 'my-cluster',
+  apiServerUrl: 'https://api.example.com:6443',
+  namespace: 'production',
+  token: process.env.K8S_TOKEN,
+});
+
+console.log(service.clusterName);  // "my-cluster"
+console.log(service.namespace);    // "production"
+```
+
+### Agent Integration with Tool
+
+Configure an agent to access Kubernetes resources:
 
 ```typescript
 import { Agent } from '@tokenring-ai/agent';
 import KubernetesService from '@tokenring-ai/kubernetes';
-import listKubernetesApiResources from '@tokenring-ai/kubernetes/tools/listKubernetesApiResources';
+import tools from '@tokenring-ai/kubernetes/tools';
 
 const agent = new Agent({
-  services: [new KubernetesService({
-    clusterName: 'my-cluster',
-    apiServerUrl: 'https://api.example.com:6443',
-    namespace: 'default',
-    token: process.env.K8S_TOKEN,
-  })],
-  tools: [listKubernetesApiResources],
+  services: [
+    new KubernetesService({
+      clusterName: 'my-cluster',
+      apiServerUrl: 'https://api.example.com:6443',
+      namespace: 'default',
+      token: process.env.K8S_TOKEN,
+    })
+  ],
+  tools: [tools.listKubernetesApiResources],
 });
 
-// Execute the tool through the agent
-const result = await agent.executeTool('kubernetes/listKubernetesApiResources', {});
+// Execute the tool
+const result = await agent.executeTool('Kubernetes/listKubernetesApiResources', {});
 const resources = JSON.parse(result.output);
-console.log(resources);
+console.log(`Found ${resources.length} resources`);
 ```
 
-### Plugin Configuration
+### TokenRing App Plugin Configuration
+
+Configure the plugin in a TokenRing application:
 
 ```typescript
 import TokenRingApp from '@tokenring-ai/app';
@@ -39,142 +135,87 @@ import TokenRingApp from '@tokenring-ai/app';
 const app = new TokenRingApp({
   config: {
     kubernetes: {
-      clusterName: 'my-cluster',
-      apiServerUrl: 'https://api.example.com:6443',
+      clusterName: 'production-cluster',
+      apiServerUrl: 'https://api.production.example.com:6443',
       namespace: 'production',
       token: process.env.K8S_TOKEN,
     }
   }
 });
+
+// Plugin automatically registers KubernetesService and tool
 ```
 
-## Core Properties
+### Certificate-Based Authentication
 
-### KubernetesService Properties
-
-| Property | Type | Description |
-|----------|------|-------------|
-| `name` | `string` | Always `"KubernetesService"` |
-| `description` | `string` | Always `"Provides Kubernetes functionality"` |
-| `clusterName` | `string` | Unique identifier for the cluster |
-| `apiServerUrl` | `string` | Full URL to the Kubernetes API server |
-| `namespace` | `string` | Target namespace (defaults to "default") |
-| `token` | `string \| undefined` | Bearer token for authentication |
-| `clientCertificate` | `string \| undefined` | Client certificate in PEM format |
-| `clientKey` | `string \| undefined` | Client private key in PEM format |
-| `caCertificate` | `string \| undefined` | CA certificate for server verification |
-
-## Key Features
-
-- **Resource Discovery**: Lists all accessible API resources across core and custom resource groups
-- **Multi-Namespace Support**: Discovers resources across all namespaces or specified namespace
-- **Authentication Support**: Token-based and client certificate authentication
-- **Plugin Integration**: Automatic integration with TokenRing applications
-- **Error Handling**: Graceful error handling with detailed error messages
-- **Service Architecture**: Built on TokenRing service architecture for seamless agent integration
-
-## Core Methods and API
-
-### Constructor
+Configure service with client certificates:
 
 ```typescript
-constructor(params: KubernetesServiceParams)
+const service = new KubernetesService({
+  clusterName: 'secure-cluster',
+  apiServerUrl: 'https://secure-api.example.com:6443',
+  namespace: 'default',
+  clientCertificate: 'LS0tLS1CRUdJTiBDRVJUSUZJQ0FURS0tLS0t...',
+  clientKey: 'LS0tLS1CRUdJTiBSU0EgUFJJVkFURSBLRVktLS0tLQo=',
+  caCertificate: 'LS0tLS1CRUdJTiBDRVJUSUZJQ0FURS0tLS0t...',
+});
 ```
 
-**Parameters:**
-- `clusterName: string` (required): Unique identifier for the cluster
-- `apiServerUrl: string` (required): Full URL to the Kubernetes API server
-- `namespace?: string`: Target namespace (defaults to "default")
-- `token?: string`: Bearer token for authentication
-- `clientCertificate?: string`: Client certificate in PEM format
-- `clientKey?: string`: Client private key in PEM format
-- `caCertificate?: string`: CA certificate for server verification (optional)
+### Multi-Namespace Discovery
 
-**Throws:** Error if `clusterName` or `apiServerUrl` are missing
-
-### Getters
-
-- `getClusterName(): string` - Returns cluster name
-- `getApiServerUrl(): string` - Returns API server URL
-- `getNamespace(): string` - Returns target namespace
-- `getToken(): string | undefined` - Returns authentication token
-- `getClientCertificate(): string | undefined` - Returns client certificate
-- `getClientKey(): string | undefined` - Returns client private key
-- `getCaCertificate(): string | undefined` - Returns CA certificate
-
-### listAllApiResourceTypes
+Let the service discover all namespaces:
 
 ```typescript
-listAllApiResourceTypes(agent: Agent): Promise<K8sResourceInfo[]>
+const service = new KubernetesService({
+  clusterName: 'multi-ns-cluster',
+  apiServerUrl: 'https://api.example.com:6443',
+  // No namespace specified
+  token: 'your-token',
+});
+
+const agent = new Agent({ services: [service] });
+const resources = await service.listAllApiResourceTypes(agent);
+console.log(`Found ${resources.length} resources across all namespaces`);
 ```
-
-Discovers and lists all API resources in the configured Kubernetes cluster.
-
-**Returns:** `Promise<K8sResourceInfo[]>` - Array of discovered resources
-
-**Response Format:**
-```typescript
-interface K8sResourceInfo {
-  group?: string;      // API group (e.g., "apps" or "" for core)
-  version?: string;    // API version (e.g., "v1")
-  kind?: string;       // Resource kind (e.g., "Pod")
-  namespace?: string;  // Namespace for namespaced resources
-  name?: string;       // Resource name
-  error?: string;      // Error message if listing failed
-}
-```
-
-### Tools
-
-#### listKubernetesApiResources
-
-TokenRing AI tool for listing Kubernetes resources without direct service access.
-
-**Tool Definition:**
-- **Internal Name:** `kubernetes_listKubernetesApiResources`
-- **Public Name:** `kubernetes/listKubernetesApiResources` (when registered)
-- **Input Schema:** `z.object({})` (no inputs required)
-- **Description:** "Lists all instances of all accessible API resource types in the configured Kubernetes cluster. Fetches resources from all discoverable namespaces if the service is configured to do so, or from the default/specified namespace."
-
-**Execution:**
-```typescript
-execute({}, agent: Agent): Promise<{ output: string }>
-```
-
-Returns JSON-stringified results from `KubernetesService.listAllApiResourceTypes(agent)`.
 
 ## Configuration
 
-### KubernetesServiceParams Schema
+### Configuration Schema
+
+Use the Zod schema for type-safe configuration:
 
 ```typescript
-const schema = z.object({
-  clusterName: z.string(),
-  apiServerUrl: z.string(),
-  namespace: z.string().optional(),
-  token: z.string().optional(),
-  clientCertificate: z.string().optional(),
-  clientKey: z.string().optional(),
-  caCertificate: z.string().optional(),
-});
+import {KubernetesServiceConfigSchema} from '@tokenring-ai/kubernetes';
+
+const configSchema = KubernetesServiceConfigSchema;
+```
+
+**Schema Definition:**
+```typescript
+{
+  clusterName: z.string(),        // Required: Cluster identifier
+  apiServerUrl: z.string(),       // Required: API server URL
+  namespace?: z.string(),         // Optional: Target namespace (defaults to "default")
+  token?: z.string(),             // Optional: Authentication token
+  clientCertificate?: z.string(), // Optional: Client certificate (PEM/Base64)
+  clientKey?: z.string(),         // Optional: Client private key (PEM/Base64)
+  caCertificate?: z.string(),     // Optional: CA certificate
+}
 ```
 
 ### Configuration Options
 
-| Option | Type | Description |
-|--------|------|-------------|
-| `clusterName` | `string` | Unique identifier for the cluster |
-| `apiServerUrl` | `string` | Full URL to the Kubernetes API server |
-| `namespace` | `string` | Target namespace (optional - defaults to "default") |
-| `token` | `string` | Bearer token for authentication (preferred over certificates) |
-| `clientCertificate` | `string` | Client certificate in PEM format |
-| `clientKey` | `string` | Client private key in PEM format |
-| `caCertificate` | `string` | CA certificate for server verification (optional) |
+- **clusterName** (required): Unique identifier for the cluster configuration
+- **apiServerUrl** (required): Full URL to the Kubernetes API server
+- **namespace**: Target namespace (optional, defaults to "default")
+- **token**: Bearer token for token-based authentication
+- **clientCertificate**: Client certificate in PEM format
+- **clientKey**: Client private key in PEM format
+- **caCertificate**: CA certificate for server verification
 
 ### Authentication Methods
 
-1. **Token Authentication** (Recommended):
-
+**Token Authentication (Recommended):**
 ```typescript
 {
   clusterName: 'cluster',
@@ -183,118 +224,163 @@ const schema = z.object({
 }
 ```
 
-2. **Certificate Authentication**:
-
+**Certificate Authentication:**
 ```typescript
 {
   clusterName: 'cluster',
   apiServerUrl: 'https://api.example.com:6443',
   clientCertificate: 'cert-data',
   clientKey: 'key-data',
-  caCertificate: 'ca-cert-data', // optional
+  caCertificate: 'ca-cert-data',  // Optional
 }
 ```
 
 ### Namespace Handling
 
 - **Specified namespace**: Service scans only the specified namespace
-- **No namespace**: Service attempts to discover all namespaces using `CoreV1Api.listNamespace()`
+- **No namespace**: Service attempts to discover all namespaces using CoreV1Api.listNamespace()
 - **Fallback**: If namespace discovery fails, defaults to "default" namespace
+- **Empty discovery**: Gracefully handles clusters with no namespaces
 
 ## Integration
 
 ### Service Registration
 
-The KubernetesService automatically registers with TokenRing applications through the plugin architecture:
+The plugin automatically registers the KubernetesService when configured:
 
-```typescript
-// Plugin automatically handles service registration
-app.addServices(new KubernetesService(config));
-```
+1. **Installation**: Plugin's `install()` method is called during app initialization
+2. **Configuration Validation**: Uses Zod schema to validate configuration
+3. **Service Creation**: Instantiates KubernetesService with validated configuration
+4. **Service Registration**: Adds service to TokenRing application's service registry
 
 ### Tool Registration
 
-Tools are automatically added to chat services:
+The plugin automatically registers tools with the chat service:
 
-```typescript
-chatService.addTools(packageJSON.name, tools)
-```
+1. **Tool Discovery**: Imports tools from `tools.ts` directory
+2. **Tool Ingestion**: Adds tools to chat service via `ChatService.addTools()`
+3. **Tool Execution**: Agent can execute tools through `agent.executeTool()`
+4. **Output Format**: Tool returns JSON string for agent consumption
 
-### Event System
+### Agent Integration
 
-The service follows TokenRing's event-driven architecture. While specific event types aren't documented here, it integrates with the global event system for:
-- Service lifecycle events
-- Agent interaction events
-- Error propagation events
+Agents interact with the package through:
 
-### Plugin Integration
-
-```typescript
-const kubernetesPlugin = {
-  name: "@tokenring-ai/kubernetes",
-  version: "0.2.0",
-  description: "Kubernetes resources integration",
-  install: (app: TokenRingApp) => void
-};
-```
+1. **Service Request**: Agent obtains service via `agent.requireServiceByType(KubernetesService)`
+2. **Tool Execution**: Agent calls tools to interact with Kubernetes
+3. **Service Registry**: Service accessed through agent's service registry
+4. **Error Handling**: Errors captured in K8sResourceInfo.error fields
 
 ## Best Practices
 
-1. **Credential Management**: Handle credentials securely (use environment variables in production)
-2. **Token Security**: Avoid logging authentication tokens
-3. **Certificate Handling**: Store certificates securely and rotate regularly
-4. **Network Security**: Use HTTPS URLs for API server connections
-5. **Namespace Access**: Respect Kubernetes RBAC permissions for namespace and resource access
+### Security
+
+- **Credential Management**: Store tokens and certificates securely using environment variables
+- **Token Security**: Never log authentication tokens in production
+- **Certificate Handling**: Store certificates securely and rotate regularly
+- **Network Security**: Always use HTTPS URLs for API server connections
+- **RBAC Compliance**: Respect Kubernetes RBAC permissions for namespace and resource access
+
+### Usage Patterns
+
+- **Environment Variables**: Load tokens from environment variables in production
+- **Namespace Selection**: Specify namespace when you need to limit scope
+- **Error Monitoring**: Check error fields in returned resources for troubleshooting
+- **Cluster Size**: Be aware of memory consumption with large clusters
+- **Discovery Speed**: Namespace discovery can be slow on large clusters
+
+### Development
+
+- **Testing**: Use vitest for unit testing (follow package patterns)
+- **Type Safety**: Leverage TypeScript types and Zod schemas
+- **Error Handling**: Handle partial failures gracefully
+- **Logging**: Use console.log for debugging during development
+- **Build**: Run `bun run build` for type checking only
 
 ## Testing
 
-Run tests with:
+### Testing Setup
+
+The package uses vitest for unit testing:
 
 ```bash
+# Run all tests
 bun run test
+
+# Run tests in watch mode
+bun run test:watch
+
+# Run tests with coverage
+bun run test:coverage
 ```
 
-Tests cover:
-- Tool execution functionality
-- Service method calls
-- Error handling scenarios
-- Registry integration
+### Testing Configuration
+
+```typescript
+// vitest.config.ts
+export default defineConfig({
+  test: {
+    include: ["**/*.test.ts"],
+    environment: "node",
+    globals: true,
+    isolate: true,
+  },
+});
+```
+
+### Build Instructions
+
+```bash
+# Type check the package
+bun run build
+
+# Note: Type checking only (tsc --noEmit) is required as this is an ES module-based package with no bundling
+```
 
 ## Related Components
 
-- `@tokenring-ai/agent`: Agent framework that uses KubernetesService
-- `@tokenring-ai/app`: Application framework that integrates the plugin
-- `@tokenring-ai/chat`: Chat service that provides tool registration
-- `@kubernetes/client-node`: Official Kubernetes Node.js client library
+### Package Structure
 
-### Runtime Dependencies
+```
+pkg/kubernetes/
+├── index.ts                    # Entry point - exports KubernetesService
+├── KubernetesService.ts        # Core service implementation
+├── plugin.ts                   # TokenRing plugin integration
+├── tools.ts                    # Tool exports
+├── tools/
+│   └── listKubernetesApiResources.ts  # Resource listing tool
+├── package.json                # Package metadata and dependencies
+├── vitest.config.ts            # Vitest configuration
+└── README.md                   # Package documentation
+```
 
-| Package | Version | Purpose |
-|---------|---------|---------|
-| `@kubernetes/client-node` | ^1.4.0 | Official Kubernetes Node.js client library |
-| `@tokenring-ai/agent` | 0.2.0 | TokenRing AI agent framework |
-| `@tokenring-ai/app` | 0.2.0 | TokenRing AI application framework |
-| `@tokenring-ai/chat` | 0.2.0 | TokenRing AI chat services |
-| `zod` | catalog: | Schema validation library |
-| `glob-gitignore` | ^1.0.15 | Glob patterns with .gitignore support |
-| `next-auth` | ^4.24.13 | Authentication for Next.js applications |
-| `react-syntax-highlighter` | ^16.1.0 | Syntax highlighting for React |
-| `vite` | 7.3.0 | Build tool for modern web projects |
+### Dependencies
 
-### Development Dependencies
+**Runtime Dependencies:**
+- `@tokenring-ai/app`: TokenRing service and plugin framework
+- `@tokenring-ai/chat`: Chat service and tool definitions
+- `@tokenring-ai/agent`: Agent orchestration
+- `@kubernetes/client-node`: Official Kubernetes Node.js client (^1.4.0)
+- `zod`: Schema validation
 
-| Package | Version | Purpose |
-|---------|---------|---------|
-| `vitest` | catalog: | Testing framework |
-| `typescript` | catalog: | TypeScript compiler |
+**Development Dependencies:**
+- `vitest`: Unit testing framework
+- `typescript`: TypeScript compiler
+
+### External Integrations
+
+- **@kubernetes/client-node**: Official Kubernetes API client
+  - Provides access to CoreV1Api, CustomObjectsApi, ApisApi
+  - Supports token and certificate authentication
+  - Handles connection management and retries
 
 ## Limitations
 
-- **Read-only Operations**: Currently focused on resource discovery and listing
+- **Read-Only Operations**: Currently focused on resource discovery and listing
 - **No CRUD Operations**: Create, update, delete operations not yet implemented
-- **Pagination**: Large clusters may produce verbose results (no pagination implemented)
-- **Authentication**: Only token and client certificate authentication supported
-- **Error Handling**: Resource-specific errors are captured in individual `K8sResourceInfo.error` fields
+- **No Pagination**: Large clusters may produce verbose results
+- **KubeConfig Support**: No Kubernetes config file load support
+- **Authentication Batching**: Multi-cluster authentication requires separate service instances
 
 ## License
 

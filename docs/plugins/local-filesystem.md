@@ -10,21 +10,19 @@ The `@tokenring-ai/local-filesystem` package provides a concrete implementation 
 
 ```
 pkg/local-filesystem/
-├── plugin.ts                 # Plugin registration and integration
+├── plugin.ts                 # Plugin registration and configuration
 ├── LocalFileSystemProvider.ts # Core filesystem provider implementation
 ├── index.ts                  # Package exports
 ├── package.json              # Package metadata and dependencies
-├── vitest.config.ts          # Vitest test configuration
-└── README.md                 # Package documentation
+├── vitest.config.ts          # Test configuration
+└── README.md                 # Package README
 ```
 
 ## Key Features
 
 - **Root-Scoped**: All operations confined to `baseDirectory`; attempts to access paths outside are rejected
-- **Path Utilities**: Convert between relative and absolute paths with security validation
-- **File Operations**: Read, write, append, delete, rename, copy, stat, and chmod operations
-- **Directory Operations**: Create directories, glob pattern matching, text search (grep), and tree traversal
-- **File Watching**: Uses chokidar for robust file change monitoring
+- **Ignore-Aware**: Most listing/searching methods accept an ignore filter for respecting VCS/IDE ignore rules
+- **Watcher-Backed**: Uses chokidar for robust file system watching
 - **Shell Execution**: Uses execa with configurable timeouts and environment overrides
 - **Type-Safe**: Built with TypeScript and Zod for configuration validation
 - **Plugin Architecture**: Designed to integrate with Token Ring applications as a plugin
@@ -38,114 +36,121 @@ Main filesystem provider class implementing the FileSystemProvider interface.
 **Constructor:**
 
 ```typescript
+import LocalFileSystemProvider from '@tokenring-ai/local-filesystem';
+
 const provider = new LocalFileSystemProvider({
-  baseDirectory: string,          // Root directory for all operations (required)
-  defaultSelectedFiles?: string[] // Default file patterns to select (optional)
+  baseDirectory: string,          // Root directory for operations (required)
+  defaultSelectedFiles?: string[]  // Default file patterns (optional)
 });
 ```
 
-**Path Utilities:**
+### Properties
 
-```typescript
-// Convert any path (relative or absolute) to absolute path within root bounds
-relativeOrAbsolutePathToAbsolutePath(p: string): string;
+- `name: string` - Provider name ("LocalFilesystemProvider")
+- `description: string` - Provider description ("Provides access to the local filesystem")
 
-// Convert absolute path to relative path from root
-relativeOrAbsolutePathToRelativePath(p: string): string;
-```
+### Path Utilities
 
-**File Operations:**
+#### relativeOrAbsolutePathToAbsolutePath
 
-```typescript
-// Write/overwrite file content
-writeFile(filePath: string, content: string | Buffer): Promise<boolean>;
-
-// Append content to file
-appendFile(filePath: string, content: string | Buffer): Promise<boolean>;
-
-// Read file with optional encoding
-readFile(filePath: string, encoding?: BufferEncoding): Promise<string>;
-
-// Delete a file
-deleteFile(filePath: string): Promise<boolean>;
-
-// Rename/move file
-rename(oldPath: string, newPath: string): Promise<boolean>;
-
-// Check if file exists
-exists(filePath: string): Promise<boolean>;
-
-// Get file/directory statistics
-stat(filePath: string): Promise<StatLike>;
-
-// Change file permissions
-chmod(filePath: string, mode: number): Promise<boolean>;
-
-// Copy file or directory with optional overwrite
-copy(source: string, destination: string, options?: { overwrite?: boolean }): Promise<boolean>;
-```
-
-**Directory Operations:**
-
-```typescript
-// Create directory with optional recursive creation
-createDirectory(dirPath: string, options?: { recursive?: boolean }): Promise<boolean>;
-
-// Find files matching glob patterns
-glob(pattern: string, options?: GlobOptions): Promise<string[]>;
-
-// Search for text content across files
-grep(searchString: string, options?: GrepOptions): Promise<GrepResult[]>;
-
-// Traverse directory tree
-getDirectoryTree(dir: string, options?: DirectoryTreeOptions): AsyncGenerator<string>;
-```
-
-**File Watching:**
-
-```typescript
-// Watch directory for changes
-watch(dir: string, options?: WatchOptions): Promise<FSWatcher>;
-```
-
-**Command Execution:**
-
-```typescript
-// Execute shell commands with timeout and environment control
-executeCommand(command: string | string[], options?: ExecuteCommandOptions): Promise<ExecuteCommandResult>;
-```
-
-## Usage Examples
-
-### Basic File Operations
+Converts any path (relative or absolute) to absolute path within root bounds.
 
 ```typescript
 import LocalFileSystemProvider from '@tokenring-ai/local-filesystem';
 
-// Create provider with root directory
 const provider = new LocalFileSystemProvider({
-  baseDirectory: process.cwd(),
-  defaultSelectedFiles: ['**/*.ts', '**/*.js']
+  baseDirectory: '/path/to/project'
 });
 
-// Write file
+// Relative path
+const abs = provider.relativeOrAbsolutePathToAbsolutePath('file.txt');
+console.log(abs); // "/path/to/project/file.txt"
+
+// Absolute path within root
+const abs2 = provider.relativeOrAbsolutePathToAbsolutePath('/path/to/project/sub/file.txt');
+console.log(abs2); // "/path/to/project/sub/file.txt"
+
+// Path outside root
+try {
+  provider.relativeOrAbsolutePathToAbsolutePath('/etc/passwd');
+} catch (error) {
+  console.error(error.message); // "Path /etc/passwd is outside the root directory"
+}
+```
+
+#### relativeOrAbsolutePathToRelativePath
+
+Converts absolute path to relative path from root.
+
+```typescript
+const rel = provider.relativeOrAbsolutePathToRelativePath('/path/to/project/file.txt');
+console.log(rel); // "file.txt"
+```
+
+### File Operations
+
+#### writeFile
+
+Writes content to a file (overwrites if exists).
+
+```typescript
 await provider.writeFile('notes/todo.txt', '- [ ] Complete documentation');
+```
 
-// Read file
-const content = await provider.readFile('notes/todo.txt', 'utf8');
-console.log(content); // "- [ ] Complete documentation"
+#### appendFile
 
-// Check if file exists
+Appends content to a file.
+
+```typescript
+await provider.appendFile('notes/todo.txt', '\n- [ ] Fix bug');
+```
+
+#### readFile
+
+Reads file content.
+
+```typescript
+const content = await provider.readFile('notes/todo.txt');
+// Returns Buffer
+console.log(content.toString()); // "- [ ] Complete documentation"
+```
+
+#### deleteFile
+
+Deletes a file.
+
+```typescript
+await provider.deleteFile('notes/backup.txt');
+```
+
+#### rename
+
+Renames or moves a file.
+
+```typescript
+await provider.rename('notes/old.txt', 'notes/new.txt');
+```
+
+#### exists
+
+Checks if a file or directory exists.
+
+```typescript
 const exists = await provider.exists('notes/todo.txt');
 console.log(exists); // true
+```
 
-// Get file stats
+#### stat
+
+Gets file/directory statistics.
+
+```typescript
 const info = await provider.stat('notes/todo.txt');
 console.log(info);
 /*
 {
   path: 'notes/todo.txt',
-  absolutePath: '/path/to/project/notes/todo.txt',
+  absolutePath: '/path/to/notes/todo.txt',
   isFile: true,
   isDirectory: false,
   isSymbolicLink: false,
@@ -155,34 +160,42 @@ console.log(info);
   accessed: Date
 }
 */
+```
 
-// Rename file
-await provider.rename('notes/todo.txt', 'notes/TODO.md');
+#### chmod
 
-// Copy file
-await provider.copy('notes/TODO.md', 'notes/backup/TODO.md');
+Changes file permissions.
 
-// Change file permissions
+```typescript
 await provider.chmod('notes/script.sh', 0o755);
+```
 
-// Delete file
-await provider.delete('notes/TODO.md');
+#### copy
+
+Copies a file or directory.
+
+```typescript
+await provider.copy('notes/file.txt', 'backup/file.txt');
+await provider.copy('src', 'backup/src', { overwrite: true });
 ```
 
 ### Directory Operations
 
+#### createDirectory
+
+Creates a directory (optionally recursively).
+
 ```typescript
-// Create directory
-await provider.createDirectory('new-folder', { recursive: true });
+// Create single directory
+await provider.createDirectory('new-folder');
 
-// Create nested directory structure
+// Create nested directories
 await provider.createDirectory('src/components/ui', { recursive: true });
-
-// Copy entire directory
-await provider.copy('src', 'backup/src', { overwrite: true });
 ```
 
-### Pattern Matching and Search
+#### glob
+
+Finds files matching glob patterns.
 
 ```typescript
 // List TypeScript files
@@ -194,10 +207,25 @@ const allFiles = await provider.glob('**/*', {
   includeDirectories: false
 });
 
-// Search for TODO comments
-const results = await provider.grep('TODO', {
-  includeContent: { linesBefore: 2, linesAfter: 2 }
+// Show files and directories
+const items = await provider.glob('**/*', {
+  ignoreFilter: (file) => file.includes('node_modules'),
+  includeDirectories: true
 });
+```
+
+#### grep
+
+Searches for text content across files.
+
+```typescript
+const results = await provider.grep('TODO', {
+  includeContent: {
+    linesBefore: 2,
+    linesAfter: 2
+  }
+});
+
 console.log(results);
 /*
 [
@@ -209,8 +237,13 @@ console.log(results);
   }
 ]
 */
+```
 
-// Traverse directory tree
+#### getDirectoryTree
+
+Traverses directory tree asynchronously.
+
+```typescript
 for await (const path of provider.getDirectoryTree('src', { recursive: true })) {
   console.log(path);
 }
@@ -218,8 +251,14 @@ for await (const path of provider.getDirectoryTree('src', { recursive: true })) 
 
 ### File Watching
 
+#### watch
+
+Watches directory for changes.
+
 ```typescript
-const watcher = await provider.watch('.', {
+import chokidar, { FSWatcher } from 'chokidar';
+
+const watcher: FSWatcher = await provider.watch('.', {
   ignoreFilter: (file) => file.includes('node_modules') || file.includes('.git'),
   pollInterval: 1000,
   stabilityThreshold: 2000
@@ -240,8 +279,11 @@ watcher.on('unlink', (path) => {
 
 ### Shell Command Execution
 
+#### executeCommand
+
+Executes shell commands with timeout and environment control.
+
 ```typescript
-// Run a simple command
 const result = await provider.executeCommand('ls -la', {
   workingDirectory: 'src',
   timeoutSeconds: 30
@@ -253,37 +295,19 @@ if (result.ok) {
   console.error('Command failed:', result.stderr);
 }
 
-// Run a command with arguments
-const cmdResult = await provider.executeCommand(['npm', ['list', '--depth=0']], {
+// Command with timeout and custom environment
+const result2 = await provider.executeCommand('npm list --depth=0', {
   workingDirectory: '.',
   timeoutSeconds: 60,
   env: { NODE_ENV: 'production' }
 });
 ```
 
-### Path Resolution
-
-```typescript
-// Relative paths are resolved relative to baseDirectory
-const absPath = provider.relativeOrAbsolutePathToAbsolutePath('file.txt');
-console.log(absPath); // "/path/to/project/file.txt"
-
-const relPath = provider.relativeOrAbsolutePathToRelativePath(absPath);
-console.log(relPath); // "file.txt"
-
-// Absolute paths outside baseDirectory throw an error
-try {
-  provider.relativeOrAbsolutePathToAbsolutePath('/etc/passwd');
-} catch (error) {
-  console.error(error.message); // "Path /etc/passwd is outside the root directory"
-}
-```
-
 ## Plugin Integration
 
 ### Token Ring Application Plugin
 
-The package can be used as a plugin within a Token Ring application:
+Register the plugin in your Token Ring application configuration:
 
 ```typescript
 import TokenRingApp from '@tokenring-ai/app';
@@ -323,6 +347,8 @@ const packageConfigSchema = z.object({
     ).optional()
   }).optional()
 });
+
+type AppConfig = z.infer<typeof packageConfigSchema>;
 ```
 
 ## Configuration Options
@@ -331,8 +357,8 @@ const packageConfigSchema = z.object({
 
 ```typescript
 interface LocalFileSystemProviderOptions {
-  baseDirectory: string;           // Base directory for all operations (required)
-  defaultSelectedFiles?: string[]; // Default file patterns to select (optional)
+  baseDirectory: string;           // Required: Base directory for all operations
+  defaultSelectedFiles?: string[]; // Optional: Default file patterns
 }
 ```
 
@@ -340,8 +366,8 @@ interface LocalFileSystemProviderOptions {
 
 ```typescript
 interface GlobOptions {
-  ignoreFilter?: (file: string) => boolean; // Filter function for ignored files
-  includeDirectories?: boolean;              // Include directories in results
+  ignoreFilter?: (file: string) => boolean;  // Filter ignored files
+  includeDirectories?: boolean;               // Include directories in results
 }
 ```
 
@@ -349,7 +375,7 @@ interface GlobOptions {
 
 ```typescript
 interface GrepOptions {
-  ignoreFilter?: (file: string) => boolean; // Filter function for ignored files
+  ignoreFilter?: (file: string) => boolean;  // Filter ignored files
   includeContent?: {
     linesBefore?: number;  // Lines before match (default: 0)
     linesAfter?: number;   // Lines after match (default: 0)
@@ -361,9 +387,9 @@ interface GrepOptions {
 
 ```typescript
 interface WatchOptions {
-  ignoreFilter?: (file: string) => boolean; // Filter function for ignored files
-  pollInterval?: number;                    // Polling interval in ms (default: 1000)
-  stabilityThreshold?: number;              // Stability threshold in ms (default: 2000)
+  ignoreFilter?: (file: string) => boolean;  // Filter ignored files
+  pollInterval?: number;                     // Polling interval in ms (default: 1000)
+  stabilityThreshold?: number;               // Stability threshold in ms (default: 2000)
 }
 ```
 
@@ -371,9 +397,9 @@ interface WatchOptions {
 
 ```typescript
 interface ExecuteCommandOptions {
-  timeoutSeconds?: number;                    // Timeout in seconds (default: 60)
-  env?: Record<string, string>;               // Environment variables
-  workingDirectory?: string;                  // Working directory for command
+  timeoutSeconds?: number;             // Timeout in seconds (default: no timeout)
+  env?: Record<string, string>;        // Environment variables
+  workingDirectory?: string;           // Working directory for command
 }
 ```
 
@@ -381,8 +407,8 @@ interface ExecuteCommandOptions {
 
 ```typescript
 interface DirectoryTreeOptions {
-  ignoreFilter?: (file: string) => boolean; // Filter function for ignored files
-  recursive?: boolean;                      // Traverse recursively (default: true)
+  ignoreFilter?: (file: string) => boolean;  // Filter ignored files
+  recursive?: boolean;                       // Traverse recursively (default: true)
 }
 ```
 
@@ -408,11 +434,11 @@ interface StatLike {
 
 ```typescript
 interface ExecuteCommandResult {
-  ok: boolean;
-  exitCode: number;
-  stdout: string;
-  stderr: string;
-  error?: string;
+  ok: boolean;            // Whether command succeeded
+  exitCode: number;       // Exit code (0 = success)
+  stdout: string;         // Standard output
+  stderr: string;         // Standard error
+  error?: string;         // Error message if failed
 }
 ```
 
@@ -420,10 +446,10 @@ interface ExecuteCommandResult {
 
 ```typescript
 interface GrepResult {
-  file: string;
-  line: number;
-  match: string;
-  content: string | null;
+  file: string;  // File path relative to root
+  line: number;  // Line number (1-indexed)
+  match: string; // The matching line content
+  content: string | null;  // Context content if requested
 }
 ```
 
@@ -431,51 +457,79 @@ interface GrepResult {
 
 The provider includes comprehensive error handling:
 
-- **Security**: Paths outside the base directory throw errors with descriptive messages
-- **Existence checks**: Operations on non-existent paths throw appropriate errors
-- **Type validation**: Operations on directories when files are expected (and vice versa) throw errors
-- **Command execution**: Failed commands return detailed error information without throwing
-- **File permissions**: Graceful handling of permission errors where possible
+### Security Errors
 
 ```typescript
-// Security: Outside root directory
 try {
   await provider.relativeOrAbsolutePathToAbsolutePath('/etc/passwd');
 } catch (error) {
-  // Error: "Path /etc/passwd is outside the root directory"
+  console.error(error.message);
+  // Path /etc/passwd is outside the root directory
 }
+```
 
-// Existence: Non-existent file
+### Existence Errors
+
+```typescript
 try {
   await provider.readFile('missing.txt');
 } catch (error) {
-  // Error: "File missing.txt does not exist"
-}
-
-// Type: Directory where file expected
-try {
-  await provider.deleteFile('src');
-} catch (error) {
-  // Error: "Path src is not a file"
+  console.error(error.message);
+  // File missing.txt does not exist
 }
 ```
+
+### Type Errors
+
+```typescript
+try {
+  await provider.deleteFile('src');  // src is a directory
+} catch (error) {
+  console.error(error.message);
+  // Path src is not a file
+}
+```
+
+### Command Execution Errors
+
+```typescript
+const result = await provider.executeCommand('nonexistent-command');
+
+if (!result.ok) {
+  console.error('Exit code:', result.exitCode);
+  console.error('Error:', result.error);
+  console.error('Stderr:', result.stderr);
+}
+```
+
+## Dependencies
+
+- `@tokenring-ai/app`: Token Ring application framework
+- `@tokenring-ai/chat`: Chat functionality
+- `@tokenring-ai/filesystem`: Abstract filesystem interfaces
+- `@tokenring-ai/agent`: Agent framework
+- `chokidar`: File system watching
+- `execa`: Shell command execution
+- `fs-extra`: File system utilities
+- `glob`: Glob pattern matching
+- `glob-gitignore`: Git ignore pattern support
+- `zod`: Runtime type validation
 
 ## Testing
 
-Run the test suite:
-
 ```bash
+# Run all tests
 bun run test
+
+# Run tests in watch mode
+bun run test:watch
+
+# Run with coverage
+bun run test:coverage
+
+# Type checking
+bun run build
 ```
-
-The test suite includes integration tests covering:
-
-- File operations (read, write, append, delete, rename)
-- Directory operations (create, copy, glob, grep)
-- Path resolution and security boundaries
-- Command execution with various options
-- File watching functionality
-- Error handling and edge cases
 
 ## License
 

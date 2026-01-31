@@ -7,7 +7,7 @@ The JavaScript plugin provides comprehensive JavaScript/TypeScript development t
 ## Key Features
 
 - **Automated Code Linting**: Run ESLint with auto-fix capabilities on JavaScript/TypeScript files
-- **Package Management**: Install and remove packages using detected package managers (npm, yarn, pnpm)
+- **Package Management**: Install and remove packages using detected package managers (bun, pnpm, npm, yarn)
 - **Script Execution**: Execute JavaScript code in both ESM and CommonJS formats with timeout controls
 - **Cross-Platform Compatibility**: Works with multiple package managers and module formats
 - **Temporary File Management**: Automatically handles temporary script files with cleanup
@@ -34,11 +34,12 @@ export default {
   description: packageJSON.description,
   install(app, config) {
     app.waitForService(ChatService, chatService =>
-      chatService.addTools(packageJSON.name, tools)
+      chatService.addTools(tools)
     );
   },
   config: packageConfigSchema
-} satisfies TokenRingPlugin<typeof packageConfigSchema>;```
+} satisfies TokenRingPlugin<typeof packageConfigSchema>;
+```
 
 ### Available Tools
 
@@ -50,6 +51,9 @@ export default {
 - `files` (string[]): Array of file paths to apply ESLint fixes to
 
 **Returns**: Array of `{ file: string; output?: string; error?: string }` objects
+- `file`: Path of the file processed
+- `output`: "Successfully fixed" or "No changes needed"
+- `error`: Error message if fix failed
 
 **Functionality**:
 - Reads source files from the filesystem
@@ -60,27 +64,32 @@ export default {
 
 #### 2. installPackages (`javascript_installPackages`)
 
-**Description**: Installs packages using the detected package manager (npm, yarn, or pnpm).
+**Description**: Installs packages using the detected package manager (bun, pnpm, npm, or yarn).
 
 **Parameters**:
 - `packageName` (string): Package name(s) to install (space-separated for multiple packages)
-- `isDev` (boolean, optional): Install as dev dependency (default: false)
 
-**Returns**: Command execution result with stdout, stderr, and exit code
+**Returns**: `{ ok: boolean; stdout?: string; stderr?: string }`
+- `ok`: True if installation succeeded
+- `stdout`: Command output if successful
+- `stderr`: Error output if failed
 
 **Package Manager Detection**:
 - Automatically detects package manager based on lockfile presence
-- Supports pnpm, yarn, and npm
+- Supports bun, pnpm, yarn, and npm
 - Throws error if no supported lockfile is found
 
 #### 3. removePackages (`javascript_removePackages`)
 
-**Description**: Removes packages using the detected package manager.
+**Description**: Removes packages using the detected package manager (bun, pnpm, npm, or yarn).
 
 **Parameters**:
 - `packageName` (string): Package name(s) to remove (space-separated for multiple packages)
 
-**Returns**: Command execution result with stdout, stderr, and exit code
+**Returns**: `{ ok: boolean; stdout?: string; stderr?: string }`
+- `ok`: True if removal succeeded
+- `stdout`: Command output if successful
+- `stderr`: Error output if failed
 
 **Functionality**:
 - Detects package manager from lockfiles
@@ -97,6 +106,11 @@ export default {
 - `timeoutSeconds` (number, optional): Timeout in seconds (default: 30, min: 5, max: 300)
 
 **Returns**: `{ ok: boolean; exitCode?: number; stdout?: string; stderr?: string; format: string }`
+- `ok`: True if execution succeeded
+- `exitCode`: Exit code from the script execution
+- `stdout`: Standard output from the script
+- `stderr`: Standard error from the script
+- `format`: The module format used ('esm' or 'commonjs')
 
 **Features**:
 - Creates temporary files for script execution
@@ -122,17 +136,17 @@ async function eslint(
 ): Promise<EslintResult[]>;
 
 // Example usage
-const results = await agent.tools.javascript_eslint.execute({
+const results = await agent.executeTool('javascript_eslint', {
   files: ['src/main.ts', 'utils/helper.js']
-}, agent);
+});
 
-results.forEach(result => {
+for (const result of results) {
   if (result.output) {
     console.log(`${result.file}: ${result.output}`);
   } else if (result.error) {
     console.error(`${result.file}: ${result.error}`);
   }
-});
+}
 ```
 
 ### Tool: installPackages (`javascript_installPackages`)
@@ -140,22 +154,21 @@ results.forEach(result => {
 ```typescript
 interface InstallPackagesArgs {
   packageName: string;
-  isDev?: boolean;
 }
 
 async function installPackages(
-  { packageName, isDev }: InstallPackagesArgs,
+  { packageName }: InstallPackagesArgs,
   agent: Agent
-): Promise<ExecuteCommandResult>;
+): Promise<{ ok: boolean; stdout?: string; stderr?: string }>;
 
 // Example usage
-const result = await agent.tools.javascript_installPackages.execute({
-  packageName: 'lodash',
-  isDev: false
-}, agent);
+const result = await agent.executeTool('javascript_installPackages', {
+  packageName: 'lodash'
+});
 
 if (result.ok) {
   console.log('Package installed successfully');
+  console.log(result.stdout);
 }
 ```
 
@@ -169,15 +182,16 @@ interface RemovePackagesArgs {
 async function removePackages(
   { packageName }: RemovePackagesArgs,
   agent: Agent
-): Promise<ExecuteCommandResult>;
+): Promise<{ ok: boolean; stdout?: string; stderr?: string }>;
 
 // Example usage
-const result = await agent.tools.javascript_removePackages.execute({
+const result = await agent.executeTool('javascript_removePackages', {
   packageName: 'lodash'
-}, agent);
+});
 
 if (result.ok) {
   console.log('Package removed successfully');
+  console.log(result.stdout);
 }
 ```
 
@@ -202,7 +216,7 @@ async function runJavaScriptScript(
 ): Promise<RunJavaScriptResult>;
 
 // Example usage
-const result = await agent.tools.javascript_runJavaScriptScript.execute({
+const result = await agent.executeTool('javascript_runJavaScriptScript', {
   script: 'console.log("Hello from JavaScript!"); console.log(2 + 2);',
   format: 'esm',
   timeoutSeconds: 10
@@ -221,7 +235,7 @@ if (result.stderr) {
 
 ```typescript
 // Run a simple JavaScript script
-const result = await agent.tools.javascript_runJavaScriptScript.execute({
+const result = await agent.executeTool('javascript_runJavaScriptScript', {
   script: 'console.log("Hello, World!"); console.log(2 * 2);',
   format: 'esm',
   timeoutSeconds: 5
@@ -236,29 +250,22 @@ if (result.ok) {
 ### Package Installation
 
 ```typescript
-// Install a production package
-const installResult = await agent.tools.javascript_installPackages.execute({
-  packageName: 'lodash',
-  isDev: false
+// Install a package
+const installResult = await agent.executeTool('javascript_installPackages', {
+  packageName: 'lodash'
 }, agent);
 
 if (installResult.ok) {
   console.log('Package installed successfully');
   console.log('Output:', installResult.stdout);
 }
-
-// Install a dev dependency
-const devInstallResult = await agent.tools.javascript_installPackages.execute({
-  packageName: 'typescript',
-  isDev: true
-}, agent);
 ```
 
 ### Package Removal
 
 ```typescript
 // Remove a package
-const removeResult = await agent.tools.javascript_removePackages.execute({
+const removeResult = await agent.executeTool('javascript_removePackages', {
   packageName: 'lodash'
 }, agent);
 
@@ -272,23 +279,24 @@ if (removeResult.ok) {
 
 ```typescript
 // Run ESLint with auto-fix on multiple files
-const lintResults = await agent.tools.javascript_eslint.execute({
+const lintResults = await agent.executeTool('javascript_eslint', {
   files: ['src/main.ts', 'utils/helper.js', 'components/button.tsx']
 }, agent);
 
-lintResults.forEach(result => {
+for (const result of lintResults) {
   if (result.output) {
     console.log(`${result.file}: ${result.output}`);
   } else if (result.error) {
     console.error(`${result.file}: ${result.error}`);
   }
-});
+}
 ```
 
 ## Configuration
 
 The plugin automatically detects package managers based on lockfile presence:
 
+- **bun**: Detected from `bun.lock`
 - **pnpm**: Detected from `pnpm-lock.yaml`
 - **yarn**: Detected from `yarn.lock`
 - **npm**: Detected from `package-lock.json`
@@ -312,10 +320,21 @@ The plugin integrates with TokenRing agents by registering tools that can be cal
 const javascriptTools = agent.tools;
 
 // Execute any of the available tools
-await javascriptTools.javascript_eslint.execute({ files: ['file.ts'] }, agent);
-await javascriptTools.javascript_installPackages.execute({ packageName: 'lodash' }, agent);
-await javascriptTools.javascript_removePackages.execute({ packageName: 'lodash' }, agent);
-await javascriptTools.javascript_runJavaScriptScript.execute({ script: 'console.log("test")' }, agent);
+await agent.executeTool('javascript_eslint', {
+  files: ['file.ts']
+}, agent);
+
+await agent.executeTool('javascript_installPackages', {
+  packageName: 'lodash'
+}, agent);
+
+await agent.executeTool('javascript_removePackages', {
+  packageName: 'lodash'
+}, agent);
+
+await agent.executeTool('javascript_runJavaScriptScript', {
+  script: 'console.log("test")'
+}, agent);
 ```
 
 ### With Filesystem Service

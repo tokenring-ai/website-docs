@@ -12,9 +12,12 @@ This plugin serves as a service that integrates with the TokenRing agent system.
 - **Event Listing**: List events with filtering options
 - **Event Retrieval**: Get detailed information about specific events
 - **Market Retrieval**: Get detailed information about specific markets
+- **Slug-based Access**: Fetch markets and events using URL slugs
+- **Tag Filtering**: Filter markets and events by category tags
 - **Configurable Base URL**: Support for custom Polymarket API endpoints
 - **RESTful API**: Uses standard HTTP requests for API interactions
 - **Error Handling**: Comprehensive error handling for API operations
+- **TypeScript Support**: Full type definitions and validation
 
 ## Chat Commands
 
@@ -123,7 +126,7 @@ interface PolymarketSearchOptions {
 
 The plugin provides the following tools for Polymarket operations:
 
-### search
+### polymarket_search
 
 Searches for prediction markets matching the query.
 
@@ -164,7 +167,7 @@ const result = await agent.executeTool("polymarket_search", {
 console.log("Search results:", result);
 ```
 
-### listEvents
+### polymarket_listEvents
 
 Lists Polymarket events with optional filtering.
 
@@ -217,7 +220,7 @@ const result = await agent.executeTool("polymarket_listEvents", {
 console.log("Events:", result);
 ```
 
-### getEvent
+### polymarket_getEvent
 
 Retrieves detailed information about a specific event.
 
@@ -256,6 +259,47 @@ const result = await agent.executeTool("polymarket_getEvent", {
 });
 
 console.log("Event details:", result);
+```
+
+### polymarket_getMarket
+
+Retrieves detailed information about a specific market.
+
+**Tool Definition:**
+
+```typescript
+const name = "polymarket_getMarket";
+const description = "Get detailed information about a specific market";
+const inputSchema = z.object({
+  slug: z.string().describe("The slug of the market")
+});
+```
+
+**Tool Interface:**
+
+```typescript
+{
+  name: "polymarket_getMarket";
+  description: "Get detailed information about a specific market";
+  inputSchema: z.object({
+    slug: string;
+  });
+  execute: (
+    args: { slug: string },
+    agent: Agent
+  ) => Promise<any>;
+}
+```
+
+**Usage:**
+
+```typescript
+// Execute get market tool
+const result = await agent.executeTool("polymarket_getMarket", {
+  slug: "will-ai-exceed-human-level-performance-by-2025"
+});
+
+console.log("Market details:", result);
 ```
 
 ## State Management
@@ -405,6 +449,33 @@ searchResult.markets.forEach(market => {
 });
 ```
 
+### Working with Slugs
+
+```typescript
+// Extract slugs from URLs
+const url = "https://polymarket.com/event/fed-decision-in-october?tid=1758818660485";
+const slug = url.split("/event/")[1].split("?")[0];
+// slug = "fed-decision-in-october"
+
+// Use slug to fetch event
+const event = await polymarketService.getEventBySlug(slug);
+```
+
+### Tag-Based Filtering
+
+```typescript
+// Discover available tags (using API directly)
+const tagsResponse = await polymarketService.fetchJson("/tags");
+const tags = tagsResponse.tags;
+
+// Filter events by tag
+const techEvents = await polymarketService.listEvents({
+  limit: 10,
+  tag_id: 100381,
+  closed: false
+});
+```
+
 ## Integration
 
 ### HttpService
@@ -473,27 +544,53 @@ app.addPlugin(polymarketPlugin, {
 ### API Usage
 
 - **Query Specificity**: Use specific queries for better search results
-- **Pagination**: Use offset and limit for large result sets
+- **Pagination**: Use offset and limit for large result sets (max 100 per request)
 - **Filtering**: Use tag_id and closed filters to narrow results
-- **Error Handling**: Handle API errors gracefully
+- **Slug Format**: Extract slugs from Polymarket URLs for accurate lookups
 
 ### Market Analysis
 
 - **Compare Markets**: Use search to find related markets for comparison
 - **Track Events**: Use listEvents to monitor events over time
 - **Analyze Data**: Use getEvent and getMarket for detailed analysis
+- **Volume Analysis**: Check yes_share_volume and no_share_volume for market depth
 
 ### Performance Considerations
 
 - **Caching**: Cache API responses when appropriate
-- **Rate Limiting**: Respect API rate limits
+- **Rate Limiting**: Respect API rate limits for production applications
 - **Batch Operations**: Use listEvents for multiple events instead of individual calls
+- **Error Recovery**: Implement retry logic for transient failures
+
+### Slug Extraction
+
+```typescript
+// Extract slug from Polymarket URL
+function extractSlug(url: string): string {
+  const parts = url.split("/event/");
+  if (parts.length > 1) {
+    return parts[1].split("?")[0];
+  }
+  throw new Error("Invalid Polymarket event URL");
+}
+
+// Usage
+const url = "https://polymarket.com/event/fed-decision-in-october";
+const slug = extractSlug(url);
+const event = await polymarketService.getEventBySlug(slug);
+```
 
 ### Error Handling
 
-- **Input Validation**: Always provide required parameters
-- **API Errors**: Handle HTTP errors and API-specific errors
-- **Network Errors**: Implement retry logic for transient failures
+```typescript
+try {
+  const event = await polymarketService.getEventBySlug("invalid-slug");
+  console.log("Event:", event);
+} catch (error) {
+  console.error("Failed to fetch event:", error.message);
+  // Handle error appropriately
+}
+```
 
 ## Testing and Development
 
@@ -538,11 +635,14 @@ pkg/polymarket/
 ├── tools/
 │   ├── search.ts            # Search tool
 │   ├── listEvents.ts        # List events tool
-│   └── getEvent.ts          # Get event tool
+│   ├── getEvent.ts          # Get event tool
+│   └── getMarket.ts         # Get market tool
 ├── index.ts                  # Package exports
 ├── plugin.ts                 # Plugin registration
 ├── package.json              # Package metadata
-└── tsconfig.json             # TypeScript configuration
+├── schema.ts                 # Configuration schema
+├── vitest.config.ts         # Vitest configuration
+└── README.md                # Documentation
 ```
 
 ### Build Instructions

@@ -66,9 +66,9 @@ The Telegram service uses Zod schema validation for configuration. Here are the 
 - **`defaultAgentType`** (string): Default agent type to create for users (defaults to "teamLeader").
 
 ```typescript
-import TelegramService, { TelegramServiceConfigSchema } from '@tokenring-ai/telegram';
+import { TelegramServiceConfigSchema } from '@tokenring-ai/telegram';
 
-const config: TelegramServiceConfig = {
+const config = {
   botToken: process.env.TELEGRAM_BOT_TOKEN!,
   chatId: process.env.TELEGRAM_CHAT_ID,
   authorizedUserIds: ['123456789', '987654321'],
@@ -111,13 +111,13 @@ For more control, you can create the service manually:
 
 ```typescript
 import TokenRingApp from '@tokenring-ai/app';
-import TelegramService, { TelegramServiceConfigSchema } from '@tokenring-ai/telegram';
+import TelegramBotService, { TelegramServiceConfigSchema } from '@tokenring-ai/telegram';
 
 const app = new TokenRingApp({
   // Your app configuration
 });
 
-const config: TelegramServiceConfig = {
+const config = {
   botToken: process.env.TELEGRAM_BOT_TOKEN!,
   chatId: process.env.TELEGRAM_CHAT_ID,
   authorizedUserIds: ['123456789', '987654321'],
@@ -127,7 +127,7 @@ const config: TelegramServiceConfig = {
 // Validate configuration
 const validatedConfig = TelegramServiceConfigSchema.parse(config);
 
-const telegramService = new TelegramService(app, validatedConfig);
+const telegramService = new TelegramBotService(app, validatedConfig);
 app.addServices(telegramService);
 
 await telegramService.run(signal);
@@ -135,7 +135,7 @@ await telegramService.run(signal);
 
 ## Core Components
 
-### TelegramService
+### TelegramBotService
 
 Main service class implementing TokenRingService for Telegram integration.
 
@@ -150,7 +150,7 @@ constructor(app: TokenRingApp, config: TelegramServiceConfig)
 - `running`: Service running status
 
 **Methods:**
-- `run(signal: AbortSignal): Promise<void>`: Starts the Telegram bot and begins polling for messages
+- `run(signal: AbortSignal): Promise\<void\>`: Starts the Telegram bot and begins polling for messages
 
 ## Message Processing Flow
 
@@ -174,7 +174,7 @@ constructor(app: TokenRingApp, config: TelegramServiceConfig)
 If `authorizedUserIds` is empty or not provided, all users can interact with the bot:
 
 ```typescript
-const telegramService = new TelegramService(app, {
+const telegramService = new TelegramBotService(app, {
   botToken: process.env.TELEGRAM_BOT_TOKEN!
   // No authorizedUserIds = open to all
 });
@@ -185,7 +185,7 @@ const telegramService = new TelegramService(app, {
 Provide an array of Telegram user IDs to restrict access:
 
 ```typescript
-const telegramService = new TelegramService(app, {
+const telegramService = new TelegramBotService(app, {
   botToken: process.env.TELEGRAM_BOT_TOKEN!,
   authorizedUserIds: ['123456789', '987654321']
 });
@@ -216,7 +216,7 @@ Recommended setup using environment variables:
 ```bash
 export TELEGRAM_BOT_TOKEN="1234567890:ABCdefGHIjklMNOpqrsTUVwxyz"
 export TELEGRAM_CHAT_ID="-1001234567890"  # Optional
-export TELEGRAM_AUTHORIZED_USERS="123456789,987654321"  # Optional
+export TELEGRAM_AUTHORIZED_USER_IDS="123456789,987654321"  # Optional
 export TELEGRAM_DEFAULT_AGENT_TYPE="teamLeader"  # Optional
 ```
 
@@ -231,7 +231,7 @@ export TELEGRAM_DEFAULT_AGENT_TYPE="teamLeader"  # Optional
 ### User-Level Errors
 
 - **Authorization**: Sends "Sorry, you are not authorized to use this bot." for unauthorized users
-- **Timeout**: `Sends "Agent timed out after {time} seconds." when agents exceed max runtime`
+- **Timeout**: Sends "Agent timed out after \{time\} seconds." when agents exceed max runtime
 - **No Response**: Sends "No response received from agent." when no output is generated
 
 ### Service-Level Errors
@@ -271,9 +271,9 @@ setLogLevel('debug');
 
 Ensure these environment variables are properly set:
 
-- `TELEGRAM_BOT_TOKEN`: Your bot token from BotFather
+- `TELEGRAM_BOT_TOKEN`: Your bot token from @BotFather
 - `TELEGRAM_CHAT_ID`: Optional chat ID for startup messages
-- `TELEGRAM_AUTHORIZED_USERS`: Comma-separated list of authorized user IDs
+- `TELEGRAM_AUTHORIZED_USER_IDS`: Comma-separated list of authorized user IDs
 - `TELEGRAM_DEFAULT_AGENT_TYPE`: Agent type for new users (default: "teamLeader")
 
 ## Notes

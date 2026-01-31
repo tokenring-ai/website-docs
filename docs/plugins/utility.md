@@ -25,9 +25,10 @@ The `@tokenring-ai/utility` package provides a comprehensive collection of gener
 | `omit` | `(obj: T, keys: K[]) => Omit<T, K>` | Creates an object without specified properties |
 | `transform` | `(obj: T, transformer) => { [K]: R }` | Transforms object values |
 | `requireFields` | `(obj: T, required: (keyof T)[], context?) => void` | Validates required fields exist |
-| `pickValue` | `(obj: T, key: K) => T[K] \| undefined` | Safely picks a single value |
+| `pickValue` | `(obj: T, key: K) => T[K] \ undefined` | Safely picks a single value |
 | `deepMerge` | `(target: T, source: S) => T & S` | Deeply merges two objects |
 | `parametricObjectFilter` | `(requirements) => (obj) => boolean` | Creates a filter function |
+| `isEmpty` | `(obj: Object \| Array \| Map \| Set \| null \| undefined) => boolean` | Checks if object is empty |
 
 ### String Utilities
 
@@ -40,6 +41,9 @@ The `@tokenring-ai/utility` package provides a comprehensive collection of gener
 | `formatLogMessages` | `(msgs) => string` | Formats log messages |
 | `createAsciiTable` | `(data, options) => string` | Generates ASCII table |
 | `wrapText` | `(text, width) => string[]` | Wraps text to specified width |
+| `indent` | `(input: string \| string[], level: number) => string` | Indents text by level |
+| `markdownList` | `(items: string[], indentLevel?: number) => string` | Creates markdown list |
+| `numberedList` | `(items: string[], indentLevel?: number) => string` | Creates numbered list |
 
 ### HTTP Utilities
 
@@ -168,13 +172,16 @@ import {
   joinDefault,
   createAsciiTable,
   wrapText,
-  formatLogMessages
+  formatLogMessages,
+  indent,
+  markdownList,
+  numberedList
 } from '@tokenring-ai/utility/string';
 
 // Shell escape example
 const filename = "my file's name.txt";
 const command = `rm ${shellEscape(filename)}`;
-// "rm 'my file'\\\\''s name.txt'"
+// "rm 'my file'\\\\\\\\''s name.txt'"
 
 // Join with default
 const items = null;
@@ -193,6 +200,20 @@ const table = createAsciiTable(
 
 // Text wrapping
 const wrapped = wrapText('This is a long line that needs to be wrapped at 30 characters', 30);
+
+// Log formatting
+const output = formatLogMessages([
+  'User loaded',
+  { id: 1, name: 'Alice' },
+  new Error('Connection failed')
+]);
+
+// Markdown lists
+const list = markdownList(['Item 1', 'Item 2', 'Item 3'], 2);
+const numbered = numberedList(['Step 1', 'Step 2']);
+
+// Indent text
+const indented = indent('line1\nline2', 2);
 ```
 
 ### Registry Pattern
@@ -366,13 +387,13 @@ import { KeyedRegistry } from '@tokenring-ai/utility/registry/KeyedRegistry';
 // Create a service that combines HTTP and registry functionality
 class DataService extends HttpService {
   private registry = new KeyedRegistry<string>();
-  
+
   constructor() {
     super();
     // Register database connections
     this.registry.register('db', 'postgresql://localhost:5432');
   }
-  
+
   async fetchData() {
     const dbUrl = this.registry.getItemByName('db');
     const response = await this.fetchJson('/data', {}, 'fetchData');
@@ -415,6 +436,8 @@ const repo = await github.getRepository('tokenring-ai', 'token-ring');
 - Use `TypedRegistry` for class-based service registration
 - Use `backoff` for resilient API calls with retry logic
 - Use `formatLogMessages` for consistent log output
+- Use `indent`, `markdownList`, and `numberedList` for formatted output
+- Use `wrapText` for text wrapping in tables and displays
 
 ## Testing
 
@@ -469,3 +492,5 @@ describe('Timer Utilities', () => {
 - Error handling is built into most utilities for robustness
 - The registry pattern is particularly useful for service management in the Token Ring ecosystem
 - Timer utilities help manage performance and prevent excessive API calls
+- String utilities provide comprehensive formatting options for CLI and web interfaces
+- Object utilities support both simple and complex transformation scenarios

@@ -306,12 +306,15 @@ Example provider configuration:
 }
 ```
 
+**Note:** The plugin checks if `config.cdn` exists. If present, the CDNService is registered with the Token Ring application. The actual provider implementations are registered programmatically using `registerProvider()`.
+
 ## Plugin Integration
 
 As a Token Ring plugin, the CDN service automatically:
-- Registers the CDN service when the plugin is installed
-- Reads CDN configurations from the app's configuration slice using Zod validation
+- Checks for `config.cdn` configuration in the app settings
+- Registers the CDNService with the Token Ring application when the plugin is installed
 - Makes the service available through the Token Ring application registry
+- Uses KeyedRegistry internally for provider management
 
 ```typescript
 import plugin from "@tokenring-ai/cdn/plugin.ts";
@@ -319,7 +322,7 @@ import plugin from "@tokenring-ai/cdn/plugin.ts";
 app.use(plugin, {
   cdn: {
     providers: {
-      // Provider configurations
+      // Provider configurations (optional)
     }
   }
 });
@@ -364,7 +367,7 @@ const s3Exists = await cdnService.exists('s3', s3Result.url);
 
 ```typescript
 import CDNProvider from "@tokenring-ai/cdn";
-import type { UploadOptions, UploadResult, DeleteResult } from "@tokenring-ai/cdn/types.ts";
+import type { UploadOptions, UploadResult, DeleteResult } from "@tokenring-ai/cdn/types";
 
 class MyCustomCDNProvider extends CDNProvider {
   async upload(data: Buffer, options?: UploadOptions): Promise<UploadResult> {
@@ -470,11 +473,7 @@ pkg/cdn/
 ├── plugin.ts             # Token Ring plugin integration
 ├── package.json
 ├── LICENSE
-├── test/                 # Test files
-│   ├── CDNProvider.test.ts
-│   ├── CDNService.test.ts
-│   └── types.test.ts
-└── vitest.config.ts      # Test configuration
+└── test/                 # Test files
 ```
 
 ## License
