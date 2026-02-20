@@ -4,16 +4,17 @@ Provides tools for human-in-the-loop interactions in AI workflows, allowing agen
 
 ## Package Reference
 
-**Package Name**: `@tokenring-ai/feedback`
-**Version**: 0.2.0
+**Package Name**: `@tokenring-ai/feedback`  
+**Version**: 0.2.0  
 **License**: MIT
 
 ## Overview
 
-The feedback package enables AI agents to interact with humans during execution through two primary mechanisms:
+The feedback package enables AI agents to interact with humans during execution through three primary mechanisms:
 
 1. **Interactive Chat Questioning**: Ask multiple questions via chat with support for text responses or multiple-choice options using structured form inputs
-2. **Browser-Based Content Review**: Display file contents or React components in browser UIs for approval/rejection with optional comments
+2. **Browser-Based File Review**: Display file contents (text, Markdown, HTML, JSON) in browser UIs for approval/rejection with optional comments
+3. **React Component Preview**: Bundle and preview React components in browsers for visual feedback and approval
 
 This package is designed for task uncertainty resolution, approval workflows, and interactive content review scenarios where human input is needed before proceeding.
 
@@ -42,7 +43,7 @@ pkg/feedback/
 
 Interactive questioning tool that presents form-based questions to users with optional multiple-choice options and freeform text responses.
 
-**Tool Name**: `ask_questions`
+**Tool Name**: `ask_questions`  
 **Tool Display**: `Feedback/askQuestions`
 
 **Description**: Use this tool when human feedback is needed or when you're uncertain about the proper path to complete a task. It provides a strong guarantee that decisions align with user intent.
@@ -166,7 +167,7 @@ Answer 2
 
 Browser-based file content review tool that displays file contents (text, Markdown, HTML, JSON) in an interactive UI for user approval/rejection with optional comments.
 
-**Tool Name**: `feedback_getFileFeedback`
+**Tool Name**: `feedback_getFileFeedback`  
 **Tool Display**: `Feedback/getFileFeedback`
 
 **Description**: Present file content to users for review with Accept/Reject functionality and optional comment submission. Supports multiple content types with appropriate rendering.
@@ -305,7 +306,7 @@ if (result.status === "accepted") {
 
 React component preview tool that bundles and renders React components in a browser for visual review and user feedback.
 
-**Tool Name**: `feedback_react-feedback`
+**Tool Name**: `feedback_react-feedback`  
 **Tool Display**: `Feedback/react-feedback`
 
 **Description**: Preview React components in browser UIs with Accept/Reject functionality and optional comments. The tool bundles the component code and renders it in a portable HTML format.
@@ -476,11 +477,11 @@ esbuild.build({
 - Component library submission review
 - Accessibility and visual testing
 
-## Configuration
+## Plugin Configuration
 
-The package requires no configuration. It automatically registers with the Token Ring application when installed.
+The package uses a minimal configuration schema that accepts no custom configuration options.
 
-### Plugin Registration
+**Plugin Registration**:
 
 ```typescript
 import {TokenRingPlugin} from "@tokenring-ai/app";
@@ -503,20 +504,20 @@ export default {
 } satisfies TokenRingPlugin<typeof configSchema>;
 ```
 
-### Required Services
-
-The package automatically requires and uses the following services:
-
-- **ChatService**: Required for tool registration
-- **FileSystemService**: Required by getFileFeedback and reactFeedback for file operations
-- **Agent**: Required for logging service access via `agent.requireServiceByType()`
-
 ### Configuration Schema
 
 ```typescript
-export const FeedbackConfigSchema = z.object({});
+const packageConfigSchema = z.object({});
 // No configuration options available
 ```
+
+### Required Services
+
+The package requires the following services to be registered:
+
+- **ChatService**: Required for tool registration
+- **FileSystemService**: Required by getFileFeedback and reactFeedback for file operations
+- **Agent**: Required for logging and service access
 
 ## Key Features
 
@@ -556,6 +557,251 @@ export const FeedbackConfigSchema = z.object({});
 - **Service Access**: Uses agent's service requirement pattern
 - **Logging Integration**: Message logging with tool name prefixes
 - **Type Safety**: Full TypeScript support with Zod schema validation
+
+## Tools
+
+### askQuestions Tool
+
+**Tool Name**: `ask_questions`  
+**Display Name**: `Feedback/askQuestions`  
+**Description**: Interactive questioning tool for human-in-the-loop workflows
+
+**Schema**:
+
+```typescript
+{
+  message: string,                           // Description of the problem or uncertainty
+  questions: Array<{
+    question: string,                        // Question to ask the user
+    choices: string[]                       // Suggested choices
+  }>
+}
+```
+
+**Implementation**:
+
+```typescript
+export default {
+  name: "ask_questions",
+  displayName: "Feedback/askQuestions",
+  description: "The ask_questions tool is to be called when feedback from the user is necessary...",
+  inputSchema: z.object({
+    message: z.string(),
+    questions: z.array(z.object({
+      question: z.string(),
+      choices: z.array(z.string())
+    }))
+  }),
+  execute: async (params, agent) => {
+    // Implementation details
+  }
+} satisfies TokenRingToolDefinition<typeof inputSchema>;
+```
+
+### getFileFeedback Tool
+
+**Tool Name**: `feedback_getFileFeedback`  
+**Display Name**: `Feedback/getFileFeedback`  
+**Description**: Browser-based file content review tool
+
+**Schema**:
+
+```typescript
+{
+  filePath: string,          // Path where content will be saved if accepted
+  content: string,           // The file content to review
+  contentType?: string       // MIME type (defaults to text/plain)
+}
+```
+
+**Implementation**:
+
+```typescript
+export default {
+  name: "feedback_getFileFeedback",
+  displayName: "Feedback/getFileFeedback",
+  description: "This tool allows you to present the content of a file to the user...",
+  inputSchema: z.object({
+    filePath: z.string(),
+    content: z.string(),
+    contentType: z.string().default("text/plain")
+  }),
+  execute: async (params, agent) => {
+    // Implementation details
+  }
+} satisfies TokenRingToolDefinition<typeof inputSchema>;
+```
+
+### reactFeedback Tool
+
+**Tool Name**: `feedback_react-feedback`  
+**Display Name**: `Feedback/react-feedback`  
+**Description**: React component preview and review tool
+
+**Schema**:
+
+```typescript
+{
+  code: string,              // Complete TSX/JSX code of React component
+  file?: string              // Component filename (optional)
+}
+```
+
+**Implementation**:
+
+```typescript
+export default {
+  name: "feedback_react-feedback",
+  displayName: "Feedback/react-feedback",
+  description: "This tool lets you solicit feedback from the user...",
+  inputSchema: z.object({
+    code: z.string(),
+    file: z.string().optional()
+  }),
+  execute: async (params, agent) => {
+    // Implementation details
+  }
+} satisfies TokenRingToolDefinition<typeof inputSchema>;
+```
+
+## RPC Endpoints
+
+This package does not define any RPC endpoints.
+
+## Chat Commands
+
+This package does not define any chat commands.
+
+## Agent Configuration
+
+The feedback package integrates with the Token Ring agent system through its tools. The tools expect an Agent instance to access services, logging, and human interaction capabilities.
+
+### Required Services
+
+The following services must be available for the tools to function:
+
+- **ChatService**: Required for tool registration (handled by plugin)
+- **FileSystemService**: Required by getFileFeedback and reactFeedback for file operations
+- **Agent**: Required for logging, service access, and human interaction via `askQuestion` API
+
+### Service Access Pattern
+
+```typescript
+async function execute(params: unknown, agent: Agent) {
+  // Access required services
+  const fileSystem = agent.requireServiceByType(FileSystemService);
+  
+  // Use agent logging
+  agent.infoMessage(`[tool-name] Operation started`);
+  
+  // Use agent question API
+  const response = await agent.askQuestion({...});
+}
+```
+
+## Dependencies
+
+### Runtime Dependencies
+
+- `zod@^4.3.6` - Schema validation
+- `esbuild@^0.27.3` - React component bundling
+- `esbuild-plugin-external-global@^1.0.1` - External global plugin for esbuild
+- `express@^5.2.1` - Web server for preview
+- `marked@^17.0.3` - Markdown rendering
+- `date-fns@^4.1.0` - Date formatting
+- `date-fns-tz@^3.2.0` - Time zone support
+- `open@^11.0.0` - Browser launcher
+- `react@^19.2.4` - React library
+- `react-dom@^19.2.4` - React DOM library
+
+### Development Dependencies
+
+- `typescript@^5.9.3` - TypeScript compiler
+- `@types/express@^5.0.6` - Express type definitions
+- `vitest@^4.0.18` - Testing framework
+
+### Token Ring Dependencies
+
+- `@tokenring-ai/app@0.2.0` - Base application framework
+- `@tokenring-ai/chat@0.2.0` - Chat service
+- `@tokenring-ai/agent@0.2.0` - Agent system and question schema
+- `@tokenring-ai/filesystem@0.2.0` - File system service
+
+## Error Handling
+
+All tools follow consistent error handling patterns:
+
+### Parameter Validation
+
+```typescript
+// askQuestions: Validates message and questions are provided
+if (!message || !questions) {
+  throw new Error(`[ask_questions] message and questions are required parameters.`);
+}
+
+// getFileFeedback: Validates filePath and content are provided
+if (!filePath || !content) {
+  throw new Error(
+    `[feedback_getFileFeedback] filePath and content are required parameters.`
+  );
+}
+
+// reactFeedback: Validates code is provided
+if (!code) {
+  throw new Error(`[feedback_react-feedback] code is required parameter.`);
+}
+```
+
+### Graceful Failure
+
+- Invalid input parameters: Throws errors with descriptive messages
+- File system operations: Handle errors with logging without crashing
+- Server startup: Log errors and fall back to URL reporting
+- Cleanup operations: Caught errors are logged but don't stop execution
+
+### Error Types
+
+1. **Validation Errors**: Missing required parameters or invalid input types
+2. **File System Errors**: File I/O operations, permissions, path validation
+3. **Network Errors**: Server startup, browser launch, HTTP requests
+4. **Build Errors**: React component bundling failures (esbuild errors)
+5. **Agent Errors**: Service integration issues
+
+## Integration Patterns
+
+### Service Access
+
+```typescript
+// Access required services
+const fileSystem = agent.requireServiceByType(FileSystemService);
+
+// Use agent logging for tool execution
+agent.infoMessage(`[tool-name] Operation started`);
+agent.infoMessage(`[tool-name] File review server running at ${url}`);
+agent.errorMessage(`[tool-name] Operation failed:`, error);
+```
+
+### Tool Registration
+
+Tools are registered via the plugin system:
+
+```typescript
+app.waitForService(ChatService, chatService =>
+  chatService.addTools(tools)
+);
+```
+
+Where `tools` exports individual tool definitions with the proper structure:
+
+```typescript
+export default {
+  name: "tool_name",
+  displayName: "Category/name",
+  description: "Tool description",
+  inputSchema: z.object({ ... }),
+  execute: async (params, agent) => { ... }
+};
+```
 
 ## Usage Examples
 
@@ -679,71 +925,6 @@ const codeResult = await reactFeedback.execute({
 // Continue only if all approvals are received
 if (planResult.status === "accepted" && codeResult.status === "accept") {
   // Proceed with implementation
-}
-```
-
-## Integration with Token Ring
-
-### Service Access Pattern
-
-```typescript
-async function execute(params: unknown, agent: Agent) {
-  // Access required services
-  const fileSystem = agent.requireServiceByType(FileSystemService);
-
-  // Use agent logging
-  agent.infoMessage(`[tool-name] Operation started: ${JSON.stringify(params)}`);
-  agent.infoMessage(`[tool-name] File review server running at: ${url}`);
-  agent.errorMessage(`[tool-name] Operation failed:`, error);
-
-  // Use agent question API
-  const response = await agent.askQuestion({
-    message: "Please provide your feedback",
-    question: {
-      type: "form",
-      sections: [{
-        name: "Feedback",
-        fields: {
-          "Option": {
-            type: "treeSelect",
-            label: "Select option",
-            minimumSelections: 1,
-            maximumSelections: 1,
-            defaultValue: ["__other__"],
-            tree: [
-              {name: "Option 1", value: "Option 1"},
-              {name: "Other (Freeform)", value: "__other__"}
-            ]
-          }
-        }
-      }]
-    }
-  });
-}
-```
-
-### Tool Registration
-
-The plugin automatically exports tools that are registered with the ChatService:
-
-```typescript
-// Resources from tools.ts
-export default {
-  askQuestions,
-  getFileFeedback,
-  reactFeedback,
-};
-```
-
-Each tool has the standard TokenRingToolDefinition structure:
-
-```typescript
-{
-  name: "tool_name",
-  displayName: "Category/name",
-  description: "Tool description",
-  inputSchema: z.object({ ... }),
-  execute: async (params, agent) => { ... }
 }
 ```
 
@@ -906,6 +1087,35 @@ describe("Feedback Integration Tests", () => {
 
 Local testing with browser automation when needed for visual components.
 
+## Development
+
+### Building
+
+```bash
+# Build the package TypeScript files (no Emit)
+bun run build
+```
+
+### Testing
+
+```bash
+# Run tests
+bun run test
+
+# Run tests in watch mode
+bun run test:watch
+
+# Run tests with coverage
+bun run test:coverage
+```
+
+### Testing Structure
+
+- Uses vitest for testing
+- Tests are located in `**/*.test.ts` files
+- Node environment for test execution
+- Isolated test runs with globals enabled
+
 ## Related Components
 
 ### Dependent Packages
@@ -928,3 +1138,7 @@ Follows the general plugin documentation pattern:
 - Implementation details for internal architectural patterns
 - Service integration examples
 - Error handling patterns
+
+## License
+
+MIT License - see LICENSE file for details.

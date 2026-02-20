@@ -2,7 +2,7 @@
 
 ## Overview
 
-The `@tokenring-ai/memory` package provides short-term memory management functionality for Token Ring AI agents. It enables agents to store and recall information during chat sessions, maintaining context across interactions with a simple, effective memory system. Memories are stored in agent state and service methods for programmatic access. This package integrates with the TokenRing agent system via tools, chat commands, and scripting functions.
+The `@tokenring-ai/memory` package provides short-term memory management functionality for Token Ring AI agents. It enables agents to store and recall information during chat sessions, maintaining context across interactions with a simple, effective memory system. Memories are stored in agent state and service methods for programmatic access. This package integrates with the TokenRing agent system via tools, chat commands, context handlers, and scripting functions.
 
 ## Key Features
 
@@ -10,6 +10,7 @@ The `@tokenring-ai/memory` package provides short-term memory management functio
 - **State Management**: Memories stored in agent state with serialization and persistence support
 - **Service-Based Access**: Programmatic access to memories through ShortTermMemoryService
 - **Interactive Management**: Chat commands for interactive memory operations
+- **Context Injection**: Automatic injection of memories into agent context via context handlers
 - **Scripting Integration**: Native functions for scripting workflows
 - **Memory Manipulation**: Full CRUD operations including add, remove, replace, and update
 - **Sub-agent Support**: State transfer capability between parent and child agents
@@ -39,6 +40,7 @@ class ShortTermMemoryService implements TokenRingService {
   addMemory(memory: string, agent: Agent): void;
   clearMemory(agent: Agent): void;
   spliceMemory(index: number, count: number, agent: Agent, ...items: string[]): void;
+  getMemories(input: string, chatConfig: unknown, params: {}, agent: Agent): AsyncGenerator<ContextItem>;
 }
 ```
 
@@ -66,6 +68,15 @@ class ShortTermMemoryService implements TokenRingService {
   - Removing items: `spliceMemory(0, 1, agent)` — Remove first item
   - Replacing items: `spliceMemory(0, 1, agent, 'New memory')` — Replace first item with new content
   - Inserting items: `spliceMemory(0, 0, agent, 'New memory')` — Insert at beginning
+
+- `getMemories(input: string, chatConfig: unknown, params: {}, agent: Agent): AsyncGenerator<ContextItem>` — Yields memories as context items for agent processing. This method is used by the context handler system to automatically inject memories into agent context.
+
+  ```typescript
+  for await (const memory of memoryService.getMemories("", {}, {}, agent)) {
+    console.log(memory.content);
+    // Returns each memory as a ContextItem with role "user"
+  }
+  ```
 
 ### MemoryState
 
@@ -225,6 +236,55 @@ The `/memory` command provides interactive memory management through chat.
 # [memory] Cleared all memory items
 ```
 
+## Context Handlers
+
+The memory package provides a context handler for automatic memory injection into agent context.
+
+### short-term-memory
+
+This context handler yields all stored memories as context items with role "user", making them available to the agent in all future interactions.
+
+```typescript
+import shortTermMemory from '@tokenring-ai/memory/contextHandlers/shortTermMemory';
+
+export default async function* getContextItems(
+  input: string,
+  chatConfig: ParsedChatConfig,
+  params: {},
+  agent: Agent
+): AsyncGenerator<ContextItem> {
+  const state = agent.getState(MemoryState);
+  for (const memory of state.memories ?? []) {
+    yield {
+      role: "user",
+      content: memory,
+    };
+  }
+}
+```
+
+**Usage in Plugin Registration**
+
+The context handler is automatically registered when the memory plugin is installed:
+
+```typescript
+import memoryPlugin from '@tokenring-ai/memory/plugin';
+app.installPlugin(memoryPlugin);
+```
+
+**Context Integration**
+
+Memories are automatically injected into the agent's context before processing each request:
+
+```typescript
+// Context structure after adding memories:
+// [
+//   ...previous conversation,
+//   { role: "user", content: "User prefers coffee over tea" },
+//   { role: "user", content: "Meeting scheduled for 2 PM tomorrow" }
+// ]
+```
+
 ## Scripting Functions
 
 The package registers global scripting functions when the ScriptingService is available. These functions are called using native script execution.
@@ -299,7 +359,8 @@ When installed as a TokenRing plugin (`app.installPlugin(memoryPlugin)`), the fo
 2. **Tool Registration**: `memory_add` tool is registered with `ChatService`
 3. **Command Registration**: `/memory` command is registered with `AgentCommandService`
 4. **Scripting Functions**: Global functions `addMemory` and `clearMemory` are registered with `ScriptingService`
-5. **State Initialization**: MemoryState is initialized on agent attachment
+5. **Context Handlers**: `short-term-memory` context handler is registered with `ChatService`
+6. **State Initialization**: MemoryState is initialized on agent attachment
 
 ```typescript
 // Plugin registration
@@ -326,6 +387,11 @@ memoryService.addMemory('Meeting at 3 PM tomorrow', agent);
 // Check memory state
 const state = agent.getState(MemoryState);
 console.log(state.show());
+
+// Get memories as context items
+for await (const memory of memoryService.getMemories("", {}, {}, agent)) {
+  console.log(memory.content);
+}
 ```
 
 ### Memory Manipulation
@@ -387,6 +453,21 @@ console.log(subState.show());
 // ]
 ```
 
+### Context Handler Integration
+
+```typescript
+// Context handler is automatically registered with chat service
+// Memories are automatically injected into agent context
+
+// Access the context handler directly if needed
+const contextHandler = chatService.getContextHandler('short-term-memory');
+
+// Get memories as context items
+for await (const memory of contextHandler("", {}, {}, agent)) {
+  console.log(memory.role, memory.content);
+}
+```
+
 ### Scripting Integration
 
 ```typescript
@@ -423,10 +504,11 @@ The memory service integrates with the agent framework through:
 
 ### Chat Service
 
-Memory tools are registered with the chat service for programmatic access:
+Memory tools and context handlers are registered with the chat service:
 
 ```typescript
 chatService.addTools({ addMemory, ... });
+chatService.registerContextHandlers({ 'short-term-memory': shortTermMemory, ... });
 ```
 
 ### Agent Command Service
@@ -489,6 +571,8 @@ pkg/memory/
 ├── ShortTermMemoryService.ts             # Service implementation providing memory methods
 ├── state/
 │   └── memoryState.ts                    # Agent state slice for memory storage and serialization
+├── contextHandlers/
+│   └── shortTermMemory.ts                # Context handler for injecting memories into agent context
 ├── tools/
 │   ├── addMemory.ts                      # Tool to add memory items
 │   └── tools.ts                          # Exports tools array
@@ -508,6 +592,7 @@ pkg/memory/
 4. **Use Index Carefully**: Remember that indices are 0-based in memory operations
 5. **Validate Input**: Use tool and command functions for proper validation
 6. **Transfer State Appropriately**: Only transfer state between related parent/child agents
+7. **Leverage Context Handlers**: Use the context handler system for automatic memory injection rather than manual injection
 
 ## Related Components
 

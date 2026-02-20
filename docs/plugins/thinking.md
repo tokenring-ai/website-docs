@@ -23,19 +23,57 @@ The `@tokenring-ai/thinking` package provides a comprehensive suite of 13 struct
 
 Main service class that manages reasoning sessions and state persistence.
 
-- `attach(agent: Agent): Promise<void>`: Initializes thinking state for an agent
-- `processStep(toolName: string, args: any, agent: Agent, processor: (session: ReasoningSession, args: any) => any): any`: Processes reasoning steps
-- `clearSession(toolName: string, agent: Agent): void`: Clears specific tool session
-- `clearAll(agent: Agent): void`: Clears all reasoning sessions
+```typescript
+import { ThinkingService } from "@tokenring-ai/thinking";
+
+const thinkingService = new ThinkingService();
+```
+
+**Properties:**
+
+| Property | Type | Description |
+|----------|------|-------------|
+| `name` | `string` | Service name ("ThinkingService") |
+| `description` | `string` | Service description ("Provides structured reasoning functionality") |
+
+**Methods:**
+
+| Method | Parameters | Returns | Description |
+|--------|------------|---------|-------------|
+| `attach` | `agent: Agent` | `void` | Initializes ThinkingState for agent |
+| `processStep` | `toolName: string`, `args: any`, `agent: Agent`, `processor: (session, args) => any` | `any` | Processes step in reasoning session |
+| `clearSession` | `toolName: string`, `agent: Agent` | `void` | Clears specific tool session |
+| `clearAll` | `agent: Agent` | `void` | Clears all reasoning sessions |
 
 ### ThinkingState
 
 Agent state slice that manages reasoning session persistence.
 
-- `serialize(): object`: Serializes the current session state for storage
-- `deserialize(data: any): void`: Deserializes state from serialized data
-- `reset(what: ResetWhat[]): void`: Resets specified parts of the state (e.g., clears sessions when 'chat' is included)
-- `show(): string[]`: Returns summary of active sessions (step counts and completion status)
+```typescript
+import { ThinkingState } from "@tokenring-ai/thinking";
+
+// Automatically attached to agents by ThinkingService
+const state = agent.getState(ThinkingState);
+```
+
+**Properties:**
+
+| Property | Type | Description |
+|----------|------|-------------|
+| `name` | `string` | State slice name ("ThinkingState") |
+| `serializationSchema` | `ZodSchema` | Zod schema for serialization |
+| `sessions` | `Map<string, ReasoningSession>` | Active reasoning sessions |
+
+**Methods:**
+
+| Method | Parameters | Returns | Description |
+|--------|------------|---------|-------------|
+| `constructor` | `data: Partial<ThinkingState>` | `void` | Create new state instance with optional initial data |
+| `transferStateFromParent` | `parent: Agent` | `void` | Transfer state from parent agent |
+| `reset` | `what: ResetWhat[]` | `void` | Reset state based on flags (e.g., `['chat']` clears sessions) |
+| `serialize` | - | `z.output<typeof serializationSchema>` | Returns serialized state object |
+| `deserialize` | `data: z.output<typeof serializationSchema>` | `void` | Load state from serialized data |
+| `show` | - | `string[]` | Returns session summary array |
 
 ### ReasoningSession
 
@@ -43,251 +81,154 @@ Individual reasoning session state interface.
 
 ```typescript
 interface ReasoningSession {
-  tool: string;
-  problem: string;
-  stepNumber: number;
-  data: Record<string, any>;
-  completedSteps: string[];
-  complete: boolean;
+  tool: string;                  // Tool name
+  problem: string;               // Problem being investigated
+  stepNumber: number;            // Current step count
+  data: Record<string, any>;     // Tool-specific data storage
+  completedSteps: string[];      // Steps completed
+  complete: boolean;             // Whether reasoning is complete
 }
 ```
 
-## Services and APIs
+**Properties:**
 
-### ThinkingService API
+| Property | Type | Description |
+|----------|------|-------------|
+| `tool` | `string` | Tool name (e.g., "scientific-method-reasoning") |
+| `problem` | `string` | Problem being investigated |
+| `stepNumber` | `number` | Current step count in the session |
+| `data` | `Record<string, any>` | Tool-specific data storage |
+| `completedSteps` | `string[]` | Array of completed step names |
+| `complete` | `boolean` | Whether reasoning is complete |
 
-| Method | Parameters | Description |
-|--------|------------|-------------|
-| `attach` | `agent: Agent` | Initializes ThinkingState for agent |
-| `processStep` | `toolName: string`, `args: any`, `agent: Agent`, `processor: Function` | Processes step in reasoning session |
-| `clearSession` | `toolName: string`, `agent: Agent` | Clears specific tool session |
-| `clearAll` | `agent: Agent` | Clears all reasoning sessions |
+## Services
 
-### ThinkingState API
-
-| Method | Parameters | Description |
-|--------|------------|-------------|
-| `serialize` | - | Returns serialized state object |
-| `deserialize` | `data: any` | Loads state from serialized data |
-| `reset` | `what: ResetWhat[]` | Resets state based on reset flags |
-| `show` | - | Returns session summary array |
-
-## Commands and Tools
-
-### 1. Scientific Method (`scientific-method-reasoning`)
-
-Enforces strict scientific method reasoning with 7 core steps:
+### ThinkingService Implementation
 
 ```typescript
-await agent.executeTool('scientific-method-reasoning', {
-  problem: "Why does water boil at different temperatures at different altitudes?",
-  step: "question_observation",
-  content: "Water boils at 100°C at sea level but at lower temperatures at higher altitudes.",
-  nextThoughtNeeded: true
-});
+export default class ThinkingService implements TokenRingService {
+  readonly name = "ThinkingService";
+  description = "Provides structured reasoning functionality";
+
+  attach(agent: Agent): void {
+    agent.initializeState(ThinkingState, {});
+  }
+
+  processStep(
+    toolName: string,
+    args: any,
+    agent: Agent,
+    processor: (session: ReasoningSession, args: any) => any
+  ): any {
+    const state = agent.getState(ThinkingState);
+    let session = state.sessions.get(toolName);
+
+    if (!session) {
+      if (!args.problem) {
+        throw new Error("Problem must be defined on first call");
+      }
+      session = {
+        tool: toolName,
+        problem: args.problem,
+        stepNumber: 0,
+        data: {},
+        completedSteps: [],
+        complete: false,
+      };
+    }
+
+    agent.mutateState(ThinkingState, (s: ThinkingState) => {
+      session!.stepNumber++;
+      if (args.step && !session!.completedSteps.includes(args.step)) {
+        session!.completedSteps.push(args.step);
+      }
+      const result = processor(session!, args);
+      session!.complete = args.nextThoughtNeeded === false || args.complete === true;
+      s.sessions.set(toolName, session!);
+      return result;
+    });
+
+    return agent.getState(ThinkingState).sessions.get(toolName);
+  }
+
+  clearSession(toolName: string, agent: Agent): void {
+    agent.mutateState(ThinkingState, (state: ThinkingState) => {
+      state.sessions.delete(toolName);
+    });
+  }
+
+  clearAll(agent: Agent): void {
+    agent.mutateState(ThinkingState, (state: ThinkingState) => {
+      state.sessions.clear();
+    });
+  }
+}
 ```
 
-**Available steps:** question_observation, background_research, hypothesis_formulation, prediction, testing_experimentation, analysis, conclusion
+## Provider Documentation
 
-### 2. Socratic Dialogue (`socratic-dialogue`)
+This package does not implement a provider architecture.
 
-Questions assumptions through structured inquiry:
+## RPC Endpoints
 
-```typescript
-await agent.executeTool('socratic-dialogue', {
-  problem: "Is democracy the best form of government?",
-  step: "question_formulation",
-  content: "What makes a form of government 'best'?",
-  nextThoughtNeeded: true
-});
-```
+This package does not define any RPC endpoints.
 
-**Available steps:** question_formulation, assumption_identification, challenge_assumption, explore_contradiction, refine_understanding, synthesis
+## Chat Commands
 
-### 3. Design Thinking (`design-thinking`)
-
-Human-centered design process:
-
-```typescript
-await agent.executeTool('design-thinking', {
-  problem: "Design a better mobile app for task management",
-  step: "empathize",
-  content: "Users need simple, intuitive task organization with minimal cognitive load",
-  nextThoughtNeeded: true
-});
-```
-
-**Available steps:** empathize, define, ideate, prototype, test, iterate
-
-### 4. Root Cause Analysis (`root-cause-analysis`)
-
-5 Whys methodology for finding fundamental causes:
-
-```typescript
-await agent.executeTool('root-cause-analysis', {
-  problem: "Customer complaints about slow response times",
-  step: "ask_why",
-  content: "Why are response times slow? Because support team is understaffed",
-  nextThoughtNeeded: true
-});
-```
-
-**Available steps:** state_problem, ask_why, identify_root_cause, propose_solution
-
-### 5. SWOT Analysis (`swot-analysis`)
-
-Strategic planning through strengths, weaknesses, opportunities, threats:
-
-```typescript
-await agent.executeTool('swot-analysis', {
-  problem: "Expanding our startup into international markets",
-  step: "strengths",
-  content: "We have strong technical expertise and proven product-market fit",
-  nextThoughtNeeded: true
-});
-```
-
-**Available steps:** define_objective, strengths, weaknesses, opportunities, threats, synthesize_strategy
-
-### 6. Pre-Mortem (`pre-mortem`)
-
-Imagines failure to prevent it:
-
-```typescript
-await agent.executeTool('pre-mortem', {
-  problem: "Launching our new product feature",
-  step: "list_failure_reasons",
-  content: "Users don't understand how to use the new feature",
-  likelihood: "high",
-  nextThoughtNeeded: true
-});
-```
-
-**Available steps:** define_goal, assume_failure, list_failure_reasons, assess_likelihood, develop_mitigations, revise_plan
-
-### 7. Dialectical Reasoning (`dialectical-reasoning`)
-
-Considers opposing views:
-
-```typescript
-await agent.executeTool('dialectical-reasoning', {
-  problem: "Should we prioritize growth or profitability?",
-  step: "state_thesis",
-  content: "We should prioritize growth to capture market share",
-  nextThoughtNeeded: true
-});
-```
-
-**Available steps:** state_thesis, develop_antithesis, identify_contradictions, find_common_ground, synthesize
-
-### 8. First Principles (`first-principles`)
-
-Breaks down to fundamental truths:
-
-```typescript
-await agent.executeTool('first-principles', {
-  problem: "How can we reduce battery costs?",
-  step: "identify_assumptions",
-  content: "Assumption: Batteries must use current lithium-ion technology",
-  nextThoughtNeeded: true
-});
-```
-
-**Available steps:** state_problem, identify_assumptions, challenge_assumptions, break_to_fundamentals, rebuild_from_basics, novel_solution
-
-### 9. Decision Matrix (`decision-matrix`)
-
-Structured multi-criteria decision making:
-
-```typescript
-await agent.executeTool('decision-matrix', {
-  problem: "Which cloud provider should we choose?",
-  step: "list_options",
-  content: "AWS",
-  nextThoughtNeeded: true
-});
-```
-
-**Available steps:** define_decision, list_options, define_criteria, weight_criteria, score_options, calculate_decide
-
-### 10. Lateral Thinking (`lateral-thinking`)
-
-Creative problem reframing:
-
-```typescript
-await agent.executeTool('lateral-thinking', {
-  problem: "How to reduce office space usage?",
-  step: "generate_stimulus",
-  content: "Coffee shops have high productivity per square foot",
-  nextThoughtNeeded: true
-});
-```
-
-**Available steps:** state_problem, generate_stimulus, force_connection, explore_tangent, extract_insight, apply_to_problem
-
-### 11. Agile Sprint (`agile-sprint`)
-
-Iterative development planning:
-
-```typescript
-await agent.executeTool('agile-sprint', {
-  problem: "Build a customer portal in 2 weeks",
-  step: "break_into_stories",
-  content: "User authentication module",
-  estimate: 3,
-  nextThoughtNeeded: true
-});
-```
-
-**Available steps:** define_goal, break_into_stories, estimate_effort, prioritize, plan_sprint, execute, review, retrospect
-
-### 12. Feynman Technique (`feynman-technique`)
-
-Learning through explanation:
-
-```typescript
-await agent.executeTool('feynman-technique', {
-  problem: "Understand blockchain technology",
-  step: "explain_simply",
-  content: "Blockchain is like a shared notebook that multiple people can write in, but no one can erase what's already written",
-  nextThoughtNeeded: true
-});
-```
-
-**Available steps:** choose_concept, explain_simply, identify_gaps, review_source, simplify_further, use_analogies
-
-### 13. Six Thinking Hats (`six-thinking-hats`)
-
-Parallel thinking from different perspectives:
-
-```typescript
-await agent.executeTool('six-thinking-hats', {
-  problem: "Should we implement mandatory remote work?",
-  step: "think",
-  hat: "white",
-  content: "Facts: 70% of employees prefer remote work options",
-  nextThoughtNeeded: true
-});
-```
-
-**Available hats:** white, red, black, yellow, green, blue
-
-**Available steps:** think, synthesize
+This package does not define any chat commands. Tools are accessed via `agent.executeTool()`.
 
 ## Configuration
 
 No additional configuration required. The package uses sensible defaults and automatically integrates with the Token Ring framework.
 
-## Usage Examples
-
-### Basic Integration
+### Plugin Configuration
 
 ```typescript
-// Execute a scientific method reasoning session
-const result = await agent.executeTool('scientific-method-reasoning', {
-  problem: "What causes climate change?",
+import packageConfigSchema from "@tokenring-ai/thinking/plugin";
+
+// Schema is empty as no configuration is needed
+const schema = z.object({});
+```
+
+## Integration
+
+The package automatically integrates with the Token Ring application through the plugin system:
+
+```typescript
+import thinkingPlugin from "@tokenring-ai/thinking/plugin";
+
+// Automatically registered in plugin.ts
+// No manual registration needed
+```
+
+### Service Registration
+
+The ThinkingService is automatically registered with the application's service registry and can be accessed by agents:
+
+```typescript
+const thinkingService = agent.requireServiceByType(ThinkingService);
+```
+
+### Tool Registration
+
+All 13 reasoning tools are automatically registered with the chat system:
+
+```typescript
+await agent.executeTool('scientific-method-reasoning', {...});
+await agent.executeTool('first-principles', {...});
+// ... etc for all 13 tools
+```
+
+## Usage Examples
+
+### Basic Usage with Scientific Method
+
+```typescript
+// First call - initializes session
+const result1 = await agent.executeTool('scientific-method-reasoning', {
+  problem: "Why does water boil at different temperatures at different altitudes?",
   step: "question_observation",
-  content: "Global temperatures have risen significantly since the 1980s",
+  content: "Water boils at 100°C at sea level but at lower temperatures at higher altitudes.",
   nextThoughtNeeded: true
 });
 
@@ -297,13 +238,21 @@ const result2 = await agent.executeTool('scientific-method-reasoning', {
   content: "Historical temperature records show consistent warming trend",
   nextThoughtNeeded: true
 });
+
+// Final step - completes the session
+const result3 = await agent.executeTool('scientific-method-reasoning', {
+  step: "conclusion",
+  content: "Water boils at lower temperatures at higher altitudes due to reduced atmospheric pressure.",
+  nextThoughtNeeded: false,
+  final_answer: "Reduced atmospheric pressure at higher altitudes causes water to boil at lower temperatures."
+});
 ```
 
-### Multi-Tool Workflow
+### Multi-Tool Workflow with Decision Matrix
 
 ```typescript
-// Use decision matrix to evaluate cloud providers
-const decisionResult = await agent.executeTool('decision-matrix', {
+// Define decision
+await agent.executeTool('decision-matrix', {
   problem: "Which cloud provider should we choose?",
   step: "define_decision",
   content: "Select the most effective cloud provider for our project",
@@ -323,7 +272,7 @@ await agent.executeTool('decision-matrix', {
   nextThoughtNeeded: true
 });
 
-// Define criteria
+// Define criteria with weights
 await agent.executeTool('decision-matrix', {
   step: "define_criteria",
   content: "Performance",
@@ -363,81 +312,54 @@ const finalResult = await agent.executeTool('decision-matrix', {
 });
 ```
 
-## API Reference
-
-### ThinkingService
+### Using Design Thinking
 
 ```typescript
-class ThinkingService implements TokenRingService {
-  name: string = "ThinkingService";
-  description: string = "Provides structured reasoning functionality";
+// Empathize phase
+await agent.executeTool('design-thinking', {
+  problem: "Improve user onboarding flow",
+  step: "empathize",
+  content: "Users feel overwhelmed during first-time setup",
+  nextThoughtNeeded: true
+});
 
-  async attach(agent: Agent): Promise<void>;
-  processStep(toolName: string, args: any, agent: Agent, processor: (session: ReasoningSession, args: any) => any): any;
-  clearSession(toolName: string, agent: Agent): void;
-  clearAll(agent: Agent): void;
-}
+// Define problem
+await agent.executeTool('design-thinking', {
+  step: "define",
+  content: "Users need a simplified, step-by-step onboarding experience",
+  nextThoughtNeeded: true
+});
+
+// Ideate solutions
+await agent.executeTool('design-thinking', {
+  step: "ideate",
+  content: "Create a guided tour with interactive elements",
+  nextThoughtNeeded: true
+});
+
+// Prototype solution
+await agent.executeTool('design-thinking', {
+  step: "prototype",
+  content: "Create a Figma prototype with onboarding flow",
+  nextThoughtNeeded: true
+});
+
+// Test prototype
+await agent.executeTool('design-thinking', {
+  step: "test",
+  content: "User testing shows 40% improvement in completion rate",
+  nextThoughtNeeded: true
+});
+
+// Iterate based on feedback
+await agent.executeTool('design-thinking', {
+  step: "iterate",
+  content: "Add video tutorials and reduce required steps by 50%",
+  nextThoughtNeeded: false
+});
 ```
 
-### ThinkingState
-
-```typescript
-class ThinkingState implements AgentStateSlice {
-  name: string = "ThinkingState";
-  sessions: Map<string, ReasoningSession> = new Map();
-
-  serialize(): object;
-  deserialize(data: any): void;
-  reset(what: ResetWhat[]): void;
-  show(): string[];
-}
-```
-
-### ReasoningSession
-
-```typescript
-interface ReasoningSession {
-  tool: string;
-  problem: string;
-  stepNumber: number;
-  data: Record<string, any>;
-  completedSteps: string[];
-  complete: boolean;
-}
-```
-
-## Integration
-
-The plugin automatically registers with the Token Ring application through the plugin system:
-
-```typescript
-import thinkingPlugin from "@tokenring-ai/thinking/plugin";
-
-// Automatically registered in plugin.ts
-// No manual registration needed
-```
-
-### Service Registration
-
-The ThinkingService is automatically registered with the application's service registry and can be accessed by agents:
-
-```typescript
-const thinkingService = agent.requireServiceByType(ThinkingService);
-```
-
-### Tool Registration
-
-All 13 reasoning tools are automatically registered with the chat system:
-
-```typescript
-await agent.executeTool('scientific-method-reasoning', {...});
-await agent.executeTool('first-principles', {...});
-// ... etc for all 13 tools
-```
-
-## Monitoring and Debugging
-
-- **Session Monitoring**: Use `agent.getState(ThinkingState).show()` to view active sessions and their progress:
+### Checking Session Progress
 
 ```typescript
 const state = agent.getState(ThinkingState);
@@ -445,31 +367,180 @@ console.log(state.show());
 // Output: ["Active Sessions: 1", "  scientific-method-reasoning: 3 steps, in progress"]
 ```
 
-- **Error Handling**: All tools validate inputs using Zod schemas and throw descriptive errors on invalid arguments.
+### Clearing Sessions
 
-- **Debugging Tools**: The `ThinkingState.show()` method provides clear session summaries for debugging.
+```typescript
+// Clear a specific tool's session
+thinkingService.clearSession('scientific-method-reasoning', agent);
 
-## Development
-
-### Testing
-
-```bash
-bun run test
+// Clear all reasoning sessions
+thinkingService.clearAll(agent);
 ```
 
-### Watch Tests
+### State Transfer Between Agents
 
-```bash
-bun run test:watch
+```typescript
+const childAgent = new Agent();
+const parentAgent = new Agent();
+
+// Transfer state from parent to child
+const childThinkingState = new ThinkingState();
+childThinkingState.transferStateFromParent(parentAgent);
+
+// Now child agent has the same reasoning sessions as parent
 ```
 
-### Coverage
+### State Serialization and Deserialization
 
-```bash
-bun run test:coverage
+```typescript
+// Serialize state
+const state = agent.getState(ThinkingState);
+const serialized = state.serialize();
+
+// Save to storage (e.g., database, file)
+const savedState = JSON.stringify(serialized);
+
+// Later, deserialize state
+const savedData = JSON.parse(savedState);
+const newState = new ThinkingState(savedData);
 ```
 
-### Package Structure
+### State Reset
+
+```typescript
+const state = agent.getState(ThinkingState);
+
+// Reset only chat-related state
+state.reset(['chat']);
+
+// Reset all state
+state.reset(['all']);
+```
+
+## Best Practices
+
+### Session Management
+
+1. **Always provide problem on first call**: The `problem` field is required on the first call to any tool
+2. **Track step progress**: Use `agent.getState(ThinkingState).show()` to monitor session progress
+3. **Complete sessions properly**: Set `nextThoughtNeeded: false` only when the reasoning is complete
+4. **Clear sessions when done**: Use `clearSession()` or `clearAll()` to free memory
+
+### Tool Selection
+
+1. **Use scientific method** for hypothesis-driven investigations
+2. **Use design thinking** for user-centered problems
+3. **Use decision matrix** for multi-criteria decisions
+4. **Use pre-mortem** for risk analysis
+5. **Use six thinking hats** for comprehensive perspective analysis
+
+### Integration Patterns
+
+1. **Automatic registration**: No manual registration needed - tools are automatically available
+2. **Service access**: Access ThinkingService via `agent.requireServiceByType(ThinkingService)`
+3. **State persistence**: Sessions persist across multiple calls and agent restarts
+
+## Testing
+
+### Unit Tests
+
+The package includes comprehensive unit tests for all tools:
+
+```bash
+# Run all tests
+bun test
+
+# Run tests in watch mode
+bun test --watch
+
+# Run tests with coverage
+bun test --coverage
+```
+
+### Test Coverage
+
+- **ThinkingService**: All service methods tested
+- **ThinkingState**: State management, serialization, and transfer tested
+- **All 13 tools**: Tool execution and state management tested
+- **Integration tests**: Full workflow scenarios tested
+
+### Example Test Pattern
+
+```typescript
+import { describe, it, expect, beforeEach } from "vitest";
+import Agent from "@tokenring-ai/agent";
+import ThinkingService from "../../ThinkingService.ts";
+import { ThinkingState } from "../../state/thinkingState.ts";
+
+describe("ThinkingService", () => {
+  let agent: Agent;
+  let thinkingService: ThinkingService;
+
+  beforeEach(() => {
+    agent = new Agent({
+      workHandler: async (work) => {
+        // Handle work requests
+      }
+    });
+    thinkingService = new ThinkingService();
+    thinkingService.attach(agent);
+  });
+
+  it("processes scientific method steps correctly", async () => {
+    // First call - initialize session
+    const result1 = await thinkingService.processStep(
+      'scientific-method-reasoning',
+      {
+        problem: "Test problem",
+        step: "question_observation",
+        content: "Test content",
+        nextThoughtNeeded: true
+      },
+      agent,
+      (session, args) => {
+        return { type: "json", data: { step: args.step } };
+      }
+    );
+
+    expect(result1).toBeDefined();
+    expect(result1!.stepNumber).toBe(1);
+    expect(result1!.problem).toBe("Test problem");
+
+    // Second call - continue session
+    const result2 = await thinkingService.processStep(
+      'scientific-method-reasoning',
+      {
+        step: "background_research",
+        content: "More content",
+        nextThoughtNeeded: false
+      },
+      agent,
+      (session, args) => {
+        return { type: "json", data: { step: args.step } };
+      }
+    );
+
+    expect(result2!.stepNumber).toBe(2);
+    expect(result2!.complete).toBe(true);
+  });
+});
+```
+
+## Dependencies
+
+### Production Dependencies
+
+- `@tokenring-ai/app` (0.2.0) - Application framework and service management
+- `@tokenring-ai/chat` (0.2.0) - Chat service and tool definitions
+- `@tokenring-ai/agent` (0.2.0) - Agent system and state management
+- `zod` (^4.3.6) - Schema validation
+
+### Development Dependencies
+
+- `vitest` (^4.0.18) - Testing framework
+- `typescript` (^5.9.3) - TypeScript compiler
+
+## Package Structure
 
 ```
 pkg/thinking/
@@ -493,16 +564,50 @@ pkg/thinking/
 │   ├── agileSprint.ts
 │   ├── feynmanTechnique.ts
 │   └── sixThinkingHats.ts
-└── test/                 # Test suite
-    ├── tools.test.ts
-    ├── integration.test.ts
-    ├── firstPrinciples.test.ts
-    ├── decisionMatrix.test.ts
-    ├── scientificMethod.test.ts
-    ├── thinkingState.test.ts
-    └── thinkingService.test.ts
+├── test/                 # Test suite
+│   ├── tools.test.ts
+│   ├── integration.test.ts
+│   ├── firstPrinciples.test.ts
+│   ├── decisionMatrix.test.ts
+│   ├── scientificMethod.test.ts
+│   ├── thinkingState.test.ts
+│   └── thinkingService.test.ts
+└── vitest.config.ts      # Test configuration
 ```
 
-### License
+## Development
+
+### Building
+
+```bash
+bun run build
+```
+
+### Testing
+
+```bash
+bun run test
+```
+
+### Watch Tests
+
+```bash
+bun run test:watch
+```
+
+### Coverage
+
+```bash
+bun run test:coverage
+```
+
+## Related Components
+
+- [@tokenring-ai/agent](agent.md) - Agent system and state management
+- [@tokenring-ai/chat](chat.md) - Chat service and tool definitions
+- [@tokenring-ai/app](token-ring-app.md) - Application framework and service management
+- [@tokenring-ai/utility](utility.md) - Shared utilities and helpers
+
+## License
 
 MIT

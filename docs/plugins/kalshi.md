@@ -9,57 +9,48 @@ This plugin serves as a service that integrates with the TokenRing agent system.
 ## Key Features
 
 - **Series Retrieval**: Get detailed information about market series
-- **Market Listing**: List markets with filtering options
+- **Market Listing**: List markets with filtering options and pagination support
 - **Event Retrieval**: Get detailed information about specific events
-- **Orderbook Access**: Access real-time orderbook data for markets
+- **Orderbook Access**: Access real-time orderbook data for markets (bids only)
 - **Configurable Base URL**: Support for custom Kalshi API endpoints
 - **RESTful API**: Uses standard HTTP requests for API interactions
 - **Error Handling**: Comprehensive error handling for API operations
+- **Agent Tools**: Four pre-built tools for AI workflows
+- **Type Safety**: Full TypeScript support with Zod schemas
 
-## Chat Commands
+## Core Components
 
-The plugin does not currently provide chat commands. All operations are available through tools.
+### KalshiService
 
-## Plugin Configuration
+The core service class that extends `HttpService` and implements `TokenRingService`. It provides methods for querying Kalshi prediction markets.
 
-The plugin is configured through the `kalshi` section in the plugin configuration. It accepts a `KalshiConfigSchema` which defines the base URL for the Kalshi API.
+**Service Properties:**
 
-### Configuration Schema
+| Property | Type | Description |
+|----------|------|-------------|
+| `name` | `string` | Service identifier ("KalshiService") |
+| `description` | `string` | Service description |
+| `baseUrl` | `string` | Kalshi API base URL (defaults to production API) |
 
-```typescript
-import { z } from "zod";
+**Service Methods:**
 
-export const KalshiConfigSchema = z.object({
-  baseUrl: z.string().optional(),
-});
+| Method | Description | Parameters | Return Type |
+|--------|-------------|------------|-------------|
+| `getSeries(ticker)` | Retrieves detailed information about a series | `ticker: string` | `Promise<any>` |
+| `getMarkets(options)` | Lists markets with optional filtering | `KalshiMarketOptions` | `Promise<any>` |
+| `getEvent(ticker)` | Retrieves detailed information about an event | `ticker: string` | `Promise<any>` |
+| `getOrderbook(ticker)` | Retrieves the orderbook for a market | `ticker: string` | `Promise<any>` |
 
-export type KalshiConfig = z.infer<typeof KalshiConfigSchema>;
-```
+### KalshiMarketOptions
 
-### Configuration Example
+Options for filtering and paginating market queries.
 
-```typescript
-const pluginConfig = {
-  kalshi: {
-    baseUrl: "https://api.elections.kalshi.com/trade-api/v2"
-  }
-};
-```
-
-### Plugin Registration
-
-```typescript
-import kalshiPlugin from "@tokenring-ai/kalshi";
-import app from "@tokenring-ai/app";
-
-const app = new app.App();
-
-app.addPlugin(kalshiPlugin, {
-  kalshi: {
-    baseUrl: "https://api.elections.kalshi.com/trade-api/v2"
-  }
-});
-```
+| Property | Type | Description |
+|----------|------|-------------|
+| `series_ticker` | `string` | Filter by series ticker |
+| `status` | `string` | Filter by market status (e.g., "open", "closed") |
+| `limit` | `number` | Number of results to return (max: 200, default: 100) |
+| `cursor` | `string` | Pagination cursor for large result sets |
 
 ## Services
 
@@ -119,38 +110,139 @@ interface KalshiMarketOptions {
 }
 ```
 
+## Provider Documentation
+
+### KalshiService Provider
+
+The `KalshiService` is a `TokenRingService` that can be required by agents using the `requireServiceByType` method.
+
+**Provider Type:**
+
+```typescript
+import KalshiService from "@tokenring-ai/kalshi";
+
+// In an agent context
+const kalshi = agent.requireServiceByType(KalshiService);
+```
+
+**Tool Integration Example:**
+
+```typescript
+import Agent from "@tokenring-ai/agent/Agent";
+import {z} from "zod";
+import KalshiService from "../KalshiService.ts";
+import {TokenRingToolJSONResult} from "@tokenring-ai/chat/schema";
+
+const name = "kalshi_getSeries";
+const inputSchema = z.object({
+  ticker: z.string().min(1).describe("Series ticker (e.g., KXHIGHNY)"),
+});
+
+async function execute(
+  {ticker}: z.output<typeof inputSchema>,
+  agent: Agent
+): Promise<TokenRingToolJSONResult<{series?: any}>> {
+  const kalshi = agent.requireServiceByType(KalshiService);
+
+  if (!ticker) {
+    throw new Error(`[${name}] ticker is required`);
+  }
+
+  agent.infoMessage(`[kalshiGetSeries] Fetching series: ${ticker}`);
+  const series = await kalshi.getSeries(ticker);
+  return {
+    type: "json",
+    data: {series}
+  };
+}
+```
+
+## RPC Endpoints
+
+This package does not define RPC endpoints.
+
+## Chat Commands
+
+This package does not define chat commands. The functionality is exposed through agent tools instead.
+
+## Configuration
+
+### Base URL Configuration
+
+You can configure the service to use different API endpoints:
+
+```typescript
+import KalshiService from "@tokenring-ai/kalshi";
+
+// Production API (default)
+const kalshi = new KalshiService();
+
+// Custom endpoint
+const customKalshi = new KalshiService({
+  baseUrl: "https://custom-api.example.com"
+});
+```
+
+### Plugin Configuration Schema
+
+```typescript
+import {z} from "zod";
+import KalshiConfigSchema from "@tokenring-ai/kalshi/KalshiService.ts";
+
+const packageConfigSchema = z.object({
+  kalshi: KalshiConfigSchema.optional()
+});
+
+// KalshiConfigSchema
+z.object({
+  baseUrl: z.string().optional(),
+});
+```
+
+### Plugin Installation
+
+```typescript
+import TokenRingApp from "@tokenring-ai/app";
+import kalshiPlugin from "@tokenring-ai/kalshi";
+
+const app = new TokenRingApp();
+
+app.install(kalshiPlugin, {
+  kalshi: {
+    baseUrl: "https://api.elections.kalshi.com/trade-api/v2"
+  }
+});
+```
+
 ## Tools
 
 The plugin provides the following tools for Kalshi operations:
 
-### getSeries
+### kalshi_getSeries
 
 Retrieves detailed information about a specific market series.
 
 **Tool Definition:**
 
+- **Name**: `kalshi_getSeries`
+- **Display Name**: `Kalshi/getSeries`
+- **Description**: Get detailed information about a market series
+
+**Input Schema:**
+
 ```typescript
-const name = "kalshi_getSeries";
-const description = "Get detailed information about a market series";
-const inputSchema = z.object({
-  ticker: z.string().describe("The ticker symbol of the series")
-});
+z.object({
+  ticker: z.string().min(1).describe("Series ticker (e.g., KXHIGHNY)")
+})
 ```
 
-**Tool Interface:**
+**Execute Function:**
 
 ```typescript
-{
-  name: "kalshi_getSeries";
-  description: "Get detailed information about a market series";
-  inputSchema: z.object({
-    ticker: string;
-  });
-  execute: (
-    args: { ticker: string },
-    agent: Agent
-  ) => Promise<any>;
-}
+async function execute(
+  {ticker}: z.output<typeof inputSchema>,
+  agent: Agent
+): Promise<TokenRingToolJSONResult<{series?: any}>>
 ```
 
 **Usage:**
@@ -161,48 +253,37 @@ const result = await agent.executeTool("kalshi_getSeries", {
   ticker: "PRES-24-SEC"
 });
 
-console.log("Series details:", result);
+console.log("Series details:", result.series);
 ```
 
-### getMarkets
+### kalshi_getMarkets
 
 Lists Kalshi markets with optional filtering.
 
 **Tool Definition:**
 
+- **Name**: `kalshi_getMarkets`
+- **Display Name**: `Kalshi/getMarkets`
+- **Description**: List Kalshi markets with filtering options
+
+**Input Schema:**
+
 ```typescript
-const name = "kalshi_getMarkets";
-const description = "List Kalshi markets";
-const inputSchema = z.object({
+z.object({
   series_ticker: z.string().optional().describe("Filter by series ticker"),
-  status: z.string().optional().describe("Filter by market status"),
-  limit: z.number().optional().describe("Number of markets to return"),
+  status: z.string().optional().describe("Filter by market status (e.g., 'open', 'closed')"),
+  limit: z.number().int().positive().max(200).optional().describe("Number of markets to return (max: 200)"),
   cursor: z.string().optional().describe("Pagination cursor")
-});
+})
 ```
 
-**Tool Interface:**
+**Execute Function:**
 
 ```typescript
-{
-  name: "kalshi_getMarkets";
-  description: "List Kalshi markets";
-  inputSchema: z.object({
-    series_ticker?: string;
-    status?: string;
-    limit?: number;
-    cursor?: string;
-  });
-  execute: (
-    args: {
-      series_ticker?: string;
-      status?: string;
-      limit?: number;
-      cursor?: string;
-    },
-    agent: Agent
-  ) => Promise<any>;
-}
+async function execute(
+  {series_ticker, status, limit, cursor}: z.output<typeof inputSchema>,
+  agent: Agent
+): Promise<TokenRingToolJSONResult<{markets?: any}>>
 ```
 
 **Usage:**
@@ -215,40 +296,34 @@ const result = await agent.executeTool("kalshi_getMarkets", {
   limit: 10
 });
 
-console.log("Markets found:", result.length);
-result.forEach(market => {
-  console.log(`- ${market.title} (${market.ticker})`);
-});
+console.log("Markets found:", result.markets);
 ```
 
-### getEvent
+### kalshi_getEvent
 
 Retrieves detailed information about a specific event.
 
 **Tool Definition:**
 
+- **Name**: `kalshi_getEvent`
+- **Display Name**: `Kalshi/getEvent`
+- **Description**: Get detailed information about a specific event
+
+**Input Schema:**
+
 ```typescript
-const name = "kalshi_getEvent";
-const description = "Get detailed information about a specific event";
-const inputSchema = z.object({
-  ticker: z.string().describe("The ticker symbol of the event")
-});
+z.object({
+  ticker: z.string().min(1).describe("Event ticker")
+})
 ```
 
-**Tool Interface:**
+**Execute Function:**
 
 ```typescript
-{
-  name: "kalshi_getEvent";
-  description: "Get detailed information about a specific event";
-  inputSchema: z.object({
-    ticker: string;
-  });
-  execute: (
-    args: { ticker: string },
-    agent: Agent
-  ) => Promise<any>;
-}
+async function execute(
+  {ticker}: z.output<typeof inputSchema>,
+  agent: Agent
+): Promise<TokenRingToolJSONResult<{event?: any}>>
 ```
 
 **Usage:**
@@ -259,39 +334,34 @@ const result = await agent.executeTool("kalshi_getEvent", {
   ticker: "PRES-24-SEC-001"
 });
 
-console.log("Event title:", result.title);
-console.log("Event description:", result.description);
-console.log("Event status:", result.status);
+console.log("Event title:", result.event.title);
 ```
 
-### getOrderbook
+### kalshi_getOrderbook
 
 Retrieves the orderbook for a specific market.
 
 **Tool Definition:**
 
+- **Name**: `kalshi_getOrderbook`
+- **Display Name**: `Kalshi/getOrderbook`
+- **Description**: Get the orderbook for a specific market
+
+**Input Schema:**
+
 ```typescript
-const name = "kalshi_getOrderbook";
-const description = "Get the orderbook for a specific market";
-const inputSchema = z.object({
-  ticker: z.string().describe("The ticker symbol of the market")
-});
+z.object({
+  ticker: z.string().min(1).describe("Market ticker")
+})
 ```
 
-**Tool Interface:**
+**Execute Function:**
 
 ```typescript
-{
-  name: "kalshi_getOrderbook";
-  description: "Get the orderbook for a specific market";
-  inputSchema: z.object({
-    ticker: string;
-  });
-  execute: (
-    args: { ticker: string },
-    agent: Agent
-  ) => Promise<any>;
-}
+async function execute(
+  {ticker}: z.output<typeof inputSchema>,
+  agent: Agent
+): Promise<TokenRingToolJSONResult<{orderbook?: any}>>
 ```
 
 **Usage:**
@@ -302,18 +372,75 @@ const result = await agent.executeTool("kalshi_getOrderbook", {
   ticker: "PRES-24-SEC-001-YES"
 });
 
-console.log("Orderbook for market:", result);
-console.log("Yes orders:", result.yes_orders.length);
-console.log("No orders:", result.no_orders.length);
+console.log("Orderbook for market:", result.orderbook);
 ```
 
 ## State Management
 
 The Kalshi Plugin does not maintain agent state. All operations are stateless and rely on the KalshiService instance for API interactions.
 
-## Context Handlers
+## Integration
 
-The plugin does not provide context handlers. Kalshi operations are performed through tools.
+### HttpService
+
+The KalshiService extends `HttpService` from `@tokenring-ai/utility/http/HttpService` for HTTP request handling.
+
+```typescript
+import { HttpService } from "@tokenring-ai/utility/http/HttpService";
+
+class KalshiService extends HttpService implements TokenRingService {
+  protected baseUrl: string;
+
+  constructor(config: KalshiConfig = {}) {
+    super();
+    this.baseUrl = config.baseUrl || "https://api.elections.kalshi.com/trade-api/v2";
+  }
+
+  async fetchJson(endpoint: string, options: RequestInit, operation: string): Promise<any> {
+    return super.fetchJson(endpoint, options, operation);
+  }
+}
+```
+
+### Agent
+
+The plugin integrates with the agent system through tools:
+
+**Tools Registration:**
+
+Tools are registered through the plugin's install method:
+
+```typescript
+app.waitForService(ChatService, chatService =>
+  chatService.addTools(tools)
+);
+```
+
+**Service Registration:**
+
+The service is added to the application:
+
+```typescript
+if (config.kalshi) {
+  app.addServices(new KalshiService(config.kalshi));
+}
+```
+
+### Plugin Installation
+
+The plugin is installed during application initialization:
+
+```typescript
+import kalshiPlugin from "@tokenring-ai/kalshi";
+
+const app = new app.App();
+
+app.install(kalshiPlugin, {
+  kalshi: {
+    baseUrl: "https://api.elections.kalshi.com/trade-api/v2"
+  }
+});
+```
 
 ## Usage Examples
 
@@ -325,7 +452,7 @@ import app from "@tokenring-ai/app";
 
 const app = new app.App();
 
-app.addPlugin(kalshiPlugin, {
+app.install(kalshiPlugin, {
   kalshi: {
     baseUrl: "https://api.elections.kalshi.com/trade-api/v2"
   }
@@ -344,9 +471,9 @@ const seriesResult = await agent.executeTool("kalshi_getSeries", {
   ticker: "PRES-24-SEC"
 });
 
-console.log("Series title:", seriesResult.title);
-console.log("Series description:", seriesResult.description);
-console.log("Series status:", seriesResult.status);
+console.log("Series title:", seriesResult.series.title);
+console.log("Series description:", seriesResult.series.description);
+console.log("Series status:", seriesResult.series.status);
 ```
 
 ### Using the Get Markets Tool
@@ -358,8 +485,8 @@ const marketsResult = await agent.executeTool("kalshi_getMarkets", {
   status: "open"
 });
 
-console.log("Markets:", marketsResult.length);
-marketsResult.forEach(market => {
+console.log("Markets:", marketsResult.markets);
+marketsResult.markets.forEach(market => {
   console.log(`- ${market.title} (${market.ticker})`);
   console.log(`  Price: ${market.price}`);
   console.log(`  Yes Volume: ${market.yes_share_volume}`);
@@ -375,11 +502,11 @@ const eventResult = await agent.executeTool("kalshi_getEvent", {
   ticker: "PRES-24-SEC-001"
 });
 
-console.log("Event:", eventResult.title);
-console.log("Description:", eventResult.description);
-console.log("Status:", eventResult.status);
-console.log("Start Time:", eventResult.start_time);
-console.log("End Time:", eventResult.end_time);
+console.log("Event:", eventResult.event.title);
+console.log("Description:", eventResult.event.description);
+console.log("Status:", eventResult.event.status);
+console.log("Start Time:", eventResult.event.start_time);
+console.log("End Time:", eventResult.event.end_time);
 ```
 
 ### Using the Get Orderbook Tool
@@ -390,13 +517,13 @@ const orderbookResult = await agent.executeTool("kalshi_getOrderbook", {
   ticker: "PRES-24-SEC-001-YES"
 });
 
-console.log("Market:", orderbookResult.market_ticker);
-console.log("Yes Orders:", orderbookResult.yes_orders.length);
-console.log("No Orders:", orderbookResult.no_orders.length);
+console.log("Market:", orderbookResult.orderbook.market_ticker);
+console.log("Yes Orders:", orderbookResult.orderbook.yes_orders.length);
+console.log("No Orders:", orderbookResult.orderbook.no_orders.length);
 
 // Analyze spread
-const yesBest = orderbookResult.yes_orders[0];
-const noBest = orderbookResult.no_orders[0];
+const yesBest = orderbookResult.orderbook.yes_orders[0];
+const noBest = orderbookResult.orderbook.no_orders[0];
 console.log(`Spread: ${noBest.price} - ${yesBest.price}`);
 ```
 
@@ -447,7 +574,7 @@ const openMarkets = await kalshiService.getMarkets({
 });
 
 // Analyze market prices
-openMarkets.forEach(market => {
+openMarkets.markets.forEach(market => {
   console.log(`Market: ${market.title}`);
   console.log(`  Yes Price: ${market.price}`);
   console.log(`  Yes Volume: ${market.yes_share_volume}`);
@@ -470,69 +597,6 @@ console.log(`Start: ${event.start_time}`);
 console.log(`End: ${event.end_time}`);
 console.log(`Yes Price: ${orderbook.yes_orders[0].price}`);
 console.log(`No Price: ${orderbook.no_orders[0].price}`);
-```
-
-## Integration
-
-### HttpService
-
-The KalshiService extends `HttpService` from `@tokenring-ai/utility/http/HttpService` for HTTP request handling.
-
-```typescript
-import { HttpService } from "@tokenring-ai/utility/http/HttpService";
-
-class KalshiService extends HttpService implements TokenRingService {
-  protected baseUrl: string;
-
-  constructor(config: KalshiConfig = {}) {
-    super();
-    this.baseUrl = config.baseUrl || "https://api.elections.kalshi.com/trade-api/v2";
-  }
-
-  async fetchJson(endpoint: string, options: RequestInit, operation: string): Promise<any> {
-    return super.fetchJson(endpoint, options, operation);
-  }
-}
-```
-
-### Agent
-
-The plugin integrates with the agent system through tools:
-
-**Tools Registration:**
-
-Tools are registered through the plugin's install method:
-
-```typescript
-app.waitForService(ChatService, chatService =>
-  chatService.addTools(packageJSON.name, tools)
-);
-```
-
-**Service Registration:**
-
-The service is added to the application:
-
-```typescript
-if (config.kalshi) {
-  app.addServices(new KalshiService(config.kalshi));
-}
-```
-
-### Plugin Installation
-
-The plugin is installed during application initialization:
-
-```typescript
-import kalshiPlugin from "@tokenring-ai/kalshi";
-
-const app = new app.App();
-
-app.addPlugin(kalshiPlugin, {
-  kalshi: {
-    baseUrl: "https://api.elections.kalshi.com/trade-api/v2"
-  }
-});
 ```
 
 ## Best Practices
@@ -571,6 +635,19 @@ app.addPlugin(kalshiPlugin, {
 
 ```bash
 bun test
+```
+
+### Test Commands
+
+```bash
+# Run all tests
+bun run test
+
+# Run tests in watch mode
+bun run test:watch
+
+# Run tests with coverage
+bun run test:coverage
 ```
 
 ### Test Configuration
@@ -613,7 +690,7 @@ pkg/kalshi/
 ├── index.ts              # Package exports
 ├── plugin.ts             # Plugin registration
 ├── package.json          # Package metadata
-└── tsconfig.json         # TypeScript configuration
+└── vitest.config.ts      # Vitest configuration
 ```
 
 ### Build Instructions
@@ -701,7 +778,7 @@ bun run build
 
 ## License
 
-MIT License
+MIT License - see [LICENSE](./LICENSE) file for details.
 
 ## Version
 

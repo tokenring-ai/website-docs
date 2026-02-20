@@ -1,10 +1,10 @@
 # Code Watch
 
-Code Watch is a service that monitors files for AI comments and triggers automated code modification workflows. It integrates with the Token Ring AI framework to execute actions based on special comments like `# AI!` or `// AI!` in code files.
+Code Watch is a service that monitors files for AI comments and triggers automated code modification workflows. It integrates with the Token Ring AI framework to execute actions based on special comments like `# AI!`, `// AI!`, `# AI?`, or `// AI?` in code files.
 
 ## Overview
 
-Code Watch provides real-time file system monitoring for detecting code changes and processing AI instructions embedded in comments. When an AI comment containing `AI!` is detected, the service spawns an agent in headless mode to execute the specified instructions.
+Code Watch provides real-time file system monitoring for detecting code changes and processing AI instructions embedded in comments. When an AI comment containing `AI!` or `AI?` is detected, the service spawns an agent in headless mode to execute the specified instructions.
 
 ### Key Features
 
@@ -166,7 +166,7 @@ await service.run(abortController.signal);
 
 ### Writing AI Comments
 
-Use `AI!` tags in comments to trigger code modifications:
+Use `AI!` or `AI?` tags in comments to trigger code modifications:
 
 ```typescript
 // Python/shell style - triggers code modification
@@ -181,7 +181,10 @@ function readFile(path: string) {
   // ... code that needs error handling
 }
 
-// AI comments that don't end with AI! are detected but don't trigger actions
+// AI? is also detected for comments ending with question mark
+# AI? Suggest improvements to this function
+
+// AI comments that don't end with AI! or AI? are detected but don't trigger actions
 # AI Consider refactoring this code
 ```
 
@@ -256,15 +259,24 @@ await service.run(abortController.signal)
 
 The service detects AI triggers using two patterns:
 
-1. **Lines starting with `# AI` or `// AI`**: Triggers code modification if line also ends with `AI!`
-2. **Lines ending with `AI!`**: Triggers code modification regardless of prefix content
+1. **Lines starting with `# AI` or `// AI`**: Triggers code modification if line also ends with `AI!` or `AI?`
+2. **Lines ending with `AI!` or `AI?`**: Triggers code modification regardless of prefix content
 
 **Detection flow**:
 - Lines starting with `#` or `//` are scanned
 - Lines matching either pattern are sent to `checkAndTriggerAIAction()`
 - Comments starting with `# AI` or `// AI` call `handleAIComment()`
-- Comments ending with `AI!` call `handleAIComment()`
-- Only comments with `AI!` in content trigger code modification via `triggerCodeModification()`
+- Comments ending with `AI!` or `AI?` call `handleAIComment()`
+- Only comments with `AI!` or `AI?` in content trigger code modification via `triggerCodeModification()`
+
+### AI Comment Types
+
+The service supports two types of AI comments:
+
+| Pattern | Description |
+|---------|-------------|
+| `AI!` | Indicates a command that AI must execute. This is a critical instruction that requires completion. |
+| `AI?` | Indicates a question or request for AI to consider or provide input. This is a softer request. |
 
 ## Integration
 
@@ -275,7 +287,7 @@ The service detects AI triggers using two patterns:
 3. **Change Detection**: Filesystem watcher detects additions and modifications
 4. **Debouncing**: Multiple rapid changes trigger stability thresholds to filter out incomplete writes
 5. **Comment Detection**: File content is scanned for AI comment patterns
-6. **AI Trigger Detection**: Comments with `AI!` markers trigger action handling
+6. **AI Trigger Detection**: Comments with `AI!` or `AI?` markers trigger action handling
 7. **Agent Spawning**: Code modification agent is spawned in headless mode
 8. **Instruction Execution**: Agent processes the AI instruction
 9. **File Update**: Agent modifies the file and removes AI markers
@@ -292,7 +304,7 @@ The CodeWatch service integrates with:
 
 ### Agent Integration Workflow
 
-When an `AI!` comment is detected:
+When an `AI!` or `AI?` comment is detected:
 
 ```typescript
 // 1. Agent is spawned in headless mode with specified agentType
@@ -322,6 +334,7 @@ The user has edited the file ${filePath}, included above, adding instructions to
 Look for any lines in the file marked with the tag AI!, which contain the users instructions.
 Complete the instructions in that line or in any nearby comments, using any tools available to you to complete the task.
 Once complete, update the file using the file_write tool. You MUST remove any lines that end with AI!. It is a critical failure to leave these lines in the file.
+
 `.trim();
 ```
 
@@ -499,7 +512,7 @@ Creates a new CodeWatchService instance.
   - **Returns**: `Promise<void>` - Resolves when action is initiated
   - **AI Trigger Patterns**:
     - Lines starting with `# AI` or `// AI`
-    - Lines ending with `AI!`
+    - Lines ending with `AI!` or `AI?`
 
 - `async handleAIComment(commentLine: string, filePath: string, lineNumber: number, fileSystemProviderName: string): Promise<void>`
   - Handles processing of a specific AI comment type
@@ -511,7 +524,7 @@ Creates a new CodeWatchService instance.
   - **Returns**: `Promise<void>` - Resolves when handling is complete
   - **Behavior**:
     - Extracts actual comment content (removes `# ` or `// ` prefix)
-    - Checks if content includes `AI!` marker
+    - Checks if content includes `AI!` or `AI?` marker
     - Calls `triggerCodeModification()` if `AI!` is present
 
 - `async triggerCodeModification(content: string, filePath: string, lineNumber: number, fileSystemProviderName: string): Promise<void>`

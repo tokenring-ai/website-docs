@@ -76,7 +76,7 @@ await agent.executeTool('git_commit', { message: "Fix authentication bug" });
 
 **AI Message Generation:**
 - Extracts context from last 2 messages from ChatService
-- Uses specific prompt: "Please create a git commit message for the set of changes you recently made. The message should be a short description of the changes you made. Only output the exact git commit message. Do not include any other text."
+- Uses specific prompt: "Please create a git commit message for the set of changes you recently made. The message should be a short description of the changes you made. Only output the exact git commit message. Do not include any other text.."
 - Falls back to "TokenRing Coder Automatic Checkin" if AI returns empty
 - Caches and logs tool result with tool name prefix
 
@@ -190,117 +190,74 @@ await agent.executeTool('git_branch', {});
 
 **Note:** `git_branch` tool is available to agents via `agent.executeTool()` but is not exported from tools.ts module.
 
-## Usage Examples
+## Chat Commands
 
-### Basic Commit with Custom Message
+### /git Command
 
-```typescript
-// Using tool
-await agent.executeTool('git_commit', { message: "Update README" });
+The `/git` command provides an interactive interface to Git operations through the agent command system.
 
-// Using slash command
-// Agent command service executes: /git commit "Update README"
+**Usage:**
+```
+/git <action> [options]
 ```
 
-### Commit with AI-Generated Message
+**Available Actions:**
 
-```typescript
-// Using tool
-await agent.executeTool('git_commit', {});
+#### `/git commit [message]`
 
-// Using slash command
-// Agent command service executes: /git commit
-// AI generates message from last 2 chat messages
+Commits changes in the source directory to git. If no message is provided, an AI-generated commit message will be used.
+
+**Examples:**
+```
+/git commit
+/git commit "Fix authentication bug"
 ```
 
-### AI Message Generation Workflow
+**Functionality:**
+- Uses the `git_commit` tool internally
+- Parses remaining arguments as commit message
+- Falls back to AI-generated message if no message provided
 
-```typescript
-// 1. Submit commit tool with no message
-await agent.executeTool('git_commit', {});
+#### `/git rollback [steps]`
 
-// 2. Agent requests AI to generate message
-await chatService.buildChatMessages(
-  "Please create a git commit message for the set of changes you recently made. The message should be a short description of the changes you made. Only output the exact git commit message. Do not include any other text..",
-  chatConfig,
-  agent
-);
+Rolls back to a previous commit state.
 
-// 3. AI returns commit message based on context
-// 4. Commit executes with generated message
-// 5. Filesystem marked as clean
+**Examples:**
+```
+/git rollback
+/git rollback 3
 ```
 
-### Rollback Operations
+**Functionality:**
+- Uses the `git_rollback` tool internally
+- Parses optional steps argument (default: 1)
+- Validates positive integer input
 
-```typescript
-// Rollback one commit (default)
-await agent.executeTool('git_rollback', {});
+#### `/git branch [action] [branchName]`
 
-// Rollback by steps
-await agent.executeTool('git_rollback', { steps: 3 });
+Manages git branches. If no action is specified, shows current branch and lists all branches.
 
-// Rollback to specific commit
-await agent.executeTool('git_rollback', { commit: "abc123def456" });
+**Actions:**
+- `list` - List all branches (local and remote)
+- `current` - Show current branch
+- `create` - Create and switch to a new branch
+- `switch` - Switch to an existing branch
+- `delete` - Delete a branch
 
-// Using slash command
-// /git rollback
-// /git rollback 3
-// /git rollback abc123def456
+**Examples:**
+```
+/git branch
+/git branch list
+/git branch current
+/git branch create feature-xyz
+/git branch switch main
+/git branch delete feature-xyz
 ```
 
-### Branch Management
-
-```typescript
-// List all branches (returns using git branch -a)
-await agent.executeTool('git_branch', { action: "list" });
-
-// Show current branch (returns using git branch --show-current)
-await agent.executeTool('git_branch', { action: "current" });
-
-// Show current branch and list local branches (default behavior)
-await agent.executeTool('git_branch', {});
-
-// Create a new branch and switch to it
-await agent.executeTool('git_branch', { action: "create", branchName: "feature-xyz" });
-
-// Switch to an existing branch
-await agent.executeTool('git_branch', { action: "switch", branchName: "main" });
-
-// Delete a branch
-await agent.executeTool('git_branch', { action: "delete", branchName: "feature-xyz" });
-
-// Using slash command
-// /git branch
-// /git branch list
-// /git branch current
-// /git branch create feature-xyz
-// /git branch switch main
-// /git branch delete feature-xyz
-```
-
-### Automatic Commit After Testing
-
-```typescript
-// 1. Agent makes changes to files
-// 2. Agent runs tests via testing service
-// 3. TestingService.allTestsPassed(agent) returns true
-// 4. autoCommit hook fires after testing completes
-// 5. autoCommit checks: isDirty(agent) && allTestsPassed
-// 6. git_commit executed with empty message
-// 7. AI generates commit message from chat history
-// 8. Files committed and dirty state cleared
-```
-
-### Safe Rollback Validation
-
-```typescript
-// 1. Agent attempts rollback via git_rollback
-// 2. FileSystemService.executeCommand(['git', 'status', '--porcelain'])
-// 3. If statusOutput is not empty:
-//    - Error thrown with message "[git_rollback] Rollback aborted: uncommitted changes detected"
-// 4. Rollback does NOT execute (safe safety check)
-```
+**Functionality:**
+- Uses the `git_branch` tool internally
+- Validates action names and branch names
+- Provides helpful error messages for invalid inputs
 
 ## Configuration
 
@@ -473,143 +430,6 @@ export default {
 // - /git branch [action] [branchName]  - Branch management
 ```
 
-## Error Handling
-
-### Validation Errors
-
-**Branch Name Required:**
-```typescript
-// git_branch tool
-if (!branchName) {
-  throw new Error(`[${name}] Branch name is required for ${action} action`);
-}
-```
-
-**Invalid Rollback Position:**
-```typescript
-// Unexpected: if steps is non-positive integer
-await agent.executeTool('git_rollback', { steps: 0 });
-// Error: Invalid rollback position: "0". Must be a positive integer.
-```
-
-**Invalid Branch Action:**
-```typescript
-// commands/git.ts
-case "invalid":
-  agent.errorMessage(
-    `Invalid branch action: "${args[1]}". Valid actions are: list, current, create, switch, delete`,
-  );
-  return;
-```
-
-**Unknown Git Action:**
-```typescript
-// commands/git.ts
-default:
-  agent.errorMessage(
-    `Unknown git action: "${action}". Use 'commit', 'rollback', or 'branch'.`,
-  );
-```
-
-### Git Errors
-
-**Uncommitted Changes:**
-```typescript
-// git_rollback tool
-const {stdout: statusOutput} = await fileSystem.executeCommand([
-  "git", "status", "--porcelain"
-], {}, agent);
-
-if (statusOutput.trim() !== "") {
-  throw new Error(`[${name}] Rollback aborted: uncommitted changes detected`);
-}
-```
-
-**Git Command Failures:**
-```typescript
-// Wrapped in try/catch with tool name prefix
-try {
-  await fileSystem.executeCommand([...], {}, agent);
-} catch (error: any) {
-  throw new Error(`[${name}] Rollback failed: ${error.shortMessage || error.message}`);
-}
-```
-
-**Preemptive Commit on Clean Repository:**
-```typescript
-// git_commit tool only commits if repository is dirty
-if (statusOutput.trim() === "") {
-  // Already clean, skip commit
-  agent.infoMessage(`[${name}] Repository is already clean, skipping commit.`);
-  return;
-}
-```
-
-### State Checks
-
-**Dirty State Check (autoCommit hook):**
-```typescript
-// autoCommit hook
-if (filesystem.isDirty(agent)) {
-  if (!testingService.allTestsPassed(agent)) {
-    agent.errorMessage("Not committing changes, due to tests not passing");
-    return;
-  }
-  await commit({message: ""}, agent);
-} else {
-  // Repository is clean, skip commit
-  agent.infoMessage("No uncommitted changes detected, skipping commit.");
-}
-```
-
-**Clean Repository Check (rollback):**
-```typescript
-// git_rollback tool
-await fileSystem.executeCommand(["git", "status", "--porcelain"], {}, agent);
-```
-
-### Error Message Format
-
-All git tools prefix errors with tool name for consistency:
-
-```bash
-[git_commit] Asking OpenAI to generate a git commit message...
-[git_commit] Using provided commit message.
-[git_commit] Changes committed to git.
-
-[git_rollback] Rolling back to previous commit...
-[git_rollback] Rollback completed successfully.
-[git_rollback] Rollback aborted: uncommitted changes detected
-
-[git_branch] Branch name is required for current action
-[git_branch] Successfully created and switched to branch: feature-xyz
-```
-
-### Graceful Failures
-
-**AI Message Generation Fallback:**
-```typescript
-if (output && output.trim() !== "") {
-  gitCommitMessage = output;
-} else {
-  agent.warningMessage(
-    `[${name}] AI did not provide a commit message, using default.`
-  );
-}
-// Falls back to "TokenRing Coder Automatic Checkin"
-```
-
-**Chat Context Availability:**
-```typescript
-if (currentMessage) {
-  // Proceed with AI generation
-} else {
-  agent.errorMessage(
-    `[${name}] Most recent chat message does not have a response id, unable to generate a git commit message, using default.`
-  );
-}
-```
-
 ## State Management
 
 ### GitService (Service Layer)
@@ -780,6 +600,26 @@ await autoCommit.afterTesting(agent);
 // Verify dirty state cleared
 expect(filesystem.isDirty(agent)).toBe(false);
 ```
+
+## Dependencies
+
+### Production Dependencies
+
+- `@tokenring-ai/ai-client`: 0.2.0 - AI client integration
+- `@tokenring-ai/app`: 0.2.0 - Base application framework
+- `@tokenring-ai/chat`: 0.2.0 - Chat service integration
+- `@tokenring-ai/agent`: 0.2.0 - Agent system integration
+- `@tokenring-ai/filesystem`: 0.2.0 - File system operations
+- `@tokenring-ai/testing`: 0.2.0 - Testing service integration
+- `@tokenring-ai/utility`: 0.2.0 - Utility functions
+- `@tokenring-ai/terminal`: 0.2.0 - Terminal service integration
+- `execa`: ^9.6.1 - Process execution
+- `zod`: ^4.3.6 - Schema validation
+
+### Development Dependencies
+
+- `vitest`: ^4.0.18 - Testing framework
+- `typescript`: ^5.9.3 - TypeScript compiler
 
 ## Related Components
 

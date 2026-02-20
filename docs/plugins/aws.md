@@ -30,8 +30,6 @@ The main service class that provides AWS integration functionality.
   - `secretAccessKey: string` - AWS Secret Access Key
   - `sessionToken?: string` - Optional AWS Session Token
   - `region: string` - The configured AWS region
-- `stsClient?: STSClient` - Singleton STS client (private, auto-created, cached)
-- `s3Client?: S3Client` - Singleton S3 client (private, auto-created, cached)
 
 **Configuration Interface:**
 
@@ -68,9 +66,6 @@ class AWSService implements TokenRingService {
   // Authentication
   isAuthenticated(): boolean;
   getCallerIdentity(): Promise<{ Arn?: string; Account?: string; UserId?: string }>;
-
-  // Service Lifecycle
-  run(signal: AbortSignal): Promise<void>;
 
   // Status Reporting
   status(agent: Agent): Promise<{
@@ -497,8 +492,8 @@ All initialized clients share the service's base region and credentials. Additio
 ```typescript
 // Both clients use service's credentials and default region
 const dbClient = awsService.initializeAWSClient(DynamoDBClient, {
-  endpoint: "custom-endpoint.amazonaws.com",  // Override default endpoint
-  useFipsEndpoint: true                        // Enable FIPS endpoints
+  endpoint: "custom.endpoint.amazonaws.com",  // Override default endpoint
+  useFipsEndpoint: true                       // Enable FIPS endpoints
 });
 ```
 
@@ -518,10 +513,10 @@ console.log("Authenticated:", awsService.isAuthenticated());
 
 // Get detailed account information
 try {
-  const status = await awsService.getCallerIdentity();
-  console.log("Account:", status.Account);
-  console.log("ARN:", status.Arn);
-  console.log("User ID:", status.UserId);
+  const identity = await awsService.getCallerIdentity();
+  console.log("Account:", identity.Account);
+  console.log("ARN:", identity.Arn);
+  console.log("User ID:", identity.UserId);
 } catch (error) {
   console.error("Authentication failed:", error.message);
 }
@@ -770,29 +765,6 @@ try {
 }
 ```
 
-### `run(signal: AbortSignal)`
-
-Starts the AWSService and validates authentication during startup.
-
-**Parameters:**
-
-- `signal`: AbortSignal for service lifecycle management
-
-**Returns:** Promise that resolves when service stops (waits for AbortSignal)
-
-**Example:**
-
-```typescript
-const controller = new AbortController();
-const { signal } = controller;
-
-// Start the service (blocks until signal is aborted)
-await awsService.run(signal);
-
-// Stop the service
-controller.abort();
-```
-
 ### `status(agent: Agent)`
 
 Reports the current service status and account information.
@@ -843,9 +815,9 @@ if (status.error) {
 ### Service Management
 
 - Leverage singleton pattern for AWS SDK clients to reuse connections
-- Always handle AbortSignal for proper service lifecycle management
 - Monitor service startup failures in production
 - Use `initializeAWSClient()` for cross-service initialization to share credentials
+- Always check authentication status before performing AWS operations
 
 ### Error Handling
 
@@ -873,21 +845,14 @@ if (status.error) {
 
 ### Service-Level Errors
 
-Service initialization and authentication are validated during startup in the `run()` method:
+Service initialization and authentication are validated during startup:
 
 ```typescript
-async run(signal: AbortSignal): Promise<void> {
-  console.log("AWSService starting");
-  try {
-    const identity = await this.getCallerIdentity();
-    console.log("AWS authentication successful:", identity);
-  } catch (error: any) {
-    console.error("AWSService failed to start:", error.message);
-    // Service continues running but will fail operations
+async getCallerIdentity(): Promise<{ Arn?: string; Account?: string; UserId?: string }> {
+  if (!this.isAuthenticated()) {
+    throw new Error("AWS credentials are not configured.");
   }
-  return waitForAbort(signal, async (ev) => {
-    console.log("AWSService stopping");
-  });
+  // ... operation
 }
 ```
 
@@ -1009,10 +974,9 @@ The package uses vitest for unit testing with node environment.
   "@tokenring-ai/app": "0.2.0",
   "@tokenring-ai/agent": "0.2.0",
   "@tokenring-ai/chat": "0.2.0",
-  "@aws-sdk/client-s3": "^3.978.0",
-  "@aws-sdk/client-sts": "^3.978.0",
+  "@aws-sdk/client-s3": "^3.992.0",
+  "@aws-sdk/client-sts": "^3.992.0",
   "@tokenring-ai/filesystem": "0.2.0",
-  "node-fetch": "^3.3.2",
   "zod": "^4.3.6"
 }
 ```
@@ -1026,8 +990,6 @@ The package uses vitest for unit testing with node environment.
 - **@aws-sdk/client-s3**: S3 service client for bucket listing operations
 - **@aws-sdk/client-sts**: STS service client for caller identity verification
 - **zod**: Runtime type validation for configuration
-
-**Unused Dependency Note:** The package.json lists `node-fetch: ^3.3.2` as a dependency but it is not currently used in the codebase. This may be kept for potential future extensions.
 
 ## Package Structure
 

@@ -306,7 +306,7 @@ Example provider configuration:
 }
 ```
 
-**Note:** The plugin checks if `config.cdn` exists. If present, the CDNService is registered with the Token Ring application. The actual provider implementations are registered programmatically using `registerProvider()`.
+**Important:** The plugin checks if `config.cdn` exists. If present, the CDNService is registered with the Token Ring application. The actual provider implementations must be registered programmatically using `registerProvider()` with your specific CDN implementation instances.
 
 ## Plugin Integration
 
@@ -329,6 +329,9 @@ app.use(plugin, {
 
 // Access the CDN service from the app
 const cdnService = app.getService('CDNService');
+
+// Register your CDN provider implementation
+cdnService.registerProvider('my-cdn', new MyCDNProvider());
 ```
 
 ## Usage Examples
@@ -408,6 +411,18 @@ class HTTPCDNProvider extends CDNProvider {
   // download() uses default fetch implementation
   // exists() uses default HEAD implementation
 }
+
+cdnService.registerProvider('http', new HTTPCDNProvider());
+```
+
+### Agent Integration
+
+The CDNService is registered with the Token Ring agent system, allowing agents to perform CDN operations through the service registry. Agents can access the CDN service via `app.getService('CDNService')`.
+
+```typescript
+// In an agent command or tool
+const cdnService = app.getService('CDNService');
+const result = await cdnService.upload('s3', fileBuffer, { filename: 'file.txt' });
 ```
 
 ## Error Handling
@@ -443,7 +458,7 @@ Integrates with the chat system to provide CDN operations as part of user intera
 - **Provider Registry**: Track registered providers and their status
 - **Operation Tracking**: Monitor upload, download, delete, and exists operations
 
-## Development
+## Testing and Development
 
 ### Testing
 
@@ -475,6 +490,22 @@ pkg/cdn/
 ├── LICENSE
 └── test/                 # Test files
 ```
+
+## Dependencies
+
+### Production Dependencies
+
+- `@tokenring-ai/app`: 0.2.0 (Token Ring application framework)
+- `@tokenring-ai/chat`: 0.2.0 (Chat service integration)
+- `@tokenring-ai/agent`: 0.2.0 (Agent orchestration)
+- `@tokenring-ai/utility`: 0.2.0 (Utility functions including KeyedRegistry)
+- `uuid`: ^13.0.0 (UUID generation)
+- `zod`: ^4.3.6 (Schema validation)
+
+### Development Dependencies
+
+- `vitest`: ^4.0.18 (Testing framework)
+- `typescript`: ^5.9.3 (TypeScript compiler)
 
 ## License
 

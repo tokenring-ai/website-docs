@@ -203,7 +203,7 @@ outputChatAnalytics(response, agent, "Chat Complete");
 Manually compacts conversation context:
 
 ```typescript
-import {compactContext} from "@tokenring-ai/chat/util/compactContext.ts";
+import {compactContext} from "@tokenring-ai/chat/util/compactContext";
 
 await compactContext("focus topic", agent);
 ```

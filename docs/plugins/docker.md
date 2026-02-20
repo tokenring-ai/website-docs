@@ -2,7 +2,7 @@
 
 ## Overview
 
-The `@tokenring-ai/docker` package provides AI agents with Docker integration capabilities, enabling container orchestration and secure container execution within the Token Ring ecosystem. It supports both ephemeral container execution for one-off commands and persistent container management through the sandbox system.
+The `@tokenring-ai/docker` package provides AI agents with comprehensive Docker integration capabilities, enabling container orchestration, image management, and secure container execution within the Token Ring ecosystem. It supports both ephemeral container execution for one-off commands and persistent container management through the sandbox system.
 
 ## Key Features
 
@@ -11,6 +11,8 @@ The `@tokenring-ai/docker` package provides AI agents with Docker integration ca
 - **TLS/SSL Support**: Secure Docker daemon connections with certificate-based authentication
 - **Multiple Docker Hosts**: Support for local Unix sockets and remote TCP connections
 - **Agent Integration**: Seamless integration with Token Ring's agent and service architecture
+- **Comprehensive Toolset**: 18 Docker tools for managing images, containers, networks, and more
+- **Shell Safety**: All operations use proper shell escaping and timeout management
 
 ## Installation
 
@@ -44,7 +46,7 @@ export default {
   version: packageJSON.version,
   description: packageJSON.description,
   install(app, config) {
-    if (!config.docker) return;
+    if (! config.docker) return;
     app.waitForService(ChatService, chatService =>
       chatService.addTools(tools)
     );
@@ -104,6 +106,12 @@ interface DockerConfig {
   };
 }
 ```
+
+#### Properties
+
+- **`name = "DockerService"`** - Service identifier
+- **`description = "Provides Docker functionality"`** - Service description
+- **`options`** - The configuration options passed to the constructor
 
 #### Methods
 
@@ -185,11 +193,13 @@ await provider.stopContainer(containerId);
 await provider.removeContainer(containerId);
 ```
 
-## Available Tools
+## Tools
+
+The package provides 18 Docker tools for comprehensive container and image management. Each tool follows the TokenRing tool pattern with proper input validation, error handling, and agent integration.
 
 ### Currently Exported Tools
 
-Only the following tool is currently exported via the `tools.ts` file:
+The following tools are currently exported from `tools.ts`:
 
 #### docker_dockerRun
 
@@ -229,14 +239,69 @@ if (result.ok) {
 }
 ```
 
-**Implementation Details**:
-- Uses `docker run --rm` for ephemeral containers
-- Binds project directory to `/workdir` in container
-- Sets working directory to `/workdir`
-- Supports custom timeouts (clamped between 5 and 600 seconds)
-- Supports custom Docker host and TLS settings via DockerService
-- Requires FileSystemService to execute commands on the host
-- Requires DockerService to access Docker daemon configuration
+### Available Tools (Not Yet Exported)
+
+The following tools are implemented but not yet exported from the main tools entry point:
+
+#### Docker Container Management
+
+- **docker_listContainers** - List Docker containers
+- **docker_startContainer** - Start a container
+- **docker_stopContainer** - Stop a container
+- **docker_removeContainer** - Remove a container
+- **docker_execInContainer** - Execute command in container
+
+#### Docker Image Management
+
+- **docker_listImages** - List Docker images
+- **docker_buildImage** - Build Docker images
+- **docker_removeImage** - Remove an image
+- **docker_tagImage** - Tag an image
+- **docker_pushImage** - Push an image to registry
+
+#### Docker Network Management
+
+- **docker_createNetwork** - Create a Docker network
+
+#### Docker Stack Management
+
+- **docker_dockerStack** - Run Docker Compose stacks
+
+#### Docker Logging and Stats
+
+- **docker_getContainerLogs** - Get container logs
+- **docker_getContainerStats** - Get container statistics
+
+#### Docker Registry
+
+- **docker_authenticateRegistry** - Authenticate with Docker registry
+
+#### Docker Pruning
+
+- **docker_pruneImages** - Remove unused images
+- **docker_pruneVolumes** - Remove unused volumes
+
+### Tool Implementation Details
+
+All tools follow this pattern:
+
+- **name**: Tool name in format `docker_<toolName>`
+- **displayName**: Display name in format `Docker/<toolName>`
+- **description**: Tool description
+- **inputSchema**: Zod schema for input validation
+- **execute**: Function that takes arguments and agent, returns DockerCommandResult
+
+Example tool result interface:
+
+```typescript
+interface DockerCommandResult {
+  ok?: boolean;
+  exitCode?: number;
+  stdout?: string;
+  stderr?: string;
+  error?: string;
+}
+```
 
 ## Configuration
 
@@ -300,61 +365,6 @@ const SandboxServiceConfigSchema = z.object({
     config: DockerConfigSchema,
   })),
 });
-```
-
-## Usage Examples
-
-### 1. Ephemeral Container Execution
-
-```typescript
-import {Agent} from "@tokenring-ai/agent";
-import * as tools from "@tokenring-ai/docker/tools";
-
-const agent = new Agent(registry);
-const result = await tools.dockerRun.execute({
-  image: "ubuntu:22.04",
-  cmd: "ls -la /usr/bin",
-  timeoutSeconds: 30
-}, agent);
-
-if (result.ok) {
-  console.log("Command output:", result.stdout);
-} else {
-  console.error("Error:", result.stderr);
-}
-```
-
-### 2. Persistent Container Management
-
-```typescript
-import DockerSandboxProvider from "./DockerSandboxProvider";
-import DockerService from "./DockerService";
-
-const dockerService = new DockerService({});
-const provider = new DockerSandboxProvider(dockerService);
-
-// Create a persistent container
-const { containerId } = await provider.createContainer({
-  image: "node:18",
-  environment: { NODE_ENV: "production" },
-  workingDir: "/app"
-});
-
-// Execute multiple commands
-const commands = [
-  "bun install",
-  "bun run build",
-  "bun test"
-];
-
-for (const cmd of commands) {
-  const result = await provider.executeCommand(containerId, cmd);
-  console.log(`${cmd}:`, result.stdout);
-}
-
-// Clean up
-await provider.stopContainer(containerId);
-await provider.removeContainer(containerId);
 ```
 
 ## Integration
@@ -430,6 +440,151 @@ export default {
 } satisfies TokenRingPlugin<typeof packageConfigSchema>;
 ```
 
+## Usage Examples
+
+### 1. Ephemeral Container Execution
+
+```typescript
+import {Agent} from "@tokenring-ai/agent";
+import * as tools from "@tokenring-ai/docker/tools";
+
+const agent = new Agent(registry);
+const result = await tools.dockerRun.execute({
+  image: "ubuntu:22.04",
+  cmd: "ls -la /usr/bin",
+  timeoutSeconds: 30
+}, agent);
+
+if (result.ok) {
+  console.log("Command output:", result.stdout);
+} else {
+  console.error("Error:", result.stderr);
+}
+```
+
+### 2. Persistent Container Management
+
+```typescript
+import DockerSandboxProvider from "./DockerSandboxProvider";
+import DockerService from "./DockerService";
+
+const dockerService = new DockerService({});
+const provider = new DockerSandboxProvider(dockerService);
+
+// Create a persistent container
+const { containerId } = await provider.createContainer({
+  image: "node:18",
+  environment: { NODE_ENV: "production" },
+  workingDir: "/app"
+});
+
+// Execute multiple commands
+const commands = [
+  "bun install",
+  "bun run build",
+  "bun test"
+];
+
+for (const cmd of commands) {
+  const result = await provider.executeCommand(containerId, cmd);
+  console.log(`${cmd}:`, result.stdout);
+}
+
+// Clean up
+await provider.stopContainer(containerId);
+await provider.removeContainer(containerId);
+```
+
+### 3. Docker Image Operations
+
+```typescript
+import {Agent} from "@tokenring-ai/agent";
+import * as tools from "@tokenring-ai/docker/tools";
+
+const agent = new Agent(registry);
+
+// Build an image
+const buildResult = await tools.dockerBuildImage.execute({
+  context: "./myapp",
+  tag: "myapp:latest",
+  dockerfile: "Dockerfile"
+}, agent);
+
+// List images
+const listResult = await tools.dockerListImages.execute({
+  all: true,
+  format: "json"
+}, agent);
+
+// Tag and push
+await tools.dockerTagImage.execute({
+  sourceImage: "myapp:latest",
+  targetImage: "myregistry/myapp:v1.0"
+}, agent);
+
+await tools.dockerPushImage.execute({
+  tag: "myregistry/myapp:v1.0"
+}, agent);
+```
+
+### 4. Container Lifecycle Management
+
+```typescript
+import {Agent} from "@tokenring-ai/agent";
+import * as tools from "@tokenring-ai/docker/tools";
+
+const agent = new Agent(registry);
+
+// Start a container
+await tools.dockerStartContainer.execute({
+  containerId: "my-container"
+}, agent);
+
+// Get container logs
+const logs = await tools.dockerGetContainerLogs.execute({
+  containerId: "my-container"
+}, agent);
+
+console.log(logs.stdout);
+
+// Get container statistics
+const stats = await tools.dockerGetContainerStats.execute({
+  containerId: "my-container"
+}, agent);
+
+console.log(stats);
+
+// Stop and remove
+await tools.dockerStopContainer.execute({
+  containerId: "my-container"
+}, agent);
+
+await tools.dockerRemoveContainer.execute({
+  containerId: "my-container"
+}, agent);
+```
+
+### 5. Pruning Unused Resources
+
+```typescript
+import {Agent} from "@tokenring-ai/agent";
+import * as tools from "@tokenring-ai/docker/tools";
+
+const agent = new Agent(registry);
+
+// Prune unused images
+const pruneResult = await tools.dockerPruneImages.execute({
+  all: false // Only prune dangling images
+}, agent);
+
+console.log("Space reclaimed:", pruneResult.spaceReclaimed);
+
+// Prune unused volumes
+await tools.dockerPruneVolumes.execute({
+  force: true
+}, agent);
+```
+
 ## Best Practices
 
 ### Container Management
@@ -499,7 +654,7 @@ bun test:coverage
 
 ## Dependencies
 
-The package depends on:
+### Production Dependencies
 
 - **@tokenring-ai/app**: Base application framework
 - **@tokenring-ai/chat**: Chat and tool management
@@ -509,6 +664,11 @@ The package depends on:
 - **@tokenring-ai/utility**: Shared utilities
 - **execa**: Process execution
 - **zod**: Schema validation
+
+### Development Dependencies
+
+- **vitest**: Testing framework
+- **typescript**: Type checking
 
 ## License
 

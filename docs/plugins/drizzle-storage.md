@@ -387,6 +387,33 @@ async function manageCheckpoints() {
 }
 ```
 
+## Best Practices
+
+- **Use the Plugin**: When possible, use the TokenRing plugin for automatic integration with the checkpoint service
+- **JSON Serialization**: Ensure state and config objects are JSON-serializable
+- **Connection Pooling**: Use MySQL or PostgreSQL for production workloads with connection pooling
+- **Error Handling**: Wrap storage operations in try-catch blocks to handle database errors
+- **Checkpoint Naming**: Use descriptive names for checkpoints to make them easier to identify
+- **Cleanup**: Regularly review and clean up old checkpoints to manage storage space
+
+## Integration
+
+### Integration with Agent System
+
+The package integrates with the Token Ring agent system through the TokenRing plugin:
+
+1. **Checkpoint Service Integration**: Automatically registers the storage provider with AgentCheckpointService
+2. **State Management**: Provides storage backend for agent state checkpoints
+3. **Automatic Configuration**: Reads configuration from Token Ring config files
+
+### Integration with Other Packages
+
+The package integrates with:
+
+- **@tokenring-ai/app**: For plugin registration and app framework integration
+- **@tokenring-ai/checkpoint**: For checkpoint provider interface and types
+- **@tokenring-ai/agent**: For agent state management and persistence
+
 ## Testing
 
 Run comprehensive tests with automatic Docker container provisioning:
@@ -473,14 +500,17 @@ pkg/drizzle-storage/
 │   ├── createSQLiteStorage.ts  # Factory function
 │   ├── schema.ts              # Drizzle schema
 │   └── drizzle.config.ts      # Drizzle configuration
+│   └── migrations/            # Database migrations
 ├── mysql/                      # MySQL implementation
 │   ├── createMySQLStorage.ts  # Factory function
 │   ├── schema.ts              # Drizzle schema
 │   └── drizzle.config.ts      # Drizzle configuration
+│   └── migrations/            # Database migrations
 └── postgres/                   # PostgreSQL implementation
     ├── createPostgresStorage.ts # Factory function
     ├── schema.ts              # Drizzle schema
     └── drizzle.config.ts      # Drizzle configuration
+    └── migrations/            # Database migrations
 ```
 
 ## Dependencies
@@ -526,15 +556,6 @@ The package includes comprehensive error handling:
 - **MySQL**: Connection pooling for high-performance applications
 - **PostgreSQL**: Advanced features for enterprise workloads with connection pooling
 
-## Advantages over SQLite Storage
-
-- Multi-database support (production-ready MySQL/PostgreSQL)
-- Type-safe queries with Drizzle ORM
-- Better scalability for production workloads
-- Connection pooling for MySQL/PostgreSQL
-- Comprehensive test coverage with real databases
-- Same interface as `@tokenring-ai/sqlite-storage` (drop-in replacement)
-
 ## Notes
 
 - State must be JSON-serializable
@@ -542,7 +563,6 @@ The package includes comprehensive error handling:
 - Connection pooling enabled for MySQL/PostgreSQL
 - SQLite requires Bun runtime
 - Suitable for production workloads with MySQL/PostgreSQL
-- Drop-in replacement for `@tokenring-ai/sqlite-storage`
 - Plugin automatically registers with Token Ring checkpoint service
 
 ## License

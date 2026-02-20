@@ -98,73 +98,58 @@ const service = new NewsRPMService({
   });
   ```
 
-## Tools Integration
+## Services
+
+### NewsRPMService
+
+The `NewsRPMService` class implements `TokenRingService` and provides all NewsRPM API functionality:
+
+**Methods:**
+
+- `searchIndexedData(body: any): Promise<MultipleArticleResponse>`
+- `searchArticles(body: any): Promise<MultipleArticleResponse>`
+- `getArticleBySlug(slug: string): Promise<SingleArticleResponse>`
+- `getArticleById(id: number): Promise<SingleArticleResponse>`
+- `listProviders(): Promise<ProviderListResponse>`
+- `getBody(bodyId: string): Promise<ArticleBodyResponse>`
+- `renderBody(bodyId: string): Promise<ArticleBodyResponse>`
+- `uploadArticle(article: any): Promise<{ success: boolean; id: number }>`
+
+**Response Types:**
+
+```typescript
+// MultipleArticleResponse
+{ success: boolean; rows: any[] }
+
+// SingleArticleResponse  
+{ success: boolean; doc: any }
+
+// ProviderListResponse
+{ success: boolean; rows: Array<{ provider: string }> }
+
+// ArticleBodyResponse
+{ 
+  success: boolean;
+  body: { v: number; chunks: Array<{ name: string; format: string; content: string }> }
+}
+```
+
+## Tools
 
 The package provides 8 tools for agent integration, automatically registered with the TokenRing chat service:
 
-1. **newsrpm/searchIndexedData**
-   ```typescript
-   {
-     key: "topic",
-     value: "artificial intelligence",
-     count: 10
-   }
-   ```
+### Tool List
 
-2. **newsrpm/searchArticles**
-   ```typescript
-   {
-     publisher: "Reuters",
-     fullText: "AI technology",
-     count: 25
-   }
-   ```
-
-3. **newsrpm/getArticleBySlug**
-   ```typescript
-   {
-     slug: "example-article-slug"
-   }
-   ```
-
-4. **newsrpm/getArticleById**
-   ```typescript
-   {
-     id: 12345
-   }
-   ```
-
-5. **newsrpm/uploadArticle**
-   ```typescript
-   {
-     article: {
-       provider: "News Source",
-       headline: "Article Title",
-       slug: "article-slug",
-       date: "2025-01-01T00:00:00.000Z",
-       quality: 0.9
-     }
-   }
-   ```
-
-6. **newsrpm/listProviders**
-   ```typescript
-   {}
-   ```
-
-7. **newsrpm/getBody**
-   ```typescript
-   {
-     bodyId: "body-abc123"
-   }
-   ```
-
-8. **newsrpm/renderBody**
-   ```typescript
-   {
-     bodyId: "body-abc123"
-   }
-   ```
+| Tool Name | Description | Parameters |
+|-----------|-------------|------------|
+| `newsrpm_searchIndexedData` | Search by taxonomy keys | `key`, `value?`, `count?`, `offset?`, `minDate?`, `maxDate?`, `order?` |
+| `newsrpm_searchArticles` | Search articles by filters | `publisher?`, `provider?`, `type?`, `fullText?`, `sponsored?`, `count?`, `offset?`, `minDate?`, `maxDate?`, `language?` |
+| `newsrpm_getArticleBySlug` | Get article by slug | `slug` |
+| `newsrpm_getArticleById` | Get article by ID | `id` |
+| `newsrpm_listProviders` | List all providers | none |
+| `newsrpm_getBody` | Get article body (native) | `bodyId` |
+| `newsrpm_renderBody` | Get article body (HTML) | `bodyId` |
+| `newsrpm_uploadArticle` | Upload/update article | `article` |
 
 ### Tool Usage Example
 
@@ -177,6 +162,14 @@ const results = await agent.callTool("newsrpm/searchArticles", {
 });
 ```
 
+## Providers
+
+This package does not use a provider architecture.
+
+## RPC Endpoints
+
+This package does not define any RPC endpoints.
+
 ## Chat Commands
 
 The package provides a comprehensive `/newsrpm` command for interactive use in the TokenRing REPL:
@@ -186,7 +179,7 @@ The package provides a comprehensive `/newsrpm` command for interactive use in t
 /newsrpm [subcommand] [options]
 ```
 
-**Available Subcommands:**
+### Subcommands
 
 #### Search Indexed Data
 ```bash
@@ -274,7 +267,7 @@ The package provides a comprehensive `/newsrpm` command for interactive use in t
 /newsrpm upload --json article.json
 ```
 
-## Global Scripting Functions
+## Scripting Functions
 
 When `@tokenring-ai/scripting` is available, the package registers 4 global functions:
 
@@ -310,7 +303,6 @@ The NewsRPMService accepts the following configuration schema (validated using Z
 - `baseUrl: string` (default: 'https://api.newsrpm.com')
 - `requestDefaults: { headers?: Record<string,string>, timeoutMs?: number }`
 - `retry: { maxRetries?: number, baseDelayMs?: number, maxDelayMs?: number, jitter?: boolean }`
-- `fetchImpl: any` - Custom fetch implementation for testing
 
 ### Configuration Example
 
@@ -337,105 +329,36 @@ const config = {
 };
 ```
 
-### Environment Variables
-- `NEWSRPM_API_KEY`: Set this environment variable to your NewsRPM API key
-- `NEWSRPM_BASE_URL`: Optional, defaults to 'https://api.newsrpm.com'
+### Plugin Configuration
 
-## Authentication
+The plugin automatically handles configuration through the application's configuration system:
 
-The package supports 4 authentication modes:
-
-1. **privateHeader** (default): `Authorization: privateKey <apiKey>`
-2. **publicHeader**: `Authorization: publicKey <apiKey>`
-3. **privateQuery**: Query parameter `T=<apiKey>`
-4. **publicQuery**: Query parameter `P=<apiKey>`
-
-Choose the mode that matches your NewsRPM deployment security requirements.
-
-## Response Types
-
-### MultipleArticleResponse
 ```typescript
-{
-  success: boolean;
-  rows: Array<{
-    headline?: string;
-    provider?: string;
-    slug?: string;
-    // ... other article fields
-  }>
-}
-```
-
-### SingleArticleResponse
-```typescript
-{
-  success: boolean;
-  doc: {
-    // Full article object
+// In your application plugin configuration
+const appConfig = {
+  newsrpm: {
+    apiKey: process.env.NEWSRPM_API_KEY!,
+    authMode: 'privateHeader'
   }
-}
+};
+
+// The plugin will automatically initialize the service
 ```
 
-### ProviderListResponse
-```typescript
-{
-  success: boolean;
-  rows: Array<{
-    provider: string;
-  }>
-}
-```
+## Integration
 
-### ArticleBodyResponse
-```typescript
-{
-  success: boolean;
-  body: { v: number; chunks: Array<{ name: string; format: string; content: string }> }
-}
-```
+The NewsRPM plugin integrates with several TokenRing components:
 
-## Error Handling
+### Core Services
+- **@tokenring-ai/app**: Application framework for plugin registration and service management
+- **@tokenring-ai/chat**: Chat service for tool registration and command processing
+- **@tokenring-ai/scripting**: Scripting service for global function registration
+- **@tokenring-ai/filesystem**: File system service for file operations in chat commands
+- **@tokenring-ai/utility**: Utility functions including HttpService for HTTP requests
 
-The service implements comprehensive error handling:
+### Integration Examples
 
-- **Input Validation**: Required fields are validated before API calls
-- **HTTP Error Handling**: Non-2xx responses include status, message, and hints
-- **Retry Logic**: 429 and 5xx responses retry with exponential backoff
-- **Timeout Handling**: Requests timeout according to configured timeoutMs
-
-### Error Response Format
-```typescript
-{
-  message: string;
-  status?: number;
-  code?: string;
-  details?: any;
-  hint?: string;
-}
-```
-
-## API Reference
-
-The complete API schema is available in:
-- `pkg/newsrpm/design/newsrpm.openapi.json` - OpenAPI specification
-- `pkg/newsrpm/design/newsrpm_api.txt` - Text summary
-
-### Upload Article Schema
-
-For upload operations, the article object must include:
-- `provider: string` - News provider name
-- `headline: string` - Article headline
-- `slug: string` - URL slug
-- `date: string` - ISO date string
-- `quality: number` - Quality score
-
-Additional fields are documented in the OpenAPI schema.
-
-## Integration Examples
-
-### Basic Integration
-
+#### Basic Integration
 ```typescript
 import { NewsRPMService } from "@tokenring-ai/newsrpm";
 
@@ -451,8 +374,7 @@ const techNews = await service.searchArticles({
 });
 ```
 
-### Advanced Integration with Agents
-
+#### Agent Integration
 ```typescript
 // Tools are automatically available to agents
 const agent = new Agent();
@@ -463,8 +385,7 @@ const articles = await agent.callTool("newsrpm/searchArticles", {
 });
 ```
 
-### File System Integration
-
+#### File System Integration
 ```typescript
 // Upload article from JSON file
 const fsService = agent.requireServiceByType(FileSystemService);
@@ -473,12 +394,73 @@ const article = JSON.parse(raw);
 const result = await service.uploadArticle(article);
 ```
 
-### Using Chat Command
-
+#### Chat Command Usage
 ```typescript
 // When the app is running, access NewsRPM via:
 /newsrpm search --fulltext "AI" --count 10
 /newsrpm index NormalizedTicker --value GOOG --count 25
+/newsrpm upload --json article.json
+```
+
+## Usage Examples
+
+### Search Examples
+
+#### Search by Taxonomy
+```typescript
+const results = await service.searchIndexedData({
+  key: "NormalizedTicker",
+  value: ["AAPL", "GOOGL"],
+  count: 25,
+  minDate: "2024-01-01T00:00:00.000Z"
+});
+```
+
+#### Search Articles
+```typescript
+const articles = await service.searchArticles({
+  publisher: ["Reuters", "Bloomberg"],
+  type: "Press Release",
+  sponsored: false,
+  count: 50,
+  language: "en"
+});
+```
+
+#### Get Article by Slug
+```typescript
+const article = await service.getArticleBySlug("tech-earnings-report-2025");
+console.log(article.doc.headline);
+```
+
+#### Upload Article
+```typescript
+const result = await service.uploadArticle({
+  provider: "Tech News",
+  headline: "Latest Technology Updates",
+  slug: "tech-updates-2025",
+  date: new Date().toISOString(),
+  quality: 0.95,
+  // ... other required fields per OpenAPI schema
+});
+```
+
+### Chat Command Examples
+
+```bash
+# Search for AI articles
+/newsrpm search --fulltext "AI" --count 10
+
+# Search by ticker
+/newsrpm index NormalizedTicker --value AAPL,GOOGL --count 25
+
+# Get specific article
+/newsrpm article slug "tech-earnings-report-2025"
+
+# List providers
+/newsrpm providers
+
+# Upload article from file
 /newsrpm upload --json article.json
 ```
 
@@ -491,6 +473,7 @@ const result = await service.uploadArticle(article);
 5. **Batch Operations**: Use appropriate count/offset parameters for large datasets
 6. **Date Filtering**: Use ISO 8601 format for date parameters
 7. **Provider Management**: Regularly check available providers
+8. **Authentication Mode**: Choose appropriate authMode for your deployment (headers preferred for server-side)
 
 ## Testing
 
@@ -534,6 +517,35 @@ describe('NewsRPMService', () => {
 });
 ```
 
+## Dependencies
+
+### Production Dependencies
+
+- `@tokenring-ai/app`: Application framework for plugin integration
+- `@tokenring-ai/chat`: Chat service for tool registration
+- `zod`: Runtime type validation
+- `@tokenring-ai/ai-client`: AI client integration
+- `@tokenring-ai/agent`: Agent framework
+- `@tokenring-ai/utility`: Utility functions
+- `@tokenring-ai/scripting`: Scripting service
+- `@tokenring-ai/filesystem`: File system service
+
+### Development Dependencies
+
+- `vitest`: Testing framework
+- `@vitest/coverage-v8`: Code coverage
+- `typescript`: TypeScript compiler
+
+### Version Requirements
+
+- Node.js: Required for execution
+- TypeScript: ^5.9.3
+- Vitest: ^4.0.18
+
+## RPC Endpoints
+
+This package does not define any RPC endpoints.
+
 ## Related Components
 
 The NewsRPM plugin integrates with several other TokenRing components and external services:
@@ -568,4 +580,6 @@ The NewsRPM plugin integrates with several other TokenRing components and extern
 
 ## License
 
-MIT License - see the root LICENSE file for details.
+MIT License - see LICENSE file for details.
+
+END FILE ATTACHMENT

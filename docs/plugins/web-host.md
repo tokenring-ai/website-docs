@@ -4,7 +4,7 @@ Fastify-based web server for serving resources, APIs, and applications in TokenR
 
 ## Overview
 
-The `@tokenring-ai/web-host` package provides a high-performance Fastify web server with a pluggable resource registration system. It serves as the foundation for hosting web UIs, REST APIs, and real-time communication endpoints. The package includes authentication, resource management, and a flexible configuration system with support for JSON-RPC 2.0 APIs and streaming capabilities.
+The `@tokenring-ai/web-host` package provides a high-performance Fastify web server with a pluggable resource registration system. It serves as the foundation for hosting web UIs, REST APIs, and real-time communication endpoints. The package includes authentication, resource management, and a flexible configuration system with support for JSON-RPC 2.0 APIs and WebSocket RPC with streaming capabilities.
 
 ## Key Features
 
@@ -15,7 +15,9 @@ The `@tokenring-ai/web-host` package provides a high-performance Fastify web ser
 - **Single-Page Applications**: Serve SPA applications with proper routing
 - **Configurable Port**: Flexible port configuration
 - **JSON-RPC API**: Built-in JSON-RPC 2.0 support with streaming capabilities
+- **WebSocket RPC**: WebSocket-based RPC with real-time streaming
 - **Command Integration**: `/webhost` command for monitoring and management
+- **Automatic Endpoint Registration**: Automatic registration of RPC endpoints during startup
 
 ## Installation
 
@@ -126,9 +128,9 @@ class WebHostService implements TokenRingService {
 
   resources: KeyedRegistry<WebResource>;
   registerResource = this.resources.register;
-  getResources = this.resources.getAllItems;
+  getResourceEntries = this.resources.entries;
 
-  constructor(private app: TokenRingApp, private config: z.output<typeof WebHostConfigSchema>);
+  constructor(private app: TokenRingApp, private config: ParsedWebHostConfig);
 
   async run(signal: AbortSignal): Promise<void>;
   getURL(): URL;
@@ -149,7 +151,7 @@ class WebHostService implements TokenRingService {
 | Method | Signature | Description |
 |--------|-----------|-------------|
 | `registerResource` | `(name: string, resource: WebResource) => void` | Register a new web resource |
-| `getResources` | `() => Record<string, WebResource>` | Get all registered resources |
+| `getResourceEntries` | `() => Iterable<[string, WebResource]>` | Get all registered resources as key-value pairs |
 | `getURL` | `() => URL` | Get the current server URL |
 | `run` | `(signal: AbortSignal) => Promise<void>` | Start the server |
 
@@ -219,10 +221,24 @@ Provides JSON-RPC 2.0 API endpoints with streaming support.
 
 ```typescript
 class JsonRpcResource implements WebResource {
-  constructor(private app: TokenRingApp, private endpoint: JsonRpcEndpoint) {}
+  constructor(private app: TokenRingApp, private jsonRpcEndpoint: RpcEndpoint) {}
 
   async register(server: FastifyInstance): Promise<void> {
     // Registers JSON-RPC API endpoints with streaming support
+  }
+}
+```
+
+### WsRpcResource Class
+
+Provides WebSocket-based RPC endpoints for real-time communication.
+
+```typescript
+class WsRpcResource implements WebResource {
+  constructor(private app: TokenRingApp, private jsonRpcEndpoint: RpcEndpoint) {}
+
+  async register(server: FastifyInstance): Promise<void> {
+    // Registers WebSocket RPC endpoints with streaming support
   }
 }
 ```
@@ -231,14 +247,23 @@ class JsonRpcResource implements WebResource {
 
 ### Defining RPC Schemas
 
+RPC endpoints are defined using the schema format from `@tokenring-ai/rpc`:
+
 ```typescript
 import { z } from "zod";
+import { RpcSchema } from "@tokenring-ai/rpc/types";
 
-const calculatorSchema = {
+const calculatorSchema: RpcSchema = {
+  name: "Calculator",
   path: "/api/calc",
   methods: {
     add: {
       type: "query" as const,
+      input: z.object({ a: z.number(), b: z.number() }),
+      result: z.object({ result: z.number() })
+    },
+    multiply: {
+      type: "mutation" as const,
       input: z.object({ a: z.number(), b: z.number() }),
       result: z.object({ result: z.number() })
     },
@@ -259,6 +284,10 @@ const calculator = {
     result: params.a + params.b
   }),
 
+  multiply: async (params: { a: number; b: number }, app: TokenRingApp) => ({
+    result: params.a * params.b
+  }),
+
   streamResult: async function* (params: { steps: number }, app: TokenRingApp, signal: AbortSignal) {
     let value = 0;
     for (let i = 0; i < params.steps; i++) {
@@ -274,25 +303,52 @@ const calculator = {
 ### Creating JSON-RPC Endpoints
 
 ```typescript
-import { createJsonRPCEndpoint } from "@tokenring-ai/web-host/jsonrpc/createJsonRPCEndpoint";
+import { createRPCEndpoint } from "@tokenring-ai/rpc/createRPCEndpoint";
 
-const calculatorEndpoint = createJsonRPCEndpoint(calculatorSchema, calculator);
-const rpcResource = new JsonRpcResource(app, calculatorEndpoint);
+const endpoint = createRPCEndpoint(calculatorSchema, calculator);
+```
+
+### Automatic Endpoint Registration
+
+When using the web-host plugin, RPC endpoints are automatically registered during the `start` phase:
+
+```typescript
+// In plugin.ts, during the start phase:
+// 1. Get all endpoints from RpcService
+// 2. Create JsonRpcResource for HTTP JSON-RPC endpoints
+// 3. Create WsRpcResource for WebSocket RPC endpoints
 ```
 
 ### JSON-RPC Client
 
 ```typescript
-import { createJsonRPCClient } from "@tokenring-ai/web-host/jsonrpc/createJsonRPCClient";
+import { createJsonRPCClient } from "@tokenring-ai/web-host/createJsonRPCClient";
 
 const client = createJsonRPCClient(new URL("http://localhost:3000"), calculatorSchema);
 
-// Call query methods
+// Call query/mutation methods
 const result = await client.add({ a: 5, b: 3 });
 console.log(result.result); // { result: 8 }
 
 // Stream methods return async generators
-for await (const update of client.streamResult({ steps: 5 })) {
+for await (const update of client.streamResult({ steps: 5 }, signal)) {
+  console.log(update);
+}
+```
+
+### WebSocket RPC Client
+
+```typescript
+import { createWsRPCClient } from "@tokenring-ai/web-host/createWsRPCClient";
+
+const wsClient = createWsRPCClient(new URL("http://localhost:3000"), calculatorSchema);
+
+// Call query/mutation methods
+const result = await wsClient.add({ a: 5, b: 3 });
+console.log(result.result); // { result: 8 }
+
+// Stream methods return async generators
+for await (const update of wsClient.streamResult({ steps: 5 }, signal)) {
   console.log(update);
 }
 ```
@@ -301,12 +357,11 @@ for await (const update of client.streamResult({ steps: 5 })) {
 
 ```typescript
 import type {
-  JsonRPCSchema,
-  JsonRPCImplementation,
-  JsonRpcEndpoint,
+  FunctionTypeOfRPCCall,
   ResultOfRPCCall,
-  ParamsOfRPCCall
-} from "@tokenring-ai/web-host/jsonrpc/types";
+  ParamsOfRPCCall,
+  RPCSchema
+} from "@tokenring-ai/rpc/types";
 
 // Type inference for RPC calls
 type AddResult = ResultOfRPCCall<typeof calculatorSchema, "add">;
@@ -324,26 +379,11 @@ import webHostPackage from "@tokenring-ai/web-host";
 const app = new TokenRingApp({
   webHost: {
     port: 3000,
-    host: "127.0.0.1",
-    resources: {
-      "static-files": {
-        type: "static",
-        root: "./public",
-        description: "Public static files",
-        indexFile: "index.html",
-        prefix: "/static"
-      },
-      "spa": {
-        type: "spa",
-        file: "./dist/index.html",
-        description: "Main application",
-        prefix: "/"
-      }
-    }
+    host: "127.0.0.1"
   }
 });
 
-await app.addPackages([webHostPackage]);
+await app.addPlugin(webHostPackage);
 await app.start();
 ```
 
@@ -376,6 +416,9 @@ const app = new TokenRingApp({
     }
   }
 });
+
+await app.addPlugin(webHostPackage);
+await app.start();
 ```
 
 ### Registering Custom Resources Programmatically
@@ -383,7 +426,6 @@ const app = new TokenRingApp({
 ```typescript
 import { WebHostService } from "@tokenring-ai/web-host";
 import { WebResource } from "@tokenring-ai/web-host/types";
-import { FastifyInstance } from "fastify";
 
 // Get the web host service
 const webHost = app.getServiceByType(WebHostService);
@@ -391,7 +433,7 @@ const webHost = app.getServiceByType(WebHostService);
 if (webHost) {
   // Create a custom API resource
   const apiResource: WebResource = {
-    async register(server: FastifyInstance) {
+    async register(server) {
       server.get("/api/health", async () => {
         return { status: "ok" };
       });
@@ -411,10 +453,12 @@ if (webHost) {
 
 ```typescript
 import { JsonRpcResource } from "@tokenring-ai/web-host/JsonRpcResource";
-import { createJsonRPCEndpoint } from "@tokenring-ai/web-host/jsonrpc/createJsonRPCEndpoint";
+import { createRPCEndpoint } from "@tokenring-ai/rpc/createRPCEndpoint";
+import { RpcService } from "@tokenring-ai/rpc";
 import { z } from "zod";
 
 const chatSchema = {
+  name: "Chat",
   path: "/api/chat",
   methods: {
     sendMessage: {
@@ -444,10 +488,11 @@ const chatImplementation = {
   }
 };
 
-const chatEndpoint = createJsonRPCEndpoint(chatSchema, chatImplementation);
-const chatResource = new JsonRpcResource(app, chatEndpoint);
+const endpoint = createRPCEndpoint(chatSchema, chatImplementation);
 
-webHost.registerResource("chatAPI", chatResource);
+// Register with RpcService (web-host plugin will automatically create resources)
+const rpcService = app.getService(RpcService);
+rpcService.registerEndpoint("chat", endpoint);
 ```
 
 ### Serving Static Files
@@ -483,7 +528,57 @@ const spaResource = new SPAResource({
 webHost.registerResource("frontend", spaResource);
 ```
 
-## Command Integration
+## Plugin Integration
+
+### Plugin Registration
+
+The web-host package integrates as a plugin with two phases:
+
+**Install Phase:**
+- Creates WebHostService with provided configuration
+- Registers resources from configuration
+- Registers `/webhost` command with AgentCommandService
+
+**Start Phase:**
+- Starts the Fastify server
+- Automatically creates JsonRpcResource and WsRpcResource for each RPC endpoint registered with RpcService
+- Logs registered endpoint paths
+
+### Plugin Configuration
+
+```typescript
+import { TokenRingApp } from "@tokenring-ai/app";
+import webHostPackage from "@tokenring-ai/web-host";
+
+const app = new TokenRingApp({
+  webHost: {
+    port: 3000,
+    host: "0.0.0.0",
+    auth: {
+      users: {
+        "admin": {
+          password: "secret123",
+          bearerToken: "admin-token"
+        }
+      }
+    },
+    resources: {
+      "static-files": {
+        type: "static",
+        root: "./public",
+        description: "Static files",
+        indexFile: "index.html",
+        prefix: "/static"
+      }
+    }
+  }
+});
+
+await app.addPlugin(webHostPackage);
+await app.start();
+```
+
+## Chat Commands
 
 ### `/webhost` Command
 
@@ -502,25 +597,28 @@ The web-host package provides a `/webhost` command for monitoring:
 #   - chatAPI
 ```
 
+**Command Description:** Displays the current web host URL and lists all registered resources.
+
 ## Package Structure
 
 ```
 pkg/web-host/
-├── index.ts                     # Main entry point and schemas
-├── plugin.ts                    # Plugin registration
+├── index.ts                     # Main entry point and exports
+├── plugin.ts                    # Plugin definition for TokenRing integration
 ├── package.json                 # Package manifest
 ├── WebHostService.ts            # Main service implementation
 ├── StaticResource.ts            # Static file resource
 ├── SPAResource.ts              # SPA resource implementation
 ├── JsonRpcResource.ts          # JSON-RPC resource implementation
+├── WsRpcResource.ts            # WebSocket RPC resource implementation
 ├── auth.ts                     # Authentication utilities
 ├── types.ts                    # Type definitions
+├── schema.ts                   # Configuration schemas
+├── createJsonRPCClient.ts      # HTTP JSON-RPC client
+├── createWsRPCClient.ts        # WebSocket RPC client
 ├── commands/
-│   └── webhost.ts              # Web host command
-└── jsonrpc/
-    ├── createJsonRPCEndpoint.ts
-    ├── createJsonRPCClient.ts
-    └── types.ts
+│   └── webhost.ts              # /webhost command
+└── vitest.config.ts            # Vitest configuration
 ```
 
 ## API Reference
@@ -530,33 +628,22 @@ pkg/web-host/
 ```typescript
 export { default as WebHostService } from "./WebHostService.js";
 export { default as StaticResource } from "./StaticResource.js";
+export { default as JsonRpcResource } from "./JsonRpcResource.js";
+export { default as WsRpcResource } from "./WsRpcResource.js";
+export { default as SPAResource } from "./SPAResource.js";
+export { default as createJsonRPCClient } from "./createJsonRPCClient.js";
+export { default as createWsRPCClient } from "./createWsRPCClient.js";
 export type { WebResource } from "./types.js";
-export { WebHostConfigSchema } from "./index.ts";
+export { AuthConfigSchema, WebHostConfigSchema } from "./schema.js";
+export type { ParsedAuthConfig, ParsedWebHostConfig } from "./schema.js";
+export { spaResourceConfigSchema } from "./SPAResource.js";
+export { staticResourceConfigSchema } from "./StaticResource.js";
 ```
 
-### Exports from `jsonrpc/`
+### Exports from `auth.ts`
 
 ```typescript
-// createJsonRPCEndpoint.ts
-export function createJsonRPCEndpoint<T extends JsonRPCSchema>(
-  schemas: T,
-  implementation: JsonRPCImplementation<T>
-): JsonRpcEndpoint;
-
-// createJsonRPCClient.ts
-export default function createJsonRPCClient<T extends JsonRPCSchema>(
-  baseURL: URL,
-  schemas: T
-): { [K in keyof T["methods"]]: ... };
-
-export type ResultOfRPCCall<T, K> = ...;
-export type ParamsOfRPCCall<T, K> = ...;
-```
-
-### Auth Functions
-
-```typescript
-export const AuthConfigSchema = z.object({ ... });
+export const AuthConfigSchema: ZodSchema<AuthConfig>;
 export function registerAuth(server: FastifyInstance, config: AuthConfig): void;
 ```
 
@@ -567,9 +654,9 @@ The web-host package is designed to work with:
 - `@tokenring-ai/agent` - Agent system integration and command registration
 - `@tokenring-ai/app` - Service registration and lifecycle management
 - `@tokenring-ai/chat` - Chat services and human interface
+- `@tokenring-ai/rpc` - RPC endpoint registration and execution
 - `@tokenring-ai/utility` - Registry and utility functions
 - Custom web resources for specialized functionality
-- JSON-RPC endpoints for agent communication and API services
 
 ## Authentication Examples
 
@@ -595,14 +682,14 @@ server.get("/api/whoami", async (request) => {
 
 ## Error Handling
 
-The JSON-RPC implementation includes proper error handling:
+The JSON-RPC implementation includes proper error handling with standard JSON-RPC 2.0 error codes:
 
-```typescript
-// Error codes
--32600: Invalid Request (wrong JSON-RPC version)
--32601: Method not found
--32603: Internal error (validation or execution error)
-```
+| Error Code | Description |
+|------------|-------------|
+| -32700 | Parse error (invalid JSON) |
+| -32600 | Invalid Request (wrong JSON-RPC version) |
+| -32601 | Method not found |
+| -32603 | Internal error (validation or execution error) |
 
 ## Best Practices
 
@@ -616,15 +703,38 @@ The JSON-RPC implementation includes proper error handling:
 
 5. **Configure Authentication**: Use authentication for all production deployments to secure your APIs.
 
+6. **Automatic Endpoint Registration**: Let the web-host plugin automatically create JSON-RPC and WebSocket RPC resources from RpcService endpoints.
+
 ## Testing
 
-The package includes comprehensive unit tests using Vitest:
+The package includes comprehensive unit and integration tests using Vitest:
 
 ```bash
 bun test                    # Run all tests
 bun test:watch             # Watch mode
 bun test:coverage          # Coverage report
 ```
+
+## Dependencies
+
+### Production Dependencies
+
+- `@tokenring-ai/app` (0.2.0) - Base application framework with service management and plugin architecture
+- `@tokenring-ai/agent` (0.2.0) - Agent system with state management
+- `@tokenring-ai/chat` (0.2.0) - Chat service for human interaction
+- `@tokenring-ai/utility` (0.2.0) - Shared utilities and helpers
+- `@tokenring-ai/rpc` (0.2.0) - RPC endpoint registration and execution
+- `fastify` (^5.7.4) - High-performance web server
+- `@fastify/websocket` (^11.2.0) - WebSocket support for Fastify
+- `@fastify/static` (^9.0.0) - Static file serving for Fastify
+- `zod` (^4.3.6) - Schema validation
+- `ws` (^8.19.0) - WebSocket implementation
+
+### Development Dependencies
+
+- `vitest` (^4.0.18) - Testing framework
+- `typescript` (^5.9.3) - TypeScript compiler
+- `@types/ws` (^8.18.1) - WebSocket type definitions
 
 ## License
 

@@ -31,6 +31,8 @@ Manages and executes scripts, variables, functions, and scripting language featu
 - `executeFunction(funcName, args, agent)`: Executes a function with arguments
 - `runScript({scriptName, input}, agent)`: Executes a script with input
 - `attach(agent)`: Initializes state for agent
+- `getFunction(name)`: Gets a global function by name
+- `listFunctions()`: Lists all global function names
 
 **Function Types:**
 - `static`: Returns fixed text with variable interpolation
@@ -45,15 +47,29 @@ Manages state for scripting including:
 - Lists (`@name`)
 - Functions
 
+**Methods:**
+- `setVariable(name, value)`: Set a variable value
+- `getVariable(name)`: Get a variable value
+- `setList(name, value)`: Set a list value
+- `getList(name)`: Get a list value
+- `defineFunction(name, type, params, body)`: Define a local function
+- `getFunction(name)`: Get a local function
+- `interpolate(text)`: Interpolate variables and lists in text
+- `show()`: Get formatted state information
+- `serialize()`: Serialize state for persistence
+- `deserialize(data)`: Restore state from serialization
+
 ### Chat Commands
 
 #### Script Management
 - `/script list` - Lists all available scripts
-- `/script run <scriptName> <input>` - Runs the specified script with input
+- `/script run <scriptName> [input]` - Runs the specified script with optional input
 - `/script info <scriptName>` - Shows information about a script
 
 #### Variable Commands
 - `/var $name = value` - Define or update a variable
+- `/var $name = llm("prompt")` - Define variable with LLM response
+- `/var $name = functionName("arg")` - Define variable with function result
 - `/var delete $name` - Delete a variable
 - `/vars [$name]` - List all variables or show specific
 - `/vars clear` - Clear all variables
@@ -64,12 +80,15 @@ Manages state for scripting including:
 - `/func js name($param1) { code }` - Define JavaScript functions
 - `/func delete name` - Delete a function
 - `/funcs [name]` - List functions
+- `/funcs clear` - Clear all local functions
 
 #### Function Execution
 - `/call functionName("arg1", "arg2")` - Call a function with arguments
 
 #### List Commands
-- `/list @name = ["item1", "item2"]` - Define a list
+- `/list @name = ["item1", "item2"]` - Define a static list
+- `/list @name = [$var1, $var2]` - Define list from variables
+- `/list @name = functionName("arg")` - Define list from function results
 - `/lists [@name]` - List all lists or show specific
 - `/lists clear` - Clear all lists
 
@@ -80,7 +99,7 @@ Manages state for scripting including:
 - `/confirm $var "message"` - Prompt for yes/no confirmation
 
 #### Control Flow
-- `/if $condition { commands }` - Conditional execution
+- `/if $condition { commands } [else { commands }]` - Conditional execution
 - `/for $item in @list { commands }` - Iterate over lists
 - `/while $condition { commands }` - Execute while condition is truthy
 
@@ -113,6 +132,9 @@ const result = await agent.useTool("script_run", {
 - `output` (string, optional): Script output on success
 - `error` (string, optional): Error message on failure
 
+**Required Context Handlers:**
+- `available-scripts`: Required to determine available scripts
+
 ## Native Functions
 
 ### runAgent
@@ -128,9 +150,6 @@ scriptingService.registerFunction("runAgent", {
       agentType: agentType,
       headless: this.agent.headless,
       command: `/work ${message}\n\nImportant Context:\n${context}`,
-      forwardChatOutput: true,
-      forwardSystemOutput: true,
-      forwardHumanRequests: true,
     }, this.agent, true);
 
     if (res.status === 'success') {
@@ -141,6 +160,13 @@ scriptingService.registerFunction("runAgent", {
   }
 });
 ```
+
+**Parameters:**
+- `agentType` (string): The type of agent to run
+- `message` (string): The message to send to the agent
+- `context` (string): Additional context for the agent
+
+**Returns:** The agent's response as a string
 
 ## Usage Examples
 
@@ -297,8 +323,7 @@ import {ScriptingService} from "@tokenring-ai/scripting";
 async attach(agent: Agent): Promise<void> {
   const scriptingService = agent.requireServiceByType(ScriptingService);
   if (scriptingService) {
-    scriptingService.registerFunction({
-      name: "runAgent",
+    scriptingService.registerFunction("runAgent", {
       type: 'native',
       params: ['agentType', 'message', 'context'],
       async execute(this: ScriptingThis, agentType: string, message: string, context: string): Promise<string> {
@@ -306,9 +331,6 @@ async attach(agent: Agent): Promise<void> {
           agentType: agentType,
           headless: this.agent.headless,
           command: `/work ${message}\n\nImportant Context:\n${context}`,
-          forwardChatOutput: true,
-          forwardSystemOutput: true,
-          forwardHumanRequests: true,
         }, this.agent, true);
 
         if (res.status === 'success') {
@@ -327,7 +349,7 @@ async attach(agent: Agent): Promise<void> {
 Scripts are configured in your application config file:
 
 ```typescript
-import type {ScriptingConfigSchema} from "@tokenring-ai/scripting";
+import type {ScriptingServiceConfigSchema} from "@tokenring-ai/scripting";
 
 export default {
   scripting: {
@@ -343,23 +365,112 @@ export default {
       `/notify "Published successfully"`
     ]
   }
-} satisfies typeof ScriptingConfigSchema;
+} satisfies typeof ScriptingServiceConfigSchema;
 ```
 
 Scripts can be defined as:
 - Arrays of command strings
 - Single strings with commands separated by newlines or semicolons
-- Functions returning command arrays (not directly supported, use configuration)
 
-## Testing
+## Plugin Configuration
 
-The package uses vitest for testing with coverage reports:
+The package uses a minimal configuration schema:
 
-```bash
-bun run test          # Run tests
-bun run test:watch    # Watch mode
-bun run test:coverage # Generate coverage report
+```typescript
+const packageConfigSchema = z.object({
+  scripting: ScriptingServiceConfigSchema.default({})
+});
 ```
+
+No configuration is required by default. The plugin automatically:
+1. Registers chat commands
+2. Adds services to the application
+3. Registers tools with the chat service
+4. Registers context handlers with the chat service
+5. Initializes state slices for each agent
+
+## State Management
+
+The scripting package uses `ScriptingContext` for state persistence:
+
+- Variables, lists, and functions persist across script executions
+- State is cleared when the chat is reset
+- State can be serialized and restored for persistence
+
+### State Schema
+
+```typescript
+interface ScriptingContext {
+  variables: Map<string, string>;
+  lists: Map<string, string[]>;
+  functions: Map<string, { type: 'static' | 'llm' | 'js', params: string[], body: string }>;
+}
+```
+
+### State Serialization
+
+The context supports serialization and deserialization:
+
+```typescript
+// Serialize state
+const serialized = context.serialize();
+
+// Deserialize state
+context.deserialize(serialized);
+```
+
+### State Reset
+
+State is automatically reset when the chat is reset:
+
+```typescript
+// Reset happens on chat reset
+context.reset(["chat"]);
+```
+
+## Integration with Agent System
+
+The package integrates with the Token Ring agent system by:
+
+1. **State Management**: Registers ScriptingContext as an agent state slice for persistence
+2. **Command Registration**: Registers chat commands with AgentCommandService
+3. **Service Registration**: Implements TokenRingService for integration with the app framework
+4. **Tool Registration**: Registers tools with ChatService
+5. **Context Handlers**: Registers context handlers with ChatService
+
+## Service Registration
+
+The package registers the ScriptingService with the application:
+
+```typescript
+const scriptingService = new ScriptingService(config.scripting ?? {});
+app.addServices(scriptingService);
+
+// Register function with the service
+scriptingService.registerFunction("runAgent", {
+  type: 'native',
+  params: ['agentType', 'message', 'context'],
+  async execute(this: ScriptingThis, agentType: string, message: string, context: string): Promise<string> {
+    // Implementation
+  }
+});
+```
+
+## Reserved Function Names
+
+The following names cannot be used for functions:
+`var`, `vars`, `func`, `funcs`, `call`, `echo`, `sleep`, `prompt`, `confirm`, `list`, `lists`, `if`, `for`, `while`, `script`
+
+## Error Handling
+
+The scripting system provides comprehensive error handling:
+
+- Invalid command syntax
+- Undefined variables or functions
+- Runtime execution errors
+- Infinite loop protection (max 1000 iterations for while loops)
+- Function argument validation
+- List and variable name conflicts
 
 ## Package Structure
 
@@ -398,29 +509,30 @@ pkg/scripting/
     └── blockParser.ts
 ```
 
-## Inspiration
+## Testing
 
-The scripting operators were inspired by the [mlld](https://github.com/mlld-lang/mlld) project, which provides a modular LLM scripting language, extended with TokenRing-specific features for chat command integration and state management.
+The package uses vitest for testing with coverage reports:
+
+```bash
+bun run test          # Run tests
+bun run test:watch    # Watch mode
+bun run test:coverage # Generate coverage report
 ```
 
-The documentation has been verified to match the current functionality of the package. The key updates made were:
+## Dependencies
 
-1. **Tool documentation**: Clarified that the `script_run` tool requires both `scriptName` and `input` parameters (both are required)
-2. **Script run command**: The chat command accepts optional input, but the tool requires both parameters
-3. **Configuration examples**: Updated to show proper TypeScript configuration with type safety
-4. **Script definition**: Clarified that scripts are defined in configuration, not as function definitions in chat
+### Production Dependencies
 
-All core components are documented:
-- ScriptingService with function types (static, js, llm, native)
-- ScriptingContext for state management
-- All 16 chat commands
-- The script_run tool
-- Context handlers for AI assistance
-- Native runAgent function
+- `@tokenring-ai/app` (0.2.0) - Application framework
+- `@tokenring-ai/chat` (0.2.0) - Chat service
+- `@tokenring-ai/agent` (0.2.0) - Agent system
+- `zod` (^4.3.6) - Schema validation
 
-The documentation now accurately reflects:
-- The `/script run` command takes optional input via chat, but the tool requires both parameters
-- Function definition syntax for static, llm, and js types
-- Control flow behavior (if, for, while loops)
-- State persistence and serialization patterns
-- Integration with the agent system
+### Development Dependencies
+
+- `vitest` (^4.0.18) - Testing framework
+- `typescript` (^5.9.3) - TypeScript compiler
+
+## License
+
+MIT License - see [LICENSE](../LICENSE) file for details.

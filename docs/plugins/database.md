@@ -232,8 +232,8 @@ if (!databaseResource) {
 
 // Write protection for non-SELECT queries
 if (!sqlQuery.trim().startsWith("SELECT")) {
-  const approved = await agent.askForConfirmation({
-    message: `Execute SQL write operation on database '${databaseName}'?\\n\\nQuery: ${sqlQuery}`,
+  const approved = await agent.askForApproval({
+    message: `Execute SQL write operation on database '${databaseName}'?\n\nQuery: ${sqlQuery}`,
   });
 
   if (!approved) {
@@ -595,11 +595,19 @@ const updateResult = await agent.callTool('database_executeSql', {
 
 ## Dependencies
 
+### Production Dependencies
+
 - `@tokenring-ai/app`: Base application framework and plugin system
 - `@tokenring-ai/chat`: Chat service for tool and context handler registration
 - `@tokenring-ai/agent`: Agent framework for tool execution
 - `@tokenring-ai/utility`: Shared utilities including KeyedRegistry for registry pattern
 - `zod`: Runtime type validation for configuration and tool inputs
+
+### Development Dependencies
+
+- `bun-types`: TypeScript definitions for Bun
+- `vitest`: Unit testing framework
+- `typescript`: TypeScript compiler
 
 ## Testing
 
@@ -671,6 +679,13 @@ describe('DatabaseService', () => {
   });
 });
 ```
+
+## Related Components
+
+- `@tokenring-ai/app`: Base application framework and plugin system
+- `@tokenring-ai/chat`: Chat service and context handling
+- `@tokenring-ai/agent`: Agent-based orchestration
+- `@tokenring-ai/utility`: Shared utility functions including KeyedRegistry
 
 ## License
 

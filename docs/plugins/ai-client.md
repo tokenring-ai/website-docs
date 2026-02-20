@@ -2,20 +2,21 @@
 
 ## Overview
 
-The AI Client package is a multi-provider AI integration system for the Token Ring ecosystem. It provides a unified interface for accessing various AI models across different providers, including chat models, image generation, embeddings, speech synthesis, speech recognition, and reranking.
+The AI Client package is a multi-provider AI integration system for the Token Ring ecosystem. It provides a unified interface for accessing various AI models across different providers, including chat models, image generation, embeddings, speech synthesis, speech recognition, video generation, and reranking.
 
 ### Key Features
 
-- **Multi-Provider Support**: Integrates with 16 AI providers including Anthropic, OpenAI, Google, Groq, Cerebras, DeepSeek, ElevenLabs, Fal, xAI, xAI Responses, OpenRouter, Perplexity, Azure, Ollama, llama.cpp, and Qwen
-- **Model Registry**: Centralized model management with availability checking and pricing information
+- **Multi-Provider Support**: Integrates with 17 AI providers including Anthropic, OpenAI, Google, Groq, Cerebras, DeepSeek, ElevenLabs, Fal, xAI, xAI Responses, OpenRouter, Perplexity, Azure, Ollama, llama.cpp, Qwen, and z.ai
+- **Seven AI Capabilities**: Chat, Embeddings, Image Generation, Video Generation, Reranking, Speech Synthesis, and Transcription
+- **Model Registries**: Seven dedicated service registries for managing model specifications and capabilities
+- **Dynamic Model Registration**: Register custom models with availability checks
+- **Model Status Tracking**: Monitor model online, cold, and offline status
 - **Auto-Configuration**: Automatic provider setup from environment variables
-- **Model Type Specialization**: Separate registries for chat, image generation, embeddings, speech, transcription, and reranking models
-- **RPC API**: JSON-RPC endpoints for model listing and management
-- **Model Filtering**: Query models by requirements including cost, context length, and capabilities
-- **Online Status Monitoring**: Real-time availability checking for models
-- **Feature System**: Rich feature specification system supporting boolean, number, string, enum, and array types with validation
+- **JSON-RPC API**: Remote procedure call endpoints for programmatic access via plugin registration
 - **Streaming Support**: Real-time streaming responses with delta handling
 - **Agent Integration**: Seamless integration with Token Ring agent system through services
+- **Feature Queries**: Support for query parameters in model names (e.g., `provider:model?websearch=1`)
+- **Feature System**: Rich feature specification system supporting boolean, number, string, enum, and array types with validation
 
 ## Core Components
 
@@ -29,6 +30,7 @@ The AI Client provides specialized registries for different AI model types:
 - **SpeechModelRegistry**: Manages text-to-speech models
 - **TranscriptionModelRegistry**: Manages speech-to-text models
 - **RerankingModelRegistry**: Manages text reranking models
+- **VideoGenerationModelRegistry**: Manages video generation models
 
 ### Providers
 
@@ -43,13 +45,14 @@ The package supports integration with the following AI providers:
 7. **DeepSeek** - DeepSeek models with advanced reasoning
 8. **ElevenLabs** - Professional text-to-speech synthesis
 9. **Fal** - Fast image generation with Fal.ai
-10. **OpenRouter** - Multi-provider router for aggregated access
-11. **Perplexity** - Perplexity models with web search integration
-12. **xAI** - xAI models (Grok) with reasoning capabilities
-13. **xAI Responses** - xAI responses API for advanced reasoning and search
+10. **xAI** - xAI models (Grok) with reasoning capabilities
+11. **xAI Responses** - xAI responses API for advanced reasoning and search
+12. **OpenRouter** - Multi-provider router for aggregated access
+13. **Perplexity** - Perplexity models with web search integration
 14. **Ollama** - Self-hosted models via Ollama integration
 15. **llama.cpp** - Local inference via llama.cpp API
 16. **Qwen** - Alibaba Qwen models with Chinese language support
+17. **z.ai** - Z.ai API for coding and general purpose
 
 ## API Reference
 
@@ -83,6 +86,15 @@ interface EmbeddingModelRequirements {
 
 ```typescript
 interface ImageModelRequirements {
+  nameLike?: string;
+  contextLength?: number;
+}
+```
+
+#### VideoModelRequirements
+
+```typescript
+interface VideoModelRequirements {
   nameLike?: string;
   contextLength?: number;
 }
@@ -143,7 +155,7 @@ Each model specification includes:
 - `isAvailable()`: Async function to check model availability
 - `isHot()`: Async function to check if model is warmed up
 - `mangleRequest()`: Optional function to modify the request before sending
-- `features`: Optional feature specifications for query parameters
+- `settings`: Optional feature specifications for query parameters
 - `speed`: Speed capability score (0-infinity)
 - `research`: Research ability (0-infinity)
 - `reasoningText`: Reasoning capability score (0-infinity)
@@ -172,7 +184,7 @@ const [text, response] = await client.textChat(
 
 #### Other Registries
 
-The other registries (Embedding, ImageGeneration, Speech, Transcription, Reranking) extend the base `ModelTypeRegistry` and provide similar model management functionality.
+The other registries (Embedding, ImageGeneration, VideoGeneration, Speech, Transcription, Reranking) extend the base `ModelTypeRegistry` and provide similar model management functionality.
 
 ## Configuration
 
@@ -180,7 +192,7 @@ The other registries (Embedding, ImageGeneration, Speech, Transcription, Reranki
 
 ```typescript
 const pluginConfigSchema = z.object({
-  ai: AIClientConfigSchema
+  ai: AIClientConfigSchema.prefault({})
 });
 
 interface AIClientConfigSchema {
@@ -188,6 +200,8 @@ interface AIClientConfigSchema {
   providers?: Record<string, AIProviderConfig>;
 }
 ```
+
+**Note**: The `provider` field in `AIProviderConfig` is a discriminator that matches provider names like "anthropic", "openai", "google", and so on (lowercase).
 
 ### Auto-Configuration
 
@@ -209,10 +223,10 @@ When `autoConfigure` is set to `true` or `providers` is not specified, the syste
 - `AZURE_API_ENDPOINT` - Azure OpenAI endpoint (optional)
 - `OLLAMA_BASE_URL` - Ollama base URL (default: http://127.0.0.1:11434/v1)
 - `OLLAMA_API_KEY` - Ollama API key (optional)
-- `LLAMA_BASE_URL` - llama.cpp base URL (default: http://127.0.0.1:8080/v1)
+- `LLAMA_BASE_URL` - llama.cpp base URL (default: http://127.0.0.1:11434/v1)
 - `LLAMA_API_KEY` - llama.cpp API key (optional)
 - `DASHSCOPE_API_KEY` - Alibaba Qwen API key
-- `ZAI_API_KEY` - Zhipu AI API key
+- `ZAI_API_KEY` - Z.ai API key
 
 ### Provider Configuration
 
@@ -277,6 +291,15 @@ Each provider has specific configuration requirements:
 }
 ```
 
+#### xAI Responses
+
+```typescript
+{
+  provider: "xai-responses",
+  apiKey: string
+}
+```
+
 ## RPC Endpoints
 
 The AI Client provides the following JSON-RPC endpoints:
@@ -297,6 +320,8 @@ The AI Client provides the following JSON-RPC endpoints:
 | `listTranscriptionModelsByProvider` | `{}` | `{ modelsByProvider: Record<string, Record<string, {status, available, hot}> }` |
 | `listRerankingModels` | `{}` | `{ models: Record<string, {status, available, hot, modelSpec}> }` |
 | `listRerankingModelsByProvider` | `{}` | `{ modelsByProvider: Record<string, Record<string, {status, available, hot}> }` |
+
+**Note**: As of the current implementation, video generation endpoints (`listVideoGenerationModels` and `listVideoGenerationModelsByProvider`) are not yet available in the RPC implementation but are supported by the VideoGenerationModelRegistry.
 
 **Response Structure:**
 
@@ -343,14 +368,13 @@ console.log(result.models);
 
 ```typescript
 import { TokenRingApp } from "@tokenring-ai/app";
+import aiClientPlugin from "@tokenring-ai/ai-client";
 
-const app = new TokenRingApp({
-  plugins: {
-    "@tokenring-ai/ai-client": {
-      ai: {
-        autoConfigure: true
-      }
-    }
+const app = new TokenRingApp();
+
+app.addPlugin(aiClientPlugin, {
+  ai: {
+    autoConfigure: true
   }
 });
 ```
@@ -358,20 +382,22 @@ const app = new TokenRingApp({
 ### Manual Provider Configuration
 
 ```typescript
-const app = new TokenRingApp({
-  plugins: {
-    "@tokenring-ai/ai-client": {
-      ai: {
-        providers: {
-          OpenAI: {
-            provider: "openai",
-            apiKey: "sk-..."
-          },
-          Anthropic: {
-            provider: "anthropic",
-            apiKey: "sk-ant-..."
-          }
-        }
+import { TokenRingApp } from "@tokenring-ai/app";
+import aiClientPlugin from "@tokenring-ai/ai-client";
+
+const app = new TokenRingApp();
+
+app.addPlugin(aiClientPlugin, {
+  ai: {
+    autoConfigure: false,
+    providers: {
+      OpenAI: {
+        provider: "openai",
+        apiKey: "sk-..."
+      },
+      Anthropic: {
+        provider: "anthropic",
+        apiKey: "sk-ant-..."
       }
     }
   }
@@ -528,6 +554,19 @@ const [image, result] = await client.generateImage({
 }, agent);
 ```
 
+### Video Generation Model Usage
+
+```typescript
+const videoRegistry = app.requireService(VideoGenerationModelRegistry);
+const client = videoRegistry.getClient("OpenAI:video-model");
+
+const [video, result] = await client.generateVideo({
+  prompt: "A beautiful sunset over the ocean",
+  aspectRatio: "16:9",
+  duration: 5
+}, agent);
+```
+
 ### Speech Model Usage
 
 ```typescript
@@ -578,14 +617,14 @@ const [result, response] = await client.textChat(
 const client = await chatRegistry.getClient("OpenAI:gpt-5?websearch=1&reasoningEffort=high&serviceTier=priority");
 
 // Set features on client instance
-client.setFeatures({
+client.setSettings({
   websearch: true,
   reasoningEffort: "high",
   serviceTier: "priority"
 });
 
 // Get current features
-const features = client.getFeatures();
+const features = client.getSettings();
 ```
 
 ## Integration with Agent System
@@ -630,6 +669,13 @@ Image models support:
 - **Cost Calculation**: Dynamic pricing based on image size
 - **Variant Models**: Different quality options for same base model
 
+### Video Generation Models
+
+Video models support:
+- **Text-to-Video**: Generate videos from text prompts
+- **Image-to-Video**: Generate videos from images
+- **Dynamic Pricing**: Cost based on video duration and resolution
+
 ### Speech Models
 
 Speech models include:
@@ -644,6 +690,13 @@ Embedding models provide:
 - **Context Length**: Maximum input token length
 - **Semantic Search**: Support for similarity-based search
 
+### Reranking Models
+
+Reranking models support:
+- **Document Relevance**: Rank documents by relevance to query
+- **Score Calculation**: Generate relevance scores between 0-1
+- **Top-N Filtering**: Optional filtering for top results
+
 ## Best Practices
 
 1. **Use Appropriate Models**: Choose models based on your specific use case (reasoning, speed, cost)
@@ -657,8 +710,10 @@ Embedding models provide:
 9. **Check Model Hot Status**: Use `isHot()` to determine if a model needs to be warmed up
 10. **Calculate Costs**: Use `calculateCost()` to estimate expenses before making requests
 11. **Use Streaming for Long Responses**: Use `streamChat()` for better user experience with long responses
-12. **Set Features**: Use `setFeatures()` on client instances to enable specific features
+12. **Set Settings**: Use `setSettings()` on client instances to enable specific features
 13. **Monitor Model Status**: Check model status before expensive operations to avoid failed requests
+14. **Leverage Video Generation**: Use video models for dynamic content creation
+15. **Use Reranking**: Improve search results with reranking models
 
 ## Testing
 
@@ -715,10 +770,15 @@ bun run test:coverage
 
 The package follows the Token Ring plugin pattern:
 
-1. **Install Phase**: Registers six service instances (registries) and optionally registers RPC endpoint
+1. **Install Phase**: Registers seven service instances (registries) and optionally registers RPC endpoint
 2. **Start Phase**: Initializes providers and registers models through the provider initialization chain
 
 The package does not include streaming client implementations directly. Streaming clients are provided by the individual provider SDKs and accessed through the registries.
+
+## Limitations
+
+- Video generation RPC endpoints are not yet implemented (but the functionality is available via direct client usage)
+- The `VideoGenerationModelRegistry` exists but lacks RPC endpoints in the current implementation
 
 ## License
 

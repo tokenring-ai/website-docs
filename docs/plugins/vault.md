@@ -21,27 +21,198 @@ The `@tokenring-ai/vault` package provides a secure, encrypted vault for managin
 - **Automatic Relocking**: Vault automatically locks after 5 minutes of inactivity
 - **Zod Configuration**: Type-safe configuration with schema validation
 
+## Core Components
+
+### VaultService
+
+The main service class for programmatic access to the vault.
+
+**Properties:**
+- `name`: "VaultService" - The service identifier
+- `description`: "A vault service for storing persisted credentials" - Service description
+- `options`: ParsedVaultConfig - The configuration options passed to the constructor
+
+**Methods:**
+- `unlockVault(agent: Agent): Promise<Record<string, string>>` - Unlocks the vault and returns decrypted data
+- `lock(): Promise<void>` - Locks the vault and clears cached data
+- `getItem(key: string, agent: Agent): Promise<string | undefined>` - Retrieves a secret by key
+- `setItem(key: string, value: string, agent: Agent): Promise<void>` - Stores a secret
+- `save(vaultData: Record<string, string>, agent: Agent): Promise<void>` - Saves vault data
+
+### Vault Core Functions
+
+Direct vault file manipulation functions:
+
+- `initVault(vaultFile: string, password: string): Promise<void>` - Initialize a new vault
+- `readVault(vaultFile: string, password: string): Promise<Record<string, string>>` - Read vault contents
+- `writeVault(vaultFile: string, password: string, data: Record<string, string>): Promise<void>` - Write vault contents
+- `deriveKey(password: string, salt: Buffer): Buffer` - Derive encryption key from password
+
+### Chat Commands
+
+Integrated chat commands for agent interaction:
+
+- `/vault unlock` - Unlock the vault with password
+- `/vault lock` - Lock the vault
+- `/vault list` - List all credential keys in the vault
+- `/vault store <key>` - Store a credential in the vault
+- `/vault get <key>` - Retrieve and display a credential from the vault
+
+### CLI Commands
+
+Standalone command-line interface commands:
+
+- `vault init` - Initialize a new encrypted vault file
+- `vault get <key>` - Retrieve a secret value by key
+- `vault set <key> <value>` - Store a secret value
+- `vault list` - List all secret keys (not values) stored in the vault
+- `vault remove <key>` - Remove a secret by key
+- `vault change-password` - Change the vault encryption password
+- `vault run <command> [args...]` - Run a command with vault secrets as environment variables
+
+## Services
+
+### VaultService
+
+The main service class for programmatic access to the vault.
+
+```typescript
+import { VaultService } from '@tokenring-ai/vault';
+
+const vault = new VaultService({
+  vaultFile: '.vault',
+  relockTime: 300000 // 5 minutes
+});
+```
+
+#### Properties
+
+| Property | Type | Description |
+|----------|------|-------------|
+| `name` | string | Service identifier ("VaultService") |
+| `description` | string | Service description |
+| `options` | ParsedVaultConfig | Configuration options passed to constructor |
+
+#### Methods
+
+##### `unlockVault(agent: Agent): Promise<Record<string, string>>`
+
+Unlocks the vault by prompting for the password (if not already unlocked), decrypts the vault file, and returns the data.
+
+```typescript
+const data = await vault.unlockVault(agent);
+```
+
+**Parameters:**
+- `agent` (Agent): The Agent instance used for human interaction prompts, such as password entry.
+
+**Returns:** Promise resolving to the decrypted vault data.
+
+##### `lock(): Promise<void>`
+
+Locks the vault, clearing all cached data and password.
+
+```typescript
+await vault.lock();
+```
+
+##### `getItem(key: string, agent: Agent): Promise<string | undefined>`
+
+Retrieves a secret value by key.
+
+```typescript
+const apiKey = await vault.getItem('API_KEY', agent);
+```
+
+**Parameters:**
+- `key` (string): The secret key to retrieve.
+- `agent` (Agent): Agent instance for interaction.
+
+**Returns:** Promise resolving to the secret value or undefined if not found.
+
+##### `setItem(key: string, value: string, agent: Agent): Promise<void>`
+
+Updates the vault with a new key-value pair, saving the changes.
+
+```typescript
+await vault.setItem('API_KEY', 'sk-1234567890', agent);
+```
+
+**Parameters:**
+- `key` (string): The secret key to set.
+- `value` (string): The value to store for the key.
+- `agent` (Agent): Agent instance for interaction.
+
+##### `save(vaultData: Record<string, string>, agent: Agent): Promise<void>`
+
+Writes the updated vault data to the vault file, re-encrypting it with the current session password.
+
+```typescript
+await vault.save({ API_KEY: 'new-key' }, agent);
+```
+
+**Parameters:**
+- `vaultData` (Record<string, string>): The updated vault data to save.
+- `agent` (Agent): Agent instance for interaction.
+
+## Provider Documentation
+
+This package does not use a provider-based architecture.
+
+## RPC Endpoints
+
+This package does not define any RPC endpoints.
+
 ## Chat Commands
 
-The vault package provides integrated chat commands for managing credentials within the agent interface:
+The vault package provides integrated chat commands for managing credentials within the agent interface.
 
 ### `/vault unlock`
-Unlock the vault with password
+
+Unlock the vault with password.
+
+**Example:**
+```
+/vault unlock
+```
 
 ### `/vault lock`
-Lock the vault
+
+Lock the vault.
+
+**Example:**
+```
+/vault lock
+```
 
 ### `/vault list`
-List all credential keys in the vault
+
+List all credential keys in the vault.
+
+**Example:**
+```
+/vault list
+```
 
 ### `/vault store <key>`
-Store a credential in the vault
-- Prompts for the credential value securely
+
+Store a credential in the vault. Prompts for the credential value securely.
+
+**Example:**
+```
+/vault store api_key
+```
 
 ### `/vault get <key>`
-Retrieve and display a credential from the vault
 
-**Example usage:**
+Retrieve and display a credential from the vault.
+
+**Example:**
+```
+/vault get api_key
+```
+
+**Complete example usage:**
 ```
 /vault unlock
 /vault list
@@ -50,281 +221,76 @@ Retrieve and display a credential from the vault
 /vault lock
 ```
 
-## CLI Usage
+## Configuration
 
-### Initialize Vault
+### Plugin Configuration
 
-```bash
-vault init
-vault init -f ~/.secrets.vault
-```
-
-Creates a new encrypted vault file. You'll be prompted to set a password.
-
-### Store Secrets
-
-```bash
-vault set API_KEY sk-1234567890
-vault set DB_PASSWORD mySecretPassword
-vault set -f ~/.secrets.vault AWS_KEY abc123
-```
-
-### Retrieve Secrets
-
-```bash
-vault get API_KEY
-vault get DB_PASSWORD
-```
-
-### List Keys
-
-```bash
-vault list
-```
-
-Shows all secret keys (not values) stored in the vault.
-
-### Remove Secrets
-
-```bash
-vault remove API_KEY
-vault remove OLD_TOKEN
-```
-
-### Change Password
-
-```bash
-vault change-password
-```
-
-Re-encrypts the vault with a new password.
-
-### Run Commands with Secrets
-
-```bash
-vault run -- node app.js
-vault run -- bun start
-vault run -- bash -c 'echo $API_KEY'
-```
-
-Executes a command with all vault secrets injected as environment variables. Only string values are injected.
-
-### CLI Commands
-
-#### `vault init`
-
-Initialize a new encrypted vault file.
-
-**Options:**
-- `-f, --file <path>`: Specify vault file path (default: `.vault`)
-
-#### `vault get <key>`
-
-Retrieve a secret value by key.
-
-#### `vault set <key> <value>`
-
-Store a secret value.
-
-#### `vault list`
-
-List all secret keys (not values) stored in the vault.
-
-#### `vault remove <key>`
-
-Remove a secret by key.
-
-#### `vault change-password`
-
-Change the vault encryption password.
-
-#### `vault run <command> [args...]`
-
-Run a command with vault secrets injected as environment variables.
-
-## TokenRing Service Usage
-
-### Configuration
+The plugin configuration options are defined in `schema.ts` and `plugin.ts`.
 
 ```typescript
-import { VaultService } from '@tokenring-ai/vault';
-import { vaultConfigSchema } from '@tokenring-ai/vault';
+import vaultPlugin from '@tokenring-ai/vault';
+import TokenRingApp from '@tokenring-ai/app';
 
-const vault = new VaultService({
+const app = new TokenRingApp();
+app.usePlugin(vaultPlugin);
+```
+
+#### Plugin Configuration Schema
+
+| Option | Type | Default | Description |
+|--------|------|---------|-------------|
+| `vault` | `VaultConfigSchema` | `undefined` | Optional vault configuration |
+
+### Service Configuration
+
+The VaultService accepts configuration options through its constructor.
+
+| Option | Type | Default | Description |
+|--------|------|---------|-------------|
+| `vaultFile` | string | `.vault` | Path to the vault file |
+| `relockTime` | number | `300000` | Time in milliseconds before the vault automatically locks |
+
+**Example:**
+```typescript
+new VaultService({
   vaultFile: '.vault',
-  relockTime: 300000  // 5 minutes in milliseconds
+  relockTime: 300000 // 5 minutes
 });
 ```
 
-### Service Methods
+## Integration
 
-#### `unlockVault(agent: Agent): Promise<Record<string, string>>`
-
-Prompts for password and unlocks the vault. Returns the vault data.
+### TokenRing Application Integration
 
 ```typescript
-const data = await vault.unlockVault(agent);
+import { TokenRingApp } from '@tokenring-ai/app';
+import vaultPlugin from '@tokenring-ai/vault';
+
+const app = new TokenRingApp();
+app.usePlugin(vaultPlugin);
 ```
 
-**Parameters:**
-- `agent`: The current agent instance for service access and human interaction
-
-**Returns:**
-- `Promise<Record<string, string>>`: The decrypted vault data as key-value pairs
-
-#### `lock(): Promise<void>`
-
-Locks the vault and clears cached password and data.
+### Agent Integration
 
 ```typescript
-await vault.lock();
-```
+import { Agent } from '@tokenring-ai/agent';
+import { VaultService } from '@tokenring-ai/vault';
 
-#### `getItem(key: string, agent: Agent): Promise<string | undefined>`
-
-Retrieves a value by key. Unlocks vault if needed. Returns string or undefined.
-
-```typescript
-const apiKey = await vault.getItem('API_KEY', agent);
-```
-
-**Parameters:**
-- `key`: The key to retrieve
-- `agent`: The current agent instance
-
-**Returns:**
-- `Promise<string | undefined>`: The value or undefined if key doesn't exist
-
-#### `setItem(key: string, value: string, agent: Agent): Promise<void>`
-
-Stores a string value by key. Unlocks vault if needed.
-
-```typescript
-await vault.setItem('API_KEY', 'sk-1234567890', agent);
-```
-
-**Parameters:**
-- `key`: The key to store
-- `value`: The string value to store
-- `agent`: The current agent instance
-
-#### `save(vaultData: Record<string, string>, agent: Agent): Promise<void>`
-
-Saves the entire vault data.
-
-```typescript
-await vault.save({ API_KEY: 'new-key', DB_PASSWORD: 'new-pass' }, agent);
-```
-
-**Parameters:**
-- `vaultData`: The complete vault data to save
-- `agent`: The current agent instance
-
-### Service Features
-
-- **Password Caching**: Password cached during session, cleared on lock
-- **Automatic Locking**: Vault locks after configured timeout (default: 5 minutes)
-- **Session Management**: Relock timer resets on each access
-- **Plugin Integration**: Auto-registers with TokenRing application framework
-- **Agent Integration**: Uses Agent's human interaction for password prompts
-- **Chat Command Integration**: Provides subcommands for agent interaction
-- **Error Handling**: Comprehensive error handling with descriptive messages
-- **Configuration Validation**: Zod schema validation for configuration
-- **Human Interface**: Integrates with Agent's `askForText` request type with masking
-
-## Plugin Integration
-
-The vault package integrates with TokenRing applications through a plugin system:
-
-```typescript
-import { TokenRingPlugin } from "@tokenring-ai/app";
-import { VaultService } from "@tokenring-ai/vault";
-import { VaultConfigSchema } from "@tokenring-ai/vault/schema";
-import chatCommands from "@tokenring-ai/vault/chatCommands";
-import packageJSON from "@tokenring-ai/vault/package.json";
-
-export default {
-  name: packageJSON.name,
-  version: packageJSON.version,
-  description: packageJSON.description,
-  install(app, config) {
-    if (config.vault) {
-      app.addServices(new VaultService(config.vault));
-      app.waitForService(AgentCommandService, commandService => {
-        commandService.addAgentCommands(chatCommands)
-      });
-    }
-  },
-  config: z.object({ vault: VaultConfigSchema.optional() })
-} satisfies TokenRingPlugin;
-```
-
-### Configuration Schema
-
-```typescript
-import { z } from 'zod';
-
-export const VaultConfigSchema = z.object({
-  vaultFile: z.string().min(1),
-  relockTime: z.number().positive().default(300 * 1000),
+const agent = new Agent({
+  services: [
+    new VaultService({
+      vaultFile: '.vault',
+      relockTime: 300000
+    })
+  ]
 });
 ```
 
-**Configuration Options:**
-- `vaultFile`: Path to vault file (default: `.vault`)
-- `relockTime`: Auto-lock timeout in milliseconds (default: 300000)
+### Chat Command Integration
 
-## Programmatic Vault Access
+Chat commands are automatically registered when the vault plugin is installed and the AgentCommandService is available.
 
-For direct vault file manipulation without the service layer:
-
-```typescript
-import { readVault, writeVault, initVault, deriveKey } from '@tokenring-ai/vault/vault';
-import fs from 'fs-extra';
-
-// Initialize new vault
-await initVault('.vault', 'myPassword');
-
-// Read vault (returns Record<string, string>)
-const data = await readVault('.vault', 'myPassword');
-
-// Write vault (accepts Record<string, string>)
-await writeVault('.vault', 'myPassword', { API_KEY: 'value' });
-
-// Derive encryption key from password and salt
-const salt = crypto.randomBytes(16);
-const key = deriveKey('myPassword', salt);
-```
-
-## Data Types
-
-The vault stores string key-value pairs:
-- Keys: strings
-- Values: strings
-
-## Security
-
-### Encryption
-
-- **Algorithm**: AES-256-GCM (Galois/Counter Mode)
-- **Key Derivation**: PBKDF2 with 100,000 iterations using SHA-256
-- **Salt**: 16 random bytes per encryption
-- **IV**: 12 random bytes per encryption
-- **Authentication**: GCM provides authenticated encryption
-- **File Permissions**: Vault files created with `0o600` (owner read/write only)
-
-### Best Practices
-
-- Use strong, unique passwords for vault encryption
-- Store vault files in secure locations
-- Don't commit vault files to version control
-- Use `.gitignore` to exclude vault files
-- Rotate secrets regularly
-- Use different vaults for different environments
-- Use the auto-lock feature to prevent unauthorized access
-- Use chat commands for secure credential management in agents
-
-## Usage Example
+## Usage Examples
 
 ### CLI Workflow
 
@@ -344,7 +310,7 @@ vault -f .production.vault list
 vault -f .production.vault run -- node server.js
 ```
 
-### TokenRing Integration
+### TokenRing Service Usage
 
 ```typescript
 import { Agent } from '@tokenring-ai/agent';
@@ -368,6 +334,21 @@ const apiKey = await vault.getItem('API_KEY', agent);
 // /vault get API_KEY
 ```
 
+### Direct Vault Access
+
+```typescript
+import { readVault, writeVault, initVault } from '@tokenring-ai/vault/vault';
+
+// Initialize new vault
+await initVault('.vault', 'myPassword');
+
+// Read vault contents
+const data = await readVault('.vault', 'myPassword');
+
+// Write vault contents
+await writeVault('.vault', 'myPassword', { API_KEY: 'value' });
+```
+
 ### Environment Variable Pattern
 
 ```bash
@@ -381,26 +362,62 @@ vault set REDIS_URL redis://localhost:6379
 vault run -- bun start
 ```
 
-## Error Handling
+## Best Practices
 
-The vault package provides comprehensive error handling:
+### Security Best Practices
 
-1. **Invalid Password**: `Failed to decrypt vault. Invalid password or corrupted vault file.`
-2. **File Not Found**: `Vault file does not exist`
-3. **Empty Password**: `Password was empty, vault unlock cancelled`
-4. **Save Without Unlock**: `Vault must be unlocked before saving`
-5. **File Permissions**: Proper error handling for file system issues
+- Use strong, unique passwords for vault encryption
+- Store vault files in secure locations
+- Don't commit vault files to version control
+- Use `.gitignore` to exclude vault files
+- Rotate secrets regularly
+- Use different vaults for different environments
+- Use the auto-lock feature to prevent unauthorized access
+- Use chat commands for secure credential management in agents
+
+### Session Management
+
+- The vault automatically locks after the configured timeout (default: 5 minutes)
+- Password is cached during the session but cleared on lock
+- Each vault access resets the relock timer
+- Consider relockTime based on security requirements
+
+### Error Handling
+
+- Handle invalid password errors when decrypting vaults
+- Check for file existence before operations
+- Handle empty password cancellations
+- Use proper error boundaries when integrating with agents
+
+## Testing and Development
+
+### Testing
+
+The package includes Vitest configuration for testing:
 
 ```typescript
-try {
-  const data = await readVault('.vault', password);
-} catch (error) {
-  // Handle invalid password or corrupted vault
-  console.error('Failed to decrypt vault');
-}
+// vitest.config.ts
+import { defineConfig } from "vitest/config";
+
+export default defineConfig({
+  test: {
+    include: ["**/*.test.ts"],
+    environment: "node",
+    globals: true,
+    isolate: true,
+  },
+});
 ```
 
-## Package Structure
+Run tests:
+
+```bash
+bun run test
+bun run test:watch
+bun run test:coverage
+```
+
+### Package Structure
 
 ```
 pkg/vault/
@@ -424,24 +441,32 @@ pkg/vault/
 └── README.md               # Package documentation
 ```
 
-## Testing
+### Development Commands
 
-The package includes Vitest configuration for testing:
-
-```typescript
-// vitest.config.ts
-import { defineConfig } from "vitest/config";
-
-export default defineConfig({
-  test: {
-    include: ["**/*.test.ts"],
-    environment: "node",
-    globals: true,
-    isolate: true,
-  },
-});
+```bash
+bun run build          # Type-check with TypeScript
+bun run test           # Run tests once
+bun run test:watch     # Run tests in watch mode
+bun run test:coverage  # Run tests with coverage report
 ```
+
+## Dependencies
+
+### Production Dependencies
+
+- `@tokenring-ai/app`: 0.2.0 - TokenRing application framework
+- `@tokenring-ai/agent`: 0.2.0 - Agent orchestration system
+- `@tokenring-ai/utility`: 0.2.0 - Shared utilities
+- `@types/fs-extra`: ^11.0.4 - Type definitions for fs-extra
+- `commander`: ^14.0.3 - CLI framework
+- `fs-extra`: ^11.3.3 - Enhanced file system operations
+- `zod`: ^4.3.6 - Schema validation
+
+### Development Dependencies
+
+- `vitest`: ^4.0.18 - Testing framework
+- `typescript`: ^5.9.3 - TypeScript compiler
 
 ## License
 
-MIT (see LICENSE file)
+MIT License - see [LICENSE](./LICENSE) file for details.

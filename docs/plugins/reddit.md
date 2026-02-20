@@ -18,7 +18,7 @@ The Reddit plugin provides integration with Reddit's JSON API, enabling AI agent
 
 ### RedditService
 
-The core service handling all Reddit API communication. This service extends `HttpService` and implements `TokenRingService`, providing a standardized interface for Reddit interactions.
+The core service handling all Reddit API communication. This service implements `TokenRingService` and extends the `HttpService` base class to handle HTTP requests with retry logic and automatic JSON parsing.
 
 ```typescript
 import RedditService from "@tokenring-ai/reddit";
@@ -114,56 +114,162 @@ await agent.executeTool("reddit_getLatestPosts", {
 | after | string | No | Fullname of a thing for pagination (get items after this) |
 | before | string | No | Fullname of a thing for pagination (get items before this) |
 
-## Scripting Functions
+## Services
 
-### searchSubreddit(subreddit, query)
+### RedditService
 
-Search for posts in a subreddit using a simple function signature. Returns a JSON stringified array of posts that must be parsed.
+The core service for Reddit API interactions. This service implements `TokenRingService` and extends the `HttpService` base class to handle HTTP requests with retry logic and automatic JSON parsing.
+
+**Constructor**
 
 ```typescript
-const searchResults = await scriptingService.execute('searchSubreddit', 'typescript', 'advanced');
-const posts = JSON.parse(searchResults);
-console.log(posts.map((post: any) => post.data.title));
+constructor(config: ParsedRedditConfig)
 ```
 
 **Parameters**:
-- `subreddit` (string): Subreddit name without r/ prefix
-- `query` (string): Search query
+- `config` (ParsedRedditConfig): Configuration object with the following properties:
+  - `baseUrl` (string): Base URL for Reddit API (default: "https://www.reddit.com")
 
-### getRedditPost(url)
+**Methods**
 
-Retrieve a post by its URL. Returns a JSON stringified post object.
+#### searchSubreddit
+
+Search posts within a specific subreddit.
 
 ```typescript
-const postData = await scriptingService.execute('getRedditPost', 'https://www.reddit.com/r/programming/comments/abc123/title/');
-const post = JSON.parse(postData);
-console.log(post[0].data.children[0].data.title);
+async searchSubreddit(subreddit: string, query: string, opts?: RedditSearchOptions): Promise<any>
 ```
 
 **Parameters**:
-- `url` (string): Reddit post URL
+- `subreddit` (string): Subreddit name without the r/ prefix
+- `query` (string): Search query string
+- `opts` (RedditSearchOptions, optional): Additional options for the search
 
-### getLatestPosts(subreddit)
+**Returns**: Promise containing the search results
 
-Get the latest posts from a subreddit. Returns a JSON stringified array of posts.
+**Example**:
 
 ```typescript
-const latestPosts = await scriptingService.execute('getLatestPosts', 'golang');
-const posts = JSON.parse(latestPosts);
-posts.forEach((post: any) => console.log(post.data.title));
+const results = await reddit.searchSubreddit("programming", "typescript", {
+  limit: 10,
+  sort: "relevance",
+  t: "week"
+});
+```
+
+#### retrievePost
+
+Retrieve a Reddit post by URL.
+
+```typescript
+async retrievePost(postUrl: string): Promise<any>
 ```
 
 **Parameters**:
-- `subreddit` (string): Subreddit name without r/ prefix
+- `postUrl` (string): Full URL to the Reddit post
+
+**Returns**: Promise containing the post data and comments
+
+**Example**:
+
+```typescript
+const post = await reddit.retrievePost("https://www.reddit.com/r/programming/comments/abc123/my_post/");
+```
+
+#### getLatestPosts
+
+Get the latest posts from a subreddit.
+
+```typescript
+async getLatestPosts(subreddit: string, opts?: RedditListingOptions): Promise<any>
+```
+
+**Parameters**:
+- `subreddit` (string): Subreddit name without the r/ prefix
+- `opts` (RedditListingOptions, optional): Additional options for the request
+
+**Returns**: Promise containing the latest posts
+
+**Example**:
+
+```typescript
+const posts = await reddit.getLatestPosts("technology", {
+  limit: 20
+});
+```
+
+**Configuration Interface**
+
+```typescript
+interface ParsedRedditConfig {
+  baseUrl: string;  // Default: "https://www.reddit.com"
+}
+```
+
+**Search Options**
+
+```typescript
+interface RedditSearchOptions {
+  limit?: number;                                      // Number of results (1-100, default: 25)
+  sort?: 'relevance' | 'hot' | 'top' | 'new' | 'comments';  // Sort order (default: relevance)
+  t?: 'hour' | 'day' | 'week' | 'month' | 'year' | 'all';   // Time period
+  after?: string;                                      // Pagination cursor
+  before?: string;                                     // Pagination cursor
+}
+```
+
+**Listing Options**
+
+```typescript
+interface RedditListingOptions {
+  limit?: number;   // Number of posts (1-100, default: 25)
+  after?: string;   // Pagination cursor
+  before?: string;  // Pagination cursor
+}
+```
+
+## Providers
+
+This package does not use a provider architecture.
+
+## RPC Endpoints
+
+This package does not define any RPC endpoints.
+
+## Chat Commands
+
+This package does not define any chat commands.
 
 ## Configuration
 
 ### Plugin Configuration
 
-The Reddit plugin has no configuration schema:
+The Reddit plugin uses a nested configuration schema with a base URL option:
 
 ```typescript
-const packageConfigSchema = z.object({});
+interface RedditPluginConfig {
+  reddit: {
+    baseUrl?: string;  // Optional custom base URL (default: https://www.reddit.com)
+  };
+}
+```
+
+**Example Configuration**:
+
+```typescript
+// Default configuration
+const config = {
+  reddit: {
+    baseUrl: "https://www.reddit.com"
+  }
+};
+
+// Custom base URL
+const customConfig = {
+  reddit: {
+    baseUrl: "https://custom.reddit.com"
+  }
+};
 ```
 
 ### Service Configuration
@@ -180,7 +286,7 @@ interface RedditConfig {
 
 ```typescript
 // Default configuration
-const reddit = new RedditService();
+const reddit = new RedditService(RedditConfigSchema.parse({}));
 
 // Custom base URL (for testing or alternative instances)
 const customReddit = new RedditService({
@@ -214,7 +320,7 @@ The plugin automatically integrates with the agent system by:
 The plugin registers the `RedditService` with the application:
 
 ```typescript
-app.addServices(new RedditService());
+app.addServices(new RedditService(config.reddit));
 ```
 
 ### Chat Service Integration
@@ -223,7 +329,7 @@ The plugin waits for the `ChatService` and registers its tools:
 
 ```typescript
 app.waitForService(ChatService, chatService =>
-  chatService.addTools(packageJSON.name, tools)
+  chatService.addTools(tools)
 );
 ```
 
@@ -240,6 +346,18 @@ scriptingService.registerFunction("searchSubreddit", {
     return JSON.stringify(result.data.children);
   }
 });
+```
+
+### Package Exports
+
+The package exports the `RedditService` class:
+
+```typescript
+// Default export
+import RedditService from "@tokenring-ai/reddit";
+
+// Named export
+import { RedditService } from "@tokenring-ai/reddit";
 ```
 
 ## Usage Examples
@@ -324,12 +442,37 @@ const searchResults = await scriptingService.execute(
   'react vs vue'
 );
 
-// Parse and process results
+// Parse and process results (results are JSON stringified)
 const posts = JSON.parse(searchResults);
 posts.forEach((post: any) => {
   console.log(`Title: ${post.data.title}`);
   console.log(`Score: ${post.data.score}`);
 });
+```
+
+### Direct Service Usage
+
+```typescript
+import RedditService from "@tokenring-ai/reddit";
+
+// Create service instance with default configuration
+const reddit = new RedditService({});
+
+// Search for posts
+const searchResults = await reddit.searchSubreddit("programming", "typescript", {
+  limit: 10,
+  sort: "relevance"
+});
+
+// Get latest posts
+const latestPosts = await reddit.getLatestPosts("technology", {
+  limit: 20
+});
+
+// Retrieve specific post
+const postData = await reddit.retrievePost(
+  "https://www.reddit.com/r/programming/comments/abc123/post/"
+);
 ```
 
 ## Best Practices
@@ -389,11 +532,28 @@ The package includes vitest for unit testing. Tests cover:
 bun run build
 ```
 
-## Related Components
+## Dependencies
 
-- **@tokenring-ai/websearch**: Web search capabilities for broader content discovery
-- **@tokenring-ai/research**: Research workflow integration
-- **@tokenring-ai/chat**: Chat service for tool integration
+### Production Dependencies
+
+- `@tokenring-ai/app`: TokenRing application framework
+- `@tokenring-ai/chat`: Chat service and tool system
+- `@tokenring-ai/agent`: Agent framework
+- `@tokenring-ai/utility`: Shared utilities including HTTP service
+- `@tokenring-ai/scripting`: Scripting service
+- `zod`: Schema validation
+
+### Development Dependencies
+
+- `vitest`: Test runner
+- `@vitest/coverage-v8`: Test coverage reporting
+- `typescript`: TypeScript compiler
+
+## Installation
+
+```bash
+bun install @tokenring-ai/reddit
+```
 
 ## License
 

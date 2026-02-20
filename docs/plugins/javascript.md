@@ -61,6 +61,7 @@ export default {
 - Writes fixed code back to files when changes are detected
 - Provides detailed logging through the agent system
 - Handles errors on a per-file basis
+- Returns JSON result with array of results
 
 #### 2. installPackages (`javascript_installPackages`)
 
@@ -69,10 +70,10 @@ export default {
 **Parameters**:
 - `packageName` (string): Package name(s) to install (space-separated for multiple packages)
 
-**Returns**: `{ ok: boolean; stdout?: string; stderr?: string }`
-- `ok`: True if installation succeeded
-- `stdout`: Command output if successful
-- `stderr`: Error output if failed
+**Returns**: `string`
+- Returns the raw output from the package manager command
+- On success: "Package {packageName} added"
+- On failure: "Package {packageName} could not be added:\n{error output}"
 
 **Package Manager Detection**:
 - Automatically detects package manager based on lockfile presence
@@ -86,10 +87,10 @@ export default {
 **Parameters**:
 - `packageName` (string): Package name(s) to remove (space-separated for multiple packages)
 
-**Returns**: `{ ok: boolean; stdout?: string; stderr?: string }`
-- `ok`: True if removal succeeded
-- `stdout`: Command output if successful
-- `stderr`: Error output if failed
+**Returns**: `string`
+- Returns the raw output from the package manager command
+- On success: "Package {packageName} removed"
+- On failure: "Package {packageName} could not be removed:\n{error output}"
 
 **Functionality**:
 - Detects package manager from lockfiles
@@ -105,17 +106,16 @@ export default {
 - `format` ('esm' | 'commonjs', optional): Module format (default: 'esm')
 - `timeoutSeconds` (number, optional): Timeout in seconds (default: 30, min: 5, max: 300)
 
-**Returns**: `{ ok: boolean; exitCode?: number; stdout?: string; stderr?: string; format: string }`
-- `ok`: True if execution succeeded
+**Returns**: `{ ok: boolean; exitCode?: number; output: string; format: "esm" | "commonjs" }`
+- `ok`: True if execution succeeded (exitCode is 0)
 - `exitCode`: Exit code from the script execution
-- `stdout`: Standard output from the script
-- `stderr`: Standard error from the script
+- `output`: Command output (stdout) or error message (stderr)
 - `format`: The module format used ('esm' or 'commonjs')
 
 **Features**:
-- Creates temporary files for script execution
+- Creates temporary files for script execution (.mjs for ESM, .cjs for CommonJS)
 - Supports both ESM and CommonJS formats
-- Implements timeout controls
+- Implements timeout controls (5-300 seconds)
 - Automatically cleans up temporary files
 - Provides execution results with exit codes
 
@@ -133,18 +133,18 @@ interface EslintResult {
 async function eslint(
   { files }: { files: string[] },
   agent: Agent
-): Promise<EslintResult[]>;
+): Promise<TokenRingToolJSONResult<EslintResult[]>>;
 
 // Example usage
 const results = await agent.executeTool('javascript_eslint', {
   files: ['src/main.ts', 'utils/helper.js']
 });
 
-for (const result of results) {
+for (const result of results.data) {
   if (result.output) {
-    console.log(`${result.file}: ${result.output}`);
+    agent.infoMessage(`${result.file}: ${result.output}`);
   } else if (result.error) {
-    console.error(`${result.file}: ${result.error}`);
+    agent.errorMessage(`${result.file}: ${result.error}`);
   }
 }
 ```
@@ -152,46 +152,40 @@ for (const result of results) {
 ### Tool: installPackages (`javascript_installPackages`)
 
 ```typescript
-interface InstallPackagesArgs {
-  packageName: string;
-}
-
 async function installPackages(
-  { packageName }: InstallPackagesArgs,
+  { packageName }: { packageName: string },
   agent: Agent
-): Promise<{ ok: boolean; stdout?: string; stderr?: string }>;
+): Promise<string>;
 
 // Example usage
 const result = await agent.executeTool('javascript_installPackages', {
   packageName: 'lodash'
 });
 
-if (result.ok) {
-  console.log('Package installed successfully');
-  console.log(result.stdout);
+if (result.includes('added')) {
+  agent.infoMessage('Package installed successfully');
+} else if (result.includes('could not be added')) {
+  agent.errorMessage(result);
 }
 ```
 
 ### Tool: removePackages (`javascript_removePackages`)
 
 ```typescript
-interface RemovePackagesArgs {
-  packageName: string;
-}
-
 async function removePackages(
-  { packageName }: RemovePackagesArgs,
+  { packageName }: { packageName: string },
   agent: Agent
-): Promise<{ ok: boolean; stdout?: string; stderr?: string }>;
+): Promise<string>;
 
 // Example usage
 const result = await agent.executeTool('javascript_removePackages', {
   packageName: 'lodash'
 });
 
-if (result.ok) {
-  console.log('Package removed successfully');
-  console.log(result.stdout);
+if (result.includes('removed')) {
+  agent.infoMessage('Package removed successfully');
+} else if (result.includes('could not be removed')) {
+  agent.errorMessage(result);
 }
 ```
 
@@ -201,32 +195,40 @@ if (result.ok) {
 interface RunJavaScriptResult {
   ok: boolean;
   exitCode?: number;
-  stdout?: string;
-  stderr?: string;
-  format: 'esm' | 'commonjs';
+  output: string;
+  format: "esm" | "commonjs";
 }
 
 async function runJavaScriptScript(
   { script, format, timeoutSeconds }: {
     script: string;
-    format?: 'esm' | 'commonjs';
+    format?: "esm" | "commonjs";
     timeoutSeconds?: number;
   },
   agent: Agent
-): Promise<RunJavaScriptResult>;
+): Promise<TokenRingToolJSONResult<RunJavaScriptResult>>;
 
 // Example usage
 const result = await agent.executeTool('javascript_runJavaScriptScript', {
   script: 'console.log("Hello from JavaScript!"); console.log(2 + 2);',
-  format: 'esm',
+  format: "esm",
   timeoutSeconds: 10
-}, agent);
+});
 
-console.log('Exit code:', result.exitCode);
-console.log('Output:', result.stdout);
-if (result.stderr) {
-  console.error('Error:', result.stderr);
+if (result.data.ok) {
+  agent.infoMessage(`Exit code: ${result.data.exitCode}`);
+  agent.infoMessage(`Output: ${result.data.output}`);
+  agent.infoMessage(`Format: ${result.data.format}`);
+} else {
+  agent.errorMessage(`Error: ${result.data.output}`);
 }
+
+// CommonJS example
+const cjsResult = await agent.executeTool('javascript_runJavaScriptScript', {
+  script: 'const sum = (a, b) => a + b; console.log(sum(1, 2));',
+  format: "commonjs",
+  timeoutSeconds: 30
+});
 ```
 
 ## Usage Examples
@@ -237,13 +239,15 @@ if (result.stderr) {
 // Run a simple JavaScript script
 const result = await agent.executeTool('javascript_runJavaScriptScript', {
   script: 'console.log("Hello, World!"); console.log(2 * 2);',
-  format: 'esm',
+  format: "esm",
   timeoutSeconds: 5
-}, agent);
+});
 
-if (result.ok) {
-  console.log('Script executed successfully');
-  console.log('Output:', result.stdout);
+if (result.data.ok) {
+  agent.infoMessage('Script executed successfully');
+  agent.infoMessage(`Output: ${result.data.output}`);
+} else {
+  agent.errorMessage(`Script failed: ${result.data.output}`);
 }
 ```
 
@@ -253,11 +257,12 @@ if (result.ok) {
 // Install a package
 const installResult = await agent.executeTool('javascript_installPackages', {
   packageName: 'lodash'
-}, agent);
+});
 
-if (installResult.ok) {
-  console.log('Package installed successfully');
-  console.log('Output:', installResult.stdout);
+if (installResult.includes('added')) {
+  agent.infoMessage('Package installed successfully');
+} else {
+  agent.errorMessage(installResult);
 }
 ```
 
@@ -267,11 +272,12 @@ if (installResult.ok) {
 // Remove a package
 const removeResult = await agent.executeTool('javascript_removePackages', {
   packageName: 'lodash'
-}, agent);
+});
 
-if (removeResult.ok) {
-  console.log('Package removed successfully');
-  console.log('Output:', removeResult.stdout);
+if (removeResult.includes('removed')) {
+  agent.infoMessage('Package removed successfully');
+} else {
+  agent.errorMessage(removeResult);
 }
 ```
 
@@ -281,13 +287,13 @@ if (removeResult.ok) {
 // Run ESLint with auto-fix on multiple files
 const lintResults = await agent.executeTool('javascript_eslint', {
   files: ['src/main.ts', 'utils/helper.js', 'components/button.tsx']
-}, agent);
+});
 
-for (const result of lintResults) {
+for (const result of lintResults.data) {
   if (result.output) {
-    console.log(`${result.file}: ${result.output}`);
+    agent.infoMessage(`${result.file}: ${result.output}`);
   } else if (result.error) {
-    console.error(`${result.file}: ${result.error}`);
+    agent.errorMessage(`${result.file}: ${result.error}`);
   }
 }
 ```
@@ -309,6 +315,14 @@ The `runJavaScriptScript` tool has configurable timeout:
 - **Minimum**: 5 seconds
 - **Maximum**: 300 seconds
 
+### Plugin Configuration
+
+The plugin currently does not require any configuration:
+
+```typescript
+const configSchema = z.object({});
+```
+
 ## Integration
 
 ### With TokenRing Agent System
@@ -322,19 +336,19 @@ const javascriptTools = agent.tools;
 // Execute any of the available tools
 await agent.executeTool('javascript_eslint', {
   files: ['file.ts']
-}, agent);
+});
 
 await agent.executeTool('javascript_installPackages', {
   packageName: 'lodash'
-}, agent);
+});
 
 await agent.executeTool('javascript_removePackages', {
   packageName: 'lodash'
-}, agent);
+});
 
 await agent.executeTool('javascript_runJavaScriptScript', {
   script: 'console.log("test")'
-}, agent);
+});
 ```
 
 ### With Filesystem Service
@@ -346,6 +360,14 @@ The plugin relies on the TokenRing filesystem service for:
 - Managing temporary files
 - Detecting package manager lockfiles
 
+### With Terminal Service
+
+The plugin uses the TokenRing terminal service for:
+
+- Executing package manager commands (bun, pnpm, yarn, npm)
+- Running JavaScript scripts via Node.js
+- Command execution with timeout support
+
 ### Error Handling
 
 All tools provide comprehensive error handling:
@@ -354,6 +376,7 @@ All tools provide comprehensive error handling:
 - Package manager detection errors
 - Timeout handling for script execution
 - Input validation and error messages
+- All errors are prefixed with the tool name for identification
 
 ## Development
 
@@ -388,6 +411,26 @@ pkg/javascript/
 └── vitest.config.ts      # Test configuration
 ```
 
+## Dependencies
+
+### Production Dependencies
+
+- `@tokenring-ai/app`: Plugin framework
+- `@tokenring-ai/chat`: Chat service integration
+- `@tokenring-ai/agent`: Agent system
+- `@tokenring-ai/filesystem`: File operations and command execution
+- `@tokenring-ai/terminal`: Terminal service for command execution
+- `eslint`: For code linting and fixing
+- `execa`: For node command execution
+- `jiti`: For TypeScript execution
+- `jscodeshift`: For code transformation
+- `zod`: For schema validation
+
+### Development Dependencies
+
+- `vitest`: For unit testing
+- `typescript`: For TypeScript compilation
+
 ## License
 
-MIT License
+MIT License - see [LICENSE](https://github.com/tokenring/ai/blob/main/pkg/javascript/LICENSE) file for details.

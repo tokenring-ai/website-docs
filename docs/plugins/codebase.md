@@ -432,7 +432,7 @@ Represents directory structure of the codebase. Extends `FileMatchResource` from
 import {FileMatchResource} from "@tokenring-ai/filesystem";
 
 export default class FileTreeResource extends FileMatchResource {
-  name = "FileTreeService";
+  readonly name = "FileTreeService";
   description = "Provides FileTree functionality";
 }
 ```
@@ -455,7 +455,7 @@ Generates symbol-based repository maps showing function and class signatures. Us
 import {FileMatchResource} from "@tokenring-ai/filesystem";
 
 export default class RepoMapResource extends FileMatchResource {
-  name = "RepoMapResource";
+  readonly name = "RepoMapResource";
   description = "Provides RepoMap functionality";
 }
 ```
@@ -478,7 +478,7 @@ Includes the full contents of specified files. Useful for configuration files, s
 import {FileMatchResource} from "@tokenring-ai/filesystem";
 
 export default class WholeFileResource extends FileMatchResource {
-  name = "WholeFileResource";
+  readonly name = "WholeFileResource";
   description = "Provides whole files to include in the chat context";
 }
 ```

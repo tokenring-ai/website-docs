@@ -69,7 +69,7 @@ Performs a Wikipedia search and returns structured search results with articles 
 
 **Example:**
 ```typescript
-const wikipedia = new WikipediaService();
+const wikipedia = new WikipediaService(WikipediaConfigSchema.parse({}));
 
 // Basic search
 const results = await wikipedia.search("artificial intelligence");
@@ -231,7 +231,7 @@ pkg/wikipedia/
 import WikipediaService from "@tokenring-ai/wikipedia";
 
 // Basic usage
-const wikipedia = new WikipediaService();
+const wikipedia = new WikipediaService(WikipediaConfigSchema.parse({}));
 
 // Search Wikipedia articles
 const results = await wikipedia.search("Token Ring AI framework");

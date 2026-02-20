@@ -12,6 +12,8 @@ The Queue package provides a work queue system for managing and executing chat p
 - **Tool Access**: Programmatically add tasks via tools
 - **State Persistence**: Automatic serialization and restoration of queue state
 - **Queue Processing**: Start, load, execute, skip, and complete queued tasks
+- **Configurable Queue Size**: Optional maxSize limit for bounded queues
+- **Agent Integration**: Automatic registration with TokenRing agent framework
 
 ## Core Components
 
@@ -21,51 +23,71 @@ The main service class that implements the `TokenRingService` interface and mana
 
 **Constructor:**
 ```typescript
-new WorkQueueService({ maxSize?: number } = {})
+new WorkQueueService(options: ParsedWorkQueueConfig)
 ```
 
+**Options:**
+- `agentDefaults?: { maxSize?: number }` - Default configuration for agent state
+
 **Properties:**
-- `maxSize: number | undefined` - Maximum number of items the queue can hold
+
+| Property | Type | Description |
+|----------|------|-------------|
+| `name` | `string` | Service name ("WorkQueueService") |
+| `description` | `string` | Service description |
+| `options` | `ParsedWorkQueueConfig` | Service configuration options |
 
 **Methods:**
 
-**Queue Operations:**
-- `enqueue(item, agent)`: Add a work item to the queue, returns `boolean` (success)
-- `dequeue(agent)`: Remove and return the first work item
-- `get(idx, agent)`: Get work item at index without removing
-- `splice(start, deleteCount, agent, ...items)`: Modify queue array, return removed items
-- `clear(agent)`: Remove all items from queue
-- `getAll(agent)`: Return copy of all queue items
-- `size(agent)`: Get current queue size
-- `isEmpty(agent)`: Check if queue is empty
+#### Lifecycle Management Methods
 
-**Status Methods:**
-- `started(agent)`: Check if service has started
-- `getCurrentItem(agent)`: Get current loaded work item
-- `setInitialCheckpoint(message, agent)`: Save initial agent state
-- `getInitialCheckpoint(agent)`: Get saved initial state
+| Method | Description | Parameters | Returns |
+|--------|-------------|------------|---------|
+| `attach(agent)` | Initialize queue state on agent | `agent: Agent` | `void` |
+| `startWork(agent)` | Start queue processing | `agent: Agent` | `void` |
+| `stopWork(agent)` | Stop processing and clear current item | `agent: Agent` | `void` |
+| `started(agent)` | Check if queue is active | `agent: Agent` | `boolean` |
 
-**Queue Control Methods:**
-- `startWork(agent)`: Begin queue processing
-- `stopWork(agent)`: Stop queue processing
-- `setCurrentItem(item, agent)`: Set current work item
-- `clearInitialCheckpoint(agent)`: Clear initial state
+#### Checkpoint Management Methods
 
-**State Management:**
-- `serialize()`: Convert state to plain object
-- `deserialize(data)`: Restore state from plain object
-- `reset(what)`: Reset state for specific scope
-- `show()`: Display current state in array form
+| Method | Description | Parameters | Returns |
+|--------|-------------|------------|---------|
+| `setInitialCheckpoint(checkpoint, agent)` | Set starting state checkpoint | `checkpoint: AgentCheckpointData`, `agent: Agent` | `void` |
+| `getInitialCheckpoint(agent)` | Get initial checkpoint | `agent: Agent` | `AgentCheckpointData \| null` |
+
+#### Queue Operation Methods
+
+| Method | Description | Parameters | Returns |
+|--------|-------------|------------|---------|
+| `enqueue(item, agent)` | Add item to queue | `item: QueueItem`, `agent: Agent` | `boolean` |
+| `dequeue(agent)` | Remove and return front item | `agent: Agent` | `QueueItem \| undefined` |
+| `get(idx, agent)` | Get item at index | `idx: number`, `agent: Agent` | `QueueItem` |
+| `splice(start, deleteCount, agent, ...items)` | Modify queue like Array.splice | `start: number`, `deleteCount: number`, `agent: Agent`, `...items: QueueItem[]` | `QueueItem[]` |
+| `size(agent)` | Get current queue length | `agent: Agent` | `number` |
+| `isEmpty(agent)` | Check if queue is empty | `agent: Agent` | `boolean` |
+| `clear(agent)` | Empty the queue | `agent: Agent` | `void` |
+| `getAll(agent)` | Get copy of all items | `agent: Agent` | `QueueItem[]` |
+
+#### Current Item Management Methods
+
+| Method | Description | Parameters | Returns |
+|--------|-------------|------------|---------|
+| `getCurrentItem(agent)` | Get currently processing item | `agent: Agent` | `QueueItem \| null` |
+| `setCurrentItem(item, agent)` | Set current processing item | `item: QueueItem \| null`, `agent: Agent` | `void` |
 
 ### State Slice: WorkQueueState
 
 Manages the queue's internal state with persistence support.
 
 **Properties:**
-- `queue: QueueItem[]` - Array of queued work items
-- `started: boolean` - Whether queue processing has begun
-- `currentItem: QueueItem | null` - Work item currently loaded for execution
-- `initialCheckpoint: AgentCheckpointData | null` - Saved state at queue start
+
+| Property | Type | Description |
+|----------|------|-------------|
+| `queue` | `QueueItem[]` | Array of queued work items |
+| `started` | `boolean` | Whether queue processing has begun |
+| `currentItem` | `QueueItem \| null` | Work item currently loaded for execution |
+| `initialCheckpoint` | `AgentCheckpointData \| null` | Saved state at queue start |
+| `maxSize` | `number \| null` | Maximum queue size (if configured) |
 
 **Queue Item Type:**
 ```typescript
@@ -76,14 +98,38 @@ interface QueueItem {
 }
 ```
 
-### Serialized Schema
+**Methods:**
+
+| Method | Description | Parameters | Returns |
+|--------|-------------|------------|---------|
+| `reset(what)` | Reset state for specific scope | `what: ResetWhat[]` | `void` |
+| `serialize()` | Convert state to plain object | None | `z.output<typeof serializationSchema>` |
+| `deserialize(data)` | Restore state from plain object | `data: z.output<typeof serializationSchema>` | `void` |
+| `show()` | Display current state in array form | None | `string[]` |
+
+### Configuration Schemas
+
+#### WorkQueueAgentConfigSchema
+
+Agent-level configuration for queue size limits:
 
 ```typescript
-interface SerializedWorkQueueState {
-  queue: QueueItem[];
-  started: boolean;
-  currentItem: QueueItem | null;
-  initialCheckpoint: AgentCheckpointData | null;
+{
+  maxSize?: number  // Optional: Maximum queue size (positive number)
+}
+```
+
+#### WorkQueueServiceConfigSchema
+
+Plugin-level configuration with defaults:
+
+```typescript
+{
+  queue: {
+    agentDefaults: {
+      maxSize?: number  // Optional: Maximum queue size (positive number)
+    }
+  }
 }
 ```
 
@@ -401,6 +447,24 @@ import WorkQueueService from "./WorkQueueService.js";
 app.addServices(new WorkQueueService());
 ```
 
+### Tool Registration
+
+The tool is automatically registered with the chat service:
+
+```typescript
+// In plugin.ts
+chatService.addTools(tools);
+```
+
+### Command Registration
+
+The chat commands are automatically registered with the agent command service:
+
+```typescript
+// In plugin.ts
+agentCommandService.addAgentCommands(chatCommands);
+```
+
 ## Usage Examples
 
 ### Basic Queue Workflow
@@ -409,7 +473,7 @@ app.addServices(new WorkQueueService());
 import WorkQueueService from '@tokenring-ai/queue';
 
 // Initialize service (optional maxSize parameter)
-const queueService = new WorkQueueService({ maxSize: 50 });
+const queueService = new WorkQueueService({ agentDefaults: { maxSize: 50 } });
 
 // Attach to agent - this happens automatically in plugin
 queueService.attach(agent);
@@ -435,7 +499,6 @@ queueService.enqueue(
 
 // Start queue processing
 queueService.startWork(agent);
-queueService.setInitialCheckpoint(agent.generateCheckpoint(), agent);
 
 // Process items one by one
 while (true) {
@@ -588,6 +651,23 @@ if (initial) {
 }
 ```
 
+### Configuration Example
+
+```typescript
+import queuePlugin from "@tokenring-ai/queue/plugin";
+
+const app = new TokenRingApp();
+
+// Configure with optional queue size limit
+app.install(queuePlugin, {
+  queue: {
+    agentDefaults: {
+      maxSize: 50  // Optional: Maximum number of items in the queue
+    }
+  }
+});
+```
+
 ## State Management
 
 ### Serialization
@@ -603,7 +683,8 @@ const serializationSchema = z.object({
   })),
   started: z.boolean(),
   currentItem: z.any().nullable(),
-  initialCheckpoint: z.any().nullable()
+  initialCheckpoint: z.any().nullable(),
+  maxSize: z.number().nullable()
 });
 ```
 
@@ -611,6 +692,7 @@ const serializationSchema = z.object({
 - Queue items maintain their checkpoint references
 - Processing state (started, currentItem) is preserved
 - Initial checkpoint is kept for restoration
+- Queue size limit is preserved
 
 **State structure:**
 ```typescript
@@ -619,6 +701,7 @@ interface SerializedWorkQueueState {
   started: boolean;
   currentItem: QueueItem | null;
   initialCheckpoint: AgentCheckpointData | null;
+  maxSize: number | null;
 }
 ```
 
@@ -656,11 +739,14 @@ class WorkQueueState implements AgentStateSlice<typeof serializationSchema> {
   started = false;
   currentItem: QueueItem | null = null;
   initialCheckpoint: AgentCheckpointData | null = null;
-
-  // Serialization schema
-  serializationSchema = serializationSchema;
+  maxSize: number | null = null;
 
   // Methods
+
+  // Constructor - receives config
+  constructor(readonly initialConfig: z.output<typeof WorkQueueAgentConfigSchema>) {
+    this.maxSize = initialConfig.maxSize ?? null;
+  }
 
   // Reset state when appropriate scope is reset
   reset(what: ResetWhat[]): void {
@@ -679,6 +765,7 @@ class WorkQueueState implements AgentStateSlice<typeof serializationSchema> {
       currentItem: this.currentItem,
       initialCheckpoint: this.initialCheckpoint,
       queue: this.queue,
+      maxSize: this.maxSize
     };
   }
 
@@ -688,6 +775,7 @@ class WorkQueueState implements AgentStateSlice<typeof serializationSchema> {
     this.currentItem = data.currentItem;
     this.initialCheckpoint = data.initialCheckpoint;
     this.queue = data.queue;
+    this.maxSize = data.maxSize;
   }
 
   // Get human-readable state summary
@@ -798,6 +886,12 @@ Example:
 2. **Completion Checkpoints**: Track what has been done for debugging
 3. **Error Recovery**: System attempts auto-recovery using checkpoints
 
+### Queue Size Management
+
+1. **Set maxSize**: Configure queue size limits to prevent unbounded memory usage
+2. **Monitor Queue Size**: Use `/queue list` and `size()` to monitor queue growth
+3. **Regular Processing**: Process queue items regularly to prevent accumulation
+
 ## Troubleshooting
 
 ### Queue Empty
@@ -853,6 +947,15 @@ Example:
 - Verify items were added with `/queue add`
 - Check queue with `/queue list` to confirm items exist
 
+### Queue Full
+
+**Problem**: Cannot add more items to queue
+
+**Solution**:
+- Check `maxSize` configuration
+- Process or remove items to make space
+- Increase `maxSize` if needed
+
 ## Testing
 
 ### Unit Test Example
@@ -864,7 +967,7 @@ import type { Agent } from '@tokenring-ai/agent';
 
 describe('WorkQueueService', () => {
   it('should enqueue and dequeue items', () => {
-    const service = new WorkQueueService({ maxSize: 10 });
+    const service = new WorkQueueService({ agentDefaults: { maxSize: 10 } });
     const mockAgent = createMockAgent();
 
     // Attach agent to service (in real usage, this is automatic)
@@ -877,7 +980,7 @@ describe('WorkQueueService', () => {
   });
 
   it('should enforce queue size limit', () => {
-    const service = new WorkQueueService({ maxSize: 2 });
+    const service = new WorkQueueService({ agentDefaults: { maxSize: 2 } });
     const mockAgent = createMockAgent();
 
     // Attempt to add more items than maxSize
@@ -927,7 +1030,7 @@ describe('WorkQueueService', () => {
 
 describe('WorkQueueState', () => {
   it('should reset queue state when chat is reset', () => {
-    const state = new WorkQueueState();
+    const state = new WorkQueueState({ maxSize: undefined });
 
     // Modify state
     const item: QueueItem = {
@@ -948,7 +1051,7 @@ describe('WorkQueueState', () => {
   });
 
   it('should show state summary', () => {
-    const state = new WorkQueueState();
+    const state = new WorkQueueState({ maxSize: undefined });
     state.queue.push({ checkpoint: {}, name: 'Item1', input: '' });
     state.queue.push({ checkpoint: {}, name: 'Item2', input: '' });
 
@@ -974,11 +1077,17 @@ describe('WorkQueueState', () => {
 │   └── queue.ts          # /queue command implementation
 ├── tools/
 │   └── addTaskToQueue.ts # addTaskToQueue tool
-└── state/
-    └── workQueueState.ts # WorkQueueState implementation
+├── state/
+│   └── workQueueState.ts # WorkQueueState implementation
+├── schema.ts              # Configuration schemas
+├── test/
+│   └── WorkQueueService.test.ts  # Unit tests
+└── vitest.config.ts       # Test configuration
 ```
 
 ## Dependencies
+
+### Production Dependencies
 
 - `@tokenring-ai/agent`: Agent framework and state management
 - `@tokenring-ai/app`: Application framework and plugin system
@@ -986,6 +1095,16 @@ describe('WorkQueueState', () => {
 - `@tokenring-ai/checkpoint`: Checkpoint management for state saving
 - `@tokenring-ai/utility`: Shared utilities including deepMerge
 - `zod`: Schema validation and configuration
+
+### Development Dependencies
+
+- `typescript`: TypeScript compiler
+- `vitest`: Unit testing framework
+
+### Peer Dependencies
+
+- `@tokenring-ai/agent` (required for Agent type)
+- `@tokenring-ai/app` (required for TokenRingService interface)
 
 ## Plugin Registration
 
@@ -1008,13 +1127,243 @@ export default {
     app.waitForService(AgentCommandService, agentCommandService =>
       agentCommandService.addAgentCommands(chatCommands)
     );
-    app.addServices(new WorkQueueService());
+    app.addServices(new WorkQueueService(config.queue));
   },
   config: z.object({
     queue: WorkQueueServiceConfigSchema.prefault({})
   })
 } satisfies TokenRingPlugin<typeof packageConfigSchema>;
 ```
+
+## API Reference
+
+### WorkQueueService
+
+#### Constructor
+
+```typescript
+new WorkQueueService(options: ParsedWorkQueueConfig)
+```
+
+Creates a new WorkQueueService instance.
+
+**Parameters:**
+- `options` (ParsedWorkQueueConfig): Service configuration options
+  - `options.agentDefaults` (object): Default configuration for agents
+    - `options.agentDefaults.maxSize` (number, optional): Maximum queue size
+
+#### attach
+
+```typescript
+attach(agent: Agent): void
+```
+
+Initializes queue state on the agent.
+
+**Parameters:**
+- `agent` (Agent): The agent to attach to
+
+#### startWork
+
+```typescript
+startWork(agent: Agent): void
+```
+
+Starts queue processing.
+
+**Parameters:**
+- `agent` (Agent): The agent to start processing for
+
+#### stopWork
+
+```typescript
+stopWork(agent: Agent): void
+```
+
+Stops queue processing and clears current item.
+
+**Parameters:**
+- `agent` (Agent): The agent to stop processing for
+
+#### started
+
+```typescript
+started(agent: Agent): boolean
+```
+
+Checks if queue processing is active.
+
+**Parameters:**
+- `agent` (Agent): The agent to check
+
+**Returns:**
+- `boolean`: True if queue processing is active
+
+#### setInitialCheckpoint
+
+```typescript
+setInitialCheckpoint(checkpoint: AgentCheckpointData, agent: Agent): void
+```
+
+Sets the initial checkpoint for the queue.
+
+**Parameters:**
+- `checkpoint` (AgentCheckpointData): The checkpoint to set
+- `agent` (Agent): The agent to set checkpoint for
+
+#### getInitialCheckpoint
+
+```typescript
+getInitialCheckpoint(agent: Agent): AgentCheckpointData | null
+```
+
+Gets the initial checkpoint for the queue.
+
+**Parameters:**
+- `agent` (Agent): The agent to get checkpoint for
+
+**Returns:**
+- `AgentCheckpointData | null`: The initial checkpoint or null
+
+#### getCurrentItem
+
+```typescript
+getCurrentItem(agent: Agent): QueueItem | null
+```
+
+Gets the current item being processed.
+
+**Parameters:**
+- `agent` (Agent): The agent to get current item for
+
+**Returns:**
+- `QueueItem | null`: The current item or null
+
+#### setCurrentItem
+
+```typescript
+setCurrentItem(item: QueueItem | null, agent: Agent): void
+```
+
+Sets the current item being processed.
+
+**Parameters:**
+- `item` (QueueItem | null): The item to set or null to clear
+- `agent` (Agent): The agent to set current item for
+
+#### enqueue
+
+```typescript
+enqueue(item: QueueItem, agent: Agent): boolean
+```
+
+Adds a work item to the end of the queue.
+
+**Parameters:**
+- `item` (QueueItem): The item to add
+- `agent` (Agent): The agent to add item to
+
+**Returns:**
+- `boolean`: True if item was added, false if queue is full
+
+#### dequeue
+
+```typescript
+dequeue(agent: Agent): QueueItem | undefined
+```
+
+Removes and returns the first item from the queue.
+
+**Parameters:**
+- `agent` (Agent): The agent to remove item from
+
+**Returns:**
+- `QueueItem | undefined`: The removed item or undefined if queue is empty
+
+#### get
+
+```typescript
+get(idx: number, agent: Agent): QueueItem
+```
+
+Gets the item at the specified index.
+
+**Parameters:**
+- `idx` (number): The index of the item
+- `agent` (Agent): The agent to get item from
+
+**Returns:**
+- `QueueItem`: The item at the specified index
+
+#### splice
+
+```typescript
+splice(start: number, deleteCount: number, agent: Agent, ...items: QueueItem[]): QueueItem[]
+```
+
+Modifies the queue by removing or replacing items.
+
+**Parameters:**
+- `start` (number): The index to start modification
+- `deleteCount` (number): The number of items to delete
+- `agent` (Agent): The agent to modify
+- `...items` (QueueItem[]): Items to insert
+
+**Returns:**
+- `QueueItem[]`: The removed items
+
+#### size
+
+```typescript
+size(agent: Agent): number
+```
+
+Returns the current size of the queue.
+
+**Parameters:**
+- `agent` (Agent): The agent to get size for
+
+**Returns:**
+- `number`: The current queue size
+
+#### isEmpty
+
+```typescript
+isEmpty(agent: Agent): boolean
+```
+
+Checks if the queue is empty.
+
+**Parameters:**
+- `agent` (Agent): The agent to check
+
+**Returns:**
+- `boolean`: True if queue is empty
+
+#### clear
+
+```typescript
+clear(agent: Agent): void
+```
+
+Clears all items from the queue.
+
+**Parameters:**
+- `agent` (Agent): The agent to clear
+
+#### getAll
+
+```typescript
+getAll(agent: Agent): QueueItem[]
+```
+
+Returns all items in the queue without removing them.
+
+**Parameters:**
+- `agent` (Agent): The agent to get items from
+
+**Returns:**
+- `QueueItem[]`: Copy of all queue items
 
 ## License
 

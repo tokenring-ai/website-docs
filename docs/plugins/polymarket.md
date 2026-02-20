@@ -2,94 +2,38 @@
 
 ## Overview
 
-The Polymarket Plugin provides integration with Polymarket prediction markets, enabling AI agents to search for markets, list events, and retrieve detailed market information. It allows agents to interact with prediction market data for research, analysis, and decision-making purposes.
+The Polymarket Plugin provides integration with Polymarket prediction markets, enabling AI agents to search for markets, list events, and retrieve detailed event information. It allows agents to interact with prediction market data for research, analysis, and decision-making purposes.
 
-This plugin serves as a service that integrates with the TokenRing agent system. It provides tools for programmatic access to Polymarket's prediction market data, including market search, event listing, and individual market/event retrieval.
+This plugin serves as a service that integrates with the TokenRing agent system. It provides tools for programmatic access to Polymarket's prediction market data, including market search, event listing, and event retrieval.
 
 ## Key Features
 
 - **Market Search**: Search for prediction markets by query
 - **Event Listing**: List events with filtering options
-- **Event Retrieval**: Get detailed information about specific events
-- **Market Retrieval**: Get detailed information about specific markets
-- **Slug-based Access**: Fetch markets and events using URL slugs
-- **Tag Filtering**: Filter markets and events by category tags
+- **Event Retrieval**: Get detailed information about specific events by slug
 - **Configurable Base URL**: Support for custom Polymarket API endpoints
 - **RESTful API**: Uses standard HTTP requests for API interactions
 - **Error Handling**: Comprehensive error handling for API operations
 - **TypeScript Support**: Full type definitions and validation
+- **Tool Integration**: Tools are registered with the chat service for agent use
 
-## Chat Commands
-
-The plugin does not currently provide chat commands. All operations are available through tools.
-
-## Plugin Configuration
-
-The plugin is configured through the `polymarket` section in the plugin configuration. It accepts a `PolymarketConfigSchema` which defines the base URL for the Polymarket API.
-
-### Configuration Schema
-
-```typescript
-import { z } from "zod";
-
-export const PolymarketConfigSchema = z.object({
-  baseUrl: z.string().optional(),
-});
-
-export type PolymarketConfig = z.infer<typeof PolymarketConfigSchema>;
-```
-
-### Configuration Example
-
-```typescript
-const pluginConfig = {
-  polymarket: {
-    baseUrl: "https://gamma-api.polymarket.com"
-  }
-};
-```
-
-### Plugin Registration
-
-```typescript
-import polymarketPlugin from "@tokenring-ai/polymarket";
-import app from "@tokenring-ai/app";
-
-const app = new app.App();
-
-app.addPlugin(polymarketPlugin, {
-  polymarket: {
-    baseUrl: "https://gamma-api.polymarket.com"
-  }
-});
-```
-
-## Services
+## Core Components
 
 ### PolymarketService
 
-The main service class that implements `TokenRingService`. It provides methods for querying Polymarket prediction markets.
-
-**Service Interface:**
-
-```typescript
-interface TokenRingService {
-  name: string;
-  description: string;
-  protected baseUrl: string;
-}
-```
+The main service class that implements `TokenRingService`. It extends `HttpService` from `@tokenring-ai/utility` for HTTP request handling.
 
 **Service Properties:**
 
-- `name`: Service identifier ("PolymarketService")
-- `description`: Service description
-- `baseUrl`: Polymarket API base URL
+- `name`: Service identifier (`"PolymarketService"`)
+- `description`: Service description (`"Service for querying Polymarket prediction markets"`)
+- `defaultHeaders`: Default HTTP headers (empty object)
+- `baseUrl`: Polymarket API base URL (configurable)
 
 **Constructor:**
 
 ```typescript
-constructor(config: PolymarketConfig = {})
+constructor(config: ParsedPolymarketServiceConfig = {})
 ```
 
 **Service Methods:**
@@ -122,193 +66,164 @@ interface PolymarketSearchOptions {
 }
 ```
 
-## Tools
-
-The plugin provides the following tools for Polymarket operations:
-
-### polymarket_search
-
-Searches for prediction markets matching the query.
-
-**Tool Definition:**
+### Configuration Schema
 
 ```typescript
-const name = "polymarket_search";
-const description = "Search for prediction markets";
-const inputSchema = z.object({
-  query: z.string().describe("The search query")
+import { z } from "zod";
+
+export const PolymarketConfigSchema = z.object({
+  baseUrl: z.string().default("https://gamma-api.polymarket.com")
 });
+
+export type ParsedPolymarketServiceConfig = z.output<typeof PolymarketConfigSchema>;
 ```
 
-**Tool Interface:**
+**Configuration Properties:**
+
+| Property | Type | Default | Description |
+|----------|------|---------|-------------|
+| `baseUrl` | `string` | `https://gamma-api.polymarket.com` | Base URL for the Polymarket API |
+
+## Services
+
+### PolymarketService
+
+The main service class that implements `TokenRingService`. It provides methods for querying Polymarket prediction markets.
+
+**Service Interface:**
 
 ```typescript
-{
-  name: "polymarket_search";
-  description: "Search for prediction markets";
-  inputSchema: z.object({
-    query: string;
-  });
-  execute: (
-    args: { query: string },
-    agent: Agent
-  ) => Promise<any>;
+interface TokenRingService {
+  name: string;
+  description: string;
 }
 ```
 
-**Usage:**
+**Service Properties:**
+
+- `name`: Service identifier (`"PolymarketService"`)
+- `description`: Service description
+- `defaultHeaders`: Default HTTP headers (empty object)
+
+**Constructor:**
 
 ```typescript
-// Execute search tool
-const result = await agent.executeTool("polymarket_search", {
-  query: "AI development"
-});
-
-console.log("Search results:", result);
+constructor(config: ParsedPolymarketServiceConfig = {})
 ```
 
-### polymarket_listEvents
-
-Lists Polymarket events with optional filtering.
-
-**Tool Definition:**
+**Service Methods:**
 
 ```typescript
-const name = "polymarket_listEvents";
-const description = "List Polymarket events";
-const inputSchema = z.object({
-  limit: z.number().optional().describe("Number of events to return"),
-  offset: z.number().optional().describe("Number of events to skip"),
-  closed: z.boolean().optional().describe("Include closed events"),
-  tag_id: z.number().optional().describe("Filter by tag ID")
-});
+async searchMarkets(query: string): Promise<any>
+
+async listEvents(opts: PolymarketSearchOptions = {}): Promise<any>
+
+async getEventBySlug(slug: string): Promise<any>
+
+async getMarketBySlug(slug: string): Promise<any>
 ```
 
-**Tool Interface:**
+**Method Descriptions:**
+
+- `searchMarkets(query)`: Searches for prediction markets matching the query
+- `listEvents(opts)`: Lists events with optional filtering
+- `getEventBySlug(slug)`: Retrieves detailed information about an event by its slug
+- `getMarketBySlug(slug)`: Retrieves detailed information about a market by its slug
+
+**Search Options:**
 
 ```typescript
-{
-  name: "polymarket_listEvents";
-  description: "List Polymarket events";
-  inputSchema: z.object({
-    limit?: number;
-    offset?: number;
-    closed?: boolean;
-    tag_id?: number;
-  });
-  execute: (
-    args: {
-      limit?: number;
-      offset?: number;
-      closed?: boolean;
-      tag_id?: number;
-    },
-    agent: Agent
-  ) => Promise<any>;
+interface PolymarketSearchOptions {
+  limit?: number;      // Number of results to return (default: 10)
+  offset?: number;     // Number of results to skip (default: 0)
+  closed?: boolean;    // Whether to include closed markets (default: false)
+  tag_id?: number;     // Filter by tag ID
 }
 ```
 
-**Usage:**
+## Provider Documentation
+
+This package does not implement provider architecture.
+
+## RPC Endpoints
+
+This package does not define RPC endpoints.
+
+## Chat Commands
+
+The plugin does not currently provide chat commands. All operations are available through tools.
+
+## Configuration
+
+The plugin is configured through the `polymarket` section in the plugin configuration.
+
+### Plugin Configuration Schema
 
 ```typescript
-// Execute list events tool
-const result = await agent.executeTool("polymarket_listEvents", {
-  limit: 10,
-  closed: false
-});
+import { z } from "zod";
 
-console.log("Events:", result);
-```
-
-### polymarket_getEvent
-
-Retrieves detailed information about a specific event.
-
-**Tool Definition:**
-
-```typescript
-const name = "polymarket_getEvent";
-const description = "Get detailed information about a specific event";
-const inputSchema = z.object({
-  slug: z.string().describe("The slug of the event")
-});
-```
-
-**Tool Interface:**
-
-```typescript
-{
-  name: "polymarket_getEvent";
-  description: "Get detailed information about a specific event";
-  inputSchema: z.object({
-    slug: string;
-  });
-  execute: (
-    args: { slug: string },
-    agent: Agent
-  ) => Promise<any>;
-}
-```
-
-**Usage:**
-
-```typescript
-// Execute get event tool
-const result = await agent.executeTool("polymarket_getEvent", {
-  slug: "will-ai-exceed-human-level-performance-by-2025"
-});
-
-console.log("Event details:", result);
-```
-
-### polymarket_getMarket
-
-Retrieves detailed information about a specific market.
-
-**Tool Definition:**
-
-```typescript
-const name = "polymarket_getMarket";
-const description = "Get detailed information about a specific market";
-const inputSchema = z.object({
-  slug: z.string().describe("The slug of the market")
+const packageConfigSchema = z.object({
+  polymarket: PolymarketConfigSchema.prefault({})
 });
 ```
 
-**Tool Interface:**
+### Configuration Example
 
 ```typescript
-{
-  name: "polymarket_getMarket";
-  description: "Get detailed information about a specific market";
-  inputSchema: z.object({
-    slug: string;
-  });
-  execute: (
-    args: { slug: string },
-    agent: Agent
-  ) => Promise<any>;
-}
+const pluginConfig = {
+  polymarket: {
+    baseUrl: "https://gamma-api.polymarket.com"
+  }
+};
 ```
 
-**Usage:**
+### Plugin Registration
 
 ```typescript
-// Execute get market tool
-const result = await agent.executeTool("polymarket_getMarket", {
-  slug: "will-ai-exceed-human-level-performance-by-2025"
+import polymarketPlugin from "@tokenring-ai/polymarket";
+import app from "@tokenring-ai/app";
+
+const app = new app.TokenRingApp();
+
+app.addPlugin(polymarketPlugin, {
+  polymarket: {
+    baseUrl: "https://gamma-api.polymarket.com"
+  }
+});
+```
+
+## Integration
+
+### Agent System Integration
+
+The plugin integrates with the TokenRing agent system by:
+
+1. **Tool Registration**: Tools are registered with the chat service via `chatService.addTools(tools)`
+2. **Service Registration**: The service is added to the application via `app.addServices(new PolymarketService(config.polymarket))`
+3. **Agent State**: No agent state slices are registered
+
+### Plugin Registration
+
+```typescript
+// In plugin.ts
+app.waitForService(ChatService, chatService =>
+  chatService.addTools(tools)
+);
+app.addServices(new PolymarketService(config.polymarket));
+```
+
+### Service Registration
+
+```typescript
+// Programmatic service registration
+import { PolymarketService } from "@tokenring-ai/polymarket";
+
+const service = new PolymarketService({
+  baseUrl: "https://gamma-api.polymarket.com"
 });
 
-console.log("Market details:", result);
+app.addServices(service);
 ```
-
-## State Management
-
-The Polymarket Plugin does not maintain agent state. All operations are stateless and rely on the PolymarketService instance for API interactions.
-
-## Context Handlers
-
-The plugin does not provide context handlers. Polymarket operations are performed through tools.
 
 ## Usage Examples
 
@@ -318,7 +233,7 @@ The plugin does not provide context handlers. Polymarket operations are performe
 import polymarketPlugin from "@tokenring-ai/polymarket";
 import app from "@tokenring-ai/app";
 
-const app = new app.App();
+const app = new app.TokenRingApp();
 
 app.addPlugin(polymarketPlugin, {
   polymarket: {
@@ -346,41 +261,23 @@ console.log("Search results:", searchResult);
 
 ```typescript
 // List events with filters
-const eventsResult = await agent.executeTool("polymarket_listEvents", {
+const result = await agent.executeTool("polymarket_listEvents", {
   limit: 20,
   closed: false
 });
 
-console.log("Events found:", eventsResult.length);
-eventsResult.forEach(event => {
-  console.log(`- ${event.title} (${event.slug})`);
-});
+console.log("Events found:", result.events?.length);
 ```
 
 ### Using the Get Event Tool
 
 ```typescript
 // Get specific event details
-const eventResult = await agent.executeTool("polymarket_getEvent", {
+const result = await agent.executeTool("polymarket_getEvent", {
   slug: "will-ai-exceed-human-level-performance-by-2025"
 });
 
-console.log("Event title:", eventResult.title);
-console.log("Event description:", eventResult.description);
-console.log("Market resolution:", eventResult.resolution);
-```
-
-### Using the Get Market Tool
-
-```typescript
-// Get specific market details
-const marketResult = await agent.executeTool("polymarket_getMarket", {
-  slug: "will-ai-exceed-human-level-performance-by-2025"
-});
-
-console.log("Market price:", marketResult.price);
-console.log("Yes share volume:", marketResult.yes_share_volume);
-console.log("No share volume:", marketResult.no_share_volume);
+console.log("Event:", result.event);
 ```
 
 ### Programmatic API Usage
@@ -464,10 +361,6 @@ const event = await polymarketService.getEventBySlug(slug);
 ### Tag-Based Filtering
 
 ```typescript
-// Discover available tags (using API directly)
-const tagsResponse = await polymarketService.fetchJson("/tags");
-const tags = tagsResponse.tags;
-
 // Filter events by tag
 const techEvents = await polymarketService.listEvents({
   limit: 10,
@@ -476,67 +369,157 @@ const techEvents = await polymarketService.listEvents({
 });
 ```
 
-## Integration
+## State Management
 
-### HttpService
+The Polymarket Plugin does not maintain agent state. All operations are stateless and rely on the PolymarketService instance for API interactions.
 
-The PolymarketService extends `HttpService` from `@tokenring-ai/utility/http/HttpService` for HTTP request handling.
+## Tools
+
+The plugin provides the following tools for Polymarket operations:
+
+### polymarket_search
+
+Searches for prediction markets matching the query.
+
+**Tool Definition:**
 
 ```typescript
-import { HttpService } from "@tokenring-ai/utility/http/HttpService";
-
-class PolymarketService extends HttpService implements TokenRingService {
-  protected baseUrl: string;
-
-  constructor(config: PolymarketConfig = {}) {
-    super();
-    this.baseUrl = config.baseUrl || "https://gamma-api.polymarket.com";
-  }
-
-  async fetchJson(endpoint: string, options: RequestInit, operation: string): Promise<any> {
-    return super.fetchJson(endpoint, options, operation);
-  }
+{
+  name: "polymarket_search",
+  displayName: "Polymarket/search",
+  description: "Search Polymarket for prediction markets, events, and profiles.",
+  inputSchema: z.object({
+    query: z.string().min(1).describe("Search query")
+  }),
+  execute: (
+    { query }: z.output<typeof inputSchema>,
+    agent: Agent
+  ): Promise<TokenRingToolJSONResult<{ results?: any }>>
 }
 ```
 
-### Agent
+**Tool Properties:**
 
-The plugin integrates with the agent system through tools:
+| Property | Type | Description |
+|----------|------|-------------|
+| `name` | `string` | Tool identifier (`"polymarket_search"`) |
+| `displayName` | `string` | Display name (`"Polymarket/search"`) |
+| `description` | `string` | Tool description |
+| `inputSchema` | `ZodObject` | Input validation schema |
+| `execute` | `Function` | Tool execution function |
 
-**Tools Registration:**
+**Input Parameters:**
 
-Tools are registered through the plugin's install method:
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `query` | `string` | Yes | Search query for prediction markets |
 
-```typescript
-app.waitForService(ChatService, chatService =>
-  chatService.addTools(packageJSON.name, tools)
-);
-```
-
-**Service Registration:**
-
-The service is added to the application:
-
-```typescript
-if (config.polymarket) {
-  app.addServices(new PolymarketService(config.polymarket));
-}
-```
-
-### Plugin Installation
-
-The plugin is installed during application initialization:
+**Example:**
 
 ```typescript
-import polymarketPlugin from "@tokenring-ai/polymarket";
-
-const app = new app.App();
-
-app.addPlugin(polymarketPlugin, {
-  polymarket: {
-    baseUrl: "https://gamma-api.polymarket.com"
-  }
+const result = await agent.executeTool("polymarket_search", {
+  query: "Artificial intelligence"
 });
+console.log("Search results:", result.data.results);
+```
+
+### polymarket_listEvents
+
+Lists Polymarket events with optional filtering.
+
+**Tool Definition:**
+
+```typescript
+{
+  name: "polymarket_listEvents",
+  displayName: "Polymarket/listEvents",
+  description: "List active prediction market events on Polymarket.",
+  inputSchema: z.object({
+    limit: z.number().int().positive().max(100).optional().describe("Number of results (default: 10)"),
+    offset: z.number().int().min(0).optional().describe("Offset for pagination (default: 0)"),
+    closed: z.boolean().optional().describe("Include closed markets (default: false)"),
+    tag_id: z.number().int().optional().describe("Filter by tag ID")
+  }),
+  execute: (
+    { limit, offset, closed, tag_id }: z.output<typeof inputSchema>,
+    agent: Agent
+  ): Promise<TokenRingToolJSONResult<{ events?: any }>>
+}
+```
+
+**Tool Properties:**
+
+| Property | Type | Description |
+|----------|------|-------------|
+| `name` | `string` | Tool identifier (`"polymarket_listEvents"`) |
+| `displayName` | `string` | Display name (`"Polymarket/listEvents"`) |
+| `description` | `string` | Tool description |
+| `inputSchema` | `ZodObject` | Input validation schema |
+| `execute` | `Function` | Tool execution function |
+
+**Input Parameters:**
+
+| Parameter | Type | Required | Default | Description |
+|-----------|------|----------|---------|-------------|
+| `limit` | `number` | No | `10` | Number of results (max: 100) |
+| `offset` | `number` | No | `0` | Offset for pagination |
+| `closed` | `boolean` | No | `false` | Include closed markets |
+| `tag_id` | `number` | No | - | Filter by tag ID |
+
+**Example:**
+
+```typescript
+const result = await agent.executeTool("polymarket_listEvents", {
+  limit: 10,
+  closed: false
+});
+console.log("Events:", result.data.events);
+```
+
+### polymarket_getEvent
+
+Retrieves detailed information about a specific event by its slug.
+
+**Tool Definition:**
+
+```typescript
+{
+  name: "polymarket_getEvent",
+  displayName: "Polymarket/getEvent",
+  description: "Get a specific Polymarket event by its slug (from URL).",
+  inputSchema: z.object({
+    slug: z.string().min(1).describe("Event slug from Polymarket URL")
+  }),
+  execute: (
+    { slug }: z.output<typeof inputSchema>,
+    agent: Agent
+  ): Promise<TokenRingToolJSONResult<{ event?: any }>>
+}
+```
+
+**Tool Properties:**
+
+| Property | Type | Description |
+|----------|------|-------------|
+| `name` | `string` | Tool identifier (`"polymarket_getEvent"`) |
+| `displayName` | `string` | Display name (`"Polymarket/getEvent"`) |
+| `description` | `string` | Tool description |
+| `inputSchema` | `ZodObject` | Input validation schema |
+| `execute` | `Function` | Tool execution function |
+
+**Input Parameters:**
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `slug` | `string` | Yes | Event slug from Polymarket URL |
+
+**Example:**
+
+```typescript
+const result = await agent.executeTool("polymarket_getEvent", {
+  slug: "will-ai-exceed-human-level-performance-by-2025"
+});
+console.log("Event details:", result.data.event);
 ```
 
 ## Best Practices
@@ -552,7 +535,7 @@ app.addPlugin(polymarketPlugin, {
 
 - **Compare Markets**: Use search to find related markets for comparison
 - **Track Events**: Use listEvents to monitor events over time
-- **Analyze Data**: Use getEvent and getMarket for detailed analysis
+- **Analyze Data**: Use getEvent for detailed analysis
 - **Volume Analysis**: Check yes_share_volume and no_share_volume for market depth
 
 ### Performance Considerations
@@ -636,7 +619,6 @@ pkg/polymarket/
 │   ├── search.ts            # Search tool
 │   ├── listEvents.ts        # List events tool
 │   ├── getEvent.ts          # Get event tool
-│   └── getMarket.ts         # Get market tool
 ├── index.ts                  # Package exports
 ├── plugin.ts                 # Plugin registration
 ├── package.json              # Package metadata
@@ -651,13 +633,34 @@ pkg/polymarket/
 bun run build
 ```
 
+### Development Commands
+
+```bash
+# Run tests
+bun test
+
+# Run tests in watch mode
+bun test:watch
+
+# Run tests with coverage
+bun test:coverage
+```
+
 ### Dependencies
+
+**Production Dependencies:**
 
 - `@tokenring-ai/app` - Base application framework and plugin system
 - `@tokenring-ai/chat` - Chat service and tool system
 - `@tokenring-ai/agent` - Central orchestration system
 - `@tokenring-ai/utility` - Shared utilities including HttpService
 - `zod` - Runtime type validation and schema definition
+
+**Development Dependencies:**
+
+- `vitest` - Testing framework
+- `@vitest/coverage-v8` - Coverage reporting
+- `typescript` - TypeScript compiler
 
 ## Related Components
 
@@ -688,13 +691,13 @@ bun run build
 - Verify the search syntax is correct
 - Try listing events to see available markets
 
-### Event/Market Not Found
+### Event Not Found
 
-**Problem**: getEvent or getMarket returns error
+**Problem**: getEvent returns error
 
 **Solution**:
 - Verify the slug is correct (check from search results)
-- Ensure the event/market exists and is not closed
+- Ensure the event exists and is not closed
 - Check that the slug matches the API format
 - Use search to find the correct slug
 

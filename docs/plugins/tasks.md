@@ -1,27 +1,21 @@
-# Task Management Plugin
+# @tokenring-ai/tasks
+
+A comprehensive task management service for the TokenRing AI ecosystem that enables agents to create, manage, and execute task plans with user approval workflows, parallel processing, and complete lifecycle tracking.
 
 ## Overview
 
-The Task Management Plugin provides a robust system for handling tasks within the TokenRing ecosystem. It enables the scheduling, execution, and monitoring of tasks through an integrated service architecture, supporting both automated workflows and user-initiated commands. The package enables agents to create detailed task plans, present them to users for approval, and automatically execute approved tasks by dispatching them to specialized agents with configurable parallel processing.
+The `@tokenring-ai/tasks` package provides a complete task planning and execution framework for AI agents within the TokenRing system. It allows agents to create detailed task plans, present them to users for approval, and automatically execute approved tasks by dispatching them to specialized agents with configurable parallel processing.
 
-## Key Features
+### Key Features
 
 - **Task Planning**: Create comprehensive task plans with multiple tasks and detailed context
 - **User Approval Workflow**: Interactive task plan approval system with configurable timeout
 - **Parallel Execution**: Execute tasks in parallel with configurable concurrency limits
 - **Task Status Tracking**: Monitor complete task lifecycle (pending, running, completed, failed)
 - **Auto-Approve**: Configurable automatic approval for streamlined workflows
-- **Manual Management**: Slash commands for task inspection, control, and configuration
+- **Manual Management**: Chat commands for task inspection, control, and configuration
 - **Context Integration**: Seamless integration with agent context systems
 - **State Persistence**: Persistent task state across agent instances
-
-## Core Components
-
-- **TaskService**: The central service handling task creation, execution, and lifecycle management
-- **TaskState**: State management for persistence and serialization
-- **Tools**: A set of functions exposed to AI agents for task-related operations, primarily the `tasks_run` tool
-- **Context Handlers**: Manage task-related context during chat sessions (e.g., `task-plan` handler)
-- **Chat Commands**: User-facing slash commands for task management (`/tasks list`, `/tasks clear`, etc.)
 
 ## Installation
 
@@ -31,145 +25,31 @@ This package is part of the TokenRing AI ecosystem. Install it as a dependency:
 bun install @tokenring-ai/tasks
 ```
 
-## Usage Examples
+## Core Components
 
-### Basic Setup
+### TaskService
 
-```typescript
-import { TokenRingApp } from '@tokenring-ai/app';
-import tasksPlugin from '@tokenring-ai/tasks';
-
-const app = new TokenRingApp();
-app.install(tasksPlugin);
-```
-
-### Creating a Task Plan via AI Tool
+The main service that manages the complete task lifecycle:
 
 ```typescript
-await agent.executeTool('tasks_run', {
-  tasks: [
-    {
-      taskName: "Create user authentication system",
-      agentType: "backend-developer",
-      message: "Implement JWT-based authentication with login/logout endpoints",
-      context: "Create auth middleware, user model, login/logout routes in Express.js. Use bcrypt for password hashing. Include proper error handling and validation. Set up appropriate HTTP status codes and response formats. Handle edge cases like expired tokens and concurrent requests."
-    },
-    {
-      taskName: "Design login UI components",
-      agentType: "frontend-developer",
-      message: "Create responsive login and registration forms",
-      context: "Build React components with form validation, error handling, and responsive design using Tailwind CSS. Include loading states, proper accessibility attributes, and consistent styling with the application's design system. Implement proper error messaging and success states."
-    }
-  ]
-});
-```
+class TaskService implements TokenRingService {
+  name = "TaskService";
+  description = "Provides task management functionality";
 
-### Managing Tasks via Slash Commands
+  constructor(readonly options: z.output<typeof TaskServiceConfigSchema>) {}
 
-```bash
-/tasks list
-```
-
-**Output:**
-```
-Current tasks:
-[0] Process Data (pending)
-    Agent: data-processor
-    Message: Process the uploaded CSV file
-[1] Send Email (completed)
-    Agent: email-sender
-    Message: Send confirmation email to user@example.com
-```
-
-```bash
-/tasks auto-approve 30
-```
-
-**Output:**
-```
-Auto-approve enabled with 30s timeout
-```
-
-### Programmatic Task Management
-
-```typescript
-import TaskService from '@tokenring-ai/tasks';
-
-const taskService = agent.requireServiceByType(TaskService);
-
-// Add individual tasks
-const taskId = taskService.addTask({
-  name: "Process user data",
-  agentType: "data-processor",
-  message: "Clean and validate user input data",
-  context: "Parse CSV files, remove duplicates, validate email formats, and standardize data formats. Handle missing values appropriately and generate summary reports."
-}, agent);
-
-// Get all tasks
-const allTasks = taskService.getTasks(agent);
-
-// Update task status
-taskService.updateTaskStatus(taskId, 'completed', 'Data processed successfully', agent);
-
-// Execute specific tasks
-const results = await taskService.executeTasks([taskId], agent);
-```
-
-## Configuration
-
-### Plugin Configuration
-
-The plugin can be configured with default settings for all agents:
-
-```typescript
-{
-  tasks: {
-    agentDefaults: {
-      autoApprove: 0,      // Auto-approve timeout in seconds (0 = disabled)
-      parallel: 1          // Maximum parallel tasks (minimum: 1)
-    }
+  attach(agent: Agent): void {
+    const config = deepMerge(this.options.agentDefaults, agent.getAgentConfigSlice('tasks', TaskAgentConfigSchema));
+    agent.initializeState(TaskState, config);
   }
+
+  addTask(task: Omit<Task, 'id' | 'status'>, agent: Agent): string;
+  getTasks(agent: Agent): Task[];
+  updateTaskStatus(id: string, status: Task['status'], result: string | undefined, agent: Agent): void;
+  clearTasks(agent: Agent): void;
+  executeTasks(taskIds: string[], parentAgent: Agent): Promise<string[]>;
 }
 ```
-
-### Auto-Approve Timeout
-
-Set the time (in seconds) for automatic approval of task plans. Default is 0 (disabled).
-
-- **Command**: `/tasks settings auto-approve=<seconds>`
-- **Programmatic**: Modify `agent.getState(TaskState).autoApprove`
-
-**Example:**
-```bash
-/tasks settings auto-approve=30
-```
-
-### Parallel Tasks
-
-Control the maximum number of tasks that can run concurrently. Default is 1.
-
-- **Command**: `/tasks settings parallel=<count>`
-- **Programmatic**: Modify `agent.getState(TaskState).parallelTasks`
-
-**Example:**
-```bash
-/tasks settings parallel=3
-```
-
-### Configuration Summary
-
-| Setting | Type | Default | Range | Description |
-|---------|------|---------|-------|-------------|
-| `agentDefaults.autoApprove` | number | 0 | 0+ seconds | Auto-approve timeout (0 = disabled) |
-| `agentDefaults.parallel` | number | 1 | 1+ | Maximum concurrent task execution |
-
-### Task Context
-
-- **Message**: One paragraph describing the task objective
-- **Context**: Three+ paragraphs with detailed execution instructions
-- **Requirement**: Must include file paths, technical requirements, and step-by-step instructions
-
-## Core Properties
 
 ### Task Interface
 
@@ -212,32 +92,140 @@ class TaskState implements AgentStateSlice {
 }
 ```
 
-## Key Features Summary
+## Plugin Configuration
 
-- **Task Planning**: Create comprehensive task plans with multiple tasks and detailed context
-- **User Approval Workflow**: Interactive task plan approval system with configurable timeout
-- **Parallel Execution**: Execute tasks in parallel with configurable concurrency limits
-- **Task Status Tracking**: Monitor complete task lifecycle (pending, running, completed, failed)
-- **Auto-Approve**: Configurable automatic approval for streamlined workflows
-- **Manual Management**: Slash commands for task inspection, control, and configuration
-- **Context Integration**: Seamless integration with agent context systems
-- **State Persistence**: Persistent task state across agent instances
+The plugin can be configured with default settings for all agents:
 
-## Core Methods
+```typescript
+{
+  tasks: {
+    agentDefaults: {
+      autoApprove: 0,      // Auto-approve timeout in seconds (0 = disabled)
+      parallel: 1          // Maximum parallel tasks (minimum: 1)
+    }
+  }
+}
+```
 
-### TaskService Methods
+### Agent Configuration
 
-#### `addTask(task, agent)`
+Each agent can override the default configuration:
+
+```typescript
+{
+  tasks: {
+    autoApprove: 30,       // Override default auto-approve timeout
+    parallel: 3            // Override default parallel tasks
+  }
+}
+```
+
+### Auto-Approve
+
+- **Purpose**: Automatically approve task plans after a timeout
+- **Range**: 0 (disabled) to any positive integer (seconds)
+- **Default**: 0 (disabled)
+- **Usage**: Set via `/tasks settings auto-approve=<seconds>` or `agent.getState(TaskState).autoApprove`
+
+### Parallel Tasks
+
+- **Purpose**: Control concurrent task execution
+- **Range**: 1 to any positive integer
+- **Default**: 1 (sequential execution)
+- **Usage**: Set via `/tasks settings parallel=<count>` or `agent.getState(TaskState).parallelTasks`
+
+### Task Context
+
+- **Message**: One paragraph describing the task objective
+- **Context**: Three+ paragraphs with detailed execution instructions
+- **Requirement**: Must include file paths, technical specifications, and step-by-step instructions
+
+## Tools
+
+The package provides the following tools for AI agents:
+
+### tasks_run
+
+Create and present a complete task plan to the user for approval. If approved, execute all tasks immediately with parallel processing.
+
+**Tool Name**: `tasks_run`
+
+**Display Name**: `Tasks/runTasks`
+
+**Description**: "Create and present a complete task plan to the user for approval (unless auto-approve is enabled). If approved, this will execute all tasks immediately and return results. If not approved, this will return a reason for rejection."
+
+**Required Context Handlers**: `["available-agents"]`
+
+**Input Schema**:
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| tasks | TaskInput[] | Yes | Array of tasks to add to the task list |
+
+**TaskInput Schema**:
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| taskName | string | Yes | A descriptive name for the task |
+| agentType | string | Yes | The type of agent that should handle this task |
+| message | string | Yes | A one paragraph message/description of what needs to be done |
+| context | string | Yes | Three paragraphs of important contextual information |
+
+**Behavior**:
+- Presents task plan to user for approval
+- Respects auto-approve configuration if set
+- If approved: adds tasks and executes them with parallel processing
+- If rejected: prompts for rejection reason and returns it
+
+**Example Usage**:
+
+```typescript
+await agent.executeTool('tasks_run', {
+  tasks: [
+    {
+      taskName: "Create user authentication system",
+      agentType: "backend-developer",
+      message: "Implement JWT-based authentication with login/logout endpoints",
+      context: "Create auth middleware, user model, login/logout routes in Express.js. Use bcrypt for password hashing. Include proper error handling and validation. Set up appropriate HTTP status codes and response formats. Handle edge cases like expired tokens and concurrent requests."
+    },
+    {
+      taskName: "Design login UI components",
+      agentType: "frontend-developer",
+      message: "Create responsive login and registration forms",
+      context: "Build React components with form validation, error handling, and responsive design using Tailwind CSS. Include loading states, proper accessibility attributes, and consistent styling with the application's design system. Implement proper error messaging and success states."
+    }
+  ]
+});
+```
+
+## Services
+
+### TaskService
+
+The main service that manages the complete task lifecycle.
+
+#### Service Registration
+
+The TaskService is automatically registered when the plugin is installed. Access it via:
+
+```typescript
+const taskService = agent.requireServiceByType(TaskService);
+```
+
+#### Service Methods
+
+##### `addTask(task, agent)`
 
 Add a single task to the task list.
 
-**Parameters:**
+**Parameters**:
 - `task`: `Omit<Task, 'id' | 'status'>` - Task data without ID and status
 - `agent`: `Agent` - Current agent instance
 
-**Returns:** `string` - The generated task ID
+**Returns**: `string` - The generated task ID
 
-**Example:**
+**Example**:
+
 ```typescript
 const taskId = taskService.addTask({
   name: "Create user account",
@@ -247,203 +235,271 @@ const taskId = taskService.addTask({
 }, agent);
 ```
 
-#### `getTasks(agent)`
+##### `getTasks(agent)`
 
 Retrieve all tasks with their current status.
 
-**Parameters:**
+**Parameters**:
 - `agent`: `Agent` - Current agent instance
 
-**Returns:** `Task[]` - Array of all tasks
+**Returns**: `Task[]` - Array of all tasks
 
-**Example:**
+**Example**:
+
 ```typescript
 const tasks = taskService.getTasks(agent);
 console.log(`Found ${tasks.length} tasks`);
 ```
 
-#### `updateTaskStatus(id, status, result?, agent)`
+##### `updateTaskStatus(id, status, result?, agent)`
 
 Update the status and optionally the result of a task.
 
-**Parameters:**
+**Parameters**:
 - `id`: `string` - Task ID
 - `status`: `Task['status']` - New status ('pending', 'running', 'completed', 'failed')
 - `result`: `string | undefined` - Execution result (optional)
 - `agent`: `Agent` - Current agent instance
 
-**Example:**
+**Example**:
+
 ```typescript
 taskService.updateTaskStatus(taskId, 'completed', 'User account created successfully', agent);
 ```
 
-#### `clearTasks(agent)`
+##### `clearTasks(agent)`
 
 Remove all tasks from the task list.
 
-**Parameters:**
+**Parameters**:
 - `agent`: `Agent` - Current agent instance
 
-**Example:**
+**Example**:
+
 ```typescript
 taskService.clearTasks(agent);
 ```
 
-#### `executeTasks(taskIds, parentAgent)`
+##### `executeTasks(taskIds, parentAgent)`
 
 Execute a list of tasks with configured parallelism.
 
-**Parameters:**
+**Parameters**:
 - `taskIds`: `string[]` - IDs of tasks to execute
 - `parentAgent`: `Agent` - Current parent agent instance
 
-**Returns:** `Promise<string[]>` - Array of execution summaries
+**Returns**: `Promise<string[]>` - Array of execution summaries
 
-**Example:**
+**Example**:
+
 ```typescript
 const results = await taskService.executeTasks([taskId1, taskId2], agent);
 console.log(results); // ['✓ Task 1: Completed', '✗ Task 2: Failed - Error message']
 ```
 
-### TaskState Methods
+## Providers
 
-#### `transferStateFromParent(parent)`
+This package does not use a provider architecture.
 
-Transfer task state from a parent agent instance.
+## RPC Endpoints
 
-**Parameters:**
-- `parent`: `Agent` - Parent agent instance
+This package does not define any RPC endpoints.
 
-**Example:**
-```typescript
-taskState.transferStateFromParent(parentAgent);
+## Chat Commands
+
+The package registers the following slash commands for users:
+
+### `/tasks`
+
+Manage and execute tasks in the task queue.
+
+**Description**: `/tasks - Manage and execute tasks in the task queue.`
+
+**Available Operations**:
+
+#### list
+
+Display all tasks in the current task queue.
+
+**Example**:
+
+```
+/tasks list
 ```
 
-#### `reset(what)`
+**Output**:
 
-Reset task state based on specified criteria.
-
-**Parameters:**
-- `what`: `ResetWhat[]` - Array of reset criteria (e.g., `['chat']` to clear tasks on chat reset)
-
-**Behavior:**
-- When `['chat']` is specified, all tasks are cleared
-- Other reset criteria are passed through to other state handlers
-
-**Example:**
-```typescript
-taskState.reset(['chat']); // Clears all tasks
+```
+Current tasks:
+[0] Process Data (pending)
+    Agent: data-processor
+    Message: Process the uploaded CSV file
+[1] Send Email (completed)
+    Agent: email-sender
+    Message: Send confirmation email to user@example.com
 ```
 
-#### `show()`
+#### clear
 
-Get human-readable state summary.
+Remove all tasks from the current task queue.
 
-**Returns:** `string[]` - Array of state information lines
+**Example**:
 
-**Example:**
-```typescript
-const output = taskState.show();
-// Output: ['Total Tasks: 5', '  pending: 2', '  running: 1', '  completed: 1', '  failed: 1', 'Auto-approve: 30s', 'Parallel tasks: 3']
+```
+/tasks clear
 ```
 
-### Configuration Management
+**Output**:
 
-Configuration is managed directly through agent state, not through TaskService methods:
+```
+Cleared all tasks
+```
 
-#### Setting Auto-Approve
+#### execute
+
+Execute all pending tasks.
+
+**Example**:
+
+```
+/tasks execute
+```
+
+**Output**:
+
+```
+Task execution completed:
+✓ Process Data: Completed
+✗ Send Email: Failed - SMTP connection failed
+```
+
+#### settings
+
+View or modify task settings.
+
+**Examples**:
+
+```
+/tasks settings
+/tasks settings auto-approve=30
+/tasks settings parallel=3
+```
+
+**Output**:
+
+```
+Task Settings:
+  Auto-approve: 30s
+  Parallel tasks: 3
+
+Usage:
+  /tasks settings auto-approve=<seconds> parallel=<number>
+```
+
+## State Management
+
+### TaskState
+
+The package uses a state management system for task persistence and serialization.
+
+#### State Properties
+
+| Property | Type | Description |
+|----------|------|-------------|
+| tasks | Task[] | Array of tasks in the queue |
+| autoApprove | number | Auto-approve timeout in seconds (0 = disabled) |
+| parallelTasks | number | Maximum parallel task execution |
+
+#### State Transfer
+
+Tasks are shared with parent agents via `transferStateFromParent()` method.
+
+#### State Reset
+
+Tasks are cleared on chat reset via the `reset(['chat'])` method.
+
+## Scripting Integration
+
+This package does not register functions with the ScriptingService.
+
+## Usage Examples
+
+### 1. Using the Task Planning Tool
+
+The primary way to create and execute task plans with user approval:
 
 ```typescript
-agent.mutateState(TaskState, state => {
-  state.autoApprove = 45; // Enable auto-approve after 45 seconds
-  // state.autoApprove = 0; // Disable auto-approve
+// Create a comprehensive task plan
+await agent.executeTool('tasks_run', {
+  tasks: [
+    {
+      taskName: "Create user authentication system",
+      agentType: "backend-developer",
+      message: "Implement JWT-based authentication with login/logout endpoints",
+      context: "Create auth middleware, user model, login/logout routes in Express.js. Use bcrypt for password hashing. Include proper error handling and validation. Set up appropriate HTTP status codes and response formats. Handle edge cases like expired tokens and concurrent requests."
+    },
+    {
+      taskName: "Design login UI components",
+      agentType: "frontend-developer",
+      message: "Create responsive login and registration forms",
+      context: "Build React components with form validation, error handling, and responsive design using Tailwind CSS. Include loading states, proper accessibility attributes, and consistent styling with the application's design system. Implement proper error messaging and success states."
+    },
+    {
+      taskName: "Write authentication tests",
+      agentType: "test-engineer",
+      message: "Create comprehensive test suite for auth system",
+      context: "Write unit tests for auth middleware, integration tests for login/logout endpoints, and E2E tests for UI flows. Include edge cases like invalid credentials, expired tokens, and concurrent access scenarios. Ensure proper test coverage and maintainable test structure. Mock external dependencies appropriately."
+    }
+  ]
 });
 ```
 
-#### Setting Parallel Tasks
+### 2. Programmatic Task Management
 
 ```typescript
-agent.mutateState(TaskState, state => {
-  state.parallelTasks = 3; // Allow 3 parallel tasks
-});
+import TaskService from '@tokenring-ai/tasks';
+
+const taskService = agent.requireServiceByType(TaskService);
+
+// Add individual tasks
+const taskId = taskService.addTask({
+  name: "Process user data",
+  agentType: "data-processor",
+  message: "Clean and validate user input data",
+  context: "Parse CSV files, remove duplicates, validate email formats, and standardize data formats. Handle missing values appropriately and generate summary reports. Implement proper error handling for malformed data."
+}, agent);
+
+// Get all tasks
+const allTasks = taskService.getTasks(agent);
+
+// Update task status
+taskService.updateTaskStatus(taskId, 'completed', 'Data processed successfully', agent);
+
+// Execute specific tasks
+const results = await taskService.executeTasks([taskId], agent);
 ```
 
-#### Getting Configuration
+### 3. Configuration Management
 
 ```typescript
+// Configure auto-approve timeout (seconds)
+agent.mutateState(TaskState, state => {
+  state.autoApprove = 30;
+});
+
+// Configure parallel task execution
+agent.mutateState(TaskState, state => {
+  state.parallelTasks = 3;
+});
+
+// Get current configuration
 const autoApproveTimeout = agent.getState(TaskState).autoApprove;
 const parallelLimit = agent.getState(TaskState).parallelTasks;
 ```
 
-## Commands and Tools
-
-### Chat Commands
-
-The plugin registers the following slash commands for users:
-
-- **`/tasks list`**: Display all tasks in the queue with their status, agent type, and message content
-- **`/tasks clear`**: Remove all tasks from the task queue
-- **`/tasks execute`**: Execute all pending tasks by dispatching them to their respective agents
-- **`/tasks settings`**: View or modify task settings (auto-approve and parallel execution limits)
-- **`/tasks settings auto-approve=<seconds>`**: Set auto-approve timeout in seconds (0 to disable)
-- **`/tasks settings parallel=<number>`**: Set the maximum number of tasks to run in parallel
-
-### AI Tools
-
-#### `tasks_run`
-
-Create and present a complete task plan to the user for approval. If approved, executes all tasks immediately with parallel processing.
-
-**Description:** "Create and present a complete task plan to the user for approval (unless auto-approve is enabled). If approved, this will execute all tasks immediately and return results. If not approved, this will return a reason for rejection."
-
-**Required Context Handlers:** `["available-agents"]`
-
-**Input Schema:**
-```typescript
-{
-  tasks: z.array(z.object({
-    taskName: z.string().describe("A descriptive name for the task"),
-    agentType: z.string().describe("The type of agent that should handle this task"),
-    message: z.string().describe("A one paragraph message/description of what needs to be done, to send to the agent."),
-    context: z.string().describe("Three paragraphs of important contextual information to pass to the agent, such as file names, step by step instructions, descriptions, etc. of the exact steps the agent should take. This information is critical to proper agent functionality, and should be detailed and comprehensive. It needs to explain absolutely every aspect of how to complete the task to the agent that will be dispatched")
-  })).describe("Array of tasks to add to the task list")
-}
-```
-
-**Behavior:**
-- Presents task plan to user for approval
-- Respects auto-approve configuration if set
-- If approved: adds tasks and executes them with parallel processing
-- If rejected: prompts for rejection reason and returns it
-
-### Context Handlers
-
-#### `task-plan`
-
-Provides current task summaries to agents as context.
-
-**Usage:** Automatically integrated when the plugin is installed
-
-**Example:**
-```typescript
-// Agent receives context like:
-/* The user has approved the following task plan */:
-- Create user authentication (pending): backend-developer - Implement JWT-based authentication
-- Design login UI (pending): frontend-developer - Create responsive login forms
-```
-
-## Task Planning Workflow
-
-1. **Planning Phase**: Create comprehensive task plans with detailed context
-2. **Approval Phase**: Task plan presented to user with clear descriptions and agent assignments
-3. **Auto-Approve Check**: If configured, automatically approve after timeout
-4. **Execution Phase**: Upon approval, tasks are added and executed with parallel processing
-5. **Tracking Phase**: Task status updated in real-time as agents complete work
-6. **Results Phase**: Execution results collected and reported back
-
 ## Integration
 
-The plugin integrates seamlessly with the TokenRing ecosystem:
+The package integrates seamlessly with the TokenRing ecosystem:
 
 ### Plugin System
 
@@ -470,6 +526,23 @@ The plugin integrates seamlessly with the TokenRing ecosystem:
 - **Slash Commands**: All commands use `/tasks` prefix
 - **Parameter Parsing**: Robust parameter parsing and validation
 - **Help Integration**: Built-in help system with detailed documentation
+
+## Context Handlers
+
+### task-plan
+
+Provides current task summaries to agents as context.
+
+**Usage**: Automatically integrated when the plugin is installed
+
+**Example**:
+
+```typescript
+// Agent receives context like:
+/* The user has approved the following task plan */:
+- Create user authentication (pending): backend-developer - Implement JWT-based authentication
+- Design login UI (pending): frontend-developer - Create responsive login forms
+```
 
 ## Best Practices
 
@@ -559,13 +632,7 @@ await agent.executeTool('tasks_run', {
 - **Clear and Restart**: Use `/tasks clear` to reset and start fresh
 - **Status Inspection**: Use `/tasks list` to identify specific failures
 
-## Monitoring and Debugging
-
-- **Testing**: Run tests using `bun test` commands
-- **Debugging**: Enable debug logs by setting `DEBUG=tokenring:tasks` environment variable
-- **Error Handling**: Tasks fail gracefully with detailed error messages
-
-## Development
+## Testing and Development
 
 ### Building and Testing
 
@@ -609,15 +676,30 @@ pkg/tasks/
 └── README.md                   # This documentation
 ```
 
+## Dependencies
+
+### Production Dependencies
+
+- `@tokenring-ai/app`: 0.2.0
+- `@tokenring-ai/chat`: 0.2.0
+- `@tokenring-ai/agent`: 0.2.0
+- `@tokenring-ai/utility`: 0.2.0
+- `zod`: ^4.3.6
+- `uuid`: ^13.0.0
+- `async`: ^3.2.6
+
+### Development Dependencies
+
+- `vitest`: ^4.0.18
+- `typescript`: ^5.9.3
+- `@types/async`: ^3.2.25
+
 ## Related Components
 
 - [@tokenring-ai/agent](./agent.md): Core agent orchestration system
 - [@tokenring-ai/chat](./chat.md): Chat interface and command handling
 - [@tokenring-ai/app](./app.md): Base application framework
 - [@tokenring-ai/utility](./utility.md): Shared utilities and helpers
-- [zod]: Schema validation for configuration
-- [uuid]: UUID generation for unique task IDs
-- [async]: Async utilities for parallel task execution
 
 ## License
 

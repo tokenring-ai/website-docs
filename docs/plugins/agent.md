@@ -18,6 +18,7 @@ The Agent package serves as the core orchestration system for managing AI agents
 - **RPC Integration**: JSON-RPC endpoints for remote agent management
 - **Plugin Integration**: Automatic integration with TokenRing applications
 - **Idle/Max Runtime Management**: Automatic cleanup of idle or long-running agents
+- **Minimum Running Agents**: Maintain minimum number of agents per type
 - **Status Line Management**: Visual indicators for busy state and status messages
 - **Todo Management**: Built-in todo list with sub-agent state transfer capability
 
@@ -40,6 +41,7 @@ const agent = new Agent(app, {
   callable: true,
   idleTimeout: 0,
   maxRunTime: 0,
+  minimumRunning: 0,
   subAgent: {},
   enabledHooks: [],
   todos: {}
@@ -55,6 +57,8 @@ const agent = new Agent(app, {
 - `headless`: Headless operation mode
 - `app`: TokenRing application instance
 - `stateManager`: State management system
+- `requireServiceByType`: Method to require services by type
+- `getServiceByType`: Method to get services by type
 
 **State Management Methods:**
 - `initializeState<T>(ClassType, props)`: Initialize state slice
@@ -82,9 +86,10 @@ const agent = new Agent(app, {
 - `errorMessage(...messages)`: Emit error messages
 - `debugMessage(...messages)`: Emit debug messages (if debugEnabled)
 - `emit(event)`: Emit custom events
+- `artifactOutput({name, encoding, mimeType, body})`: Emit output artifact
 
 **Human Interface:**
-- `askForConfirmation({ message, label, default, timeout })`: Request confirmation
+- `askForApproval({ message, label, default, timeout })`: Request approval (Yes/No)
 - `askForText({ message, label, masked })`: Request text input
 - `askQuestion<T>(question)`: Request human input with various question types
 - `sendQuestionResponse(requestId, response)`: Send human response
@@ -96,6 +101,7 @@ const agent = new Agent(app, {
 - `getRunDuration()`: Get total run duration (returns number in milliseconds)
 - `reset(what)`: Reset specific state components
 - `shutdown(reason)`: Shutdown agent completely
+- `run(signal)`: Start agent execution loop
 
 **Configuration Access:**
 - `getAgentConfigSlice<T>(key, schema)`: Get config value with validation
@@ -122,6 +128,7 @@ agentManager.addAgentConfigs({
     callable: true,
     idleTimeout: 0,
     maxRunTime: 0,
+    minimumRunning: 0,
     subAgent: {},
     enabledHooks: [],
     todos: {}
@@ -138,12 +145,14 @@ const agent = await agentManager.spawnAgent({
 **Key Methods:**
 - `addAgentConfig(name, config)`: Register agent configuration
 - `addAgentConfigs(configs)`: Register multiple agent configurations
+- `getAgentConfigEntries()`: Get all agent configuration entries
+- `getAgentConfig(name)`: Get specific agent configuration
 - `getAgentTypes()`: Get all available agent types
-- `getAgentConfigs()`: Get all agent configurations
+- `getAgentTypesLike(pattern)`: Get agent types matching pattern
 - `spawnAgent({agentType, headless})`: Create new agent
-- `spawnSubAgent(agent, {agentType, headless, config})`: Create sub-agent
+- `spawnSubAgent(agent, agentType, config)`: Create sub-agent
 - `spawnAgentFromConfig(config, {headless})`: Create agent from config
-- `spawnAgentFromCheckpoint(app, checkpoint, {headless})`: Create from checkpoint
+- `spawnAgentFromCheckpoint(checkpoint, config)`: Create from checkpoint
 - `getAgent(id)`: Get agent by ID
 - `getAgents()`: Get all active agents
 - `deleteAgent(agent)`: Shutdown and remove agent
@@ -170,13 +179,14 @@ await agent.runCommand("Hello, agent!");
 **Command Processing:**
 - Automatic slash command parsing
 - Default chat command fallback (`/chat send`)
-- Command singular/plural name handling
+- Command singular/plural name handling (e.g., `/agents` → `/agent`)
+- Agent mention handling (`@agentName message` converts to `/agent run agentName message`)
 - Error handling for unknown commands
 
 **Key Methods:**
 - `addAgentCommands(commands)`: Register commands
 - `getCommandNames()`: Get all command names
-- `getCommands()`: Get all commands
+- `getCommandEntries()`: Get all command entries
 - `getCommand(name)`: Get specific command
 - `executeAgentCommand(agent, message)`: Execute command
 
@@ -197,7 +207,8 @@ await lifecycleService.executeHooks(agent, "afterChatCompletion", args);
 **Hook Management:**
 - `registerHook(name, config)`: Register individual hook
 - `addHooks(pkgName, hooks)`: Register hooks with package namespacing
-- `getRegisteredHooks()`: Get all registered hooks
+- `getAllHookNames()`: Get all registered hook names
+- `getAllHookEntries()`: Get all registered hook entries
 - `getEnabledHooks(agent)`: Get enabled hooks for agent
 - `setEnabledHooks(hookNames, agent)`: Set enabled hooks
 - `enableHooks(hookNames, agent)`: Enable specific hooks
@@ -208,6 +219,7 @@ await lifecycleService.executeHooks(agent, "afterChatCompletion", args);
 - `beforeChatCompletion`: Called before chat completion
 - `afterChatCompletion`: Called after chat completion
 - `afterAgentInputComplete`: Called after agent input is fully processed
+- `afterTesting`: Called after testing (if implemented)
 
 ## Usage Examples
 
@@ -230,6 +242,7 @@ const agent = new Agent(app, {
   callable: true,
   idleTimeout: 0,
   maxRunTime: 0,
+  minimumRunning: 0,
   subAgent: {},
   enabledHooks: [],
   todos: {}
@@ -295,8 +308,7 @@ const restoredAgent = await Agent.createAgentFromCheckpoint(
 
 ```typescript
 // Create sub-agent from parent
-const subAgent = await agentManager.spawnSubAgent(agent, {
-  agentType: "backgroundWorker",
+const subAgent = await agentManager.spawnSubAgent(agent, "backgroundWorker", {
   headless: true
 });
 
@@ -354,6 +366,7 @@ console.log("Tool result:", result);
 // Register hook
 const hookConfig: HookConfig = {
   name: "myPlugin/afterChatCompletion",
+  displayName: "My Hook",
   description: "Custom after chat completion hook",
   afterChatCompletion: async (agent, ...args) => {
     console.log("Chat completed:", args);
@@ -370,10 +383,10 @@ lifecycleService.enableHooks(["myPlugin/afterChatCompletion"], agent);
 ### Human Interface Requests
 
 ```typescript
-// Simple confirmation
-const confirmed = await agent.askForConfirmation({
+// Simple approval (Yes/No)
+const approved = await agent.askForApproval({
   message: "Are you sure you want to proceed?",
-  label: "Confirm?",
+  label: "Approve?",
   default: false,
   timeout: 30
 });
@@ -519,8 +532,10 @@ const agentConfig = {
   createMessage: string,           // Message displayed when agent is created (default: "Agent Created")
   headless?: boolean,              // Headless mode (default: false)
   callable?: boolean,              // Enable tool calls (default: true)
+  minimumRunning?: number,         // Minimum running agents of this type (default: 0)
   idleTimeout?: number,            // Idle timeout in seconds (default: 0 = no limit)
   maxRunTime?: number,             // Max runtime in seconds (default: 0 = no limit)
+  allowedSubAgents?: string[],     // Allowed sub-agent types (default: [])
   subAgent: {                      // Sub-agent configuration
     forwardChatOutput?: boolean,   // Forward chat output (default: true)
     forwardSystemOutput?: boolean, // Forward system output (default: true)
@@ -529,8 +544,8 @@ const agentConfig = {
     forwardInputCommands?: boolean,// Forward input commands (default: true)
     forwardArtifacts?: boolean,    // Forward artifacts (default: false)
     timeout?: number,              // Sub-agent timeout in seconds (default: 0)
-    maxResponseLength?: number,    // Max response length in characters (default: 500)
-    minContextLength?: number,     // Minimum context length in characters (default: 300)
+    maxResponseLength?: number,    // Max response length in characters (default: 10000)
+    minContextLength?: number,     // Minimum context length in characters (default: 1000)
   },
   enabledHooks: string[],          // Enabled hook names (default: [])
   todos: {                         // Todo list configuration
@@ -682,6 +697,7 @@ const config = {
       callable: true,
       idleTimeout: 0,
       maxRunTime: 0,
+      minimumRunning: 0,
       subAgent: {},
       enabledHooks: [],
       todos: {}
@@ -724,8 +740,8 @@ The agent package includes built-in chat commands:
 
 The agent package includes built-in tools:
 
-- `runAgent` - Execute sub-agent
-- `todo` - Todo list management
+- `runAgent` - Execute sub-agent (tool name: `agent_run`)
+- `todo` - Todo list management (tool name: `todo`)
 
 ### Context Handlers
 
@@ -736,21 +752,21 @@ The agent package includes built-in tools:
 
 | Endpoint | Request Params | Response |
 |----------|---------------|----------|
-| `getAgent` | `{agentId}` | Agent details |
-| `getAgentEvents` | `{agentId, fromPosition}` | Events from position |
+| `getAgent` | `{agentId}` | Agent details including id, name, description, debugEnabled, config |
+| `getAgentEvents` | `{agentId, fromPosition}` | Events from position with position cursor |
 | `streamAgentEvents` | `{agentId, fromPosition}` | Streaming events |
-| `getAgentExecutionState` | `{agentId}` | Execution state |
+| `getAgentExecutionState` | `{agentId}` | Execution state including idle, busyWith, waitingOn, statusLine |
 | `streamAgentExecutionState` | `{agentId}` | Streaming execution state |
-| `listAgents` | None | Array of agent information |
-| `getAgentTypes` | None | Array of agent types |
-| `createAgent` | `{agentType, headless}` | Created agent details |
+| `listAgents` | None | Array of agent information with status |
+| `getAgentTypes` | None | Array of agent types with metadata |
+| `createAgent` | `{agentType, headless}` | Created agent details including id, name, description |
 | `deleteAgent` | `{agentId}` | Success status |
 | `sendInput` | `{agentId, message}` | Request ID |
 | `sendQuestionResponse` | `{agentId, requestId, response}` | Success status |
 | `abortAgent` | `{agentId, reason}` | Success status |
 | `resetAgent` | `{agentId, what}` | Success status |
-| `getCommandHistory` | `{agentId}` | Command history |
-| `getAvailableCommands` | `{agentId}` | Available command names |
+| `getCommandHistory` | `{agentId}` | Command history array |
+| `getAvailableCommands` | `{agentId}` | Available command names array |
 
 ## State Management
 
@@ -760,11 +776,26 @@ Agents support multiple state slices for different concerns:
 
 **Built-in State Slices:**
 - **AgentEventState**: Event history and current state
+  - `events`: Array of AgentEventEnvelope
+  - `getEventCursorFromCurrentPosition()`: Get event cursor
+  - `yieldEventsByCursor(cursor)`: Yield events by cursor
 - **AgentExecutionState**: Execution state (busy status, status line, input queue, idle state)
+  - `busyWith`: String or null
+  - `statusLine`: String or null
+  - `waitingOn`: Array of ParsedQuestionRequest
+  - `inputQueue`: Array of InputReceived
+  - `currentlyExecuting`: Currently executing operation or null
+  - `idle`: Computed property (inputQueue.length === 0)
 - **CommandHistoryState**: Command execution history
+  - `commands`: Array of executed command strings
 - **CostTrackingState**: Resource usage tracking
+  - `costs`: Record<string, number> mapping categories to costs
 - **HooksState**: Hook configuration and enabled hooks
+  - `enabledHooks`: Array of enabled hook names
 - **TodoState**: Task list management
+  - `todos`: Array of TodoItem objects
+- **SubAgentState**: Sub-agent configuration
+  - `allowedSubAgents`: Array of allowed sub-agent types
 
 **Custom State Slices:**
 ```typescript
@@ -845,12 +876,13 @@ import { TokenRingPlugin } from "@tokenring-ai/app";
 
 const myAgentPlugin: TokenRingPlugin = {
   name: "my-plugin",
-  install(app) {
+  install(app, config) {
     // Register custom commands
     // Register custom tools
     // Register custom hooks
     // Register custom state slices
-  }
+  },
+  config: myConfigSchema // Optional
 };
 ```
 
@@ -859,7 +891,7 @@ const myAgentPlugin: TokenRingPlugin = {
 ```
 pkg/agent/
 ├── Agent.ts                          # Core Agent class implementation
-├── AgentEvents.ts                    # Event type definitions
+├── AgentEvents.ts                    # Event type definitions and schemas
 ├── types.ts                          # Core type definitions
 ├── schema.ts                         # Agent configuration schema
 ├── index.ts                          # Package exports
@@ -893,7 +925,8 @@ pkg/agent/
 │   ├── commandHistoryState.ts        # Command history tracking
 │   ├── costTrackingState.ts          # Cost tracking state
 │   ├── hooksState.ts                 # Hook configuration state
-│   └── todoState.ts                  # Todo state management
+│   ├── todoState.ts                  # Todo state management
+│   └── subAgentState.ts              # Sub-agent configuration state
 ├── tools/                            # Built-in tools
 │   ├── runAgent.ts                   # Sub-agent execution tool
 │   └── todo.ts                       # Todo list management tool

@@ -58,7 +58,7 @@ Wikipedia API integration for knowledge retrieval:
 
 ### Usage
 ```typescript
-const wiki = new WikipediaService();
+const wiki = new WikipediaService(WikipediaConfigSchema.parse({}));
 const results = await wiki.search('Token Ring', { limit: 5 });
 const content = await wiki.getPage('Token Ring');
 ```
