@@ -78,6 +78,34 @@ class AWSService implements TokenRingService {
 }
 ```
 
+### Services
+
+#### AWSService
+
+The main service providing AWS functionality.
+
+**Service Name:** `AWSService`
+
+**Service Description:** `Provides AWS functionality`
+
+**Constructor Parameters:**
+
+- `accessKeyId`: AWS Access Key ID for authentication
+- `secretAccessKey`: AWS Secret Access Key for authentication
+- `sessionToken`: Optional AWS session token for temporary credentials
+- `region`: AWS region where credentials apply
+
+**Methods:**
+
+| Method | Description | Parameters | Returns |
+|--------|-------------|------------|---------|
+| `initializeAWSClient` | Initializes a generic AWS SDK client with configured credentials | `ClientClass`: AWS SDK client constructor, `clientConfig`: Optional additional config | Initialized AWS SDK client instance |
+| `getSTSClient` | Gets or creates the STS client singleton | None | `STSClient` instance |
+| `getS3Client` | Gets or creates the S3 client singleton | None | `S3Client` instance |
+| `isAuthenticated` | Checks if credentials and region are configured | None | `boolean` - true if configured |
+| `getCallerIdentity` | Retrieves AWS account information via STS GetCallerIdentity | None | Object with `Arn`, `Account`, `UserId` |
+| `status` | Reports the status of the service including authentication state | `agent`: Agent instance for service access | Service status object with authentication details |
+
 ### Tools
 
 The AWS plugin provides one tool for S3 operations registered via the chat service during plugin installation.
@@ -145,20 +173,17 @@ async function execute(_args: {}, agent: Agent) {
 
 ### Chat Commands
 
-#### `aws`
+#### `aws status`
 
-Provides a command group for AWS-related operations.
-
-**Sub-commands:**
-
-- `status`: View current AWS authentication status and account information
+View current AWS authentication status and account information.
 
 **Command Structure:**
 
 ```typescript
 {
-  description: "AWS commands for authentication and status",
-  execute: async (remainder: string, agent: Agent) => void,
+  name: "aws status",
+  description: "/aws status - View current AWS authentication status",
+  execute: async (remainder: string, agent: Agent) => Promise<string>,
   help: string
 }
 ```
@@ -183,34 +208,24 @@ await agent.sendMessage("aws status");
 //   Region: us-east-1
 ```
 
-**Command Implementation:**
+**Command Help Text:**
 
-```typescript
-async function execute(remainder: string, agent: Agent) {
-  const awsService = agent.requireServiceByType(AWSService);
-  const [subcommand, ..._args] = remainder.trim().split(/\s+/);
+```
+/aws status - View current AWS authentication status
 
-  if (subcommand === "status") {
-    try {
-      const identity = await awsService.getCallerIdentity();
-      const lines: string[] = [
-        "AWS Authentication Status:",
-        indent([
-          `Account: ${identity.Account}`,
-          `Arn: ${identity.Arn}`,
-          `UserId: ${identity.UserId}`,
-          `Region: ${awsService.options.region}`
-        ], 1)
-      ];
-      agent.infoMessage(lines.join("\n"));
-    } catch (error: unknown) {
-      agent.errorMessage("Failed to get AWS caller identity:", error as Error);
-      agent.infoMessage("Please ensure AWS credentials and region are correctly configured in the AWSService.");
-    }
-  } else {
-    agent.chatOutput(help);
-  }
-}
+View current AWS authentication status and account information including account ID, ARN, user ID, and configured region.
+
+## Examples
+
+aws status      # Display current AWS authentication status
+
+## Configuration
+
+Ensure AWS credentials are properly configured in the AWSService with:
+- **accessKeyId**: Your AWS Access Key ID
+- **secretAccessKey**: Your AWS Secret Access Key
+- **region**: Your AWS region (e.g., 'us-east-1')
+- **sessionToken**: Optional AWS Session Token (if using temporary credentials)
 ```
 
 ## Configuration
@@ -337,7 +352,7 @@ export default {
         chatService.addTools(tools)
       );
       app.waitForService(AgentCommandService, agentCommandService =>
-        agentCommandService.addAgentCommands(chatCommands)
+        agentCommandService.addAgentCommands(agentCommands)
       );
       app.addServices(new AWSService(config.aws));
     }
@@ -638,167 +653,6 @@ const ecs = awsService.initializeAWSClient(EC2Client, {
 });
 ```
 
-## Service Methods
-
-### `initializeAWSClient<T>(ClientClass, clientConfig)`
-
-Initializes any AWS SDK client with the configured credentials.
-
-**Type Parameters:**
-
-- `T`: The type of AWS SDK client to create
-
-**Parameters:**
-
-- `ClientClass`: The AWS SDK client class to initialize (e.g., `S3Client`, `DynamoDBClient`, `SNSClient`)
-- `clientConfig`: Additional configuration that will be merged with service credentials and region
-
-**Returns:** Initialized AWS SDK client instance
-
-**Example:**
-
-```typescript
-// Initialize S3 client (also provided by getS3Client)
-const s3Client = awsService.initializeAWSClient(S3Client);
-
-// Initialize SNS client with custom endpoint
-const snsClient = awsService.initializeAWSClient(SNSClient, {
-  endpoint: 'https://custom-endpoint.amazonaws.com'
-});
-
-// Initialize DynamoDB client
-const dynamoClient = awsService.initializeAWSClient(DynamoDBClient);
-
-// Initialize client for any AWS service
-const kinesisClient = awsService.initializeAWSClient(KinesisClient, {
-  region: 'us-west-2'
-});
-```
-
-### `getSTSClient()`
-
-Gets or creates an STS client for AWS identity operations.
-
-**Returns:** `STSClient` singleton instance
-
-**Example:**
-
-```typescript
-const stsClient = awsService.getSTSClient();
-
-// Get caller identity
-const identity = await stsClient.send(new GetCallerIdentityCommand({}));
-console.log('Account:', identity.Account);
-
-// Assume role or other STS operations
-const assumedRole = await stsClient.send(new AssumeRoleCommand({
-  RoleArn: 'arn:aws:iam::123456789012:role/MyRole',
-  RoleSessionName: 'session'
-}));
-```
-
-### `getS3Client()`
-
-Gets or creates an S3 client for S3 operations.
-
-**Returns:** `S3Client` singleton instance
-
-**Example:**
-
-```typescript
-const s3Client = awsService.getS3Client();
-
-// List buckets
-const buckets = await s3Client.send(new ListBucketsCommand({}));
-
-// Put object
-await s3Client.send(new PutObjectCommand({
-  Bucket: 'my-bucket',
-  Key: 'file.txt',
-  Body: 'content'
-}));
-
-// Get object
-const getObject = await s3Client.send(new GetObjectCommand({
-  Bucket: 'my-bucket',
-  Key: 'file.txt'
-}));
-```
-
-**Note:** This method is primarily for S3 bucket listing via the AWS plugin's tool. For comprehensive S3 operations, consider using the dedicated S3 package (`@tokenring-ai/s3`).
-
-### `isAuthenticated()`
-
-Checks if credentials and region are properly configured in the service.
-
-**Returns:** `boolean` - true if credentials are configured and valid, false otherwise
-
-**Example:**
-
-```typescript
-if (awsService.isAuthenticated()) {
-  console.log('AWS is authenticated and ready for operations');
-} else {
-  console.log('AWS credentials not configured');
-}
-```
-
-### `getCallerIdentity()`
-
-Retrieves the AWS account identity via STS GetCallerIdentity.
-
-**Returns:** `{ Arn?: string; Account?: string; UserId?: string }`
-
-**Throws:** Error if service is not authenticated (`isAuthenticated()` returns false)
-
-**Example:**
-
-```typescript
-try {
-  const identity = await awsService.getCallerIdentity();
-  console.log(`Account: ${identity.Account}`);
-  console.log(`ARN: ${identity.Arn}`);
-  console.log(`User ID: ${identity.UserId}`);
-} catch (error) {
-  console.error('Authentication failed:', error.message);
-  // Ensure credentials and region are configured
-}
-```
-
-### `status(agent: Agent)`
-
-Reports the current service status and account information.
-
-**Parameters:**
-
-- `agent`: The agent instance for error reporting
-
-**Returns:** Status object with:
-- `active: boolean` - Whether the service is active
-- `service: string` - Service name ("AWSService")
-- `authenticated: boolean` - Whether credentials are authenticated
-- `accountInfo?: { Arn?: string; Account?: string; UserId?: string }` - Account identity information
-- `error?: string` - Error message if authentication failed
-
-**Example:**
-
-```typescript
-const agent = app.createAgent();
-const status = await awsService.status(agent);
-
-console.log(`Active: ${status.active}`);
-console.log(`Authenticated: ${status.authenticated}`);
-if (status.accountInfo) {
-  console.log(`Account: ${status.accountInfo.Account}`);
-  console.log(`ARN: ${status.accountInfo.Arn}`);
-  console.log(`User ID: ${status.accountInfo.UserId}`);
-}
-
-if (status.error) {
-  console.error(`Error: ${status.error}`);
-}
-```
-
 ## Best Practices
 
 ### Credential Security
@@ -884,25 +738,21 @@ Chat commands use the agent service to communicate errors to the user:
 ```typescript
 async execute(remainder: string, agent: Agent) {
   const awsService = agent.requireServiceByType(AWSService);
-  const [subcommand, ..._args] = remainder.trim().split(/\s+/);
 
-  if (subcommand === "status") {
-    try {
-      const identity = await awsService.getCallerIdentity();
-      const lines: string[] = [
-        "AWS Authentication Status:",
-        indent([
-          `Account: ${identity.Account}`,
-          `Arn: ${identity.Arn}`,
-          `UserId: ${identity.UserId}`,
-          `Region: ${awsService.options.region}`
-        ], 1)
-      ];
-      agent.infoMessage(lines.join("\n"));
-    } catch (error: unknown) {
-      agent.errorMessage("Failed to get AWS caller identity:", error as Error);
-      agent.infoMessage("Please ensure AWS credentials and region are correctly configured in the AWSService.");
-    }
+  try {
+    const identity = await awsService.getCallerIdentity();
+    const lines: string[] = [
+      "AWS Authentication Status:",
+      indent([
+        `Account: ${identity.Account}`,
+        `Arn: ${identity.Arn}`,
+        `UserId: ${identity.UserId}`,
+        `Region: ${awsService.options.region}`
+      ], 1)
+    ];
+    return lines.join("\n");
+  } catch (error: unknown) {
+    throw new CommandFailedError(`Failed to get AWS caller identity: ${error instanceof Error ? error.message : String(error)}`);
   }
 }
 ```
@@ -974,9 +824,10 @@ The package uses vitest for unit testing with node environment.
   "@tokenring-ai/app": "0.2.0",
   "@tokenring-ai/agent": "0.2.0",
   "@tokenring-ai/chat": "0.2.0",
-  "@aws-sdk/client-s3": "^3.992.0",
-  "@aws-sdk/client-sts": "^3.992.0",
+  "@aws-sdk/client-s3": "^3.1000.0",
+  "@aws-sdk/client-sts": "^3.1000.0",
   "@tokenring-ai/filesystem": "0.2.0",
+  "@tokenring-ai/utility": "0.2.0",
   "zod": "^4.3.6"
 }
 ```
@@ -987,6 +838,7 @@ The package uses vitest for unit testing with node environment.
 - **@tokenring-ai/agent**: Agent framework for tool execution and service access
 - **@tokenring-ai/chat**: Chat service for tool and command registration
 - **@tokenring-ai/filesystem**: Filesystem utilities
+- **@tokenring-ai/utility**: Utility functions like string indentation
 - **@aws-sdk/client-s3**: S3 service client for bucket listing operations
 - **@aws-sdk/client-sts**: STS service client for caller identity verification
 - **zod**: Runtime type validation for configuration
@@ -1001,9 +853,9 @@ pkg/aws/
 ├── tools.ts                                  # Barrel export for all tools
 ├── tools/
 │   └── listS3BucketsTool.ts                 # S3 bucket listing tool implementation
-├── chatCommands.ts                           # Chat command exports (barrel)
+├── commands.ts                               # Barrel export for all commands
 ├── commands/
-│   └── aws.ts                               # AWS chat command with status subcommand
+│   └── awsStatus.ts                         # AWS status chat command implementation
 ├── package.json                              # Package metadata and dependencies
 ├── schema.ts                                 # Configuration schema definitions
 ├── vitest.config.ts                          # Test configuration
@@ -1018,9 +870,9 @@ pkg/aws/
   - Generic client initialization
   - Service lifecycle management
   - Status reporting
-- **chatCommands.ts**: Chat command definitions and exports
 - **tools.ts**: Tool definitions and barrel export
-- **commands/aws.ts**: AWS command handler with status subcommand
+- **commands.ts**: Command definitions and barrel export
+- **commands/awsStatus.ts**: AWS status command handler
 - **tools/listS3BucketsTool.ts**: S3 bucket listing tool with error handling
 - **plugin.ts**: Plugin registration via install method
 - **index.ts**: Public API exports and configuration schema

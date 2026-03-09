@@ -1,4 +1,4 @@
-# Thinking Plugin
+# @tokenring-ai/thinking
 
 ## Overview
 
@@ -41,7 +41,7 @@ const thinkingService = new ThinkingService();
 | Method | Parameters | Returns | Description |
 |--------|------------|---------|-------------|
 | `attach` | `agent: Agent` | `void` | Initializes ThinkingState for agent |
-| `processStep` | `toolName: string`, `args: any`, `agent: Agent`, `processor: (session, args) => any` | `any` | Processes step in reasoning session |
+| `processStep` | `toolName: string`, `args: any`, `agent: Agent`, `processor: (session: ReasoningSession, args: any) => any` | `ReasoningSession` | Processes step in reasoning session and returns updated session |
 | `clearSession` | `toolName: string`, `agent: Agent` | `void` | Clears specific tool session |
 | `clearAll` | `agent: Agent` | `void` | Clears all reasoning sessions |
 
@@ -70,7 +70,7 @@ const state = agent.getState(ThinkingState);
 |--------|------------|---------|-------------|
 | `constructor` | `data: Partial<ThinkingState>` | `void` | Create new state instance with optional initial data |
 | `transferStateFromParent` | `parent: Agent` | `void` | Transfer state from parent agent |
-| `reset` | `what: ResetWhat[]` | `void` | Reset state based on flags (e.g., `['chat']` clears sessions) |
+| `reset` | - | `void` | Reset state (clears all sessions) |
 | `serialize` | - | `z.output<typeof serializationSchema>` | Returns serialized state object |
 | `deserialize` | `data: z.output<typeof serializationSchema>` | `void` | Load state from serialized data |
 | `show` | - | `string[]` | Returns session summary array |
@@ -221,10 +221,12 @@ await agent.executeTool('first-principles', {...});
 
 ## Usage Examples
 
-### Basic Usage with Scientific Method
+### Scientific Method
+
+The scientific method tool enforces strict adherence to the scientific method with hypothesis tracking.
 
 ```typescript
-// First call - initializes session
+// First call - initialize with problem and observation
 const result1 = await agent.executeTool('scientific-method-reasoning', {
   problem: "Why does water boil at different temperatures at different altitudes?",
   step: "question_observation",
@@ -232,23 +234,37 @@ const result1 = await agent.executeTool('scientific-method-reasoning', {
   nextThoughtNeeded: true
 });
 
-// Continue the session with next step
+// Formulate hypothesis
 const result2 = await agent.executeTool('scientific-method-reasoning', {
-  step: "background_research",
-  content: "Historical temperature records show consistent warming trend",
+  step: "hypothesis_formulation",
+  content: "Lower atmospheric pressure at higher altitudes reduces the boiling point.",
+  hypothesis_update: {
+    new_hypothesis_text: "Reduced atmospheric pressure causes water to boil at lower temperatures",
+    action: "propose"
+  },
   nextThoughtNeeded: true
 });
 
-// Final step - completes the session
+// Test the hypothesis
 const result3 = await agent.executeTool('scientific-method-reasoning', {
+  step: "testing_experimentation",
+  content: "At 3000m altitude, atmospheric pressure is ~70% of sea level, and water boils at ~90°C.",
+  targets_hypothesis_id: ["h1"],
+  nextThoughtNeeded: true
+});
+
+// Final conclusion
+const result4 = await agent.executeTool('scientific-method-reasoning', {
   step: "conclusion",
-  content: "Water boils at lower temperatures at higher altitudes due to reduced atmospheric pressure.",
+  content: "Evidence confirms that reduced atmospheric pressure at higher altitudes causes water to boil at lower temperatures.",
   nextThoughtNeeded: false,
   final_answer: "Reduced atmospheric pressure at higher altitudes causes water to boil at lower temperatures."
 });
 ```
 
-### Multi-Tool Workflow with Decision Matrix
+### Decision Matrix
+
+Structured multi-criteria decision making with weighted criteria.
 
 ```typescript
 // Define decision
@@ -312,7 +328,9 @@ const finalResult = await agent.executeTool('decision-matrix', {
 });
 ```
 
-### Using Design Thinking
+### Design Thinking
+
+Human-centered problem solving process.
 
 ```typescript
 // Empathize phase
@@ -355,6 +373,67 @@ await agent.executeTool('design-thinking', {
 await agent.executeTool('design-thinking', {
   step: "iterate",
   content: "Add video tutorials and reduce required steps by 50%",
+  nextThoughtNeeded: false
+});
+```
+
+### Pre-Mortem Analysis
+
+Imagining failure to prevent it.
+
+```typescript
+await agent.executeTool('pre-mortem', {
+  problem: "Launching our new product feature",
+  step: "assume_failure",
+  content: "The feature launch failed to meet adoption targets",
+  nextThoughtNeeded: true
+});
+
+await agent.executeTool('pre-mortem', {
+  step: "list_failure_reasons",
+  content: "Users don't understand how to use the new feature",
+  likelihood: "high",
+  nextThoughtNeeded: true
+});
+
+await agent.executeTool('pre-mortem', {
+  step: "develop_mitigations",
+  content: "Create onboarding tutorial and in-app guidance",
+  targets_scenario: "Users don't understand how to use the new feature",
+  nextThoughtNeeded: true
+});
+```
+
+### Six Thinking Hats
+
+Parallel thinking from different perspectives.
+
+```typescript
+await agent.executeTool('six-thinking-hats', {
+  problem: "Should we implement mandatory remote work?",
+  step: "think",
+  hat: "white",
+  content: "Facts: 70% of employees prefer remote work options",
+  nextThoughtNeeded: true
+});
+
+await agent.executeTool('six-thinking-hats', {
+  step: "think",
+  hat: "black",
+  content: "Risks: Reduced collaboration, potential security concerns",
+  nextThoughtNeeded: true
+});
+
+await agent.executeTool('six-thinking-hats', {
+  step: "think",
+  hat: "yellow",
+  content: "Benefits: Increased productivity, better work-life balance",
+  nextThoughtNeeded: true
+});
+
+await agent.executeTool('six-thinking-hats', {
+  step: "synthesize",
+  content: "Hybrid model balances collaboration needs with flexibility preferences",
   nextThoughtNeeded: false
 });
 ```
@@ -410,11 +489,8 @@ const newState = new ThinkingState(savedData);
 ```typescript
 const state = agent.getState(ThinkingState);
 
-// Reset only chat-related state
-state.reset(['chat']);
-
-// Reset all state
-state.reset(['all']);
+// Reset state (clears all sessions)
+state.reset();
 ```
 
 ## Best Practices
@@ -605,7 +681,7 @@ bun run test:coverage
 
 - [@tokenring-ai/agent](agent.md) - Agent system and state management
 - [@tokenring-ai/chat](chat.md) - Chat service and tool definitions
-- [@tokenring-ai/app](token-ring-app.md) - Application framework and service management
+- [@tokenring-ai/app](./app.md) - Application framework and service management
 - [@tokenring-ai/utility](utility.md) - Shared utilities and helpers
 
 ## License

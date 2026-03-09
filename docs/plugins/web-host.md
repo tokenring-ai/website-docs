@@ -8,14 +8,14 @@ The `@tokenring-ai/web-host` package provides a high-performance Fastify web ser
 
 ## Key Features
 
-- **Fastify Server**: High-performance HTTP/HTTPS server with plugin architecture
-- **Authentication**: Basic and Bearer token authentication
-- **Resource Registration**: Pluggable system for registering web resources
-- **Static File Serving**: Serve static files and directories
-- **Single-Page Applications**: Serve SPA applications with proper routing
-- **Configurable Port**: Flexible port configuration
-- **JSON-RPC API**: Built-in JSON-RPC 2.0 support with streaming capabilities
-- **WebSocket RPC**: WebSocket-based RPC with real-time streaming
+- **Fastify Server**: High-performance HTTP server with plugin architecture
+- **Authentication**: Basic and Bearer token authentication with per-user credentials
+- **Resource Registration**: Pluggable system for registering web resources via KeyedRegistry
+- **Static File Serving**: Serve static files and directories with custom not-found handling
+- **Single-Page Applications**: Serve SPA applications with proper client-side routing
+- **Configurable Port**: Flexible port configuration with automatic port assignment
+- **JSON-RPC API**: Built-in JSON-RPC 2.0 support with streaming via Server-Sent Events
+- **WebSocket RPC**: WebSocket-based RPC with real-time streaming support
 - **Command Integration**: `/webhost` command for monitoring and management
 - **Automatic Endpoint Registration**: Automatic registration of RPC endpoints during startup
 
@@ -54,7 +54,7 @@ export const WebHostConfigSchema = z.object({
 
 ### AuthConfigSchema
 
-Authentication configuration schema:
+Authentication configuration schema supporting both Basic and Bearer token authentication:
 
 ```typescript
 export const AuthConfigSchema = z.object({
@@ -72,6 +72,8 @@ export const AuthConfigSchema = z.object({
 | `users` | Record | Map of usernames to credentials |
 | `password` | string | Optional password for Basic authentication |
 | `bearerToken` | string | Optional bearer token for Bearer authentication |
+
+**Note:** Each user can have either a password, a bearer token, or both. Users without either credential cannot authenticate.
 
 ### Static Resource Configuration
 
@@ -113,6 +115,13 @@ export const spaResourceConfigSchema = z.object({
 | `description` | string | Human-readable description |
 | `prefix` | string | URL prefix for SPA routing |
 
+**SPA Routing Behavior:**
+
+- Static files (JS, CSS, images) are served by the `fastifyStatic` middleware
+- The root path (`/` or with prefix) serves the specified index.html file
+- All other routes that don't match static files also serve index.html (for client-side routing)
+- If the SPA file doesn't exist, a warning is logged but the server continues
+
 ## Core Components
 
 ### WebHostService
@@ -124,15 +133,14 @@ class WebHostService implements TokenRingService {
   name = "WebHostService";
   description = "Fastify web host for serving resources and APIs";
 
-  private server!: FastifyInstance;
-
   resources: KeyedRegistry<WebResource>;
   registerResource = this.resources.register;
   getResourceEntries = this.resources.entries;
 
-  constructor(private app: TokenRingApp, private config: ParsedWebHostConfig);
+  constructor(app: TokenRingApp, config: ParsedWebHostConfig);
 
-  async run(signal: AbortSignal): Promise<void>;
+  async start(signal: AbortSignal): Promise<void>;
+  async stop(): Promise<void>;
   getURL(): URL;
 }
 ```
@@ -144,16 +152,28 @@ class WebHostService implements TokenRingService {
 | `name` | string | Service name (`"WebHostService"`) |
 | `description` | string | Service description |
 | `resources` | `KeyedRegistry<WebResource>` | Registry of registered resources |
-| `server` | `FastifyInstance` | The Fastify server instance |
+| `registerResource` | `(name: string, resource: WebResource) => void` | Method to register resources |
+| `getResourceEntries` | `() => Iterable<[string, WebResource]>` | Method to get all resources |
 
 **Methods:**
 
 | Method | Signature | Description |
 |--------|-----------|-------------|
-| `registerResource` | `(name: string, resource: WebResource) => void` | Register a new web resource |
-| `getResourceEntries` | `() => Iterable<[string, WebResource]>` | Get all registered resources as key-value pairs |
+| `start` | `(signal: AbortSignal) => Promise<void>` | Start the Fastify server and register all resources |
+| `stop` | `() => Promise<void>` | Stop the server and close all connections |
 | `getURL` | `() => URL` | Get the current server URL |
-| `run` | `(signal: AbortSignal) => Promise<void>` | Start the server |
+
+**Server Lifecycle:**
+
+1. **Start Phase:**
+   - Registers WebSocket support via `@fastify/websocket`
+   - Registers authentication if configured
+   - Registers all web resources
+   - Binds to configured host and port
+   - Logs the server URL
+
+2. **Stop Phase:**
+   - Closes the server and all active connections
 
 ### WebResource Interface
 
@@ -165,13 +185,19 @@ interface WebResource {
 }
 ```
 
+**Methods:**
+
+| Method | Signature | Description |
+|--------|-----------|-------------|
+| `register` | `(server: FastifyInstance) => Promise<void>` | Register routes, handlers, and middleware |
+
 ### StaticResource Class
 
-Serves static files from a directory.
+Serves static files from a directory using `@fastify/static`.
 
 ```typescript
 class StaticResource implements WebResource {
-  constructor(private config: z.output<typeof staticResourceConfigSchema>) {}
+  constructor(config: z.output<typeof staticResourceConfigSchema>)
 
   async register(server: FastifyInstance): Promise<void> {
     await server.register(fastifyStatic, {
@@ -189,45 +215,96 @@ class StaticResource implements WebResource {
 }
 ```
 
-**Constructor Options:**
+**Configuration:**
 
 | Option | Type | Description |
 |--------|------|-------------|
-| `config` | `StaticResourceConfig` | Configuration for the static resource |
+| `type` | `"static"` | Resource type discriminator |
+| `root` | string | Directory containing static files |
+| `description` | string | Human-readable description |
+| `indexFile` | string | Default file to serve for directory requests |
+| `notFoundFile` | string | Optional custom 404 page |
+| `prefix` | string | URL prefix (e.g., `/static`) |
+
+**Behavior:**
+
+- Files are served under the specified prefix
+- Index file is served for directory requests
+- Custom 404 page is served if `notFoundFile` is configured
 
 ### SPAResource Class
 
-Serves single-page applications with proper client-side routing.
+Serves single-page applications with proper client-side routing support.
 
 ```typescript
 class SPAResource implements WebResource {
-  constructor(public config: z.output<typeof spaResourceConfigSchema>) {}
+  constructor(config: z.output<typeof spaResourceConfigSchema>)
 
   async register(server: FastifyInstance): Promise<void> {
-    // Validates file exists, sets up static file serving, and handles SPA routing
+    // Validates file exists
+    // Registers static file serving for SPA directory
+    // Handles root path with index.html
+    // Sets not-found handler for client-side routes
   }
 }
 ```
 
-**Constructor Options:**
+**Configuration:**
 
 | Option | Type | Description |
 |--------|------|-------------|
-| `config` | `SPAResourceConfig` | Configuration for the SPA resource |
+| `type` | `"spa"` | Resource type discriminator |
+| `file` | string | Path to the SPA index.html file |
+| `description` | string | Human-readable description |
+| `prefix` | string | URL prefix (e.g., `/app`) |
+
+**Routing Behavior:**
+
+- **Static files**: Served directly by `fastifyStatic` middleware
+- **Root path**: Serves the SPA index.html file
+- **Client-side routes**: All non-static-file requests serve index.html
+- **Missing files**: Logs warning if SPA file doesn't exist
+
+**Example Routing:**
+
+```
+/app/           → index.html
+/app/dashboard  → index.html (client-side routing)
+/app/main.js    → main.js (static file)
+/app/missing.css → 404 (file doesn't exist)
+```
 
 ### JsonRpcResource Class
 
-Provides JSON-RPC 2.0 API endpoints with streaming support.
+Provides JSON-RPC 2.0 API endpoints with streaming support via Server-Sent Events.
 
 ```typescript
 class JsonRpcResource implements WebResource {
-  constructor(private app: TokenRingApp, private jsonRpcEndpoint: RpcEndpoint) {}
+  constructor(app: TokenRingApp, jsonRpcEndpoint: RpcEndpoint)
 
   async register(server: FastifyInstance): Promise<void> {
-    // Registers JSON-RPC API endpoints with streaming support
+    // Registers POST endpoint for JSON-RPC calls
+    // Handles query, mutation, and stream methods
+    // Stream methods use Server-Sent Events (text/event-stream)
   }
 }
 ```
+
+**JSON-RPC Error Codes:**
+
+| Error Code | Description |
+|------------|-------------|
+| -32700 | Parse error (invalid JSON) |
+| -32600 | Invalid Request (wrong JSON-RPC version) |
+| -32601 | Method not found |
+| -32603 | Internal error (validation or execution error) |
+
+**Streaming Behavior:**
+
+- Stream methods return Server-Sent Events (SSE) format
+- Content-Type: `text/event-stream`
+- Each event is prefixed with `data:` and followed by `\n\n`
+- Client can abort the stream by closing the connection
 
 ### WsRpcResource Class
 
@@ -235,77 +312,104 @@ Provides WebSocket-based RPC endpoints for real-time communication.
 
 ```typescript
 class WsRpcResource implements WebResource {
-  constructor(private app: TokenRingApp, private jsonRpcEndpoint: RpcEndpoint) {}
+  constructor(app: TokenRingApp, jsonRpcEndpoint: RpcEndpoint)
 
   async register(server: FastifyInstance): Promise<void> {
-    // Registers WebSocket RPC endpoints with streaming support
+    // Registers WebSocket endpoint at the same path as JSON-RPC
+    // Handles query, mutation, and stream methods
+    // Stream methods emit individual JSON-RPC responses
   }
 }
 ```
 
+**WebSocket Message Format:**
+
+```json
+{
+  "jsonrpc": "2.0",
+  "id": 1,
+  "result": { ... }
+}
+```
+
+**Streaming Behavior:**
+
+- Stream methods emit individual JSON-RPC responses
+- Stream ends with `{"stream": "end"}` marker
+- Errors are sent as JSON-RPC error responses
+- Client can close the WebSocket to abort streaming
+
 ## JSON-RPC API Implementation
 
-### Defining RPC Schemas
+### RPC Endpoint Structure
 
-RPC endpoints are defined using the schema format from `@tokenring-ai/rpc`:
+RPC endpoints are defined using the `RpcEndpoint` type from `@tokenring-ai/rpc`:
 
 ```typescript
 import { z } from "zod";
-import { RpcSchema } from "@tokenring-ai/rpc/types";
+import type { RpcEndpoint } from "@tokenring-ai/rpc/types";
 
-const calculatorSchema: RpcSchema = {
+const calculatorEndpoint: RpcEndpoint = {
   name: "Calculator",
   path: "/api/calc",
   methods: {
     add: {
-      type: "query" as const,
-      input: z.object({ a: z.number(), b: z.number() }),
-      result: z.object({ result: z.number() })
+      type: "query",
+      inputSchema: z.object({ a: z.number(), b: z.number() }),
+      resultSchema: z.object({ result: z.number() }),
+      execute: async (params, app) => ({ result: params.a + params.b })
     },
     multiply: {
-      type: "mutation" as const,
-      input: z.object({ a: z.number(), b: z.number() }),
-      result: z.object({ result: z.number() })
+      type: "mutation",
+      inputSchema: z.object({ a: z.number(), b: z.number() }),
+      resultSchema: z.object({ result: z.number() }),
+      execute: async (params, app) => ({ result: params.a * params.b })
     },
     streamResult: {
-      type: "stream" as const,
-      input: z.object({ steps: z.number() }),
-      result: z.object({ step: z.number(), value: z.number() })
+      type: "stream",
+      inputSchema: z.object({ steps: z.number() }),
+      resultSchema: z.object({ step: number, value: number }),
+      execute: async function* (params, app, signal) {
+        let value = 0;
+        for (let i = 0; i < params.steps; i++) {
+          if (signal.aborted) break;
+          value += Math.random();
+          yield { step: i, value };
+          await new Promise(resolve => setTimeout(resolve, 500));
+        }
+      }
     }
   }
 };
 ```
 
-### Implementing RPC Methods
+### Method Types
 
-```typescript
-const calculator = {
-  add: async (params: { a: number; b: number }, app: TokenRingApp) => ({
-    result: params.a + params.b
-  }),
+**Query Methods:**
 
-  multiply: async (params: { a: number; b: number }, app: TokenRingApp) => ({
-    result: params.a * params.b
-  }),
+- Read-only operations
+- Return a single result
+- No side effects
 
-  streamResult: async function* (params: { steps: number }, app: TokenRingApp, signal: AbortSignal) {
-    let value = 0;
-    for (let i = 0; i < params.steps; i++) {
-      if (signal.aborted) break;
-      value += Math.random();
-      yield { step: i, value };
-      await new Promise(resolve => setTimeout(resolve, 500));
-    }
-  }
-};
-```
+**Mutation Methods:**
 
-### Creating JSON-RPC Endpoints
+- Operations that modify state
+- Return a single result
+- May have side effects
+
+**Stream Methods:**
+
+- Operations that emit a sequence of results
+- Return an async generator
+- Support abort via AbortSignal
+- JSON-RPC: SSE format, WebSocket: individual messages
+
+### Creating RPC Endpoints
 
 ```typescript
 import { createRPCEndpoint } from "@tokenring-ai/rpc/createRPCEndpoint";
 
-const endpoint = createRPCEndpoint(calculatorSchema, calculator);
+const endpoint = createRPCEndpoint(calculatorSchema, calculatorImplementation);
 ```
 
 ### Automatic Endpoint Registration
@@ -315,20 +419,42 @@ When using the web-host plugin, RPC endpoints are automatically registered durin
 ```typescript
 // In plugin.ts, during the start phase:
 // 1. Get all endpoints from RpcService
-// 2. Create JsonRpcResource for HTTP JSON-RPC endpoints
-// 3. Create WsRpcResource for WebSocket RPC endpoints
+// 2. For each endpoint:
+//    - Create JsonRpcResource for HTTP JSON-RPC
+//    - Create WsRpcResource for WebSocket RPC
+//    - Log the endpoint path
 ```
 
-### JSON-RPC Client
+## JSON-RPC Clients
+
+### HTTP JSON-RPC Client
 
 ```typescript
 import { createJsonRPCClient } from "@tokenring-ai/web-host/createJsonRPCClient";
+import type { RPCSchema } from "@tokenring-ai/rpc/types";
+
+const calculatorSchema: RPCSchema = {
+  name: "Calculator",
+  path: "/api/calc",
+  methods: {
+    add: {
+      type: "query",
+      input: z.object({ a: z.number(), b: z.number() }),
+      result: z.object({ result: z.number() })
+    },
+    streamResult: {
+      type: "stream",
+      input: z.object({ steps: z.number() }),
+      result: z.object({ step: number, value: number })
+    }
+  }
+};
 
 const client = createJsonRPCClient(new URL("http://localhost:3000"), calculatorSchema);
 
 // Call query/mutation methods
 const result = await client.add({ a: 5, b: 3 });
-console.log(result.result); // { result: 8 }
+console.log(result); // { result: 8 }
 
 // Stream methods return async generators
 for await (const update of client.streamResult({ steps: 5 }, signal)) {
@@ -336,16 +462,46 @@ for await (const update of client.streamResult({ steps: 5 }, signal)) {
 }
 ```
 
+**Error Handling:**
+
+```typescript
+try {
+  const result = await client.add({ a: 5, b: 3 });
+} catch (error) {
+  console.error("RPC call failed:", error.message);
+}
+```
+
+**Streaming with Abort:**
+
+```typescript
+const controller = new AbortController();
+
+// Start streaming
+const stream = client.streamResult({ steps: 10 }, controller.signal);
+
+// Stop after 3 updates
+let count = 0;
+for await (const update of stream) {
+  console.log(update);
+  if (++count >= 3) {
+    controller.abort();
+    break;
+  }
+}
+```
+
 ### WebSocket RPC Client
 
 ```typescript
 import { createWsRPCClient } from "@tokenring-ai/web-host/createWsRPCClient";
+import type { RPCSchema } from "@tokenring-ai/rpc/types";
 
 const wsClient = createWsRPCClient(new URL("http://localhost:3000"), calculatorSchema);
 
 // Call query/mutation methods
 const result = await wsClient.add({ a: 5, b: 3 });
-console.log(result.result); // { result: 8 }
+console.log(result); // { result: 8 }
 
 // Stream methods return async generators
 for await (const update of wsClient.streamResult({ steps: 5 }, signal)) {
@@ -353,19 +509,25 @@ for await (const update of wsClient.streamResult({ steps: 5 }, signal)) {
 }
 ```
 
-### JSON-RPC Type Utilities
+**WebSocket Client Behavior:**
+
+- Automatically manages WebSocket connection
+- Queues requests if connection is not yet open
+- Handles connection errors and reconnection attempts
+- Supports streaming with abort signals
+
+**Error Handling:**
 
 ```typescript
-import type {
-  FunctionTypeOfRPCCall,
-  ResultOfRPCCall,
-  ParamsOfRPCCall,
-  RPCSchema
-} from "@tokenring-ai/rpc/types";
-
-// Type inference for RPC calls
-type AddResult = ResultOfRPCCall<typeof calculatorSchema, "add">;
-type AddParams = ParamsOfRPCCall<typeof calculatorSchema, "add">;
+try {
+  const result = await wsClient.add({ a: 5, b: 3 });
+} catch (error) {
+  if (error.message === "Socket closed") {
+    console.error("WebSocket connection closed");
+  } else {
+    console.error("RPC call failed:", error.message);
+  }
+}
 ```
 
 ## Usage Examples
@@ -385,6 +547,8 @@ const app = new TokenRingApp({
 
 await app.addPlugin(webHostPackage);
 await app.start();
+
+// Server will be available at http://127.0.0.1:3000
 ```
 
 ### Complete Configuration with Authentication
@@ -425,7 +589,7 @@ await app.start();
 
 ```typescript
 import { WebHostService } from "@tokenring-ai/web-host";
-import { WebResource } from "@tokenring-ai/web-host/types";
+import type { WebResource } from "@tokenring-ai/web-host/types";
 
 // Get the web host service
 const webHost = app.getServiceByType(WebHostService);
@@ -442,6 +606,11 @@ if (webHost) {
         const data = request.body;
         return { received: data };
       });
+
+      // Access authenticated user if authentication is enabled
+      server.get("/api/whoami", async (request) => {
+        return { user: (request as any).user };
+      });
     }
   };
 
@@ -452,7 +621,6 @@ if (webHost) {
 ### Registering JSON-RPC Resources
 
 ```typescript
-import { JsonRpcResource } from "@tokenring-ai/web-host/JsonRpcResource";
 import { createRPCEndpoint } from "@tokenring-ai/rpc/createRPCEndpoint";
 import { RpcService } from "@tokenring-ai/rpc";
 import { z } from "zod";
@@ -475,11 +643,11 @@ const chatSchema = {
 };
 
 const chatImplementation = {
-  sendMessage: async (params: { message: string }, app: TokenRingApp) => ({
+  sendMessage: async (params: { message: string }, app) => ({
     response: `You said: ${params.message}`
   }),
 
-  streamMessages: async function* (params: { count: number }, app: TokenRingApp, signal: AbortSignal) {
+  streamMessages: async function* (params: { count: number }, app, signal) {
     for (let i = 0; i < params.count; i++) {
       if (signal.aborted) break;
       yield { message: `Message ${i + 1}` };
@@ -535,14 +703,16 @@ webHost.registerResource("frontend", spaResource);
 The web-host package integrates as a plugin with two phases:
 
 **Install Phase:**
-- Creates WebHostService with provided configuration
-- Registers resources from configuration
-- Registers `/webhost` command with AgentCommandService
+
+1. Creates `WebHostService` with provided configuration
+2. Registers resources from configuration (StaticResource, SPAResource)
+3. Registers `/webhost` command with AgentCommandService
 
 **Start Phase:**
-- Starts the Fastify server
-- Automatically creates JsonRpcResource and WsRpcResource for each RPC endpoint registered with RpcService
-- Logs registered endpoint paths
+
+1. Starts the Fastify server
+2. Automatically creates `JsonRpcResource` and `WsRpcResource` for each RPC endpoint registered with `RpcService`
+3. Logs registered endpoint paths
 
 ### Plugin Configuration
 
@@ -569,6 +739,12 @@ const app = new TokenRingApp({
         description: "Static files",
         indexFile: "index.html",
         prefix: "/static"
+      },
+      "spa": {
+        type: "spa",
+        file: "./dist/index.html",
+        description: "Main application",
+        prefix: "/"
       }
     }
   }
@@ -598,6 +774,30 @@ The web-host package provides a `/webhost` command for monitoring:
 ```
 
 **Command Description:** Displays the current web host URL and lists all registered resources.
+
+**Help Text:**
+
+```markdown
+# /webhost
+
+## Description
+Displays the current web host URL and lists all registered resources.
+
+## Usage
+/webhost
+
+## Output
+- Web host URL with port
+- List of registered resources and their names
+
+## Example
+/webhost
+# Output:
+# Web host running at: http://localhost:3000
+# Registered resources:
+#   - trpcBackend
+#   - defaultFrontend
+```
 
 ## Package Structure
 
@@ -643,8 +843,17 @@ export { staticResourceConfigSchema } from "./StaticResource.js";
 ### Exports from `auth.ts`
 
 ```typescript
-export const AuthConfigSchema: ZodSchema<AuthConfig>;
-export function registerAuth(server: FastifyInstance, config: AuthConfig): void;
+export const AuthConfigSchema: ZodSchema<ParsedAuthConfig>;
+export function registerAuth(server: FastifyInstance, config: ParsedAuthConfig): void;
+```
+
+### Exports from `schema.ts`
+
+```typescript
+export const AuthConfigSchema: ZodSchema<ParsedAuthConfig>;
+export const WebHostConfigSchema: ZodSchema<ParsedWebHostConfig>;
+export type ParsedAuthConfig: z.output<typeof AuthConfigSchema>;
+export type ParsedWebHostConfig: z.output<typeof WebHostConfigSchema>;
 ```
 
 ## Integration with Other Packages
@@ -658,7 +867,7 @@ The web-host package is designed to work with:
 - `@tokenring-ai/utility` - Registry and utility functions
 - Custom web resources for specialized functionality
 
-## Authentication Examples
+## Authentication
 
 ### Basic Authentication
 
@@ -674,13 +883,20 @@ curl -H "Authorization: Bearer admin-token" http://localhost:3000/api/status
 
 ### Accessing User Information
 
+When authentication is enabled, the authenticated username is available in request handlers:
+
 ```typescript
-server.get("/api/whoami", async (request) => {
-  return { user: (request as any).user };
+server.get("/api/whoami", async (request: FastifyRequest) => {
+  const user = (request as any).user;
+  return { user };
 });
 ```
 
+**Note:** The `user` property is added to the request object by the authentication hook.
+
 ## Error Handling
+
+### JSON-RPC Errors
 
 The JSON-RPC implementation includes proper error handling with standard JSON-RPC 2.0 error codes:
 
@@ -691,6 +907,16 @@ The JSON-RPC implementation includes proper error handling with standard JSON-RP
 | -32601 | Method not found |
 | -32603 | Internal error (validation or execution error) |
 
+### HTTP Errors
+
+- **401 Unauthorized**: Authentication required but not provided or invalid credentials
+- **404 Not Found**: Resource not found (for static files with custom notFoundFile)
+
+### WebSocket Errors
+
+- Connection errors are propagated to the client
+- Stream errors are sent as JSON-RPC error responses
+
 ## Best Practices
 
 1. **Use Resource Registration**: Register resources at startup or through the plugin system for consistent initialization.
@@ -699,11 +925,15 @@ The JSON-RPC implementation includes proper error handling with standard JSON-RP
 
 3. **Handle Streaming Properly**: When implementing stream methods, always check the `AbortSignal` to support graceful shutdown.
 
-4. **Use Type Safety**: Leverage the type utilities (`ResultOfRPCCall`, `ParamsOfRPCCall`) for type-safe RPC interactions.
+4. **Use Type Safety**: Leverage the type utilities (`FunctionTypeOfRPCCall`, `ResultOfRPCCall`, `ParamsOfRPCCall`) for type-safe RPC interactions.
 
 5. **Configure Authentication**: Use authentication for all production deployments to secure your APIs.
 
 6. **Automatic Endpoint Registration**: Let the web-host plugin automatically create JSON-RPC and WebSocket RPC resources from RpcService endpoints.
+
+7. **SPA Routing**: Use SPAResource for single-page applications to ensure proper client-side routing.
+
+8. **Error Handling**: Implement proper error handling in RPC methods to provide meaningful error messages.
 
 ## Testing
 
@@ -714,6 +944,18 @@ bun test                    # Run all tests
 bun test:watch             # Watch mode
 bun test:coverage          # Coverage report
 ```
+
+**Test Files:**
+
+- `WebHostService.test.ts` - Service lifecycle and resource registration
+- `StaticResource.test.ts` - Static file serving
+- `SPAResource.test.ts` - SPA routing
+- `JsonRpcResource.test.ts` - JSON-RPC API endpoints
+- `WsRpcResource.test.ts` - WebSocket RPC endpoints
+- `auth.test.ts` - Authentication
+- `integration.test.ts` - Integration tests
+- `createJsonRPCClient.test.ts` - HTTP client
+- `createWsRPCClient.test.ts` - WebSocket client
 
 ## Dependencies
 

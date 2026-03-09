@@ -9,16 +9,372 @@ The `@tokenring-ai/blog` package provides a comprehensive interface for managing
 ### Key Features
 
 - Multi-provider blog support with unified interface
-- AI-powered image generation for blog posts
+- AI-powered image generation for blog posts with CDN integration
 - Interactive chat commands for comprehensive blog management
 - State management for active provider and post tracking
 - Scripting API for programmatic post operations
 - JSON-RPC endpoints for remote procedure calls
 - CDN integration for automatic image uploads
-- Markdown and HTML content processing
+- Markdown and HTML content processing with `marked`
 - Zod schema validation for type safety
 - Robust error handling with clear messages
 - Review pattern escalation for publishing workflows
+- Interactive post selection with tree-based UI
+
+## Core Components
+
+### BlogService
+
+The main service that manages all blog operations and provider registration.
+
+**Implements:** `TokenRingService`
+
+**Key Properties:**
+- `name`: "BlogService"
+- `description`: "Abstract interface for blog operations"
+- `providers`: `KeyedRegistry<BlogProvider>` - Registry of registered blog providers
+
+**Key Methods:**
+
+#### `attach(agent: Agent, creationContext: AgentCreationContext): void`
+
+Initialize the blog service with the agent. Registers state, attaches all providers, and logs the selected provider.
+
+**Parameters:**
+- `agent`: The agent to attach to
+- `creationContext`: The agent creation context
+
+#### `requireActiveBlogProvider(agent: Agent): BlogProvider`
+
+Require an active blog provider. Throws an error if no provider is selected.
+
+**Parameters:**
+- `agent`: The agent to get the provider from
+
+**Returns:** The active blog provider
+
+**Throws:** Error if no provider is selected
+
+#### `setActiveProvider(name: string, agent: Agent): void`
+
+Set the active blog provider by name.
+
+**Parameters:**
+- `name`: The name of the provider to set
+- `agent`: The agent to set the provider for
+
+#### `getAllPosts(agent: Agent): Promise<BlogPost[]>`
+
+Retrieve all posts from the active provider.
+
+**Parameters:**
+- `agent`: The agent to get posts from
+
+**Returns:** Array of all blog posts
+
+#### `getRecentPosts(filter: BlogPostFilterOptions, agent: Agent): Promise<BlogPost[]>`
+
+Retrieve recent posts with filtering options.
+
+**Parameters:**
+- `filter`: Filter options (keyword, limit, status)
+- `agent`: The agent to get posts from
+
+**Returns:** Array of filtered blog posts
+
+#### `createPost(data: CreatePostData, agent: Agent): Promise<BlogPost>`
+
+Create a new post.
+
+**Parameters:**
+- `data`: Post creation data (title, content, tags)
+- `agent`: The agent to create the post for
+
+**Returns:** The created blog post
+
+#### `updatePost(data: UpdatePostData, agent: Agent): Promise<BlogPost>`
+
+Update an existing post.
+
+**Parameters:**
+- `data`: Post update data (any BlogPost fields except id, created_at, updated_at)
+- `agent`: The agent to update the post for
+
+**Returns:** The updated blog post
+
+#### `getCurrentPost(agent: Agent): BlogPost | null`
+
+Get the currently selected post.
+
+**Parameters:**
+- `agent`: The agent to get the current post from
+
+**Returns:** The currently selected post or null
+
+#### `selectPostById(id: string, agent: Agent): Promise<BlogPost>`
+
+Select a post by ID.
+
+**Parameters:**
+- `id`: The ID of the post to select
+- `agent`: The agent to select the post for
+
+**Returns:** The selected blog post
+
+#### `clearCurrentPost(agent: Agent): Promise<void>`
+
+Clear the current post selection.
+
+**Parameters:**
+- `agent`: The agent to clear the selection for
+
+#### `publishPost(agent: Agent): Promise<void>`
+
+Publish the currently selected post with review escalation support.
+
+**Parameters:**
+- `agent`: The agent to publish the post for
+
+**Review Escalation Flow:**
+1. Checks if post content matches any configured review patterns
+2. If a pattern matches and an escalation target is configured:
+   - Sends escalation message to the target
+   - Waits for user response (approve/reject)
+   - Publishes if approved, rejects if rejected
+3. If no patterns match or no escalation target:
+   - Directly publishes the post
+
+#### `registerBlog(name: string, provider: BlogProvider): void`
+
+Register a blog provider with the service.
+
+**Parameters:**
+- `name`: The name to register the provider under
+- `provider`: The blog provider implementation
+
+#### `getAvailableBlogs(): string[]`
+
+Get list of registered blog provider names.
+
+**Returns:** Array of provider names
+
+### BlogProvider Interface
+
+The interface that all blog providers must implement.
+
+**Properties:**
+- `description: string` - Provider description
+- `imageGenerationModel: string` - Model name for image generation
+- `cdnName: string` - CDN name for image uploads
+
+**Methods:**
+- `attach(agent: Agent, creationContext: AgentCreationContext): void` - Initialize provider with agent
+- `getAllPosts(agent: Agent): Promise<BlogPost[]>` - Get all posts
+- `getRecentPosts(filter: BlogPostFilterOptions, agent: Agent): Promise<BlogPost[]>` - Get recent posts
+- `createPost(data: CreatePostData, agent: Agent): Promise<BlogPost>` - Create a new post
+- `updatePost(data: UpdatePostData, agent: Agent): Promise<BlogPost>` - Update a post
+- `selectPostById(id: string, agent: Agent): Promise<BlogPost>` - Select a post by ID
+- `getCurrentPost(agent: Agent): BlogPost | null` - Get the current post
+- `clearCurrentPost(agent: Agent): Promise<void>` - Clear the current post
+
+### BlogPost Interface
+
+Represents a blog post.
+
+**Properties:**
+- `id: string` - Unique identifier
+- `title: string` - Post title
+- `content?: string` - Post content in HTML
+- `status: 'draft' | 'published' | 'scheduled' | 'pending' | 'private'` - Post status
+- `tags?: string[]` - Post tags
+- `created_at: Date` - Creation date
+- `updated_at: Date` - Last update date
+- `published_at?: Date` - Publication date
+- `feature_image?: { id?: string, url?: string }` - Featured image
+- `url?: string` - Post URL
+
+### BlogState
+
+Manages blog-related state for agents.
+
+**Properties:**
+- `activeProvider: string | null` - Currently selected blog provider
+- `reviewPatterns?: string[]` - Array of regex patterns for review escalation
+- `reviewEscalationTarget?: string` - Email or identifier for review escalation
+
+**Methods:**
+- `serialize(): z.output<typeof serializationSchema>` - Serialize state to JSON
+- `deserialize(data: z.output<typeof serializationSchema>): void` - Deserialize state from JSON
+- `transferStateFromParent(parent: Agent): void` - Transfer state from parent agent
+- `show(): string[]` - Show state representation
+
+## Services
+
+### BlogService
+
+The main blog service that implements `TokenRingService`.
+
+**Registration:** Automatically registered when the plugin is installed.
+
+**Configuration:** Accepts `BlogConfigSchema` configuration.
+
+**Integration:**
+- Registers with the app's service manager
+- Attaches to agents during creation
+- Integrates with ChatService for tools
+- Integrates with AgentCommandService for commands
+- Integrates with RpcService for endpoints
+- Integrates with ScriptingService for programmatic API
+
+## RPC Endpoints
+
+The package provides JSON-RPC endpoints at `/rpc/blog`.
+
+### Query Endpoints
+
+| Endpoint | Request Params | Response Params |
+|----------|----------------|-----------------|
+| `getCurrentPost` | `agentId: string` | `post: BlogPost \| null`, `message: string` |
+| `getAllPosts` | `agentId: string`, `status?` ("draft" \| "published" \| "all"), `tag?` (string), `limit?` (number) | `posts: BlogPost[]`, `count: number`, `currentlySelected: string \| null`, `message: string` |
+| `getActiveProvider` | `agentId: string` | `provider: string \| null`, `availableProviders: string[]` |
+
+### Mutation Endpoints
+
+| Endpoint | Request Params | Response Params |
+|----------|----------------|-----------------|
+| `createPost` | `agentId: string`, `title: string`, `contentInMarkdown: string`, `tags?` (string[]) | `post: BlogPost`, `message: string` |
+| `updatePost` | `agentId: string`, `title?`, `contentInMarkdown?`, `tags?`, `status?`, `feature_image?` | `post: BlogPost`, `message: string` |
+| `selectPostById` | `agentId: string`, `id: string` | `post: BlogPost`, `message: string` |
+| `clearCurrentPost` | `agentId: string` | `success: boolean`, `message: string` |
+| `publishPost` | `agentId: string` | `success: boolean`, `message: string` |
+| `setActiveProvider` | `agentId: string`, `name: string` | `success: boolean`, `message: string` |
+| `generateImageForPost` | `agentId: string`, `prompt: string`, `aspectRatio?` ("square" \| "tall" \| "wide") | `success: boolean`, `imageUrl?`, `message: string` |
+
+**Note:** The RPC `publishPost` endpoint does not include review escalation logic. Review escalation is only available through the `BlogService.publishPost()` method when called directly.
+
+## Chat Commands
+
+### Provider Management
+
+| Command | Description |
+|---------|-------------|
+| `/blog provider get` | Display the currently active blog provider |
+| `/blog provider set <name>` | Set the active blog provider by name |
+| `/blog provider select` | Interactively select the active blog provider |
+| `/blog provider reset` | Reset the active blog provider to the initial configured value |
+
+### Post Management
+
+| Command | Description |
+|---------|-------------|
+| `/blog post get` | Display the currently selected post title |
+| `/blog post select` | Interactively select a post to work with |
+| `/blog post info` | Display detailed information about the currently selected post |
+| `/blog post clear` | Clear the current post selection |
+| `/blog post publish` | Publish the currently selected post |
+
+### Testing
+
+| Command | Description |
+|---------|-------------|
+| `/blog test` | Test blog connection by listing posts, creating a test post, uploading an image, and updating the post |
+
+## Configuration
+
+The plugin is configured using the `BlogConfigSchema`:
+
+```typescript
+export const BlogConfigSchema = z.object({
+  providers: z.record(z.string(), z.any()).default({}),
+  agentDefaults: BlogAgentConfigSchema,
+});
+
+export const BlogAgentConfigSchema = z.object({
+  provider: z.string().optional(),
+  reviewPatterns: z.array(z.string()).optional(),
+  reviewEscalationTarget: z.string().optional(),
+}).default({});
+```
+
+### Example Configuration
+
+```json
+{
+  "blog": {
+    "providers": {
+      "wordpress": {
+        "url": "https://example.com/wp-json",
+        "username": "admin",
+        "password": "secret"
+      }
+    },
+    "agentDefaults": {
+      "provider": "wordpress",
+      "reviewPatterns": ["(?:confidential|proprietary)"],
+      "reviewEscalationTarget": "manager@example.com"
+    }
+  }
+}
+```
+
+### Configuration Options
+
+#### BlogConfigSchema
+
+- **providers**: Record of provider names to their configuration objects
+- **agentDefaults**: Default configuration for blog agents
+
+#### BlogAgentConfigSchema
+
+- **provider**: Optional default blog provider name
+- **reviewPatterns**: Array of regex patterns that trigger review escalation before publishing
+- **reviewEscalationTarget**: Email or identifier for review escalation target
+
+## Integration
+
+### Plugin Registration
+
+```typescript
+import blogPlugin from '@tokenring-ai/blog/plugin';
+
+app.installPlugin(blogPlugin, {
+  blog: {
+    providers: {
+      // Your provider configurations
+    },
+    agentDefaults: {
+      provider: 'wordpress',
+      reviewPatterns: ['(?:confidential|proprietary)'],
+      reviewEscalationTarget: 'review@example.com'
+    }
+  }
+});
+```
+
+### Service Registration
+
+The plugin automatically registers:
+- `BlogService` - Main blog service
+- Chat tools - All blog operations
+- Agent commands - Interactive commands
+- RPC endpoints - Remote procedure calls
+- Scripting functions - Programmatic API
+
+### Provider Registration
+
+Register providers with the BlogService:
+
+```typescript
+import BlogService from '@tokenring-ai/blog/BlogService';
+
+const blogService = agent.requireServiceByType(BlogService);
+blogService.registerBlog('myProvider', {
+  description: 'My Custom Provider',
+  imageGenerationModel: 'dall-e-3',
+  cdnName: 'my-cdn',
+  // ... implement interface methods
+});
+```
 
 ## Usage Examples
 
@@ -32,7 +388,7 @@ const blogService = agent.requireServiceByType(BlogService);
 // Create a new post
 const newPost = await blogService.createPost({
   title: 'Getting Started with AI Writing',
-  content: '# Welcome\n\nThis is a sample blog post about AI writing assistants.',
+  content: '<h1>Welcome</h1><p>This is a sample blog post about AI writing assistants.</p>',
   tags: ['ai', 'writing', 'tutorial']
 }, agent);
 
@@ -69,385 +425,60 @@ console.log('Post published successfully');
 /blog provider get
 # Output: Current provider: wordpress
 
-# Create a new post and select it
-/blog post select
-# [Tree selector opens with available posts]
-# Output: Selected post: "My Article"
+# View current post
+/blog post get
+# Output: Current post: My Article
 
 # View detailed post info
 /blog post info
 # [Shows full post metadata]
 
 # Generate a featured image
-/btn blog_generateImageForPost
-# [Tool: Blog/generateImageForPost]
-# Input: prompt "A beautiful sunset over mountains"
-# Input: aspectRatio wide
+/blog post select
+# [Select a post first]
 
 # Publish the post
 /blog post publish
 # Output: Post "My Article" has been published.
 ```
 
-## Core Properties
-
-### BlogConfigSchema
-
-The blog package is configured through the `BlogConfigSchema`:
+### Scripting API
 
 ```typescript
-export const BlogConfigSchema = z.object({
-  providers: z.record(z.string(), z.any()),
-  agentDefaults: BlogAgentConfigSchema,
-});
+// The plugin registers these functions with the ScriptingService
 
-export const BlogAgentConfigSchema = z.object({
-  provider: z.string().optional(),
-  reviewPatterns: z.array(z.string()).optional(),
-  reviewEscalationTarget: z.string().optional(),
-}).default({});
+// Create a post
+const postId = await scripting.createPost("My Post", "# My Post\nContent here");
+console.log(`Created post: ${postId}`);
+
+// Update a post
+const updatedId = await scripting.updatePost("Updated Title", "# Updated\nNew content");
+console.log(`Updated post: ${updatedId}`);
+
+// Get current post
+const post = await scripting.getCurrentPost();
+console.log(`Current post: ${post}`);
+
+// Get all posts
+const posts = await scripting.getAllPosts();
+console.log(`All posts: ${posts}`);
 ```
 
-### Key Properties
-
-| Property | Type | Description |
-|----------|------|-------------|
-| `providers` | `Record<string, any>` | Object mapping provider names to their configuration objects |
-| `agentDefaults` | `BlogAgentConfigSchema` | Default configuration for agents using this blog service |
-| `provider` | `string` | Optional string specifying the default blog provider |
-| `reviewPatterns` | `string[]` | Array of regex patterns that trigger review escalation |
-| `reviewEscalationTarget` | `string` | Email or identifier for review escalation |
-
-## Key Features
-
-### Multi-Provider Support
-
-The blog service supports multiple blog providers through the `BlogProvider` interface, allowing you to work with different blogging platforms through a unified API.
-
-### AI-Powered Image Generation
-
-Generate and attach AI-generated images to blog posts using the `generateImageForPost` tool with configurable aspect ratios (square, tall, wide).
-
-### Review Pattern Escalation
-
-Configure review patterns that trigger human review before publishing posts that match specific content criteria.
-
-### JSON-RPC Endpoints
-
-Comprehensive RPC endpoints for programmatic access to blog operations, including post creation, updates, and management.
-
-### State Management
-
-Robust state management through `BlogState` for tracking active providers, current posts, and review configurations.
-
-## Core Methods/API
-
-### BlogService Methods
+### Provider Implementation
 
 ```typescript
-attach(agent: Agent): void
-```
-Initialize the blog service with the agent, attaching all configured providers.
-
-```typescript
-requireActiveBlogProvider(agent: Agent): BlogProvider
-```
-Require an active blog provider. Throws error if none is selected.
-
-```typescript
-setActiveProvider(name: string, agent: Agent): void
-```
-Set the active blog provider for session state.
-
-```typescript
-async getAllPosts(agent: Agent): Promise<BlogPost[]>
-```
-Retrieve all posts from the active blog provider.
-
-```typescript
-async getRecentPosts(filter: BlogPostFilterOptions, agent: Agent): Promise<BlogPost[]>
-```
-Retrieve recent posts with optional filtering by keyword, status, and limit.
-
-```typescript
-async createPost(data: CreatePostData, agent: Agent): Promise<BlogPost>
-```
-Create a new blog post with title, content, and optional tags.
-
-```typescript
-async updatePost(data: UpdatePostData, agent: Agent): Promise<BlogPost>
-```
-Update an existing blog post with new title, content, tags, status, or featured image.
-
-```typescript
-getCurrentPost(agent: Agent): BlogPost | null
-```
-Get the currently selected blog post.
-
-```typescript
-async selectPostById(id: string, agent: Agent): Promise<BlogPost>
-```
-Select a post by its ID.
-
-```typescript
-async clearCurrentPost(agent: Agent): Promise<void>
-```
-Clear the current post selection.
-
-```typescript
-async publishPost(agent: Agent): Promise<void>
-```
-Publish the currently selected post (changes status from draft to published).
-
-```typescript
-registerBlog(name: string, provider: BlogProvider): void
-```
-Register a blog provider with the service.
-
-```typescript
-getAvailableBlogs(): string[]
-```
-Get list of registered blog provider names.
-
-### BlogProvider Interface
-
-```typescript
-interface BlogProvider {
-  description: string;
-  imageGenerationModel: string;
-  cdnName: string;
-  
-  attach(agent: Agent): void;
-  getAllPosts(agent: Agent): Promise<BlogPost[]>;
-  getRecentPosts(filter: BlogPostFilterOptions, agent: Agent): Promise<BlogPost[]>;
-  createPost(data: CreatePostData, agent: Agent): Promise<BlogPost>;
-  updatePost(data: UpdatePostData, agent: Agent): Promise<BlogPost>;
-  selectPostById(id: string, agent: Agent): Promise<BlogPost>;
-  getCurrentPost(agent: Agent): BlogPost | null;
-  clearCurrentPost(agent: Agent): Promise<void>;
-}
-```
-
-### Chat Commands
-
-| Command | Description |
-|---------|-------------|
-| `/blog provider get` | Display the currently active blog provider |
-| `/blog provider select` | Select an active blog provider interactively |
-| `/blog provider set <name>` | Set a specific blog provider by name |
-| `/blog provider reset` | Reset to the initial configured blog provider |
-| `/blog post get` | Display the currently selected post title |
-| `/blog post select` | Select an existing article or clear selection |
-| `/blog post info` | Display detailed information about the selected post |
-| `/blog post clear` | Clears the current post selection |
-| `/blog post publish` | Publish the currently selected post |
-
-### RPC Endpoints
-
-| Endpoint | Type | Description |
-|----------|------|-------------|
-| `getCurrentPost` | GET | Get the currently selected post |
-| `getAllPosts` | GET | Get all posts with optional filtering |
-| `getActiveProvider` | GET | Get the currently active provider |
-| `createPost` | POST | Create a new blog post |
-| `updatePost` | POST | Update an existing blog post |
-| `selectPostById` | POST | Select a post by ID |
-| `clearCurrentPost` | POST | Clear current post selection |
-| `publishPost` | POST | Publish the currently selected post |
-| `setActiveProvider` | POST | Set the active blog provider |
-| `generateImageForPost` | POST | Generate and attach an AI image |
-
-## Configuration
-
-### BlogConfigSchema
-
-Setup configures blog providers and agent defaults:
-
-```typescript
-export const BlogConfigSchema = z.object({
-  providers: z.record(z.string(), z.any()),
-  agentDefaults: BlogAgentConfigSchema,
-});
-
-export const BlogAgentConfigSchema = z.object({
-  provider: z.string().optional(),
-  reviewPatterns: z.array(z.string()).optional(),
-  reviewEscalationTarget: z.string().optional(),
-}).default({});
-```
-
-### Example Configuration
-
-```json
-{
-  "blog": {
-    "providers": {
-      "wordpress": {
-        "url": "https://example.com/wp-json",
-        "username": "admin",
-        "password": "secret"
-      }
-    },
-    "agentDefaults": {
-      "provider": "wordpress",
-      "reviewPatterns": ["(?:confidential|proprietary)"],
-      "reviewEscalationTarget": "manager@example.com"
-    }
-  }
-}
-```
-
-### Configuration Properties
-
-#### providers
-- **Type**: `Record<string, any>`
-- **Required**: Yes
-- **Description**: Object mapping provider names to their configuration objects
-
-#### agentDefaults
-- **Type**: `BlogAgentConfigSchema`
-- **Required**: No
-- **Description**: Default configuration for agents using this blog service
-
-##### agentDefaults properties:
-- **provider**: Optional string specifying the default blog provider
-- **reviewPatterns**: Array of regex patterns that trigger review escalation
-- **reviewEscalationTarget**: Email or identifier for review escalation
-
-## Integration
-
-### Plugin Registration
-
-The plugin integrates with the TokenRing application framework through the plugin system:
-
-```typescript
-import {AgentCommandService} from "@tokenring-ai/agent";
-import {TokenRingPlugin} from "@tokenring-ai/app";
-import {ChatService} from "@tokenring-ai/chat";
-import {RpcService} from "@tokenring-ai/rpc";
-import {ScriptingService} from "@tokenring-ai/scripting";
-import {ScriptingThis} from "@tokenring-ai/scripting/ScriptingService";
-import {z} from "zod";
-import BlogService from "./BlogService.ts";
-import chatCommands from "./chatCommands.ts";
-import {BlogConfigSchema} from "./index.ts";
-import packageJSON from './package.json' with {type: 'json'};
-import blogRPC from "./rpc/blog.ts";
-import tools from "./tools.ts";
-
-const packageConfigSchema = z.object({
-  blog: BlogConfigSchema.optional()
-});
-
-export default {
-  name: packageJSON.name,
-  version: packageJSON.version,
-  description: packageJSON.description,
-  install(app, config) {
-    if (!config.blog) return;
-    const service = new BlogService(config.blog);
-    app.services.register(service);
-
-    app.services.waitForItemByType(ScriptingService, (scriptingService: ScriptingService) => {
-      scriptingService.registerFunction(
-        "createPost", {
-          type: 'native',
-          params: ['title', 'content'],
-          async execute(this: ScriptingThis, title: string, content: string): Promise<string> {
-            const post = await this.agent.requireServiceByType(BlogService).createPost({title, content}, this.agent);
-            return `Created post: ${post.id}`;
-          }
-        });
-
-      scriptingService.registerFunction("updatePost", {
-          type: 'native',
-          params: ['title', 'content'],
-          async execute(this: ScriptingThis, title: string, content: string): Promise<string> {
-            const post = await this.agent.requireServiceByType(BlogService).updatePost({title, content}, this.agent);
-            return `Updated post: ${post.id}`;
-          }
-        }
-      );
-
-      scriptingService.registerFunction("getCurrentPost", {
-          type: 'native',
-          params: [],
-          async execute(this: ScriptingThis): Promise<string> {
-            const post = this.agent.requireServiceByType(BlogService).getCurrentPost(this.agent);
-            return post ? JSON.stringify(post) : 'No post selected';
-          }
-        }
-      );
-
-      scriptingService.registerFunction("getAllPosts", {
-          type: 'native',
-          params: [],
-          async execute(this: ScriptingThis): Promise<string> {
-            const posts = await this.agent.requireServiceByType(BlogService).getAllPosts(this.agent);
-            return JSON.stringify(posts);
-          }
-        }
-      );
-    });
-
-    app.waitForService(ChatService, chatService =>
-      chatService.addTools(tools)
-    );
-    app.waitForService(AgentCommandService, agentCommandService =>
-      agentCommandService.addAgentCommands(chatCommands)
-    );
-
-    app.waitForService(RpcService, rpcService => {
-      rpcService.registerEndpoint(blogRPC);
-    })
-  },
-  config: packageConfigSchema
-} satisfies TokenRingPlugin<typeof packageConfigSchema>;
-```
-
-### State Management
-
-The blog plugin maintains session state through `BlogState`:
-
-```typescript
-import {BlogState} from "@tokenring-ai/blog";
-
-// Initialize state
-agent.initializeState(BlogState, {provider: "wordpress", reviewPatterns: ["(?:confidential)"], reviewEscalationTarget: "manager@example.com"});
-
-// Access state
-const state = agent.getState(BlogState);
-console.log(state.activeProvider);
-
-// Mutate state
-agent.mutateState(BlogState, (state) => {
-  state.activeProvider = "ghost";
-});
-
-// Transfer state from parent agent
-state.transferStateFromParent(agent);
-
-// Serialize/deserialize
-const data = state.serialize();
-const newState = new BlogState(config);
-newState.deserialize(data);
-```
-
-### Provider Integration
-
-Create a concrete implementation of `BlogProvider` for your specific blog platform:
-
-```typescript
-import { BlogProvider, type BlogPost, type CreatePostData, type UpdatePostData } from '@tokenring-ai/blog';
+import { BlogProvider, type BlogPost, type CreatePostData, type UpdatePostData, type BlogPostFilterOptions } from '@tokenring-ai/blog';
 import { Agent } from '@tokenring-ai/agent';
+import type { AgentCreationContext } from '@tokenring-ai/agent/types';
 
 class CustomBlogProvider implements BlogProvider {
   description = "Custom blog integration";
-  imageGenerationModel = "gpt-4";
+  imageGenerationModel = "dall-e-3";
   cdnName = "custom-cdn";
 
-  attach(agent: Agent): void {
+  attach(agent: Agent, creationContext: AgentCreationContext): void {
     // Initialize client connections here
+    creationContext.items.push(`Attached to custom blog provider`);
   }
 
   async getAllPosts(agent: Agent): Promise<BlogPost[]> {
@@ -459,7 +490,71 @@ class CustomBlogProvider implements BlogProvider {
     return rawData.map(mapPlatformPostToBlogPost);
   }
 
-  // ... other required methods
+  async getRecentPosts(filter: BlogPostFilterOptions, agent: Agent): Promise<BlogPost[]> {
+    const posts = await this.getAllPosts(agent);
+    
+    // Apply filters
+    let filtered = posts;
+    if (filter.keyword) {
+      filtered = filtered.filter(post => 
+        post.title.toLowerCase().includes(filter.keyword.toLowerCase()) ||
+        post.content?.toLowerCase().includes(filter.keyword.toLowerCase())
+      );
+    }
+    if (filter.status) {
+      filtered = filtered.filter(post => post.status === filter.status);
+    }
+    if (filter.limit) {
+      filtered = filtered.slice(0, filter.limit);
+    }
+    
+    return filtered;
+  }
+
+  async createPost(data: CreatePostData, agent: Agent): Promise<BlogPost> {
+    // Create post on your platform
+    const response = await fetch('https://api.yourblog.com/posts', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data)
+    });
+    
+    const result = await response.json();
+    return mapPlatformPostToBlogPost(result);
+  }
+
+  async updatePost(data: UpdatePostData, agent: Agent): Promise<BlogPost> {
+    const currentPost = this.getCurrentPost(agent);
+    if (!currentPost) throw new Error("No post currently selected");
+    
+    // Update post on your platform
+    const response = await fetch(`https://api.yourblog.com/posts/${currentPost.id}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data)
+    });
+    
+    const result = await response.json();
+    return mapPlatformPostToBlogPost(result);
+  }
+
+  async selectPostById(id: string, agent: Agent): Promise<BlogPost> {
+    // Store the selected post ID in agent state
+    // This is typically handled by the BlogService
+    throw new Error("Method not implemented - selectPostById is typically handled by BlogService");
+  }
+
+  getCurrentPost(agent: Agent): BlogPost | null {
+    // Get the currently selected post from agent state
+    // This is typically handled by the BlogService
+    throw new Error("Method not implemented - getCurrentPost is typically handled by BlogService");
+  }
+
+  async clearCurrentPost(agent: Agent): Promise<void> {
+    // Clear the selected post from agent state
+    // This is typically handled by the BlogService
+    throw new Error("Method not implemented - clearCurrentPost is typically handled by BlogService");
+  }
 }
 ```
 
@@ -467,7 +562,7 @@ class CustomBlogProvider implements BlogProvider {
 
 ### Provider Development
 1. Implement the `BlogProvider` interface completely
-2. Use `attach(agent)` to initialize provider state
+2. Use `attach(agent, creationContext)` to initialize provider state
 3. Handle errors gracefully with clear messages
 4. Maintain consistent `BlogPost` field types
 5. Support all required statuses: draft, published, pending, scheduled, private
@@ -500,7 +595,19 @@ class CustomBlogProvider implements BlogProvider {
 4. Test review patterns with various content scenarios
 5. Handle escalation responses (approve/reject) appropriately
 
-## Testing
+### Content Format
+1. Provide content in Markdown for tools (automatically converted to HTML)
+2. Strip headers from markdown content when creating/updating posts
+3. Use proper HTML formatting for direct content
+4. Include meaningful tags for better organization
+
+### RPC vs Service Usage
+1. Note that RPC `publishPost` does not include review escalation
+2. Use `BlogService.publishPost()` directly for review workflow support
+3. RPC endpoints are suitable for basic CRUD operations
+4. Service methods provide full functionality including escalation
+
+## Testing and Development
 
 The package uses vitest for unit testing:
 
@@ -514,6 +621,16 @@ bun run test:coverage
 # Run tests in watch mode
 bun run test:watch
 ```
+
+### Test Blog Connection
+
+Use the `/blog test` command to test blog connectivity. This will:
+1. List current posts
+2. Create a test post
+3. Upload a test image (hello.png)
+4. Update the post with the image
+
+**Note:** The test utility requires a `hello.png` file in the package directory.
 
 ### Example Test Setup
 
@@ -623,6 +740,21 @@ describe("BlogState", () => {
 });
 ```
 
+## Dependencies
+
+- `@tokenring-ai/ai-client` - AI client for image generation
+- `@tokenring-ai/app` - Base application framework
+- `@tokenring-ai/agent` - Agent orchestration
+- `@tokenring-ai/chat` - Chat service integration
+- `@tokenring-ai/utility` - Shared utilities
+- `@tokenring-ai/rpc` - JSON-RPC implementation
+- `@tokenring-ai/cdn` - CDN service for image uploads
+- `@tokenring-ai/scripting` - Scripting API
+- `@tokenring-ai/escalation` - Escalation service for review workflows
+- `zod` - Schema validation
+- `marked` - Markdown to HTML conversion
+- `uuid` - Unique ID generation
+
 ## Related Components
 
 - `@tokenring-ai/agent` - Agent orchestration and state management
@@ -637,4 +769,4 @@ describe("BlogState", () => {
 
 ## License
 
-MIT License - see [LICENSE](./LICENSE) file for details.
+MIT License - see `LICENSE` file for details.

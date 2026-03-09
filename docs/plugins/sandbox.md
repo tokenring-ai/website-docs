@@ -1,4 +1,4 @@
-# Sandbox
+# @tokenring-ai/sandbox
 
 ## Overview
 
@@ -13,6 +13,7 @@ The `@tokenring-ai/sandbox` package provides an abstract interface for managing 
 - Tool Registration for agent execution
 - Chat Command Support for interactive control
 - Service Architecture implementing TokenRingService
+- KeyedRegistry Pattern for provider management
 
 ## Core Components
 
@@ -72,6 +73,7 @@ The `SandboxState` class manages agent state for sandbox operations, implementin
 | `provider` | `string \| null` | Current active provider name |
 | `activeContainer` | `string \| null` | Current active container label |
 | `labelToContainerId` | `Map<string, string>` | Maps labels to container IDs |
+| `initialConfig` | `z.output<typeof SandboxAgentConfigSchema>` | Initial configuration with provider |
 
 **State Methods:**
 
@@ -153,6 +155,15 @@ const sandboxService = new SandboxService({
 
 sandboxService.registerProvider('docker', new DockerSandboxProvider());
 ```
+
+### KeyedRegistry Pattern
+
+The `KeyedRegistry` pattern is used for managing sandbox providers. This pattern provides:
+
+- **Registration:** Providers are registered with a unique name
+- **Lookup:** Providers can be retrieved by name
+- **Validation:** The `requireItemByName()` method throws an error if the provider doesn't exist
+- **Listing:** `getAllItemNames()` returns all registered provider names
 
 ## RPC Endpoints
 
@@ -268,13 +279,13 @@ The service integrates with agents through the `attach()` method, which:
 
 The package provides the following tools for agent execution:
 
-| Tool Name | Description | Input Schema |
-|-----------|-------------|--------------|
-| `sandbox_createContainer` | Creates a new sandbox container with optional parameters | `label`, `image`, `workingDir`, `environment`, `timeout` |
-| `sandbox_executeCommand` | Executes a command in a container (uses active if unspecified) | `label` (optional), `command` |
-| `sandbox_stopContainer` | Stops a container (uses active if unspecified) | `label` (optional) |
-| `sandbox_getLogs` | Gets container logs (uses active if unspecified) | `label` (optional) |
-| `sandbox_removeContainer` | Removes a container (uses active if unspecified) | `label` (optional) |
+| Tool Name | Description | Input Schema | Return Type |
+|-----------|-------------|--------------|-------------|
+| `sandbox_createContainer` | Creates a new sandbox container with optional parameters | `label`, `image`, `workingDir`, `environment`, `timeout` | `TokenRingToolJSONResult<{ containerId: string; status: string }>` |
+| `sandbox_executeCommand` | Executes a command in a container (uses active if unspecified) | `label` (optional), `command` | `TokenRingToolJSONResult<{ stdout: string; stderr: string; exitCode: number }>` |
+| `sandbox_stopContainer` | Stops a container (uses active if unspecified) | `label` (optional) | `TokenRingToolJSONResult<{ success: boolean }>` |
+| `sandbox_getLogs` | Gets container logs (uses active if unspecified) | `label` (optional) | `TokenRingToolJSONResult<{ logs: string }>` |
+| `sandbox_removeContainer` | Removes a container (uses active if unspecified) | `label` (optional) | `TokenRingToolJSONResult<{ success: boolean }>` |
 
 ### Tool Usage Example
 
@@ -287,6 +298,77 @@ await agent.executeTool('sandbox_createContainer', {
 await agent.executeTool('sandbox_executeCommand', { 
   command: 'node --version'
 });
+```
+
+## State Management
+
+The `SandboxState` class manages agent state for sandbox operations, implementing the `AgentStateSlice` interface.
+
+### State Properties
+
+- `provider: string | null` - Current active provider name
+- `activeContainer: string | null` - Current active container label
+- `labelToContainerId: Map<string, string>` - Maps labels to container IDs
+- `initialConfig: z.output<typeof SandboxAgentConfigSchema>` - Initial configuration
+
+### State Persistence
+
+The state is serialized and deserialized using a Zod schema:
+
+```typescript
+const serializationSchema = z.object({
+  provider: z.string().nullable(),
+  activeContainer: z.string().nullable(),
+  labelToContainerId: z.array(z.tuple([z.string(), z.string()]))
+});
+```
+
+**Serialization:**
+
+```typescript
+serialize(): z.output<typeof serializationSchema> {
+  return {
+    provider: this.provider,
+    activeContainer: this.activeContainer,
+    labelToContainerId: Array.from(this.labelToContainerId.entries()),
+  };
+}
+```
+
+**Deserialization:**
+
+```typescript
+deserialize(data: z.output<typeof serializationSchema>): void {
+  this.provider = data.provider;
+  this.activeContainer = data.activeContainer;
+  this.labelToContainerId = new Map(data.labelToContainerId);
+}
+```
+
+### State Transfer
+
+The `transferStateFromParent()` method enables state transfer from parent agents, which is useful for agent teams:
+
+```typescript
+transferStateFromParent(parent: Agent): void {
+  const parentState = parent.getState(SandboxState);
+  this.provider = parentState.provider;
+  this.activeContainer = parentState.activeContainer;
+  this.labelToContainerId = new Map(parentState.labelToContainerId);
+}
+```
+
+### State Display
+
+The `show()` method returns a human-readable state summary:
+
+```typescript
+show(): string[] {
+  return [
+    `Active Provider: ${this.provider}`,
+    `Active Container: ${this.activeContainer ?? "(none)"}`,
+  ];
+}
 ```
 
 ## Usage Examples
@@ -354,6 +436,45 @@ sandboxService.setActiveProvider('docker', agent);
 const container = await sandboxService.createContainer({ label: 'test' }, agent);
 ```
 
+### 4. Label-Based Container Management
+
+```typescript
+// Create container with label
+await sandboxService.createContainer({ label: 'myapp' }, agent);
+
+// Execute command using label
+await sandboxService.executeCommand('myapp', 'ls -la', agent);
+
+// Stop container using label
+await sandboxService.stopContainer('myapp', agent);
+```
+
+## Error Handling
+
+The package throws errors in various scenarios:
+
+- **No Active Provider**: When attempting to perform operations without an active provider set
+  ```
+  [SandboxService] No active provider set
+  ```
+
+- **No Container Specified**: When a tool or command requires a container but none is specified and no active container exists
+  ```
+  [sandbox_executeCommand] No container specified and no active container
+  ```
+
+- **Command Failed**: When a command executes with a non-zero exit code, the tool returns the exit code but does not throw
+
+- **Provider Not Found**: When attempting to set a provider that is not registered
+  ```
+  Provider "docker" not found. Available providers: kubernetes
+  ```
+
+- **No Initial Provider**: When attempting to reset to an initial provider that was not configured
+  ```
+  No initial provider configured
+  ```
+
 ## Best Practices
 
 - **Label Management:** Use descriptive labels for containers to make referencing easier
@@ -361,6 +482,7 @@ const container = await sandboxService.createContainer({ label: 'test' }, agent)
 - **State Persistence:** Leverage agent state management for maintaining container references across sessions
 - **Error Handling:** Always check for active containers before executing commands
 - **Resource Cleanup:** Use `removeContainer` to clean up containers when finished
+- **Label Uniqueness:** Ensure labels are unique to avoid conflicts in the label-to-container mapping
 
 ## Testing and Development
 
@@ -382,6 +504,12 @@ bun run test
 bun run test:coverage
 ```
 
+### Testing with Watch Mode
+
+```bash
+bun run test:watch
+```
+
 ### Extending
 
 To add new sandbox providers:
@@ -389,6 +517,7 @@ To add new sandbox providers:
 1. Create a class that implements `SandboxProvider` interface
 2. Implement all required methods
 3. Register the provider with `SandboxService.registerProvider()`
+4. Add provider type handling in `plugin.ts` if using plugin registration
 
 **Example:**
 
@@ -447,4 +576,6 @@ class MyCustomProvider implements SandboxProvider {
 
 ## License
 
-MIT License - see [LICENSE](../../../pkg/sandbox/LICENSE) file for details.
+MIT License - see `LICENSE` file for details.
+
+Copyright (c) 2025 Mark Dierolf

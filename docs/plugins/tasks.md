@@ -16,6 +16,7 @@ The `@tokenring-ai/tasks` package provides a complete task planning and executio
 - **Manual Management**: Chat commands for task inspection, control, and configuration
 - **Context Integration**: Seamless integration with agent context systems
 - **State Persistence**: Persistent task state across agent instances
+- **Sub-Agent Execution**: Tasks executed via `runSubAgent` with proper context injection
 
 ## Installation
 
@@ -33,7 +34,7 @@ The main service that manages the complete task lifecycle:
 
 ```typescript
 class TaskService implements TokenRingService {
-  name = "TaskService";
+  readonly name = "TaskService";
   description = "Provides task management functionality";
 
   constructor(readonly options: z.output<typeof TaskServiceConfigSchema>) {}
@@ -73,7 +74,7 @@ State management for persistence and serialization:
 
 ```typescript
 class TaskState implements AgentStateSlice {
-  name = "TaskState";
+  readonly name = "TaskState";
   serializationSchema = serializationSchema;
   readonly tasks: Task[] = [];
   autoApprove: number;           // Auto-approve timeout in seconds
@@ -85,7 +86,7 @@ class TaskState implements AgentStateSlice {
   }
 
   transferStateFromParent(agent: Agent): void;
-  reset(what: ResetWhat[]): void;
+  reset(): void;
   serialize(): z.output<typeof serializationSchema>;
   deserialize(data: z.output<typeof serializationSchema>): void;
   show(): string[];
@@ -139,6 +140,267 @@ Each agent can override the default configuration:
 - **Message**: One paragraph describing the task objective
 - **Context**: Three+ paragraphs with detailed execution instructions
 - **Requirement**: Must include file paths, technical specifications, and step-by-step instructions
+
+## Services
+
+### TaskService
+
+The main service that manages the complete task lifecycle.
+
+#### Service Registration
+
+The TaskService is automatically registered when the plugin is installed. Access it via:
+
+```typescript
+const taskService = agent.requireServiceByType(TaskService);
+```
+
+#### Service Methods
+
+##### `addTask(task, agent)`
+
+Add a single task to the task list.
+
+**Parameters**:
+- `task`: `Omit<Task, 'id' | 'status'>` - Task data without ID and status
+- `agent`: `Agent` - Current agent instance
+
+**Returns**: `string` - The generated task ID (UUID)
+
+**Example**:
+
+```typescript
+const taskId = taskService.addTask({
+  name: "Create user account",
+  agentType: "backend-developer",
+  message: "Implement user registration functionality",
+  context: "Create user model, registration endpoint, validation, and error handling. Use bcrypt for password hashing and JWT for session management."
+}, agent);
+```
+
+##### `getTasks(agent)`
+
+Retrieve all tasks with their current status.
+
+**Parameters**:
+- `agent`: `Agent` - Current agent instance
+
+**Returns**: `Task[]` - Array of all tasks (copy)
+
+**Example**:
+
+```typescript
+const tasks = taskService.getTasks(agent);
+console.log(`Found ${tasks.length} tasks`);
+```
+
+##### `updateTaskStatus(id, status, result?, agent)`
+
+Update the status and optionally the result of a task.
+
+**Parameters**:
+- `id`: `string` - Task ID
+- `status`: `Task['status']` - New status ('pending', 'running', 'completed', 'failed')
+- `result`: `string | undefined` - Execution result (optional)
+- `agent`: `Agent` - Current agent instance
+
+**Example**:
+
+```typescript
+taskService.updateTaskStatus(taskId, 'completed', 'User account created successfully', agent);
+```
+
+##### `clearTasks(agent)`
+
+Remove all tasks from the task list.
+
+**Parameters**:
+- `agent`: `Agent` - Current agent instance
+
+**Example**:
+
+```typescript
+taskService.clearTasks(agent);
+```
+
+##### `executeTasks(taskIds, parentAgent)`
+
+Execute a list of tasks with configured parallelism.
+
+**Parameters**:
+- `taskIds`: `string[]` - IDs of tasks to execute
+- `parentAgent`: `Agent` - Current parent agent instance
+
+**Returns**: `Promise<string[]>` - Array of execution summaries
+
+**Behavior**:
+- Executes tasks with controlled parallelism using `async.mapLimit`
+- Each task is executed via `runSubAgent` with the task message and context
+- Updates task status to 'running' before execution
+- Updates task status to 'completed' or 'failed' based on result
+- Returns formatted execution summaries with checkmarks or X marks
+
+**Example**:
+
+```typescript
+const results = await taskService.executeTasks([taskId1, taskId2], agent);
+console.log(results); 
+// ['✓ Task 1: Completed', '✗ Task 2: Failed - Error message']
+```
+
+## Providers
+
+This package does not use a provider architecture.
+
+## RPC Endpoints
+
+This package does not define any RPC endpoints.
+
+## Chat Commands
+
+The package registers the following slash commands for users:
+
+### `/tasks`
+
+Manage and execute tasks in the task queue.
+
+**Description**: `/tasks - Manage and execute tasks in the task queue.`
+
+**Available Operations**:
+
+#### list
+
+Display all tasks in the current task queue with their status, agent type, and message content.
+
+**Example**:
+
+```
+/tasks list
+```
+
+**Output**:
+
+```
+Current tasks:
+[0] Process Data (pending)
+  Agent: data-processor
+  Message: Process the uploaded CSV file
+[1] Send Email (completed)
+  Agent: email-sender
+  Message: Send confirmation email to user@example.com
+  Result: Email sent successfully...
+```
+
+#### clear
+
+Remove all tasks from the current task queue. This action cannot be undone.
+
+**Example**:
+
+```
+/tasks clear
+```
+
+**Output**:
+
+```
+Cleared all tasks
+```
+
+#### execute
+
+Execute all pending tasks by dispatching them to their respective agents. Only tasks with 'pending' status will be executed.
+
+**Example**:
+
+```
+/tasks execute
+```
+
+**Output**:
+
+```
+Task execution completed:
+✓ Process Data: Completed
+✗ Send Email: Failed - SMTP connection failed
+```
+
+#### settings
+
+View or modify task settings. Settings are stored in the agent state and apply to the current agent.
+
+**Examples**:
+
+```
+/tasks settings
+/tasks settings auto-approve=30
+/tasks settings parallel=3
+```
+
+**Output**:
+
+```
+Task Settings:
+ Auto-approve: 30s
+ Parallel tasks: 3
+
+Usage:
+ /tasks settings auto-approve=<seconds> parallel=<number>
+```
+
+## State Management
+
+### TaskState
+
+The package uses a state management system for task persistence and serialization.
+
+#### State Properties
+
+| Property | Type | Description |
+|----------|------|-------------|
+| tasks | Task[] | Array of tasks in the queue |
+| autoApprove | number | Auto-approve timeout in seconds (0 = disabled) |
+| parallelTasks | number | Maximum parallel task execution |
+
+#### State Transfer
+
+Tasks are shared with parent agents via `transferStateFromParent()` method. 
+
+**Important Note**: The tasks array is currently shared by reference with the parent agent. This is a temporary implementation that should be revisited for better state isolation. The array is marked as readonly to prevent accidental replacement.
+
+#### State Reset
+
+Tasks are cleared via the `reset()` method, which removes all tasks from the tasks array.
+
+#### Serialization
+
+The state can be serialized and deserialized for persistence:
+
+```typescript
+// Serialize
+const serialized = taskState.serialize();
+// { tasks: [...], autoApprove: 30, parallelTasks: 3 }
+
+// Deserialize
+taskState.deserialize({ tasks: [], autoApprove: 0, parallelTasks: 1 });
+```
+
+#### State Display
+
+The `show()` method returns a human-readable summary:
+
+```typescript
+const output = taskState.show();
+// [
+//   'Total Tasks: 5',
+//   '  pending: 2',
+//   '  running: 1',
+//   '  completed: 1',
+//   '  failed: 1',
+//   'Auto-approve: 30s',
+//   'Parallel tasks: 3'
+// ]
+```
 
 ## Tools
 
@@ -198,225 +460,53 @@ await agent.executeTool('tasks_run', {
 });
 ```
 
-## Services
+## Context Handlers
 
-### TaskService
+### task-plan
 
-The main service that manages the complete task lifecycle.
+Provides current task summaries to agents as context.
 
-#### Service Registration
+**Handler Name**: `task-plan`
 
-The TaskService is automatically registered when the plugin is installed. Access it via:
+**Usage**: Automatically integrated when the plugin is installed
 
-```typescript
-const taskService = agent.requireServiceByType(TaskService);
-```
-
-#### Service Methods
-
-##### `addTask(task, agent)`
-
-Add a single task to the task list.
-
-**Parameters**:
-- `task`: `Omit<Task, 'id' | 'status'>` - Task data without ID and status
-- `agent`: `Agent` - Current agent instance
-
-**Returns**: `string` - The generated task ID
+**Behavior**:
+- Iterates through all tasks in the task list
+- Yields context items with task summaries using async generator pattern
+- Includes task name, status, agent type, and message
+- Only provides context if tasks exist
 
 **Example**:
 
 ```typescript
-const taskId = taskService.addTask({
-  name: "Create user account",
-  agentType: "backend-developer",
-  message: "Implement user registration functionality",
-  context: "Create user model, registration endpoint, validation, and error handling. Use bcrypt for password hashing and JWT for session management."
-}, agent);
+// Agent receives context like:
+/* The user has approved the following task plan */:
+- Create user authentication (pending): backend-developer - Implement JWT-based authentication
+- Design login UI (pending): frontend-developer - Create responsive login forms
+- Write tests (completed): test-engineer - Create comprehensive test suite
 ```
 
-##### `getTasks(agent)`
+**Implementation Pattern**:
 
-Retrieve all tasks with their current status.
-
-**Parameters**:
-- `agent`: `Agent` - Current agent instance
-
-**Returns**: `Task[]` - Array of all tasks
-
-**Example**:
+The context handler uses an async generator function to yield context items:
 
 ```typescript
-const tasks = taskService.getTasks(agent);
-console.log(`Found ${tasks.length} tasks`);
+export default async function* getContextItems({agent}: ContextHandlerOptions): AsyncGenerator<ContextItem> {
+  const taskService = agent.requireServiceByType(TaskService);
+  const tasks = taskService.getTasks(agent);
+  
+  if (tasks.length > 0) {
+    const taskSummary = tasks.map(t =>
+      `- ${t.name} (${t.status}): ${t.agentType} - ${t.message}`
+    ).join('\n');
+
+    yield {
+      role: "user",
+      content: `/* The user has approved the following task plan */:\n${taskSummary}`
+    };
+  }
+}
 ```
-
-##### `updateTaskStatus(id, status, result?, agent)`
-
-Update the status and optionally the result of a task.
-
-**Parameters**:
-- `id`: `string` - Task ID
-- `status`: `Task['status']` - New status ('pending', 'running', 'completed', 'failed')
-- `result`: `string | undefined` - Execution result (optional)
-- `agent`: `Agent` - Current agent instance
-
-**Example**:
-
-```typescript
-taskService.updateTaskStatus(taskId, 'completed', 'User account created successfully', agent);
-```
-
-##### `clearTasks(agent)`
-
-Remove all tasks from the task list.
-
-**Parameters**:
-- `agent`: `Agent` - Current agent instance
-
-**Example**:
-
-```typescript
-taskService.clearTasks(agent);
-```
-
-##### `executeTasks(taskIds, parentAgent)`
-
-Execute a list of tasks with configured parallelism.
-
-**Parameters**:
-- `taskIds`: `string[]` - IDs of tasks to execute
-- `parentAgent`: `Agent` - Current parent agent instance
-
-**Returns**: `Promise<string[]>` - Array of execution summaries
-
-**Example**:
-
-```typescript
-const results = await taskService.executeTasks([taskId1, taskId2], agent);
-console.log(results); // ['✓ Task 1: Completed', '✗ Task 2: Failed - Error message']
-```
-
-## Providers
-
-This package does not use a provider architecture.
-
-## RPC Endpoints
-
-This package does not define any RPC endpoints.
-
-## Chat Commands
-
-The package registers the following slash commands for users:
-
-### `/tasks`
-
-Manage and execute tasks in the task queue.
-
-**Description**: `/tasks - Manage and execute tasks in the task queue.`
-
-**Available Operations**:
-
-#### list
-
-Display all tasks in the current task queue.
-
-**Example**:
-
-```
-/tasks list
-```
-
-**Output**:
-
-```
-Current tasks:
-[0] Process Data (pending)
-    Agent: data-processor
-    Message: Process the uploaded CSV file
-[1] Send Email (completed)
-    Agent: email-sender
-    Message: Send confirmation email to user@example.com
-```
-
-#### clear
-
-Remove all tasks from the current task queue.
-
-**Example**:
-
-```
-/tasks clear
-```
-
-**Output**:
-
-```
-Cleared all tasks
-```
-
-#### execute
-
-Execute all pending tasks.
-
-**Example**:
-
-```
-/tasks execute
-```
-
-**Output**:
-
-```
-Task execution completed:
-✓ Process Data: Completed
-✗ Send Email: Failed - SMTP connection failed
-```
-
-#### settings
-
-View or modify task settings.
-
-**Examples**:
-
-```
-/tasks settings
-/tasks settings auto-approve=30
-/tasks settings parallel=3
-```
-
-**Output**:
-
-```
-Task Settings:
-  Auto-approve: 30s
-  Parallel tasks: 3
-
-Usage:
-  /tasks settings auto-approve=<seconds> parallel=<number>
-```
-
-## State Management
-
-### TaskState
-
-The package uses a state management system for task persistence and serialization.
-
-#### State Properties
-
-| Property | Type | Description |
-|----------|------|-------------|
-| tasks | Task[] | Array of tasks in the queue |
-| autoApprove | number | Auto-approve timeout in seconds (0 = disabled) |
-| parallelTasks | number | Maximum parallel task execution |
-
-#### State Transfer
-
-Tasks are shared with parent agents via `transferStateFromParent()` method.
-
-#### State Reset
-
-Tasks are cleared on chat reset via the `reset(['chat'])` method.
 
 ## Scripting Integration
 
@@ -527,22 +617,12 @@ The package integrates seamlessly with the TokenRing ecosystem:
 - **Parameter Parsing**: Robust parameter parsing and validation
 - **Help Integration**: Built-in help system with detailed documentation
 
-## Context Handlers
+### Sub-Agent Integration
 
-### task-plan
-
-Provides current task summaries to agents as context.
-
-**Usage**: Automatically integrated when the plugin is installed
-
-**Example**:
-
-```typescript
-// Agent receives context like:
-/* The user has approved the following task plan */:
-- Create user authentication (pending): backend-developer - Implement JWT-based authentication
-- Design login UI (pending): frontend-developer - Create responsive login forms
-```
+- **Task Execution**: Tasks executed via `runSubAgent` from `@tokenring-ai/agent`
+- **Context Injection**: Task message and context combined and passed to sub-agent
+- **Status Tracking**: Task status updated based on sub-agent execution result
+- **Error Handling**: Errors from sub-agent execution are captured and reported
 
 ## Best Practices
 
@@ -626,6 +706,27 @@ await agent.executeTool('tasks_run', {
 - **Timeout**: Configurable timeouts for task execution
 - **Partial Failures**: Individual task failures don't stop other tasks
 
+### Command Errors
+
+The settings command uses `CommandFailedError` for validation errors:
+
+- **Invalid Setting Format**: Throws when setting doesn't match `key=value` pattern
+- **Invalid Auto-Approve Value**: Throws when value is negative or not a number
+- **Invalid Parallel Value**: Throws when value is less than 1 or not a number
+
+**Example Error Handling**:
+
+```typescript
+try {
+  await agent.executeCommand('/tasks settings auto-approve=-5');
+} catch (error) {
+  if (error instanceof CommandFailedError) {
+    console.error(`Command failed: ${error.message}`);
+    // Output: Command failed: auto-approve must be >= 0
+  }
+}
+```
+
 ### Recovery Strategies
 
 - **Retry Failed Tasks**: Use `/tasks execute` to retry failed tasks
@@ -653,6 +754,11 @@ bun run test:coverage
 bun test --watch
 ```
 
+### Test Files
+
+- `runTasks.test.ts` - Tests for the runTasks tool
+- `tasksCommand.test.ts` - Tests for task commands
+
 ### Package Structure
 
 ```
@@ -664,8 +770,12 @@ pkg/tasks/
 ├── tools/
 │   └── runTasks.ts             # Task planning and execution tool
 ├── commands/
-│   └── tasks.ts                # Chat commands for task management
-├── chatCommands.ts             # Command exports
+│   └── tasks/
+│       ├── list.ts             # List all tasks command
+│       ├── execute.ts          # Execute pending tasks command
+│       ├── clear.ts            # Clear all tasks command
+│       └── settings.ts         # View/modify task settings command
+├── commands.ts                 # Command exports
 ├── tools.ts                    # Tool exports
 ├── contextHandlers.ts          # Context handler exports
 ├── contextHandlers/
@@ -673,7 +783,7 @@ pkg/tasks/
 ├── plugin.ts                   # Plugin configuration
 ├── schema.ts                   # Configuration schemas
 ├── package.json                # Package metadata and dependencies
-└── README.md                   # This documentation
+└── README.md                   # Package documentation
 ```
 
 ## Dependencies
@@ -693,6 +803,18 @@ pkg/tasks/
 - `vitest`: ^4.0.18
 - `typescript`: ^5.9.3
 - `@types/async`: ^3.2.25
+
+## Package Exports
+
+The package exports the following:
+
+```typescript
+// Main service
+export {default as TaskService} from "./TaskService.ts";
+
+// Type definitions
+export type {Task} from "./state/taskState.ts";
+```
 
 ## Related Components
 

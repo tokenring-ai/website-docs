@@ -13,6 +13,7 @@ The Reddit plugin provides integration with Reddit's JSON API, enabling AI agent
 - **Scripting Support**: Global functions available in scripting contexts for automation
 - **Type-Safe Configuration**: Zod schema validation for all tool inputs
 - **Automatic Pagination**: Support for Reddit's pagination mechanism using `after` and `before` cursors
+- **Compliant User-Agent**: Automatic User-Agent header for Reddit API compliance
 
 ## Core Components
 
@@ -501,6 +502,55 @@ const postData = await reddit.retrievePost(
 - No sensitive data is transmitted
 - User-Agent header helps identify legitimate requests
 
+## Error Handling
+
+### Error Types
+
+The Reddit service and tools throw errors in the following scenarios:
+
+#### Missing Required Parameters
+
+```typescript
+// Error: [reddit_searchSubreddit] subreddit is required
+await reddit.searchSubreddit("", "query");
+
+// Error: [reddit_searchSubreddit] query is required
+await reddit.searchSubreddit("programming", "");
+```
+
+#### Invalid URLs
+
+```typescript
+// Error: [reddit_retrievePost] postUrl is required
+await reddit.retrievePost("");
+
+// Error: [reddit_retrievePost] Invalid URL
+await reddit.retrievePost("not-a-valid-url");
+```
+
+#### Network Errors
+
+Network errors are handled by the underlying `HttpService` with retry logic. If all retries fail, an error is thrown with the failure message.
+
+### Error Handling Examples
+
+```typescript
+try {
+  const results = await agent.executeTool("reddit_searchSubreddit", {
+    subreddit: "programming",
+    query: "typescript"
+  });
+  console.log("Search successful:", results);
+} catch (error: any) {
+  console.error("Search failed:", error.message);
+  // Handle the error appropriately
+}
+```
+
+## State Management
+
+This package does not implement state management. It does not maintain any persistent state slices, and no checkpoint generation or recovery is required.
+
 ## Testing
 
 ### Running Tests
@@ -540,14 +590,14 @@ bun run build
 - `@tokenring-ai/chat`: Chat service and tool system
 - `@tokenring-ai/agent`: Agent framework
 - `@tokenring-ai/utility`: Shared utilities including HTTP service
-- `@tokenring-ai/scripting`: Scripting service
+- `@tokenring-ai/scripting`: Scripting service (used by plugin)
 - `zod`: Schema validation
 
 ### Development Dependencies
 
 - `vitest`: Test runner
 - `@vitest/coverage-v8`: Test coverage reporting
-- `typescript`: TypeScript compiler
+- `typescript`: TypeScript compiler (uses root tsconfig.json)
 
 ## Installation
 

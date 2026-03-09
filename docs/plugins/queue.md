@@ -2,18 +2,19 @@
 
 ## Overview
 
-The Queue package provides a work queue system for managing and executing chat prompts in a batched manner. It leverages the Agent's state management and checkpoint system to preserve context between queued tasks, enabling efficient multi-prompt workflows.
+The `@tokenring-ai/queue` package provides a work queue system for managing and executing chat prompts in a batched manner. It leverages the Agent's state management and checkpoint system to preserve context between queued tasks, enabling efficient multi-prompt workflows. The package integrates seamlessly with the TokenRing agent framework, providing both programmatic and chat command interfaces for queue operations.
 
 ## Key Features
 
 - **Queue Management**: Add, remove, and reorder work items with a simple API
 - **Checkpoint-Based State**: Preserves agent state between queued tasks
-- **Chat Command Interface**: Manage queues directly through chat commands
-- **Tool Access**: Programmatically add tasks via tools
+- **Chat Command Interface**: Manage queues directly through `/queue` commands
+- **Tool Access**: Programmatically add tasks via the `queue_addTaskToQueue` tool
 - **State Persistence**: Automatic serialization and restoration of queue state
 - **Queue Processing**: Start, load, execute, skip, and complete queued tasks
-- **Configurable Queue Size**: Optional maxSize limit for bounded queues
+- **Configurable Queue Size**: Optional `maxSize` limit for bounded queues
 - **Agent Integration**: Automatic registration with TokenRing agent framework
+- **FIFO Processing**: First-in-first-out queue processing for reliable batch operations
 
 ## Core Components
 
@@ -33,9 +34,8 @@ new WorkQueueService(options: ParsedWorkQueueConfig)
 
 | Property | Type | Description |
 |----------|------|-------------|
-| `name` | `string` | Service name ("WorkQueueService") |
-| `description` | `string` | Service description |
-| `options` | `ParsedWorkQueueConfig` | Service configuration options |
+| `name` | `"WorkQueueService"` | Service identifier |
+| `description` | `"Provides Work Queue functionality"` | Service description |
 
 **Methods:**
 
@@ -77,7 +77,7 @@ new WorkQueueService(options: ParsedWorkQueueConfig)
 
 ### State Slice: WorkQueueState
 
-Manages the queue's internal state with persistence support.
+Manages the queue's internal state with persistence support. Implements `AgentStateSlice` for integration with the agent state system.
 
 **Properties:**
 
@@ -88,6 +88,8 @@ Manages the queue's internal state with persistence support.
 | `currentItem` | `QueueItem \| null` | Work item currently loaded for execution |
 | `initialCheckpoint` | `AgentCheckpointData \| null` | Saved state at queue start |
 | `maxSize` | `number \| null` | Maximum queue size (if configured) |
+| `name` | `"WorkQueueState"` | State slice identifier |
+| `serializationSchema` | `z.ZodSchema` | Zod schema for serialization |
 
 **Queue Item Type:**
 ```typescript
@@ -98,11 +100,16 @@ interface QueueItem {
 }
 ```
 
+**Constructor:**
+```typescript
+new WorkQueueState(initialConfig: z.output<typeof WorkQueueAgentConfigSchema>)
+```
+
 **Methods:**
 
 | Method | Description | Parameters | Returns |
 |--------|-------------|------------|---------|
-| `reset(what)` | Reset state for specific scope | `what: ResetWhat[]` | `void` |
+| `reset()` | Reset all state components | None | `void` |
 | `serialize()` | Convert state to plain object | None | `z.output<typeof serializationSchema>` |
 | `deserialize(data)` | Restore state from plain object | `data: z.output<typeof serializationSchema>` | `void` |
 | `show()` | Display current state in array form | None | `string[]` |
@@ -114,28 +121,76 @@ interface QueueItem {
 Agent-level configuration for queue size limits:
 
 ```typescript
-{
-  maxSize?: number  // Optional: Maximum queue size (positive number)
-}
+import { z } from "zod";
+
+export const WorkQueueAgentConfigSchema = z.object({
+  maxSize: z.number().positive().optional(),
+});
 ```
+
+**Properties:**
+- `maxSize?: number` - Optional: Maximum queue size (must be a positive number)
 
 #### WorkQueueServiceConfigSchema
 
 Plugin-level configuration with defaults:
 
 ```typescript
-{
-  queue: {
-    agentDefaults: {
-      maxSize?: number  // Optional: Maximum queue size (positive number)
-    }
+import { z } from "zod";
+
+export const WorkQueueServiceConfigSchema = z.object({
+  agentDefaults: z.object({
+    maxSize: z.number().positive().optional(),
+  }).prefault({})
+});
+```
+
+**Properties:**
+- `agentDefaults` - Default configuration for all agents
+  - `agentDefaults.maxSize?: number` - Optional: Maximum queue size
+
+**Type:**
+```typescript
+type ParsedWorkQueueConfig = z.output<typeof WorkQueueServiceConfigSchema>;
+```
+
+## Services
+
+### WorkQueueService
+
+The central service for queue operations with comprehensive state management.
+
+**Service Registration:**
+```typescript
+import WorkQueueService from "@tokenring-ai/queue/WorkQueueService";
+
+app.addServices(new WorkQueueService({
+  agentDefaults: {
+    maxSize: 50  // Optional: Maximum queue size
   }
-}
+}));
+```
+
+**Attachment to Agent:**
+```typescript
+const queueService = new WorkQueueService({ agentDefaults: {} });
+queueService.attach(agent);  // Initializes WorkQueueState on agent
+```
+
+**State Access:**
+```typescript
+// Get state directly
+const state = agent.getState(WorkQueueState);
+
+// Mutate state
+agent.mutateState(WorkQueueState, (state) => {
+  state.started = true;
+});
 ```
 
 ## Chat Commands
 
-All `/queue` commands are registered with the AgentCommandService and are available through the chat interface.
+All `/queue` commands are registered with the `AgentCommandService` and are available through the chat interface.
 
 ### /queue list
 
@@ -155,16 +210,16 @@ Queue contents:
 ```
 
 **Implementation Notes:**
-- Uses `numberedList` utility to format output
+- Uses `numberedList` utility from `@tokenring-ai/utility` to format output
 - Shows only task names
-- Returns empty list message if queue is empty
+- Returns "Queue is empty." if queue is empty
 
-### /queue add \<prompt\>
+### /queue add <prompt>
 
 Add a new chat prompt to the end of the queue.
 
 **Example:**
-```
+```bash
 /queue add 'Write a Python function to calculate Fibonacci numbers'
 ```
 
@@ -173,16 +228,21 @@ Add a new chat prompt to the end of the queue.
 Added to queue. Queue length: 1
 ```
 
-**Validation:**
-- Raises error if no prompt provided
-- Captures conversation checkpoint for state restoration
+**Implementation Details:**
+- Captures current agent state as checkpoint
+- Creates `QueueItem` with checkpoint, name, and input
+- Returns updated queue length
 
-### /queue remove \<index\>
+**Validation:**
+- Raises `CommandFailedError` if no prompt provided
+- Usage: `Usage: /queue add <prompt>`
+
+### /queue remove <index>
 
 Remove the prompt at the given zero-based index.
 
 **Example:**
-```
+```bash
 /queue remove 2
 ```
 
@@ -191,16 +251,21 @@ Remove the prompt at the given zero-based index.
 Removed "Fix bug in login" from queue. Remaining: 3
 ```
 
+**Implementation Details:**
+- Uses `splice()` to remove item at index
+- Returns removed item name and remaining count
+
 **Validation:**
 - Index must be >= 0 and < queue size
-- Shows error message for invalid indices
+- Raises `CommandFailedError` for invalid indices
+- Usage: `Usage: /queue remove <index>  (index starts from 0)`
 
-### /queue details \<index\>
+### /queue details <index>
 
 Show detailed information about a specific queue item.
 
 **Example:**
-```
+```bash
 /queue details 0
 ```
 
@@ -214,16 +279,21 @@ Queue item details:
 }
 ```
 
-**Implementation Notes:**
+**Implementation Details:**
 - Uses `JSON.stringify` with 2-space indentation
 - Includes full item structure including checkpoint
+- Shows checkpoint, name, and input
+
+**Validation:**
+- Index must be >= 0 and < queue size
+- Raises `CommandFailedError` for invalid indices
 
 ### /queue clear
 
 Remove all prompts from the queue.
 
 **Example:**
-```
+```bash
 /queue clear
 ```
 
@@ -232,12 +302,16 @@ Remove all prompts from the queue.
 Queue cleared!
 ```
 
+**Implementation Details:**
+- Calls `queueService.clear(agent)`
+- Sets queue array to empty
+
 ### /queue start
 
 Begin queue processing. This command saves the current agent state as an initial checkpoint.
 
 **Example:**
-```
+```bash
 /queue start
 ```
 
@@ -247,16 +321,22 @@ Queue started, use /queue next to start working on the first item in the queue, 
 ```
 
 **Process:**
-1. Saves current agent state as initial checkpoint
-2. Sets started flag to true
-3. Creates a checkpoint entry marking queue start using `@tokenring-ai/checkpoint`
+1. Checks if queue is empty (returns error if empty)
+2. Checks if queue is already started (returns message if already started)
+3. Saves current agent state as initial checkpoint via `setInitialCheckpoint()`
+4. Sets `started` flag to true via `startWork()`
+5. Creates a checkpoint entry using `checkpointCreate.execute()` from `@tokenring-ai/checkpoint`
+
+**Error Cases:**
+- Empty queue: "Queue is empty."
+- Already started: "Queue already started. Use /queue next to load the next item in the queue, or queue done to end the queue."
 
 ### /queue next
 
 Load the first queued item (does not execute it).
 
 **Example:**
-```
+```bash
 /queue next
 ```
 
@@ -266,32 +346,43 @@ Queue Item loaded: Write README for the project Use /queue run to run the queue 
 ```
 
 **Process:**
-1. Dequeues the first item
-2. Sets it as the current item
-3. Displays the item name
+1. Checks if queue is started (returns error if not)
+2. Creates checkpoint for current item via `checkpointCreate.execute()`
+3. Dequeues the first item via `dequeue()`
+4. Sets it as the current item via `setCurrentItem()`
+5. Displays the item name
+
+**Error Cases:**
+- Queue not started: "Queue not started. Use /queue start to start the queue."
 
 ### /queue run
 
 Execute the currently loaded queued prompt.
 
 **Example:**
-```
+```bash
 /queue run
 ```
 
 **Process:**
-1. Restores agent state from the current item's checkpoint
-2. Executes the chat command via `runChat()` with the item's input
-3. Uses `@tokenring-ai/chat/runChat` function
-4. Creates error handling for failures
-5. Has no return value (directly processes chat)
+1. Checks if queue is started (returns error if not)
+2. Checks if current item is loaded (returns error if not)
+3. Restores agent state from the current item's checkpoint via `agent.restoreState()`
+4. Retrieves chat service and chat config
+5. Executes the chat command via `runChat()` from `@tokenring-ai/chat`
+6. Includes try/catch error handling for failures
+
+**Error Cases:**
+- Queue not started: "Queue not started. Use /queue start to start the queue."
+- No item loaded: "No queue item loaded. Use /queue next to load the next item..."
+- Execution error: "Error running queued prompt: [error message]"
 
 ### /queue skip
 
 Skip the current item and re-add it to the end of the queue.
 
 **Example:**
-```
+```bash
 /queue skip
 ```
 
@@ -301,16 +392,21 @@ Queue item skipped. It has been added to the end of the queue in case you would 
 ```
 
 **Process:**
-1. Re-adds the current item to the queue
-2. Clears the current item
-3. Allows the next item to be processed
+1. Checks if queue is started (returns error if not)
+2. Checks if current item exists (returns error if not)
+3. Re-adds the current item to the queue via `enqueue()`
+4. Clears the current item via `setCurrentItem(null)`
+
+**Error Cases:**
+- Queue not started: "Queue not started. Use /queue start to start the queue."
+- No item loaded: "No queue item loaded. Use /queue next to load the next item..."
 
 ### /queue done
 
 End queue processing and restore the initial agent state.
 
 **Example:**
-```
+```bash
 /queue done
 ```
 
@@ -320,17 +416,26 @@ Restored chat state to preserved state.
 ```
 
 **Process:**
-1. Checks if queue is empty
-2. If initial checkpoint exists, restores agent state to it
-3. Shows error if no initial checkpoint found
-4. Clears queue items and processing state
-5. Stops work/queue processing
+1. Checks if queue is started (returns error if not)
+2. Creates checkpoint for current item via `checkpointCreate.execute()`
+3. Checks if queue is empty or action is "done"
+4. Retrieves initial checkpoint via `getInitialCheckpoint()`
+5. Restores agent state to initial checkpoint via `agent.restoreState()`
+6. Stops work via `stopWork()`
+7. Returns appropriate message
 
 **Error Cases:**
-- If no initial checkpoint found, shows error:
-  ```
-  Couldn't restore initial state, no initial checkpoint found
-  ```
+- Queue not started: "Queue not started. Use /queue start to start the queue."
+- No initial checkpoint: "Couldn't restore initial state, no initial checkpoint found"
+
+### Command Help
+
+The `/queue` command includes built-in help accessible when invalid subcommands are provided. The help text includes:
+
+- Queue management commands (add, remove, details, clear, list)
+- Queue processing commands (start, next, run, skip, done)
+- Usage tips and examples
+- Queue status information
 
 ## Tools
 
@@ -349,17 +454,27 @@ Adds a task to the work queue for later execution.
 
 **Input Schema:**
 ```typescript
-{
+import { z } from "zod";
+
+const inputSchema = z.object({
   description: z.string().describe("A short description of the task to be performed"),
-  content: z.string().describe("A natural language string, explaining the exact task to be performed, in great detail. This string will be used to prompt an AI agent as the next message in this conversation, so should be as detailed as possible, and should directly order the AI agent to execute the task, using the tools that are available to it.")
-}
+  content: z.string().describe(
+    "A natural language string, explaining the exact task to be performed, in great detail. " +
+    "This string will be used to prompt an AI agent as the next message in this conversation, " +
+    "so should be as detailed as possible, and should directly order the AI agent to execute " +
+    "the task, using the tools that are available to it."
+  ),
+});
 ```
 
 **Returns:**
 ```typescript
 {
-  status: "queued";
-  message: "Task has been queued for later execution.";
+  type: "json",
+  data: {
+    status: "queued",
+    message: "Task has been queued for later execution."
+  }
 }
 ```
 
@@ -369,18 +484,18 @@ Adds a task to the work queue for later execution.
 
 **Output Handling:**
 - Uses `agent.infoMessage()` to prefix output with tool name
-- This ensures output is clearly attributed to the tool
+- Example: `[queue_addTaskToQueue] Added task "Analyze dependencies" to queue`
 
 **Usage Example:**
 ```typescript
 // Via tool
-{
-  "name": "queue_addTaskToQueue",
-  "arguments": {
-    "description": "Analyze dependencies",
-    "content": "Use the filesystem tools to find all npm dependencies in the project and create a breakdown report."
-  }
-}
+const result = await agent.executeTool('queue_addTaskToQueue', {
+  description: "Analyze dependencies",
+  content: "Use the filesystem-tools to find all npm dependencies in the project and create a breakdown report."
+});
+
+console.log(result);
+// { type: "json", data: { status: "queued", message: "Task has been queued for later execution." } }
 ```
 
 ## Integration
@@ -391,15 +506,28 @@ The package has a configuration schema with optional `agentDefaults` for queue s
 
 ```typescript
 // In plugin.ts
+import { z } from "zod";
+import { WorkQueueServiceConfigSchema } from "./schema";
+
 const packageConfigSchema = z.object({
   queue: WorkQueueServiceConfigSchema.prefault({})
 });
+```
 
-// WorkQueueServiceConfigSchema
-export const WorkQueueServiceConfigSchema = z.object({
-  agentDefaults: z.object({
-    maxSize: z.number().positive().optional()
-  }).prefault({})
+**Plugin Installation:**
+```typescript
+import queuePlugin from "@tokenring-ai/queue/plugin";
+import TokenRingApp from "@tokenring-ai/app";
+
+const app = new TokenRingApp();
+
+// Configure with optional queue size limit
+app.install(queuePlugin, {
+  queue: {
+    agentDefaults: {
+      maxSize: 50  // Optional: Maximum number of items in the queue
+    }
+  }
 });
 ```
 
@@ -408,17 +536,18 @@ export const WorkQueueServiceConfigSchema = z.object({
 The queue service can be configured at the agent level:
 
 ```typescript
+import Agent from "@tokenring-ai/agent";
+
 const agentConfig = {
   queue: {
-    maxSize: 100
+    maxSize: 100  // Override default queue size for this agent
   }
 };
 
 const agent = new Agent(app, { config: agentConfig, headless: false });
 ```
 
-### Agent Configuration Schema
-
+**Agent Configuration Schema:**
 ```typescript
 {
   queue: {
@@ -427,24 +556,33 @@ const agent = new Agent(app, { config: agentConfig, headless: false });
 }
 ```
 
-### Agent Initialization
-
-The service is automatically attached to the agent during plugin initialization.
-
-```typescript
-// Called automatically in plugin.ts
-queueService.attach(agent);
-```
-
 ### Service Registration
 
-The service is registered in the plugin configuration:
+The service is automatically registered in the plugin:
 
 ```typescript
 // In plugin.ts
 import WorkQueueService from "./WorkQueueService.js";
 
-app.addServices(new WorkQueueService());
+export default {
+  name: "@tokenring-ai/queue",
+  install(app, config) {
+    app.addServices(new WorkQueueService(config.queue));
+  }
+};
+```
+
+**Manual Registration:**
+```typescript
+import WorkQueueService from "@tokenring-ai/queue/WorkQueueService";
+
+const queueService = new WorkQueueService({
+  agentDefaults: {
+    maxSize: 50
+  }
+});
+
+app.addServices(queueService);
 ```
 
 ### Tool Registration
@@ -453,6 +591,18 @@ The tool is automatically registered with the chat service:
 
 ```typescript
 // In plugin.ts
+import tools from "./tools";
+
+app.waitForService(ChatService, chatService =>
+  chatService.addTools(tools)
+);
+```
+
+**Manual Registration:**
+```typescript
+import tools from "@tokenring-ai/queue/tools";
+
+const chatService = agent.requireServiceByType(ChatService);
 chatService.addTools(tools);
 ```
 
@@ -462,159 +612,194 @@ The chat commands are automatically registered with the agent command service:
 
 ```typescript
 // In plugin.ts
-agentCommandService.addAgentCommands(chatCommands);
+import agentCommands from "./commands";
+
+app.waitForService(AgentCommandService, agentCommandService =>
+  agentCommandService.addAgentCommands(agentCommands)
+);
+```
+
+**Manual Registration:**
+```typescript
+import agentCommands from "@tokenring-ai/queue/commands";
+
+const agentCommandService = agent.requireServiceByType(AgentCommandService);
+agentCommandService.addAgentCommands(agentCommands);
 ```
 
 ## Usage Examples
 
-### Basic Queue Workflow
+### Basic Queue Operations
 
 ```typescript
-import WorkQueueService from '@tokenring-ai/queue';
+import WorkQueueService from "@tokenring-ai/queue";
+import { WorkQueueState } from "@tokenring-ai/queue/state/workQueueState";
 
-// Initialize service (optional maxSize parameter)
-const queueService = new WorkQueueService({ agentDefaults: { maxSize: 50 } });
+// Create service with optional size limit
+const queueService = new WorkQueueService({ 
+  agentDefaults: { maxSize: 10 } 
+});
 
-// Attach to agent - this happens automatically in plugin
+// Attach to agent (initializes state)
 queueService.attach(agent);
 
-// Add multiple tasks
-queueService.enqueue(
-  {
-    checkpoint: agent.generateCheckpoint(),
-    name: 'Create user types',
-    input: 'Generate TypeScript interfaces for User, Account, and Profile'
-  },
-  agent
-);
+// Add items to queue
+const item = {
+  checkpoint: agent.generateCheckpoint(),
+  name: "Generate report",
+  input: "Create a comprehensive sales report for Q4."
+};
 
-queueService.enqueue(
-  {
-    checkpoint: agent.generateCheckpoint(),
-    name: 'Write service layer',
-    input: 'Implement UserService, AccountService, and ProfileService with proper validation'
-  },
-  agent
-);
+const added = queueService.enqueue(item, agent);
+console.log(`Item added: ${added}`);
 
-// Start queue processing
+// Process queue
 queueService.startWork(agent);
-
-// Process items one by one
-while (true) {
-  const item = queueService.dequeue(agent);
-
-  if (!item) {
-    break; // Queue is empty
-  }
-
-  // Set current item
-  queueService.setCurrentItem(item, agent);
-
-  // Restore state and execute
-  agent.restoreState(item.checkpoint.state);
-
-  // Execute the task
-  // ... (execute using chat service or other means)
-
-  // Create checkpoint
-  await agent.createCheckpoint(`Completed: ${item.name}`);
-}
-
-// Complete queue and restore state
-queueService.stopWork(agent);
-const initial = queueService.getInitialCheckpoint(agent);
-if (initial) {
-  agent.restoreState(initial.state);
-}
+const nextItem = queueService.dequeue(agent);
+console.log(`Processing: ${nextItem?.name}`);
 ```
 
-### Chat Command Workflow
+### Interactive Queue Processing
 
-```typescript
-// Build up a queue of prompts offline
-/queue add 'Generate README documentation for the project'
-/queue add 'Create unit tests for database interactions'
-/queue add 'Add error handling to API endpoints'
+```bash
+# Build queue interactively
+/queue add "Analyze user behavior patterns"
+/queue add "Generate monthly metrics"
+/queue add "Update dashboard data"
 
-// Review the queue
+# Review the queue
 /queue list
 
-// Start processing
+# Start processing
 /queue start
 
-// Process all items automatically
-
-# Phase 1: Generate documentation
+# Process items one by one
 /queue next
-/queue run
+/queue run    # Execute task 1
 
-# Phase 2: Write tests
 /queue next
-/queue run
+/queue run    # Execute task 2
 
-# Phase 3: Add error handling
-/queue next
-/queue run
-
-# Found an issue in documentation - skip and fix later
+# Skip an item for later
 /queue skip
 
 # Continue with remaining items
 /queue next
 /queue run
 
-# Finish and restore context
-/queue done
+# Complete processing
+/queue done   # Restore original state
 ```
 
-### Programmatic Task Management
+### Programmatic Task Addition
 
 ```typescript
-// Add a task via tool
-const result = await agent.executeTool('queue_addTaskToQueue', {
-  description: 'Analyze performance bottlenecks',
-  content: 'Use performance monitoring tools to identify slow queries and implement optimizations using database indexing and query optimization techniques.'
+import Agent from "@tokenring-ai/agent";
+import tools from "@tokenring-ai/queue/tools";
+
+// Using the tool programmatically
+const result = await tools.addTaskToQueue.execute({
+  description: "Data analysis task",
+  content: "Analyze the sales data from last quarter and identify trends, anomalies, and recommendations for improvement. Use all available data analysis tools."
+}, agent);
+
+console.log(result);
+// { type: "json", data: { status: "queued", message: "Task has been queued for later execution." } }
+```
+
+### State Preservation and Restoration
+
+```bash
+# Queue processing preserves original state
+/queue start  # Saves current agent state
+
+# Process multiple items
+/queue next
+/queue run    # Each item can modify state temporarily
+
+# Restore original state
+/queue done   # Returns to saved state
+```
+
+### Removing and Inspecting Queue Items
+
+```bash
+# Add items to queue
+/queue add "Task 1: Generate report"
+/queue add "Task 2: Update metrics"
+/queue add "Task 3: Send notifications"
+
+# View queue contents
+/queue list
+# Output:
+# Queue contents:
+# 1. Task 1: Generate report
+# 2. Task 2: Update metrics
+# 3. Task 3: Send notifications
+
+# Check details of a specific item
+/queue details 1
+# Output:
+# Queue item details:
+# {
+#   "checkpoint": {...},
+#   "name": "Task 2: Update metrics",
+#   "input": "Task 2: Update metrics"
+# }
+
+# Remove an item from the queue
+/queue remove 1
+# Output:
+# Removed "Task 2: Update metrics" from queue. Remaining: 2
+```
+
+### Queue with Size Limits
+
+```typescript
+import WorkQueueService from "@tokenring-ai/queue/WorkQueueService";
+
+// Create service with size limit
+const boundedQueue = new WorkQueueService({
+  agentDefaults: { maxSize: 5 }
 });
 
-console.log(result); // { status: 'queued', message: 'Task has been queued for later execution.' }
+boundedQueue.attach(agent);
 
-// Check queue status
-const size = queueService.size(agent);
-const isEmpty = queueService.isEmpty(agent);
-const itemCount = queueService.getAll(agent).length;
+// Add items
+for (let i = 0; i < 7; i++) {
+  const item = {
+    checkpoint: agent.generateCheckpoint(),
+    name: `Task ${i}`,
+    input: `Process task ${i}`
+  };
+  
+  const added = boundedQueue.enqueue(item, agent);
+  console.log(`Task ${i} added: ${added}`);
+  // Tasks 0-4 will be added (true), tasks 5-6 will fail (false)
+}
 
-// Inspect current item
-const current = queueService.getCurrentItem(agent);
-console.log(`Current task: ${current?.name}`);
-
-// Modify queue programmatically
-queueService.splice(1, 1, agent, {
-  checkpoint: agent.generateCheckpoint(),
-  name: 'Fixed analysis task',
-  input: 'Updated analysis with cache optimization'
-});
-
-// View queue state
-const state = queueService.serialize();
-console.log('Queue state:', state);
-
-// Reset queue under specific scope
-const agent = createAgent();
-queueService.attach(agent);
-// ... use queue ...
-
-// Reset only when "chat" is reset
-queueService.reset(['chat']);
+console.log(`Queue size: ${boundedQueue.size(agent)}`);  // 5
 ```
 
 ### Advanced: Loading and Processing Items
 
 ```typescript
+import WorkQueueService from "@tokenring-ai/queue/WorkQueueService";
+import { ChatService } from "@tokenring-ai/chat";
+import runChat from "@tokenring-ai/chat/runChat";
+
 // Add items to queue with meaningful names
-queueService.enqueue({ checkpoint: agent.generateCheckpoint(), name: "Task 1", input: "" }, agent);
-queueService.enqueue({ checkpoint: agent.generateCheckpoint(), name: "Task 2", input: "" }, agent);
-queueService.enqueue({ checkpoint: agent.generateCheckpoint(), name: "Task 3", input: "" }, agent);
+queueService.enqueue({ 
+  checkpoint: agent.generateCheckpoint(), 
+  name: "Task 1", 
+  input: "Generate user documentation" 
+}, agent);
+
+queueService.enqueue({ 
+  checkpoint: agent.generateCheckpoint(), 
+  name: "Task 2", 
+  input: "Write unit tests for user module" 
+}, agent);
 
 // Start queue
 queueService.startWork(agent);
@@ -637,7 +822,7 @@ while (true) {
   try {
     await runChat(next.input, chatConfig, agent);
   } catch (error: any) {
-    agent.errorMessage(`Error running queued prompt: ${error.message || error}`);
+    agent.errorMessage("Error running queued prompt: " + (error.message || error));
   }
 
   await agent.createCheckpoint(`Completed: ${next.name}`);
@@ -651,21 +836,46 @@ if (initial) {
 }
 ```
 
-### Configuration Example
+## Configuration
+
+### Plugin Configuration
 
 ```typescript
 import queuePlugin from "@tokenring-ai/queue/plugin";
+import TokenRingApp from "@tokenring-ai/app";
 
 const app = new TokenRingApp();
 
-// Configure with optional queue size limit
+// Basic queue with unlimited size
+app.install(queuePlugin, {
+  queue: {
+    agentDefaults: {}
+  }
+});
+
+// Queue with size limit
 app.install(queuePlugin, {
   queue: {
     agentDefaults: {
-      maxSize: 50  // Optional: Maximum number of items in the queue
+      maxSize: 50
     }
   }
 });
+```
+
+### Agent Configuration
+
+```typescript
+import Agent from "@tokenring-ai/agent";
+
+// Configure queue size at the agent level
+const agentConfig = {
+  queue: {
+    maxSize: 100
+  }
+};
+
+const agent = new Agent(app, { config: agentConfig, headless: false });
 ```
 
 ## State Management
@@ -675,6 +885,8 @@ app.install(queuePlugin, {
 The queue state is automatically serialized using a Zod schema:
 
 ```typescript
+import { z } from "zod";
+
 const serializationSchema = z.object({
   queue: z.array(z.object({
     checkpoint: z.any(),
@@ -707,144 +919,48 @@ interface SerializedWorkQueueState {
 
 ### Reset Behavior
 
-The `reset(what)` method clears queue state when appropriate scopes are reset:
+The `reset()` method clears all queue state components:
 
-- When `what.includes('chat')`: Clears queue, current item, and initial checkpoint
-- Other reset scopes: No effect on queue state (by design)
+```typescript
+// Reset all state
+state.reset();
 
-This ensures that queue items persist across unrelated state cleanups.
+// This clears:
+// - queue array
+// - started flag
+// - currentItem
+// - initialCheckpoint
+```
+
+**Reset behavior:**
+- Clears all state components unconditionally
+- Does not accept parameters
+- Resets queue, started, currentItem, and initialCheckpoint
 
 ### Checkpoint Integration
 
 The queue automatically creates checkpoints:
 
-- **Initial Checkpoint**: Created when queue is started via `setInitialCheckpoint`
-- **Completion Checkpoints**: Created for each completed item using `agent.createCheckpoint()`
+- **Initial Checkpoint**: Created when queue is started via `setInitialCheckpoint()`
+- **Completion Checkpoints**: Created for each completed item using `checkpointCreate.execute()`
 - **Start Checkpoint**: Created using `@tokenring-ai/checkpoint` when queue starts processing
-- **End Checkpoint**: Created for each item when done processing via `runChat`
+- **End Checkpoint**: Created for each item when done processing
+
+**Checkpoint Flow:**
+```typescript
+// When /queue start is called
+queueService.setInitialCheckpoint(agent.generateCheckpoint(), agent);
+
+// When /queue next is called
+await checkpointCreate.execute(`End of queue operation: ${item.name}`, agent);
+
+// When /queue run completes
+await agent.createCheckpoint(`Completed: ${item.name}`);
+```
 
 ### State Circular References
 
-The serialization schema uses `z.any()` for checkpoint fields to handle circular references that naturally exist in the AgentCheckpointData structure, ensuring successful serialization.
-
-## State Slice
-
-### WorkQueueState Class
-
-```typescript
-class WorkQueueState implements AgentStateSlice<typeof serializationSchema> {
-  // State properties
-  name = "WorkQueueState";
-  queue: QueueItem[] = [];
-  started = false;
-  currentItem: QueueItem | null = null;
-  initialCheckpoint: AgentCheckpointData | null = null;
-  maxSize: number | null = null;
-
-  // Methods
-
-  // Constructor - receives config
-  constructor(readonly initialConfig: z.output<typeof WorkQueueAgentConfigSchema>) {
-    this.maxSize = initialConfig.maxSize ?? null;
-  }
-
-  // Reset state when appropriate scope is reset
-  reset(what: ResetWhat[]): void {
-    if (what.includes("chat")) {
-      this.queue = [];
-      this.started = false;
-      this.currentItem = null;
-      this.initialCheckpoint = null;
-    }
-  }
-
-  // Convert to serializable format
-  serialize(): z.output<typeof serializationSchema> {
-    return {
-      started: this.started,
-      currentItem: this.currentItem,
-      initialCheckpoint: this.initialCheckpoint,
-      queue: this.queue,
-      maxSize: this.maxSize
-    };
-  }
-
-  // Restore from serializable format
-  deserialize(data: z.output<typeof serializationSchema>): void {
-    this.started = data.started;
-    this.currentItem = data.currentItem;
-    this.initialCheckpoint = data.initialCheckpoint;
-    this.queue = data.queue;
-    this.maxSize = data.maxSize;
-  }
-
-  // Get human-readable state summary
-  show(): string[] {
-    return [
-      "Started: " + this.started,
-      "Queue Items: " + this.queue.length,
-      "Current Item: " + (this.currentItem?.name || "None")
-    ];
-  }
-}
-```
-
-### State Display
-
-The `show()` method returns an array of status strings for quick debugging:
-
-```typescript
-[
-  "Started: false",
-  "Queue Items: 5",
-  "Current Item: None"
-]
-```
-
-## Error Handling
-
-### Command Validation
-
-All `/queue` commands include input validation:
-
-- **Index validation**: Index must be within valid range
-- **Prompt validation**: Add command requires non-empty prompt
-- **State validation**: Run/Next require queue to be started
-
-### Error Messages
-
-Clear error messages guide users to correct their commands:
-
-```typescript
-// Invalid index
-agent.errorMessage("Usage: /queue remove <index>  (index starts from 0)");
-
-// Missing prompt
-agent.errorMessage("Usage: /queue add <prompt>");
-
-// Queue not started
-agent.infoMessage("Queue not started. Use /queue start to start the queue.");
-
-// No items in queue
-agent.infoMessage("No queue item loaded. Use /queue next to load the next item...");
-
-// No initial checkpoint
-agent.errorMessage("Couldn't restore initial state, no initial checkpoint found");
-```
-
-### Execution Errors
-
-The `/queue run` command includes try/catch error handling:
-
-```typescript
-try {
-  await runChat(input, chatConfig, agent);
-} catch (error: any) {
-  agent.errorMessage(
-    "Error running queued prompt: " + (error.message || error)
-  );
-}
-```
+The serialization schema uses `z.any()` for checkpoint fields to handle circular references that naturally exist in the `AgentCheckpointData` structure, ensuring successful serialization.
 
 ## Best Practices
 
@@ -854,8 +970,8 @@ try {
 2. **Logical Ordering**: Sort tasks logically (e.g., write → test → deploy)
 3. **Batch Related Tasks**: Group related operations together
 
-Example:
-```
+**Example:**
+```bash
 /queue add 'Analyze user behavior'
 /queue add 'Generate monthly reports'
 /queue add 'Update dashboard queries'
@@ -898,7 +1014,7 @@ Example:
 
 **Problem**: Queue appears empty but not processing
 
-**Solution**:
+**Solution:**
 - Verify with `/queue list` to confirm items exist
 - Check that `/queue start` was called
 - Ensure no items were accidentally cleared
@@ -907,7 +1023,7 @@ Example:
 
 **Problem**: Cannot load items from queue
 
-**Solution**:
+**Solution:**
 - Run `/queue start` to begin queue processing
 - Check queue is not empty with `/queue list`
 
@@ -915,7 +1031,7 @@ Example:
 
 **Problem**: State not restored after completing queue
 
-**Solution**:
+**Solution:**
 - Verify initial checkpoint was saved with `/queue start`
 - Check for errors during checkpoint creation
 - Manually restore using `/queue done`
@@ -924,7 +1040,7 @@ Example:
 
 **Problem**: Remove operation fails with index error
 
-**Solution**:
+**Solution:**
 - Use `/queue list` to get current queue indices
 - Ensure index is 0-based and within queue size
 - Check for queue changes between add and remove
@@ -933,7 +1049,7 @@ Example:
 
 **Problem**: `queue_addTaskToQueue` throws errors about missing parameters
 
-**Solution**:
+**Solution:**
 - Ensure both `description` and `content` parameters are provided
 - Check parameter schema for type requirements
 - Verify string inputs are not empty
@@ -942,7 +1058,7 @@ Example:
 
 **Problem**: After `/queue next`, items don't process
 
-**Solution**:
+**Solution:**
 - Ensure `/queue start` was called before processing
 - Verify items were added with `/queue add`
 - Check queue with `/queue list` to confirm items exist
@@ -951,138 +1067,190 @@ Example:
 
 **Problem**: Cannot add more items to queue
 
-**Solution**:
+**Solution:**
 - Check `maxSize` configuration
 - Process or remove items to make space
 - Increase `maxSize` if needed
 
 ## Testing
 
-### Unit Test Example
+### Unit Tests
 
+The package includes comprehensive unit tests using `vitest`:
+
+**Test File:** `pkg/queue/test/WorkQueueService.test.ts`
+
+**Test Setup:**
 ```typescript
-import { describe, it, expect } from 'vitest';
-import WorkQueueService from './WorkQueueService';
-import type { Agent } from '@tokenring-ai/agent';
+import { describe, it, expect, beforeEach, vi } from "vitest";
+import WorkQueueService from "@tokenring-ai/queue/WorkQueueService";
+import createTestingAgent from "@tokenring-ai/agent/test/createTestingAgent";
+import createTestingApp from "@tokenring-ai/app/test/createTestingApp";
 
-describe('WorkQueueService', () => {
-  it('should enqueue and dequeue items', () => {
-    const service = new WorkQueueService({ agentDefaults: { maxSize: 10 } });
-    const mockAgent = createMockAgent();
+describe("WorkQueueService", () => {
+  let app;
+  let workQueueService;
+  let agent;
 
-    // Attach agent to service (in real usage, this is automatic)
-    // Attach would be needed for agent-dependent methods
-    // For unit tests, mock the agent interactions
-
-    // Service can be tested independently for queue operations
-
-    expect(service.size(mockAgent)).toBe(0);
+  beforeEach(() => {
+    app = createTestingApp();
+    agent = createTestingAgent(app);
+    workQueueService = new WorkQueueService({ agentDefaults: {} });
+    app.addServices(workQueueService);
+    workQueueService.attach(agent);
   });
 
-  it('should enforce queue size limit', () => {
-    const service = new WorkQueueService({ agentDefaults: { maxSize: 2 } });
-    const mockAgent = createMockAgent();
-
-    // Attempt to add more items than maxSize
-    const result1 = service.enqueue(
-      { checkpoint: {}, name: 'A', input: '' },
-      mockAgent
-    );
-    const result2 = service.enqueue(
-      { checkpoint: {}, name: 'B', input: '' },
-      mockAgent
-    );
-    const result3 = service.enqueue(
-      { checkpoint: {}, name: 'C', input: '' },
-      mockAgent
-    );
-
-    expect(result1).toBe(true);
-    expect(result2).toBe(true);
-    expect(result3).toBe(false); // Queue full
-  });
-
-  it('should serialize and deserialize state', () => {
-    const service = new WorkQueueService();
-    const mockAgent = createMockAgent();
-
-    // Enqueue items
-    service.enqueue(
-      { checkpoint: {}, name: 'Test', input: '' },
-      mockAgent
-    );
-    service.enqueue(
-      { checkpoint: {}, name: 'Test2', input: '' },
-      mockAgent
-    );
-
-    // Serialize
-    const serialized = service.serialize();
-    expect(serialized.queue.length).toBe(2);
-
-    // Deserialize (requires WorkQueueState instance)
-    const state = new WorkQueueState();
-    state.deserialize(serialized);
-
-    expect(state.queue.length).toBe(2);
-  });
+  // Tests follow...
 });
+```
 
-describe('WorkQueueState', () => {
-  it('should reset queue state when chat is reset', () => {
-    const state = new WorkQueueState({ maxSize: undefined });
+### Test Examples
 
-    // Modify state
-    const item: QueueItem = {
-      checkpoint: {},
-      name: 'Test',
-      input: ''
-    };
-    state.queue.push(item);
-    state.started = true;
-    state.currentItem = item;
-
-    // Reset
-    state.reset(['chat']);
-
-    expect(state.queue.length).toBe(0);
-    expect(state.started).toBe(false);
-    expect(state.currentItem).toBeNull();
-  });
-
-  it('should show state summary', () => {
-    const state = new WorkQueueState({ maxSize: undefined });
-    state.queue.push({ checkpoint: {}, name: 'Item1', input: '' });
-    state.queue.push({ checkpoint: {}, name: 'Item2', input: '' });
-
-    const summary = state.show();
-    expect(summary[0]).toBe('Started: false');
-    expect(summary[1]).toBe('Queue Items: 2');
-    expect(summary[2]).toContain('Current Item: None');
-  });
+**Test 1: Initialize with default parameters**
+```typescript
+it("should initialize with default parameters", () => {
+  const state = agent.getState(WorkQueueState);
+  expect(state.queue).toEqual([]);
 });
+```
+
+**Test 2: Initialize with maxSize parameter**
+```typescript
+it("should initialize with maxSize parameter", () => {
+  const maxSize = 5;
+  workQueueService = new WorkQueueService({ agentDefaults: { maxSize } });
+  workQueueService.attach(agent);
+  
+  const state = agent.getState(WorkQueueState);
+  expect(state.maxSize).toBe(maxSize);
+});
+```
+
+**Test 3: Enqueue with unlimited queue**
+```typescript
+it("should add items to an unlimited queue", () => {
+  const item1 = { name: "item1", checkpoint: {}, input: "" };
+  const item2 = { name: "item2", checkpoint: {}, input: "" };
+  
+  const result1 = workQueueService.enqueue(item1, agent);
+  const result2 = workQueueService.enqueue(item2, agent);
+  
+  expect(result1).toBe(true);
+  expect(result2).toBe(true);
+  expect(workQueueService.size(agent)).toBe(2);
+});
+```
+
+**Test 4: Enqueue with size limit**
+```typescript
+it("should respect maxSize when adding items", () => {
+  const boundedService = new WorkQueueService({ agentDefaults: { maxSize: 2 } });
+  boundedService.attach(agent);
+  
+  const item1 = { name: "item1", checkpoint: {}, input: "" };
+  const item2 = { name: "item2", checkpoint: {}, input: "" };
+  const item3 = { name: "item3", checkpoint: {}, input: "" };
+  
+  expect(boundedService.enqueue(item1, agent)).toBe(true);
+  expect(boundedService.enqueue(item2, agent)).toBe(true);
+  expect(boundedService.enqueue(item3, agent)).toBe(false); // Queue full
+});
+```
+
+**Test 5: Dequeue from empty queue**
+```typescript
+it("should return undefined when dequeuing from empty queue", () => {
+  const result = workQueueService.dequeue(agent);
+  expect(result).toBeUndefined();
+});
+```
+
+**Test 6: Queue state management**
+```typescript
+it("should correctly manage queue state", () => {
+  // Test start/started
+  expect(workQueueService.started(agent)).toBe(false);
+  workQueueService.startWork(agent);
+  expect(workQueueService.started(agent)).toBe(true);
+  
+  // Test current item
+  const item = { name: "test-item", checkpoint: {}, input: "" };
+  expect(workQueueService.getCurrentItem(agent)).toBeNull();
+  workQueueService.setCurrentItem(item, agent);
+  expect(workQueueService.getCurrentItem(agent)).toBe(item);
+});
+```
+
+**Test 7: Queue manipulation**
+```typescript
+it("should correctly manipulate queue contents", () => {
+  const item1 = { name: "item1", checkpoint: {}, input: "" };
+  const item2 = { name: "item2", checkpoint: {}, input: "" };
+  const item3 = { name: "item3", checkpoint: {}, input: "" };
+  
+  // Enqueue and size
+  workQueueService.enqueue(item1, agent);
+  workQueueService.enqueue(item2, agent);
+  workQueueService.enqueue(item3, agent);
+  expect(workQueueService.size(agent)).toBe(3);
+  expect(workQueueService.isEmpty(agent)).toBe(false);
+  
+  // Get item
+  expect(workQueueService.get(1, agent)).toBe(item2);
+  
+  // Get all (returns copy)
+  const all = workQueueService.getAll(agent);
+  expect(all).toEqual([item1, item2, item3]);
+  expect(all).not.toBe(workQueueService.getAll(agent));
+  
+  // Splice
+  const removed = workQueueService.splice(1, 1, agent);
+  expect(removed).toEqual([item2]);
+  expect(workQueueService.size(agent)).toBe(2);
+  
+  // Dequeue
+  const dequeued = workQueueService.dequeue(agent);
+  expect(dequeued).toBe(item1);
+  
+  // Clear
+  workQueueService.clear(agent);
+  expect(workQueueService.isEmpty(agent)).toBe(true);
+});
+```
+
+### Running Tests
+
+```bash
+# Run all tests
+bun run test
+
+# Run tests in watch mode
+bun run test:watch
+
+# Run tests with coverage
+bun run test:coverage
 ```
 
 ## Package Structure
 
 ```
 @tokenring-ai/queue/
-├── plugin.ts              # Plugin registration and service setup
-├── package.json           # Package metadata and dependencies
-├── index.ts               # Service exports
-├── WorkQueueService.ts    # Main service class
-├── chatCommands.ts        # Chat command exports
-├── tools.ts               # Tool exports
+├── plugin.ts                      # Plugin registration and service setup
+├── package.json                   # Package metadata and dependencies
+├── index.ts                       # Service exports
+├── WorkQueueService.ts            # Main service class
+├── commands.ts                    # Command exports
+├── tools.ts                       # Tool exports
+├── schema.ts                      # Configuration schemas
 ├── commands/
-│   └── queue.ts          # /queue command implementation
+│   └── queue.ts                   # /queue command implementation
 ├── tools/
-│   └── addTaskToQueue.ts # addTaskToQueue tool
+│   └── addTaskToQueue.ts          # addTaskToQueue tool
 ├── state/
-│   └── workQueueState.ts # WorkQueueState implementation
-├── schema.ts              # Configuration schemas
+│   └── workQueueState.ts          # WorkQueueState implementation
 ├── test/
-│   └── WorkQueueService.test.ts  # Unit tests
-└── vitest.config.ts       # Test configuration
+│   └── WorkQueueService.test.ts   # Unit tests
+└── vitest.config.ts               # Test configuration
 ```
 
 ## Dependencies
@@ -1093,7 +1261,7 @@ describe('WorkQueueState', () => {
 - `@tokenring-ai/app`: Application framework and plugin system
 - `@tokenring-ai/chat`: Chat service for command execution (`runChat`)
 - `@tokenring-ai/checkpoint`: Checkpoint management for state saving
-- `@tokenring-ai/utility`: Shared utilities including deepMerge
+- `@tokenring-ai/utility`: Shared utilities including `deepMerge`
 - `zod`: Schema validation and configuration
 
 ### Development Dependencies
@@ -1101,37 +1269,50 @@ describe('WorkQueueState', () => {
 - `typescript`: TypeScript compiler
 - `vitest`: Unit testing framework
 
-### Peer Dependencies
-
-- `@tokenring-ai/agent` (required for Agent type)
-- `@tokenring-ai/app` (required for TokenRingService interface)
-
 ## Plugin Registration
 
 The plugin automatically registers:
 
-1. **ChatTools**: Adds `queue_addTaskToQueue` tool to chat service
-2. **AgentCommands**: Registers `/queue` commands with AgentCommandService
-3. **Services**: Registers WorkQueueService with app
+1. **Tools**: Adds `queue_addTaskToQueue` tool to chat service
+2. **Agent Commands**: Registers `/queue` commands with `AgentCommandService`
+3. **Services**: Registers `WorkQueueService` with app
 
 ```typescript
 // plugin.ts
+import { AgentCommandService } from "@tokenring-ai/agent";
+import { TokenRingPlugin } from "@tokenring-ai/app";
+import { ChatService } from "@tokenring-ai/chat";
+import { z } from "zod";
+
+import agentCommands from "./commands";
+import packageJSON from "./package.json" with {type: "json"};
+import { WorkQueueServiceConfigSchema } from "./schema";
+import tools from "./tools";
+import WorkQueueService from "./WorkQueueService.js";
+
+const packageConfigSchema = z.object({
+  queue: WorkQueueServiceConfigSchema.prefault({})
+});
+
 export default {
-  name: '@tokenring-ai/queue',
-  version: '0.2.0',
-  description: 'Queue for Token Ring',
+  name: packageJSON.name,
+  version: packageJSON.version,
+  description: packageJSON.description,
   install(app, config) {
+    // Register tools with chat service
     app.waitForService(ChatService, chatService =>
       chatService.addTools(tools)
     );
+    
+    // Register commands with agent command service
     app.waitForService(AgentCommandService, agentCommandService =>
-      agentCommandService.addAgentCommands(chatCommands)
+      agentCommandService.addAgentCommands(agentCommands)
     );
+    
+    // Register service
     app.addServices(new WorkQueueService(config.queue));
   },
-  config: z.object({
-    queue: WorkQueueServiceConfigSchema.prefault({})
-  })
+  config: packageConfigSchema
 } satisfies TokenRingPlugin<typeof packageConfigSchema>;
 ```
 
@@ -1364,6 +1545,14 @@ Returns all items in the queue without removing them.
 
 **Returns:**
 - `QueueItem[]`: Copy of all queue items
+
+## Related Components
+
+- **@tokenring-ai/agent**: Core agent framework used for state management
+- **@tokenring-ai/app**: Application framework for plugin registration
+- **@tokenring-ai/chat**: Chat service for command execution
+- **@tokenring-ai/checkpoint**: Checkpoint system for state preservation
+- **@tokenring-ai/utility**: Utility functions including `deepMerge` and `numberedList`
 
 ## License
 

@@ -2,94 +2,122 @@
 
 ## Overview
 
-Token Ring provides two primary CLI packages for different use cases:
+Token Ring provides a primary CLI package for terminal interactions:
 
 ### `@tokenring-ai/cli` - Current Terminal Interface
 
-**Purpose**: Provides a basic terminal interface for interacting with Token Ring AI agents and services.
+**Purpose**: Provides a comprehensive terminal interface for interacting with Token Ring AI agents and services.
 
 **Key Features:**
-- Simple terminal-based interface
+- Dual UI framework support (OpenTUI default, Ink optional)
 - Agent selection and management
-- Basic human interface request handling
+- Interactive chat with color-coded output
+- Human interface request handling
 - Command history and auto-completion
-- Support for commands like `/edit` and `/multi`
+- Support for `/multi` command for multiline input
+- Real-time event streaming
+- Responsive layout adaptation
+- Customizable theme
 
-**Use Case**: Simple terminal interactions with minimal UI features.
+**Use Case**: Primary terminal interface for all TokenRing AI interactions.
 
-### `@tokenring-ai/cli-ink` - Ink-based Enhanced Interactive CLI
+## UI Frameworks
 
-**Purpose**: Provides an enhanced, interactive terminal interface using the Ink framework for rich terminal applications.
+The `@tokenring-ai/cli` package supports two rendering frameworks:
 
-**Key Features:**
-- Interactive terminal interface with Ink framework
-- Real-time event processing with color-coded output
-- Comprehensive command support (`/help`, `/markdown`, `/quit`, `/exit`)
-- Dynamic screen management
-- Code block syntax highlighting
-- Responsive layout that adapts to terminal size
-- Web application integration
-- Workflow agent spawning
+### OpenTUI (Default)
 
-**Use Case**: Feature-rich terminal experience with advanced UI capabilities.
+- **Packages**: `@opentui/react`, `@opentui/core`
+- **Features**: Advanced terminal rendering with alternate screen buffer support
+- **Components**: Uses `<box>` and `<text>` JSX elements
+- **Hooks**: `useTerminalDimensions()`, `useKeyboard()`
+- **Best for**: Full-featured terminal applications with complex layouts
 
-## Comparison
+### Ink
 
-| Feature | `@tokenring-ai/cli` | `@tokenring-ai/cli-ink` |
-|---------|-------------------|------------------------|
-| **UI Framework** | Basic terminal UI | Ink framework |
-| **Output Formatting** | Basic text | Color-coded, syntax highlighting |
-| **Commands** | `/edit`, `/multi` | `/help`, `/markdown`, `/quit`, `/exit` |
-| **Screen Management** | Basic screens | Dynamic screen switching |
-| **Human Interface** | Basic handling | Comprehensive handling with multiple request types |
-| **Web Integration** | Limited | Full SPA and web application support |
-| **Workflow Support** | Basic | Advanced workflow agent spawning |
+- **Package**: `ink`
+- **Features**: React-based terminal rendering
+- **Components**: Uses `<Box>` and `<Text>` JSX elements (capitalized)
+- **Hooks**: `useStdout()`, `useInput()`
+- **Best for**: Users preferring React-like development experience
+
+Both frameworks provide identical functionality. The choice is based on preference.
 
 ## Usage
 
-### For Basic Terminal Interface
+### Basic CLI Usage
 
 ```typescript
 import { TokenRingApp } from '@tokenring-ai/app';
 import cliPlugin from '@tokenring-ai/cli';
 
 const app = new TokenRingApp();
-app.use(cliPlugin);
+app.install(cliPlugin, {
+  cli: {
+    chatBanner: 'TokenRing CLI',
+    uiFramework: 'opentui', // or 'ink'
+    loadingBannerNarrow: 'Loading...',
+    loadingBannerWide: 'Loading TokenRing CLI...',
+    loadingBannerCompact: 'Loading',
+    screenBanner: 'TokenRing CLI',
+  }
+});
 await app.start();
 ```
 
-### For Enhanced Ink-based Interface
+### Using Ink Framework
 
 ```typescript
 import { TokenRingApp } from '@tokenring-ai/app';
-import cliInkPlugin from '@tokenring-ai/cli-ink';
+import cliPlugin from '@tokenring-ai/cli';
 
 const app = new TokenRingApp();
-app.install(cliInkPlugin);
+app.install(cliPlugin, {
+  cli: {
+    chatBanner: 'TokenRing CLI',
+    uiFramework: 'ink',
+    loadingBannerNarrow: 'Loading...',
+    loadingBannerWide: 'Loading TokenRing CLI...',
+    loadingBannerCompact: 'Loading',
+    screenBanner: 'TokenRing CLI',
+  }
+});
 await app.start();
 ```
 
-### `@tokenring-ai/cli` Dependencies
-- `@tokenring-ai/agent`: Core agent framework
-- `@tokenring-ai/app`: Application framework  
-- `@tokenring-ai/chat`: Chat service
-- `@inquirer/prompts`: Interactive prompts
-- `chalk`: Terminal color styling
-- `execa`: Process execution
+## Dependencies
 
-### `@tokenring-ai/cli-ink` Dependencies
+### @tokenring-ai/cli Dependencies
+
 - `@tokenring-ai/agent`: Core agent framework
 - `@tokenring-ai/app`: Application framework
+- `@tokenring-ai/chat`: Chat service
 - `@tokenring-ai/utility`: Shared utilities
 - `@tokenring-ai/web-host`: Web resource hosting
-- `ink`: Terminal UI framework
-- `ink-syntax-highlight`: Code syntax highlighting
+- `@tokenring-ai/workflow`: Workflow support
+- `@tokenring-ai/filesystem`: File system operations
 - `@inquirer/prompts`: Interactive prompts
 - `chalk`: Terminal color styling
 - `execa`: Process execution
 - `open`: URL opening
+- `zod`: Schema validation
+- `@opentui/core`: OpenTUI core (if using OpenTUI)
+- `@opentui/react`: OpenTUI React (if using OpenTUI)
+- `ink`: Terminal UI framework (if using Ink)
+- `react`: React library
+- `fullscreen-ink`: Fullscreen support (if using Ink)
 
 ## Development Status
 
-- `@tokenring-ai/cli`: Active development, recommended for new projects
-- `@tokenring-ai/cli-ink`: Stalled due to the horrible performance and UI glitching problems in the ink package 
+- `@tokenring-ai/cli`: Active development, recommended for all projects
+- Supports both OpenTUI and Ink frameworks
+- Regular updates and improvements
+
+## Related Documentation
+
+- [CLI Plugin Documentation](./cli.md) - Detailed documentation for `@tokenring-ai/cli`
+- [CLI Ink Documentation](./cli-ink.md) - Ink-specific implementation details
+
+## License
+
+MIT License - see LICENSE file for details.

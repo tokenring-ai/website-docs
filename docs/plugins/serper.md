@@ -2,23 +2,463 @@
 
 ## Overview
 
-The Serper plugin provides seamless integration with Serper.dev's Google Search and News APIs, enabling Token Ring agents and applications to perform real-time web searches, fetch news articles, and extract web page content without direct Google API integration.
+The `@tokenring-ai/serper` package provides seamless integration with Serper.dev's Google Search and News APIs, enabling Token Ring agents and applications to perform real-time web searches, fetch news articles, and extract web page content without direct Google API integration. This package extends the `@tokenring-ai/websearch` module to provide a complete web search provider implementation.
 
 ### Key Features
 
-- **Google Search Integration**: Perform organic web searches with knowledge graphs, related searches, and people also ask results
-- **Google News Search**: Access real-time news articles with source, date, and snippet information
-- **Web Page Fetching**: Extract HTML content and markdown from web pages using Serper's scraping service
+- **Google Search Integration**: Perform organic web searches with knowledge graphs, related searches, and "people also ask" results
+- **Google News Search**: Access real-time news articles with source, date, and snippet information (last hour by default)
+- **Web Page Fetching**: Extract markdown content and metadata from web pages using Serper's scraping service
 - **Location-Based Search**: Support for geographic targeting through `gl` and `location` parameters
 - **Language Support**: Multi-language search capabilities through `hl` parameter
-- **Automatic Plugin Registration**: Integrates automatically with Token Ring applications
+- **Retry Logic**: Built-in retry mechanism with exponential backoff via `doFetchWithRetry`
 - **Type Safety**: Full TypeScript support with Zod schema validation
-- **Error Handling**: Comprehensive error handling with helpful hints for common issues
+- **Comprehensive Error Handling**: Detailed error messages with hints for common issues
+- **Plugin Architecture**: Automatic registration with Token Ring applications via websearch service
 
 ## Installation
 
 ```bash
 bun install @tokenring-ai/serper
+```
+
+## Chat Commands
+
+This package does not include chat commands. Searches should be performed through the websearch service provided by `@tokenring-ai/websearch` or by using the `SerperWebSearchProvider` directly.
+
+## Core Components
+
+### SerperWebSearchProvider
+
+The main provider class that extends `WebSearchProvider` from `@tokenring-ai/websearch`.
+
+#### Constructor
+
+```typescript
+constructor(config: SerperWebSearchProviderOptions)
+```
+
+**Parameters:**
+- `apiKey` (required): Your Serper.dev API key
+- `defaults` (optional): Default search parameters
+  - `gl`: Geographic region code (e.g., 'us', 'uk')
+  - `hl`: Language code (e.g., 'en', 'de')
+  - `location`: Specific location for localized results
+  - `num`: Number of results to return
+  - `page`: Page number for pagination
+
+**Throws:** Error if `apiKey` is not provided
+
+#### Public Methods
+
+##### searchWeb
+
+```typescript
+async searchWeb(query: string, options?: WebSearchProviderOptions): Promise<WebSearchResult>
+```
+
+Performs a Google web search and returns organic results, knowledge graphs, related searches, and "people also ask" results.
+
+**Parameters:**
+- `query` (required): Search query string
+- `options` (optional): Search options
+  - `countryCode`: Geographic region code (e.g., 'us', 'uk')
+  - `language`: Language code (e.g., 'en', 'de')
+  - `location`: Specific location for localized results
+  - `num`: Number of results to return
+  - `page`: Page number for pagination
+
+**Returns:** `Promise<WebSearchResult>` containing:
+- `organic`: Array of organic search results
+- `knowledgeGraph`: Knowledge graph information if available
+- `peopleAlsoAsk`: Array of related questions if available
+- `relatedSearches`: Array of related search queries if available
+
+**Example:**
+
+```typescript
+import SerperWebSearchProvider from '@tokenring-ai/serper';
+
+const provider = new SerperWebSearchProvider({
+  apiKey: process.env.SERPER_API_KEY!,
+  defaults: {
+    gl: 'us',
+    hl: 'en',
+    num: 10
+  }
+});
+
+const results = await provider.searchWeb('Token Ring AI framework');
+console.log(results.organic); // Array of organic search results
+console.log(results.knowledgeGraph); // Knowledge graph if available
+console.log(results.peopleAlsoAsk); // Array of related questions if available
+console.log(results.relatedSearches); // Array of related search queries if available
+```
+
+##### searchNews
+
+```typescript
+async searchNews(query: string, options?: WebSearchProviderOptions): Promise<NewsSearchResult>
+```
+
+Performs a Google News search and returns recent news articles.
+
+**Parameters:**
+- `query` (required): News search query string
+- `options` (optional): Search options
+  - `countryCode`: Geographic region code
+  - `language`: Language code
+  - `location`: Specific location for localized results
+  - `num`: Number of results to return
+  - `page`: Page number for pagination
+
+**Returns:** `Promise<NewsSearchResult>` containing:
+- `news`: Array of news articles with title, link, snippet, date, source, and position
+
+**Note:** The news search includes a hardcoded date filter for the last hour (`tbs: "qdr:h"`). Future versions may make this parameter configurable.
+
+**Example:**
+
+```typescript
+const news = await provider.searchNews('artificial intelligence breakthroughs', {
+  countryCode: 'us',
+  num: 5,
+  page: 1
+});
+
+news.news.forEach(article => {
+  console.log(`Title: ${article.title}`);
+  console.log(`Source: ${article.source}`);
+  console.log(`Date: ${article.date}`);
+  console.log(`Snippet: ${article.snippet}`);
+  console.log(`Link: ${article.link}`);
+});
+```
+
+##### fetchPage
+
+```typescript
+async fetchPage(url: string, options?: WebPageOptions): Promise<WebPageResult>
+```
+
+Fetches and extracts content from a web page using Serper's scraping service.
+
+**Parameters:**
+- `url` (required): URL of the webpage to fetch
+- `options` (optional): Fetch options
+  - `timeout`: Request timeout in milliseconds
+
+**Endpoint:** `POST https://scrape.serper.dev`
+
+**Returns:** `Promise<WebPageResult>` containing:
+- `markdown`: Extracted markdown content
+- `metadata`: Page metadata including title, description, OpenGraph properties
+
+**Example:**
+
+```typescript
+const page = await provider.fetchPage('https://example.com', {
+  timeout: 10000
+});
+
+console.log(page.markdown); // Extracted markdown content
+console.log(page.metadata); // Page metadata including title, description, OpenGraph properties
+```
+
+#### Private Methods
+
+##### googleSearch
+
+```typescript
+private async googleSearch(query: string, opts?: SerperSearchOptions): Promise<SerperSearchResponse>
+```
+
+Internal method for performing Google searches via the Serper API.
+
+**Endpoint:** `POST https://google.serper.dev/search`
+
+##### googleNews
+
+```typescript
+private async googleNews(query: string, opts?: SerperNewsOptions): Promise<SerperNewsResponse>
+```
+
+Internal method for performing Google News searches via the Serper API.
+
+**Endpoint:** `POST https://google.serper.dev/news`
+
+**Note:** Uses hardcoded `tbs: "qdr:h"` for last hour results.
+
+##### buildPayload
+
+```typescript
+private buildPayload(query: string, opts?: Record<string, unknown>): Record<string, unknown>
+```
+
+Builds the request payload by merging query, defaults, and options.
+
+**Parameters:**
+- `query`: Search query string (required)
+- `opts`: Additional search options
+
+**Returns:** Request payload object with undefined/null values removed
+
+**Throws:** Error if query is empty
+
+##### parseJsonOrThrow
+
+```typescript
+private async parseJsonOrThrow<T>(res: Response, context: string): Promise<T>
+```
+
+Parses JSON response or throws an error with detailed information.
+
+**Parameters:**
+- `res`: Response object
+- `context`: Context string for error messages
+
+**Returns:** Parsed JSON object
+
+**Throws:** Error with status, hint, and details properties if response is not OK
+
+## Services
+
+### WebSearchService Integration
+
+The `SerperWebSearchProvider` implements the `WebSearchProvider` interface and integrates with the `WebSearchService` from `@tokenring-ai/websearch`.
+
+**Service Registration:**
+
+When using the plugin, the provider is automatically registered with the websearch service:
+
+```typescript
+import TokenRingApp from '@tokenring-ai/app';
+import { WebSearchService } from '@tokenring-ai/websearch';
+
+const app = new TokenRingApp({
+  websearch: {
+    providers: {
+      serper: {
+        type: 'serper',
+        apiKey: process.env.SERPER_API_KEY!,
+        defaults: {
+          gl: 'us',
+          hl: 'en',
+          num: 10
+        }
+      }
+    }
+  }
+});
+
+// Access the provider through the websearch service
+const websearchService = app.requireService(WebSearchService);
+const results = await websearchService.search('your query', 'serper');
+```
+
+## Provider Documentation
+
+### SerperWebSearchProvider
+
+This package provides a web search provider implementation for the Serper API.
+
+#### Provider Interface
+
+The provider implements the following interface methods from `WebSearchProvider`:
+
+- `searchWeb(query: string, options?: WebSearchProviderOptions): Promise<WebSearchResult>`
+- `searchNews(query: string, options?: WebSearchProviderOptions): Promise<NewsSearchResult>`
+- `fetchPage(url: string, options?: WebPageOptions): Promise<WebPageResult>`
+
+#### Provider Configuration
+
+```typescript
+type SerperWebSearchProviderOptions = {
+  apiKey: string;
+  defaults?: {
+    gl?: string;
+    hl?: string;
+    location?: string;
+    num?: number;
+    page?: number;
+  };
+};
+```
+
+#### Registration Patterns
+
+**Plugin-based Registration:**
+
+```typescript
+import TokenRingApp from '@tokenring-ai/app';
+
+const app = new TokenRingApp({
+  websearch: {
+    providers: {
+      serper: {
+        type: 'serper',
+        apiKey: process.env.SERPER_API_KEY!,
+        defaults: {
+          gl: 'us',
+          hl: 'en'
+        }
+      }
+    }
+  }
+});
+```
+
+**Programmatic Registration:**
+
+```typescript
+import { WebSearchService } from '@tokenring-ai/websearch';
+import SerperWebSearchProvider from '@tokenring-ai/serper';
+
+const provider = new SerperWebSearchProvider({
+  apiKey: process.env.SERPER_API_KEY!,
+  defaults: {
+    gl: 'us',
+    hl: 'en'
+  }
+});
+
+// Register with websearch service
+websearchService.registerProvider('serper', provider);
+```
+
+## RPC Endpoints
+
+This package does not define RPC endpoints.
+
+## Configuration
+
+### Configuration Schema
+
+```typescript
+import { z } from 'zod';
+
+export const SerperDefaultsSchema = z.object({
+  gl: z.string().optional(),
+  hl: z.string().optional(),
+  location: z.string().optional(),
+  num: z.number().optional(),
+  page: z.number().optional(),
+});
+
+export const SerperWebSearchProviderOptionsSchema = z.object({
+  apiKey: z.string(),
+  defaults: SerperDefaultsSchema.optional(),
+});
+
+export const packageConfigSchema = z.object({
+  websearch: z.object({
+    providers: z.record(z.object({
+      type: z.literal('serper'),
+      apiKey: z.string(),
+      defaults: SerperDefaultsSchema.optional(),
+    })).optional(),
+  }).optional(),
+});
+```
+
+### Configuration Example
+
+```typescript
+import TokenRingApp from '@tokenring-ai/app';
+
+const app = new TokenRingApp({
+  websearch: {
+    providers: {
+      serper: {
+        type: 'serper',
+        apiKey: process.env.SERPER_API_KEY!,
+        defaults: {
+          gl: 'us',
+          hl: 'en',
+          num: 10
+        }
+      }
+    }
+  }
+});
+```
+
+### Configuration Options
+
+| Option | Type | Required | Description |
+|--------|------|----------|-------------|
+| `apiKey` | string | Yes | Serper.dev API key |
+| `defaults.gl` | string | No | Geographic region code |
+| `defaults.hl` | string | No | Language code |
+| `defaults.location` | string | No | Specific location |
+| `defaults.num` | number | No | Number of results |
+| `defaults.page` | number | No | Page number |
+
+### Environment Variables
+
+- `SERPER_API_KEY`: Your Serper.dev API key
+
+## Integration
+
+### Plugin Registration
+
+This package integrates with Token Ring applications through the plugin system. When installed, it automatically registers the Serper provider with the websearch service.
+
+### Plugin Installation
+
+```typescript
+import TokenRingApp from '@tokenring-ai/app';
+import serperPlugin from '@tokenring-ai/serper/plugin';
+
+const app = new TokenRingApp();
+
+await app.installPlugin(serperPlugin, {
+  websearch: {
+    providers: {
+      serper: {
+        type: 'serper',
+        apiKey: process.env.SERPER_API_KEY!,
+        defaults: {
+          gl: 'us',
+          hl: 'en'
+        }
+      }
+    }
+  }
+});
+```
+
+### Agent Integration
+
+The provider can be used as a tool for agents:
+
+```typescript
+import { Agent } from '@tokenring-ai/agent';
+import SerperWebSearchProvider from '@tokenring-ai/serper';
+
+const provider = new SerperWebSearchProvider({
+  apiKey: process.env.SERPER_API_KEY!
+});
+
+const agent = new Agent({
+  name: 'Researcher',
+  tools: [
+    {
+      name: 'searchWeb',
+      description: 'Search the web using Google',
+      handler: async (query: string) => {
+        return await provider.searchWeb(query);
+      }
+    },
+    {
+      name: 'searchNews',
+      description: 'Search for news articles',
+      handler: async (query: string) => {
+        return await provider.searchNews(query);
+      }
+    }
+  ]
+});
 ```
 
 ## Usage Examples
@@ -91,6 +531,7 @@ console.log('Markdown content:', page.markdown.substring(0, 200) + '...');
 
 ```typescript
 import TokenRingApp from '@tokenring-ai/app';
+import { WebSearchService } from '@tokenring-ai/websearch';
 
 const app = new TokenRingApp({
   websearch: {
@@ -112,256 +553,16 @@ const websearchService = app.requireService(WebSearchService);
 const results = await websearchService.search('your query', 'serper');
 ```
 
-## Core Properties
-
-### SerperWebSearchProvider
-
-The main provider class that extends `WebSearchProvider` from `@tokenring-ai/websearch`.
-
-#### Constructor
-
-```typescript
-constructor(config: SerperWebSearchProviderOptions)
-```
-
-**Parameters:**
-- `apiKey` (required): Your Serper.dev API key
-- `defaults` (optional): Default search parameters including:
-  - `gl`: Country code (e.g., 'us', 'uk')
-  - `hl`: Language code (e.g., 'en', 'fr')
-  - `location`: Geographic location (e.g., 'Austin,Texas,United States')
-  - `num`: Number of results per page (1-100, default 10)
-  - `page`: Starting page number (default 1)
-
-#### Methods
-
-##### `searchWeb(query: string, options?: WebSearchProviderOptions): Promise<WebSearchResult>`
-
-Performs a Google web search and returns organic results, knowledge graphs, related searches, and people also ask results. Supports Serper-specific parameters such as `autocorrect` and `extraParams` for additional search options.
-
-**Example:**
-
-```typescript
-// Search with autocorrect and other parameters
-const results = await provider.searchWeb('machine learning', {
-  countryCode: 'us',
-  language: 'en',
-  num: 10,
-  autocorrect: true,
-  extraParams: { gl: 'uk' } // Override country code for this query
-});
-```
-
-##### `searchNews(query: string, options?: WebSearchProviderOptions): Promise<NewsSearchResult>`
-
-Performs a Google News search and returns recent news articles limited to the last hour by default. The date range can be adjusted using the `extraParams` parameter (e.g., `tbs` for custom date ranges).
-
-**Example:**
-
-```typescript
-// Search for news within a specific date range
-const news = await provider.searchNews('artificial intelligence breakthroughs', {
-  extraParams: { tbs: 'qdr:d' }, // Last day
-  countryCode: 'us',
-  num: 5,
-  page: 1
-});
-```
-
-##### `fetchPage(url: string, options?: WebPageOptions): Promise<WebPageResult>`
-
-Fetches and extracts content from a web page using Serper's scraping service. The returned `WebPageResult` includes only `markdown` and `metadata` properties; `credits` from the raw API response are filtered out.
-
-**Example:**
-
-```typescript
-// Fetch and extract content from a webpage
-const page = await provider.fetchPage('https://tokenring.ai', {
-  timeout: 10000
-});
-
-console.log('Page title:', page.metadata.title);
-console.log('Description:', page.metadata.description);
-console.log('Markdown content:', page.markdown.substring(0, 200) + '...');
-```
-
-## Key Features
-
-- **Google Search Integration**: Perform organic web searches with knowledge graphs, related searches, and people also ask results
-- **Google News Search**: Access real-time news articles with source, date, and snippet information
-- **Web Page Fetching**: Extract HTML content and markdown from web pages using Serper's scraping service
-- **Location-Based Search**: Support for geographic targeting through `gl` and `location` parameters
-- **Language Support**: Multi-language search capabilities through `hl` parameter
-- **Automatic Plugin Registration**: Integrates automatically with Token Ring applications
-- **Type Safety**: Full TypeScript support with Zod schema validation
-- **Error Handling**: Comprehensive error handling with helpful hints for common issues
-
-## Core Methods/API
-
-### SerperWebSearchProvider Methods
-
-#### `searchWeb(query: string, options?: WebSearchProviderOptions): Promise<WebSearchResult>`
-
-Performs a Google web search and returns organic results, knowledge graphs, related searches, and people also ask results.
-
-**Parameters:**
-- `query` (required): Search query string
-- `options` (optional): Search options including `countryCode`, `language`, `location`, `num`, `page`
-
-**Returns:** `Promise<WebSearchResult>` containing organic results, knowledge graph, people also ask questions, and related searches
-
-#### `searchNews(query: string, options?: WebSearchProviderOptions): Promise<NewsSearchResult>`
-
-Performs a Google News search and returns recent news articles.
-
-**Parameters:**
-- `query` (required): News search query string
-- `options` (optional): Search options including `countryCode`, `language`, `location`, `num`, `page`
-
-**Returns:** `Promise<NewsSearchResult>` containing array of news articles
-
-**Note:** The news search includes a hardcoded date filter for the last hour (`tbs: "qdr:h"`). Future versions may make this parameter configurable.
-
-#### `fetchPage(url: string, options?: WebPageOptions): Promise<WebPageResult>`
-
-Fetches and extracts content from a web page using Serper's scraping service.
-
-**Parameters:**
-- `url` (required): URL of the webpage to fetch
-- `options` (optional): Fetch options including `timeout` (in milliseconds)
-
-**Endpoint:** `POST https://scrape.serper.dev`
-
-**Returns:** `Promise<WebPageResult>` containing markdown content and metadata
-
-## Configuration
-
-### Provider Options
-
-```typescript
-interface SerperWebSearchProviderOptions {
-  apiKey: string;
-  defaults?: {
-    gl?: string;        // Country code
-    hl?: string;        // Language code
-    location?: string;  // Geographic location
-    num?: number;       // Results per page
-    page?: number;      // Starting page
-  };
-}
-```
-
-### Search Options
-
-```typescript
-interface SerperSearchOptions {
-  gl?: string;          // Country code
-  hl?: string;          // Language code
-  location?: string;    // Geographic location
-  num?: number;         // Results per page (1-100)
-  page?: number;        // Starting page number
-  autocorrect?: boolean; // Enable autocorrection
-  type?: "search";      // Fixed as "search"
-  extraParams?: Record<string, string | number | boolean>; // Additional parameters
-}
-
-interface SerperNewsOptions {
-  gl?: string;          // Country code
-  location?: string;    // Geographic location
-  num?: number;         // Results per page
-  page?: number;        // Starting page number
-  type?: "news";        // Fixed as "news"
-  extraParams?: Record<string, string | number | boolean>; // Additional parameters
-}
-```
-
-### Plugin Configuration
-
-```typescript
-import {z} from 'zod';
-
-export const SerperPluginConfigSchema = z.object({
-  websearch: z.object({
-    providers: z.record(z.object({
-      type: z.literal('serper'),
-      apiKey: z.string(),
-      defaults: SerperDefaultsSchema.optional(),
-    })),
-  }).optional(),
-});
-
-export const SerperDefaultsSchema = z.object({
-  gl: z.string().optional(),
-  hl: z.string().optional(),
-  location: z.string().optional(),
-  num: z.number().optional(),
-  page: z.number().optional(),
-});
-```
-
-### Configuration Example
-
-```typescript
-import TokenRingApp from '@tokenring-ai/app';
-
-const app = new TokenRingApp({
-  websearch: {
-    providers: {
-      serper: {
-        type: 'serper',
-        apiKey: process.env.SERPER_API_KEY!,
-        defaults: {
-          gl: 'us',
-          hl: 'en',
-          num: 10
-        }
-      }
-    }
-  }
-});
-```
-
-### Environment Variables
-
-- `SERPER_API_KEY`: Your Serper.dev API key
-
-## Integration
-
-### Token Ring Plugin Integration
-
-The package includes automatic plugin integration with Token Ring applications:
-
-```typescript
-import SerperPlugin from '@tokenring-ai/serper/plugin';
-
-// Automatically registers with Token Ring app
-// when included in the application configuration
-```
-
-The plugin automatically:
-- Validates configuration using Zod schemas
-- Registers the provider with the websearch service
-- Handles provider initialization and error scenarios
-
-### Service Registration
-
-```typescript
-import SerperWebSearchProvider from '@tokenring-ai/serper';
-
-// Create provider instance
-const provider = new SerperWebSearchProvider({
-  apiKey: process.env.SERPER_API_KEY!,
-  defaults: {
-    gl: 'us',
-    hl: 'en'
-  }
-});
-
-// Register with websearch service
-cdnService.registerProvider('serper', provider);
-```
-
 ## Best Practices
+
+1. **API Key Security**: Store your Serper API key in environment variables and never commit it to version control
+2. **Rate Limiting**: Implement appropriate delays between requests to avoid rate limiting
+3. **Caching**: Consider caching repeated search queries to reduce API usage
+4. **Error Handling**: Always handle potential errors from search operations
+5. **Configuration Defaults**: Set reasonable default values for search parameters to ensure consistent behavior
+6. **Timeout Management**: Configure appropriate timeouts for page fetching operations
+7. **Query Validation**: Validate search queries before sending to the API
+8. **Result Processing**: Handle cases where results may be empty or incomplete
 
 ### Error Handling
 
@@ -408,13 +609,9 @@ Common error responses:
 - **Rate Limiting**: Automatic retries with exponential backoff for 429 and 5xx errors.
 - **Error Hints**: Clear messages for common issues such as invalid API key (401) or rate limits (429).
 
-### Usage Recommendations
+## State Management
 
-1. **Always validate API key**: Ensure your Serper API key is properly configured before making requests
-2. **Handle errors gracefully**: Use try-catch blocks to handle potential errors and check status codes
-3. **Respect rate limits**: Monitor your API usage and reduce request frequency if you encounter rate limit errors
-4. **Use appropriate parameters**: Set appropriate `gl`, `hl`, `num`, and `page` parameters based on your use case
-5. **Monitor credits**: The API provides credit information for news searches, though it's not included in the returned results
+This package does not implement state management. The provider is stateless and does not persist any data between requests.
 
 ## Testing
 
@@ -431,7 +628,7 @@ bun run test:coverage
 
 ```typescript
 import { describe, it, expect, beforeEach, vi } from 'vitest';
-import SerperWebSearchProvider from './SerperWebSearchProvider';
+import SerperWebSearchProvider from '@tokenring-ai/serper';
 
 describe('SerperWebSearchProvider', () => {
   let provider: SerperWebSearchProvider;
@@ -456,31 +653,108 @@ describe('SerperWebSearchProvider', () => {
 
 ### Build and Development
 
-The package uses ES modules and requires no build step for development:
-
 ```bash
+# Install dependencies
+bun install
+
+# Run tests
+bun run test
+
+# Run tests in watch mode
+bun run test:watch
+
+# Generate coverage report
+bun run test:coverage
+
+# Type check
 bun run build
 ```
 
+## Dependencies
+
+### Production Dependencies
+
+| Package | Version | Description |
+|---------|---------|-------------|
+| `@tokenring-ai/app` | 0.2.0 | Application framework for plugin integration |
+| `@tokenring-ai/agent` | 0.2.0 | Agent framework |
+| `@tokenring-ai/websearch` | 0.2.0 | Web search provider base class |
+| `@tokenring-ai/utility` | 0.2.0 | Utility functions (pick, doFetchWithRetry) |
+| `zod` | ^4.3.6 | Runtime type validation |
+
+### Development Dependencies
+
+| Package | Version | Description |
+|---------|---------|-------------|
+| `vitest` | ^4.0.18 | Testing framework |
+| `@vitest/coverage-v8` | ^4.0.18 | Coverage tooling |
+| `typescript` | ^5.9.3 | TypeScript compiler |
+
 ## Related Components
-
-### Dependencies
-
-- `@tokenring-ai/app`: Application framework for plugin integration
-- `@tokenring-ai/agent`: Agent framework
-- `@tokenring-ai/websearch`: Abstract web search provider interface
-- `@tokenring-ai/utility`: HTTP utilities and retry logic
-- `zod`: Runtime type validation
 
 ### Related Packages
 
-- `@tokenring-ai/websearch`: Base web search provider interface and abstract classes
+- `@tokenring-ai/websearch`: Web search provider interface and service
+- `@tokenring-ai/app`: Token Ring application framework
 - `@tokenring-ai/agent`: Agent orchestration system
-- `@tokenring-ai/utility`: Utility functions (pick, doFetchWithRetry)
+- `@tokenring-ai/utility`: Shared utilities and helpers
 
-### API Reference
+## Type Definitions
+
+### Request Types
+
+#### SerperSearchRequest
+
+Request payload structure for Google search
+
+```typescript
+{
+  q: string;
+  gl?: string;
+  hl?: string;
+  location?: string;
+  num?: number;
+  page?: number;
+  autocorrect?: boolean;
+  type?: "search";
+}
+```
+
+#### SerperNewsRequest
+
+Request payload structure for Google News search
+
+```typescript
+{
+  q: string;
+  gl?: string;
+  location?: string;
+  num?: number;
+  page?: number;
+  type?: "news";
+}
+```
+
+#### SerperSearchParameters
+
+Search parameters in response
+
+```typescript
+{
+  q: string;
+  gl?: string;
+  hl?: string;
+  autocorrect?: boolean;
+  page?: number;
+  type?: string;
+}
+```
+
+### Response Types
 
 #### SerperSearchResponse
+
+Response structure for Google search
 
 ```typescript
 {
@@ -494,6 +768,8 @@ bun run build
 
 #### SerperNewsResponse
 
+Response structure for news search
+
 ```typescript
 {
   searchParameters: SerperSearchParameters;
@@ -503,6 +779,8 @@ bun run build
 ```
 
 #### SerperPageResponse
+
+Response structure for page fetch
 
 ```typescript
 {
@@ -522,6 +800,8 @@ bun run build
   credits?: number;
 }
 ```
+
+### Result Types
 
 #### SerperKnowledgeGraph
 

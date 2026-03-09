@@ -4,7 +4,7 @@
 
 The `@tokenring-ai/testing` package provides an automated testing framework for AI agents within the Token Ring ecosystem. It enables declarative test resource configuration, shell command integration, and automatic test execution with error repair workflows.
 
-## Key Features
+### Key Features
 
 - **Testing Resources**: Pluggable test resource system with `TestingResource` interface
 - **Shell Command Tests**: Built-in `ShellCommandTestingResource` for running test commands
@@ -21,11 +21,13 @@ The `@tokenring-ai/testing` package provides an automated testing framework for 
 
 The central service that manages testing resources and executes tests across all registered resources.
 
+**Implements:** `TokenRingService`
+
 **Class Signature:**
 
 ```typescript
 class TestingService implements TokenRingService {
-  name: string = "TestingService"
+  readonly name: string = "TestingService"
   description: string = "Provides testing functionality"
 
   registerResource(name: string, resource: TestingResource): void
@@ -37,6 +39,20 @@ class TestingService implements TokenRingService {
   constructor(readonly options: z.output<typeof TestingServiceConfigSchema>)
 }
 ```
+
+**Properties:**
+
+- `name: string` - Service name ("TestingService")
+- `description: string` - Service description ("Provides testing functionality")
+- `options: z.output<typeof TestingServiceConfigSchema>` - Service configuration options
+
+**Methods:**
+
+- `registerResource(name: string, resource: TestingResource): void` - Register a new testing resource
+- `getAvailableResources(): Iterable<string>` - Get names of all available resources
+- `runTests(likeName: string, agent: Agent): Promise<void>` - Run tests matching the pattern
+- `allTestsPassed(agent: Agent): boolean` - Check if all tests passed for an agent
+- `attach(agent: Agent): void` - Attach service to agent and initialize state
 
 ### TestingResource Interface
 
@@ -51,9 +67,31 @@ interface TestingResource {
 }
 ```
 
+**Properties:**
+
+- `description: string` - Resource description
+
+**Methods:**
+
+- `runTest(agent: Agent): Promise<TestResult>` - Execute the test and return result
+
 ### ShellCommandTestingResource
 
-Comprehensive implementation of testing resources that execute shell commands as tests.
+Implementation of `TestingResource` that executes shell commands as tests.
+
+**Implements:** `TestingResource`
+
+**Class Signature:**
+
+```typescript
+class ShellCommandTestingResource implements TestingResource {
+  description: string = "Provides ShellCommandTesting functionality"
+
+  constructor(private readonly options: z.output<typeof shellCommandTestingConfigSchema>)
+
+  runTest(agent: Agent): Promise<TestResult>
+}
+```
 
 **Constructor Options:**
 
@@ -71,26 +109,53 @@ interface ShellCommandTestingResourceOptions {
 
 **Properties:**
 
+- `description: string` - Resource description ("Provides ShellCommandTesting functionality")
+- `options: z.output<typeof shellCommandTestingConfigSchema>` - Resource configuration
+
+**Default Values:**
+
+- `timeoutSeconds`: 120 seconds
+- `cropOutput`: 10000 characters
+
+### TestResult Type
+
+Defines the structure for test execution results using a discriminated union.
+
+**Type Definition:**
+
 ```typescript
-class ShellCommandTestingResource implements TestingResource {
-  description: string = "Provides ShellCommandTesting functionality";
-  readonly options: z.output<typeof shellCommandTestingConfigSchema>;
-}
+type TestResult =
+  | {
+      status: "passed";
+      startedAt: number;
+      finishedAt: number;
+      output?: string;
+    }
+  | {
+      status: "failed";
+      startedAt: number;
+      finishedAt: number;
+      output: string;
+    }
+  | {
+      status: "timeout";
+      startedAt: number;
+      finishedAt: number;
+    }
+  | {
+      status: "error";
+      startedAt: number;
+      finishedAt: number;
+      error: string;
+    };
 ```
 
-### TestResult Interface
+**Status Values:**
 
-Defines the structure for test execution results.
-
-```typescript
-interface TestResult {
-  status: "passed" | "failed" | "timeout" | "error";
-  startedAt: number;
-  finishedAt: number;
-  output?: string;
-  error?: string;
-}
-```
+- `passed` - Test completed successfully
+- `failed` - Test failed with output
+- `timeout` - Test exceeded timeout
+- `error` - Test encountered an error
 
 ### Configuration Schemas
 
@@ -110,10 +175,10 @@ const TestingServiceConfigSchema = z.object({
 ```typescript
 const shellCommandTestingConfigSchema = z.object({
   type: z.literal("shell"),
-  name: string,
+  name: z.string(),
   description: z.string().optional(),
   workingDirectory: z.string().optional(),
-  command: string,
+  command: z.string(),
   timeoutSeconds: z.number().default(120),
   cropOutput: z.number().default(10000),
 });
@@ -163,13 +228,26 @@ const testResultSchema = z.discriminatedUnion("status", [
 
 The `TestingService` class implements the `TokenRingService` interface and provides testing capabilities to agents.
 
-**Methods:**
+**Service Registration:**
 
-- `registerResource(name: string, resource: TestingResource): void` - Register a new testing resource
-- `getAvailableResources(): Iterable<string>` - Get names of all available resources
-- `runTests(likeName: string, agent: Agent): Promise<void>` - Run tests matching the pattern
-- `allTestsPassed(agent: Agent): boolean` - Check if all tests passed for an agent
-- `attach(agent: Agent): void` - Attach service to agent and initialize state
+The service is automatically registered when the plugin is installed:
+
+```typescript
+import testingPlugin from '@tokenring-ai/testing/plugin';
+
+app.addPlugin(testingPlugin, {
+  testing: {
+    agentDefaults: { maxAutoRepairs: 5 },
+    resources: {
+      'build-test': {
+        type: 'shell',
+        name: 'build-test',
+        command: 'bun run build'
+      }
+    }
+  }
+});
+```
 
 **Usage:**
 
@@ -192,13 +270,27 @@ await testingService.runTests('*', agent);
 
 // Check if all tests passed
 if (testingService.allTestsPassed(agent)) {
-  console.log('All tests passed!');
+  agent.chatOutput('All tests passed!');
 }
+```
+
+**State Attachment:**
+
+When attached to an agent, the service initializes state:
+
+```typescript
+// Service automatically calls attach() during plugin installation
+// This initializes TestingState with agent-specific configuration
+testingService.attach(agent);
+
+// Access state
+const state = agent.getState('TestingState');
+console.log(state.show());
 ```
 
 ## Provider Documentation
 
-This package does not use provider patterns.
+This package does not use provider patterns. Resources are registered directly through the `TestingService`.
 
 ## RPC Endpoints
 
@@ -215,31 +307,80 @@ Run and manage tests interactively through the chat interface.
 - `/test list` - Display all available test resources
 - `/test run [test_name|*]` - Execute specific test or all tests
 
-**Help Text:**
+**Command Definitions:**
 
-```
-/test list - Show all available tests
-/test run <test_name> - Run a specific test
-/test run - Run all available tests (default)
+```typescript
+// /test list
+{
+  name: "test list",
+  description: "/test list - List available tests",
+  help: `# /test list
 
-If tests fail, the agent will track the results and may offer to automatically repair the errors, provided the maximum auto-repair limit hasn't been reached.
+Show all available tests.
+
+## Example
+
+/test list`,
+  execute: async (_remainder: string, agent: Agent): Promise<string> => {
+    const available = Array.from(
+      agent.requireServiceByType(TestingService).getAvailableResources()
+    );
+    return available.length === 0
+      ? "No tests available."
+      : "Available tests:\n" + available.map(n => ` - ${n}`).join('\n');
+  }
+}
+
+// /test run
+{
+  name: "test run",
+  description: "/test run - Run tests",
+  help: `# /test run [test_name]
+
+Run a specific test or all tests. If tests fail, the agent may offer to automatically repair the issues.
+
+## Example
+
+/test run
+/test run userAuth`,
+  execute: async (remainder: string, agent: Agent): Promise<string> => {
+    await agent.requireServiceByType(TestingService)
+      .runTests(remainder?.trim() || "*", agent);
+    return "Tests executed";
+  }
+}
 ```
 
 ### Example Usage
 
 ```bash
+# List available tests
 /test list
 # Output: Available tests:
-#   build-test
-#   unit-tests
-#   integration-tests
+#   - build-test
+#   - unit-tests
+#   - integration-tests
 
+# Run specific test
 /test run build-test
 # Output: - **[Test: build-test]** : ✅ PASSED
 
+# Run all tests
 /test run
 # Output: **All tests passed!** ✨
+
+# Run test matching pattern
+/test run userAuth
+# Output: - **[Test: userAuth]** : ❌ FAILED
+#         (followed by repair prompt if configured)
 ```
+
+**Output Status Indicators:**
+
+- `✅ PASSED` - Test completed successfully
+- `❌ FAILED` - Test failed with output
+- `⏳ TIMEOUT` - Test exceeded timeout
+- `⚠️ ERROR` - Test encountered an error
 
 ## Configuration
 
@@ -250,7 +391,6 @@ Configure testing resources through the plugin system:
 ```typescript
 import testingPlugin from '@tokenring-ai/testing/plugin';
 
-// Configuration schema
 const config = {
   testing: {
     agentDefaults: {
@@ -274,7 +414,6 @@ const config = {
   }
 };
 
-// Add plugin to application
 app.addPlugin(testingPlugin, config);
 ```
 
@@ -290,31 +429,18 @@ const agentConfig = {
 };
 ```
 
-### Configuration Schema
+### Configuration Validation
 
-**TestingServiceConfigSchema:**
-
-```typescript
-{
-  agentDefaults: {
-    maxAutoRepairs: number;  // Default: 5
-  };
-  resources?: Record<string, TestingResourceConfig>;
-}
-```
-
-**shellCommandTestingConfigSchema:**
+All configuration is validated using Zod schemas:
 
 ```typescript
-{
-  type: "shell";
-  name: string;
-  description?: string;
-  workingDirectory?: string;
-  command: string;
-  timeoutSeconds?: number;  // Default: 120
-  cropOutput?: number;      // Default: 10000
-}
+import { TestingServiceConfigSchema } from '@tokenring-ai/testing';
+
+// Validate configuration
+const validatedConfig = TestingServiceConfigSchema.parse(config.testing);
+
+// Access defaults
+const maxRepairs = validatedConfig.agentDefaults.maxAutoRepairs; // Default: 5
 ```
 
 ## Integration
@@ -329,7 +455,7 @@ import testingPlugin from '@tokenring-ai/testing/plugin';
 
 const app = new TokenRingApp();
 
-// Add testing plugin
+// Add testing plugin with configuration
 app.addPlugin(testingPlugin, {
   testing: {
     agentDefaults: {
@@ -340,24 +466,71 @@ app.addPlugin(testingPlugin, {
         type: 'shell',
         name: 'build',
         command: 'bun run build'
+      },
+      'test': {
+        type: 'shell',
+        name: 'test',
+        command: 'bun test'
       }
     }
   }
 });
 ```
 
+**Automatic Registration:**
+
+When the plugin is installed, it automatically:
+
+1. Registers chat commands with `AgentCommandService`
+2. Registers hooks with `AgentLifecycleService`
+3. Registers `TestingService` with the application
+4. Creates `ShellCommandTestingResource` instances from configuration
+
 ### Auto Test Hook
 
 Enable automatic test execution after chat completion:
 
 ```typescript
-import autoTestHook from '@tokenring-ai/testing/hooks/autoTest';
+import hooks from '@tokenring-ai/testing/hooks';
 
-// The hook is automatically registered when the plugin is installed
+// The autoTest hook is automatically registered when the plugin is installed
 // It will run tests automatically when:
-// 1. Chat completion occurs
-// 2. File system has been modified
+// 1. Chat completion occurs (afterChatCompletion event)
+// 2. File system has been modified (filesystem.isDirty(agent) === true)
+
+// Hook implementation:
+const autoTestHook = {
+  name: "autoTest",
+  displayName: "Testing/Auto Test",
+  description: "Runs tests automatically after chat is complete",
+  callbacks: [
+    new HookCallback(AfterAgentInputSuccess, async (_data, agent) => {
+      const filesystem = agent.requireServiceByType(FileSystemService);
+      const testingService = agent.requireServiceByType(TestingService);
+
+      if (filesystem.isDirty(agent)) {
+        agent.infoMessage("Working Directory was updated, running test suite...");
+        await testingService.runTests("*", agent);
+      }
+    })
+  ]
+};
 ```
+
+### AfterTestsPassed Hook Event
+
+A custom hook event type that can be used to trigger actions after all tests have passed.
+
+**Class Definition:**
+
+```typescript
+class AfterTestsPassed {
+  readonly type = "hook";
+  constructor() {}
+}
+```
+
+This hook event type is exported from the package and can be used to subscribe to test completion events.
 
 ### State Management
 
@@ -369,6 +542,44 @@ const testingState = agent.getState('TestingState');
 
 // View test results
 console.log(testingState.show());
+// Output:
+// Test Results:
+// [Test: build-test]: PASSED
+// [Test: unit-tests]: FAILED
+//   error output here
+//
+// Total Repairs: 2
+
+// State properties
+interface TestingState {
+  name: string;
+  serializationSchema: z.Schema;
+  testResults: Record<string, TestResult>;
+  repairCount: number;
+  maxAutoRepairs: number;
+
+  // Methods
+  reset(what: ResetWhat[]): void;
+  serialize(): z.output<typeof serializationSchema>;
+  deserialize(data: z.output<typeof serializationSchema>): void;
+  show(): string[];
+}
+```
+
+**State Serialization:**
+
+```typescript
+const serializationSchema = z.object({
+  testResults: z.record(z.string(), z.any()),
+  repairCount: z.number(),
+  maxAutoRepairs: z.number()
+});
+
+// Serialize state for checkpointing
+const stateData = testingState.serialize();
+
+// Deserialize from checkpoint
+testingState.deserialize(stateData);
 ```
 
 ## Usage Examples
@@ -384,14 +595,14 @@ const appConfig = {
       maxAutoRepairs: 5
     },
     resources: {
-      build-test: {
+      'build-test': {
         type: "shell",
         name: "build-test",
         command: "bun run build",
         workingDirectory: "./project",
         timeoutSeconds: 120
       },
-      unit-tests: {
+      'unit-tests': {
         type: "shell",
         name: "unit-tests",
         command: "bun test",
@@ -411,10 +622,17 @@ app.config = {
 Use the `/test` command in the chat interface:
 
 ```bash
-/test list                    # List all available tests
-/test run build-test          # Run specific test
-/test run                    # Run all tests (uses "*" pattern)
-/test run userAuth           # Run test matching a name pattern
+# List all available tests
+/test list
+
+# Run specific test
+/test run build-test
+
+# Run all tests (uses "*" pattern)
+/test run
+
+# Run test matching a name pattern
+/test run userAuth
 ```
 
 ### Programmatic Usage
@@ -455,7 +673,7 @@ if (allPassed) {
 Programmatically register resources from application configuration:
 
 ```typescript
-import {TestingServiceConfigSchema, shellCommandTestingConfigSchema} from '@tokenring-ai/testing';
+import { TestingServiceConfigSchema, shellCommandTestingConfigSchema } from '@tokenring-ai/testing';
 
 const appConfig = {
   testing: {
@@ -496,29 +714,98 @@ if (testingConfig.resources) {
 }
 ```
 
+### Custom Test Resource Implementation
+
+Create custom test resources by implementing the `TestingResource` interface:
+
+```typescript
+import type { TestingResource } from '@tokenring-ai/testing/TestingResource';
+import type { TestResult } from '@tokenring-ai/testing/schema';
+
+class CustomTestingResource implements TestingResource {
+  description = 'Custom test resource';
+
+  async runTest(agent): Promise<TestResult> {
+    const startedAt = Date.now();
+
+    try {
+      // Perform custom test logic
+      const result = await this.performTest(agent);
+
+      return {
+        status: "passed" as const,
+        startedAt,
+        finishedAt: Date.now(),
+        output: result.output
+      };
+    } catch (error) {
+      return {
+        status: "error" as const,
+        startedAt,
+        finishedAt: Date.now(),
+        error: String(error)
+      };
+    }
+  }
+
+  private async performTest(agent) {
+    // Test implementation
+    return { success: true, output: 'Test output' };
+  }
+}
+
+const customResource = new CustomTestingResource();
+testingService.registerResource('custom', customResource);
+```
+
+### Automated Repair Workflow
+
+The testing package supports automatic repair workflows:
+
+```typescript
+// When tests fail, the service:
+// 1. Collects failure reports
+// 2. Checks repair count against maxAutoRepairs
+// 3. Asks for user approval to repair
+// 4. If approved, sends failure details to agent for repair
+
+// Example flow:
+await testingService.runTests("*", agent);
+// If tests fail:
+// - User is prompted: "The following tests failed. Would you like to ask the agent to automatically repair the errors?"
+// - If confirmed: agent.handleInput({ message: "After running the test suite, the following problems were encountered..." })
+// - repairCount is incremented
+// - Tests are run again to verify repair
+```
+
 ## Best Practices
 
 ### Resource Configuration
 
 1. **Use Descriptive Names**: Test resource names should clearly indicate their purpose
+
    ```typescript
    resources: {
      "lint-typescript": { type: "shell", command: "tsc --noEmit" },
-     "test-unit": { type: "shell", command: "bun test" }
+     "test-unit": { type: "shell", command: "bun test" },
+     "test-integration": { type: "shell", command: "bun test integration" }
    }
    ```
 
 2. **Set Working Directories**: Use absolute paths or relative to project root
+
    ```typescript
    workingDirectory: process.cwd()
    ```
 
 3. **Configure Timeouts**: Set appropriate timeouts for resource-intensive operations
+
    ```typescript
    timeoutSeconds: 300  // 5 minutes for full test suite
    ```
 
 4. **Configure Output Cropping**: Use `cropOutput` to limit output size
+
    ```typescript
    cropOutput: 10000  // Default is 10000 characters
    ```
@@ -526,11 +813,13 @@ if (testingConfig.resources) {
 ### State Management
 
 1. **Enable Auto-Repairs**: Set reasonable `maxAutoRepairs` to enable testing-based repair workflows
+
    ```typescript
    agentDefaults: { maxAutoRepairs: 5 }
    ```
 
 2. **Track Test Results**: Use `allTestsPassed(agent)` to check overall status
+
    ```typescript
    const allPassed = testingService.allTestsPassed(agent);
    if (!allPassed) {
@@ -539,8 +828,9 @@ if (testingConfig.resources) {
    ```
 
 3. **Review State**: Check `TestingState.show()` for detailed results
+
    ```typescript
-   const state = agent.getState(TestingState);
+   const state = agent.getState('TestingState');
    console.log(state.show());
    ```
 
@@ -584,25 +874,24 @@ bun run test:coverage        # Generate coverage report
 
 ```
 pkg/testing/
-├── TestingService.ts                    # Core testing service implementation
-├── TestingResource.ts                   # TestingResource interface definition
-├── ShellCommandTestingResource.ts       # Shell command resource handler
-├── schema.ts                            # Zod schemas for configuration
-├── state/
-│   └── testingState.ts                  # TestingState class for state management
+├── commands.ts              # Chat command exports
 ├── commands/
 │   └── test/
-│       ├── list.ts                      # /test list subcommand
-│       └── run.ts                       # /test run subcommand
-├── chatCommands.ts                      # Chat command exports
-├── hooks.ts                            # Hook exports
+│       ├── list.ts          # /test list subcommand
+│       └── run.ts           # /test run subcommand
+├── hooks.ts                 # Hook exports
 ├── hooks/
-│   └── autoTest.ts                      # autoTest hook implementation
-├── plugin.ts                           # TokenRingPlugin definition
-├── index.ts                            # Public exports
-├── package.json                         # Package metadata and dependencies
-├── vitest.config.ts                    # Vitest test configuration
-└── tsconfig.json                        # TypeScript compiler configuration
+│   └── autoTest.ts          # autoTest hook implementation
+├── state/
+│   └── testingState.ts      # TestingState class
+├── TestingResource.ts       # TestingResource interface
+├── ShellCommandTestingResource.ts
+├── TestingService.ts
+├── schema.ts                # Zod schemas for configuration
+├── plugin.ts                # Plugin registration
+├── index.ts                 # Public exports
+├── package.json             # Dependencies and scripts
+└── vitest.config.ts         # Vitest configuration
 ```
 
 ### Development
@@ -629,31 +918,47 @@ bun run test:watch
 bun run test:coverage
 ```
 
+### Vitest Configuration
+
+```typescript
+import { defineConfig } from "vitest/config";
+
+export default defineConfig({
+  test: {
+    include: ["**/*.test.ts"],
+    environment: "node",
+    globals: true,
+    isolate: true,
+  },
+});
+```
+
 ## Dependencies
 
 ### Production Dependencies
 
-- `zod`: Runtime type validation for configuration schemas
-- `@tokenring-ai/app`: Application framework and plugin system
-- `@tokenring-ai/chat`: Chat functionality
-- `@tokenring-ai/agent`: Agent framework and command system
-- `@tokenring-ai/filesystem`: File system operations
-- `@tokenring-ai/terminal`: Terminal service for shell command execution
-- `@tokenring-ai/queue`: Queue utilities
-- `@tokenring-ai/utility`: Utility classes including KeyedRegistry
-- `glob-gitignore`: Glob pattern matching with gitignore support
+- `@tokenring-ai/app`: Application framework and plugin system (0.2.0)
+- `@tokenring-ai/chat`: Chat functionality (0.2.0)
+- `@tokenring-ai/agent`: Agent framework and command system (0.2.0)
+- `@tokenring-ai/filesystem`: File system operations (0.2.0)
+- `@tokenring-ai/terminal`: Terminal service for shell command execution (0.2.0)
+- `@tokenring-ai/queue`: Queue utilities (0.2.0)
+- `@tokenring-ai/utility`: Utility classes including KeyedRegistry (0.2.0)
+- `glob-gitignore`: Glob pattern matching with gitignore support (^1.0.15)
+- `zod`: Runtime type validation for configuration schemas (^4.3.6)
 
 ### Development Dependencies
 
-- `typescript`: TypeScript compilation
-- `vitest`: Unit testing framework with watch mode and coverage support
+- `typescript`: TypeScript compilation (^5.9.3)
+- `vitest`: Unit testing framework with watch mode and coverage support (^4.0.18)
 
 ## Related Components
 
-- **@tokenring-ai/filesystem**: Provides shell command execution via `execute` tool
+- **@tokenring-ai/filesystem**: Provides file system operations and modification detection
 - **@tokenring-ai/agent**: Agent framework for command execution and state management
 - **@tokenring-ai/utility**: KeyedRegistry for resource management
 - **@tokenring-ai/terminal**: Terminal service for executing shell commands in tests
+- **@tokenring-ai/app**: Application framework and plugin system
 
 ## Limitations
 

@@ -61,15 +61,23 @@ const provider = new ScraperAPIWebSearchProvider({
 | `render` | boolean | No | Enable JavaScript rendering |
 | `deviceType` | 'desktop' \| 'mobile' | No | Device type for scraping |
 
-**Methods:**
+**Public Methods:**
 
-- `searchWeb(query, options?)` - Perform Google SERP search
-- `searchNews(query, options?)` - Perform Google News search
-- `fetchPage(url, options?)` - Fetch HTML page content
+- `searchWeb(query, options?)` - Perform Google SERP search and return structured results
+- `searchNews(query, options?)` - Perform Google News search and return structured results
+- `fetchPage(url, options?)` - Fetch HTML page content and return as markdown
+
+**Private Methods:**
+
+- `googleSerp(query, opts?)` - Internal method for Google SERP searches
+- `googleNews(query, opts?)` - Internal method for Google News searches
+- `buildQuery(params)` - Build URL query parameters
+- `createSerpEndpointURL(query, opts)` - Create Google SERP endpoint URL
+- `createNewsEndpointURL(query, opts)` - Create Google News endpoint URL
 
 ## Services
 
-### Provider Integration
+### WebSearchService Integration
 
 The `ScraperAPIWebSearchProvider` integrates with the `WebSearchService` from `@tokenring-ai/websearch` through the plugin system:
 
@@ -91,6 +99,21 @@ The `ScraperAPIWebSearchProvider` integrates with the `WebSearchService` from `@
 }
 ```
 
+The plugin uses `waitForService` to ensure the `WebSearchService` is available before registering providers:
+
+```typescript
+app.waitForService(WebSearchService, cdnService => {
+  for (const name in config.websearch!.providers) {
+    const provider = config.websearch!.providers[name];
+    if (provider.type === "scraperapi") {
+      cdnService.registerProvider(name, new ScraperAPIWebSearchProvider(
+        ScraperAPIWebSearchProviderOptionsSchema.parse(provider)
+      ));
+    }
+  }
+});
+```
+
 ## Provider Documentation
 
 ### ScraperAPIWebSearchProvider
@@ -107,6 +130,8 @@ const ScraperAPIWebSearchProviderOptionsSchema = z.object({
   render: z.boolean().optional(),
   deviceType: z.enum(["desktop", "mobile"]).optional(),
 });
+
+export type ScraperAPIWebSearchProviderOptions = z.infer<typeof ScraperAPIWebSearchProviderOptionsSchema>;
 ```
 
 **Interface Definition:**
@@ -118,6 +143,62 @@ interface ScraperAPIWebSearchProviderOptions {
   tld?: string;
   render?: boolean;
   deviceType?: 'desktop' | 'mobile';
+}
+```
+
+### Response Types
+
+#### WebSearchResult
+
+Returned by `searchWeb()`:
+
+```typescript
+interface WebSearchResult {
+  organic: Array<{
+    position: number;
+    title: string;
+    snippet: string;
+    highlights?: string[];
+    link: string;
+    displayed_link: string;
+  }>;
+  knowledgeGraph?: {
+    position: number;
+    title: string;
+    imageUrl?: string;
+    description: string;
+  };
+  relatedSearches?: Array<{
+    query: string;
+    position: number;
+  }>;
+}
+```
+
+#### NewsSearchResult
+
+Returned by `searchNews()`:
+
+```typescript
+interface NewsSearchResult {
+  news: Array<{
+    source: string;
+    thumbnail?: string;
+    title: string;
+    description: string;
+    date: string;
+    link: string;
+  }>;
+}
+```
+
+#### WebPageResult
+
+Returned by `fetchPage()`:
+
+```typescript
+interface WebPageResult {
+  markdown: string;
 }
 ```
 
@@ -210,6 +291,32 @@ webSearchService.registerProvider('scraperapi', new ScraperAPIWebSearchProvider(
 }));
 ```
 
+### Tool and Command Integration
+
+The web search provider can be used by agents through tools registered with the agent system:
+
+```typescript
+import { Tool } from '@tokenring-ai/agent';
+
+// Example tool that uses the web search provider
+const webSearchTool = new Tool({
+  name: 'web_search',
+  description: 'Search the web using ScraperAPI',
+  parameters: z.object({
+    query: z.string().describe('Search query'),
+    options: z.object({
+      countryCode: z.string().optional(),
+      num: z.number().optional()
+    }).optional()
+  }),
+  handler: async (args) => {
+    const webSearchService = agent.requireServiceByType(WebSearchService);
+    const provider = webSearchService.getProvider('scraperapi');
+    return await provider.searchWeb(args.query, args.options);
+  }
+});
+```
+
 ## Usage Examples
 
 ### Basic Usage
@@ -249,19 +356,18 @@ const pageContent = await provider.fetchPage('https://example.com', {
 console.log(pageContent.markdown);
 ```
 
-### Google Search Parameters
+### Advanced Usage with Parameters
 
-The package supports comprehensive Google search parameters:
+The package supports comprehensive Google search parameters through the provider options and method-specific options:
 
 ```typescript
 // Search with time filter
 const recentResults = await provider.searchWeb('technology news', {
-  countryCode: 'us',
-  gl: 'us'
+  countryCode: 'us'
 });
 
-// Search with result limit and pagination
-const limitedResults = await provider.searchWeb('AI research', {
+// Search with result limit and pagination via googleSerp
+const limitedResults = await provider['googleSerp']('AI research', {
   countryCode: 'us',
   num: 20,
   start: 10
@@ -269,8 +375,7 @@ const limitedResults = await provider.searchWeb('AI research', {
 
 // News search with time range
 const weeklyNews = await provider.searchNews('climate change', {
-  countryCode: 'us',
-  tbs: 'w'  // Past week
+  countryCode: 'us'
 });
 
 // Fetch page with JavaScript rendering
@@ -278,6 +383,38 @@ const renderedContent = await provider.fetchPage('https://example.com', {
   render: true,
   countryCode: 'gb'
 });
+
+// Search with location targeting via googleSerp
+const localResults = await provider['googleSerp']('restaurants', {
+  countryCode: 'us',
+  uule: 'w+CAIQICINUGFyaXMsIEZyYW5jZQ'  // UULE parameter
+});
+```
+
+### Error Handling
+
+```typescript
+import ScraperAPIWebSearchProvider from '@tokenring-ai/scraperapi';
+
+const provider = new ScraperAPIWebSearchProvider({
+  apiKey: 'your-api-key'
+});
+
+try {
+  const results = await provider.searchWeb('query');
+  console.log('Results:', results);
+} catch (error) {
+  console.error('Search failed:', error.message);
+  console.error('Status code:', error.status);
+  console.error('Hint:', error.hint);
+  
+  // Handle specific error cases
+  if (error.status === 429) {
+    console.log('Rate limit exceeded - consider upgrading your plan');
+  } else if (error.status === 400) {
+    console.log('Invalid parameters - check your request');
+  }
+}
 ```
 
 ## Best Practices
@@ -288,11 +425,32 @@ const renderedContent = await provider.fetchPage('https://example.com', {
 - Never commit API keys to version control
 - Rotate API keys periodically for security
 
+```typescript
+// Recommended: Use environment variables
+const provider = new ScraperAPIWebSearchProvider({
+  apiKey: process.env.SCRAPERAPI_KEY
+});
+```
+
 ### Rate Limiting
 
 - Implement caching for repeated queries
 - Monitor your ScraperAPI usage through the dashboard
 - Respect your plan's rate limits
+
+```typescript
+// Example: Simple caching implementation
+const cache = new Map<string, any>();
+
+async function cachedSearch(query: string) {
+  if (cache.has(query)) {
+    return cache.get(query);
+  }
+  const results = await provider.searchWeb(query);
+  cache.set(query, results);
+  return results;
+}
+```
 
 ### Geotargeting
 
@@ -300,11 +458,43 @@ const renderedContent = await provider.fetchPage('https://example.com', {
 - Combine `countryCode` and `tld` parameters for precise targeting
 - Test results across different regions for consistency
 
+```typescript
+// UK-specific search
+const ukResults = await provider.searchWeb('weather', {
+  countryCode: 'gb'
+});
+
+// Configure provider with default geotargeting
+const ukProvider = new ScraperAPIWebSearchProvider({
+  apiKey: 'your-api-key',
+  countryCode: 'gb',
+  tld: 'co.uk'
+});
+```
+
 ### Error Handling
 
 - Implement retry logic for transient errors (429, 5xx)
 - Log errors with context for debugging
 - Handle rate limit exceeded errors gracefully
+
+```typescript
+// Retry logic example
+async function searchWithRetry(query: string, maxRetries = 3) {
+  for (let i = 0; i < maxRetries; i++) {
+    try {
+      return await provider.searchWeb(query);
+    } catch (error) {
+      if (error.status === 429 && i < maxRetries - 1) {
+        // Wait before retrying (exponential backoff)
+        await new Promise(resolve => setTimeout(resolve, 1000 * Math.pow(2, i)));
+        continue;
+      }
+      throw error;
+    }
+  }
+}
+```
 
 ### Performance Optimization
 
@@ -312,6 +502,14 @@ const renderedContent = await provider.fetchPage('https://example.com', {
 - Batch similar requests when possible
 - Monitor and track usage metrics
 - Use JavaScript rendering only when necessary
+
+```typescript
+// Only enable rendering when needed
+const simpleContent = await provider.fetchPage('https://example.com/static-page');
+const dynamicContent = await provider.fetchPage('https://example.com/app', {
+  render: true  // Only when JS is required
+});
+```
 
 ## Testing
 
@@ -345,19 +543,42 @@ describe('ScraperAPIWebSearchProvider', () => {
     });
   });
 
+  it('should have correct configuration', () => {
+    expect(provider.config.apiKey).toBe('test-key');
+    expect(provider.config.countryCode).toBe('us');
+  });
+
+  it('should validate configuration schema', () => {
+    const schema = ScraperAPIWebSearchProviderOptionsSchema;
+    const validConfig = schema.parse({
+      apiKey: 'test-key',
+      countryCode: 'us'
+    });
+    expect(validConfig).toBeDefined();
+  });
+
+  // Note: Actual API calls should be mocked in tests
   it('should search web correctly', async () => {
+    // Mock the fetch implementation
+    vi.spyOn(global, 'fetch').mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({
+        organic_results: [],
+        search_information: { query_displayed: 'test' }
+      })
+    });
+
     const results = await provider.searchWeb('test query');
-    expect(results.organic).toBeInstanceOf(Array);
+    expect(results.organic).toBeDefined();
   });
 
-  it('should search news correctly', async () => {
-    const results = await provider.searchNews('test query');
-    expect(results.news).toBeInstanceOf(Array);
-  });
+  it('should handle errors correctly', async () => {
+    vi.spyOn(global, 'fetch').mockResolvedValueOnce({
+      ok: false,
+      text: async () => 'Error message'
+    });
 
-  it('should fetch page content correctly', async () => {
-    const content = await provider.fetchPage('https://example.com');
-    expect(content.markdown).toBeDefined();
+    await expect(provider.searchWeb('test query')).rejects.toThrow();
   });
 });
 ```
@@ -388,6 +609,8 @@ describe('ScraperAPIWebSearchProvider', () => {
 
 ## Related Components
 
+### Core Token Ring Packages
+
 - `@tokenring-ai/websearch` - Core web search service and provider interface
 - `@tokenring-ai/agent` - Agent framework for service integration
 - `@tokenring-ai/app` - Application framework for plugin management
@@ -397,14 +620,56 @@ describe('ScraperAPIWebSearchProvider', () => {
 
 - `ScraperAPIWebSearchProvider.ts` - Main provider implementation
 - `index.ts` - Package entry point with exports
+- `plugin.ts` - Token Ring plugin integration
 
-## Migration Guide
+### External Services
 
-### From v0.1.x to v0.2.0
+- [ScraperAPI](https://www.scraperapi.com/) - Web scraping API service
 
-- Provider registration now uses the `websearch.providers` configuration structure
-- The `type` field is required when registering the provider
-- Configuration schema validation is now enforced via Zod schemas
+## Google Search Parameters Reference
+
+The package supports the following Google search parameters through ScraperAPI:
+
+| Parameter | Description | Example |
+|-----------|-------------|---------|
+| `countryCode` | Two-letter ISO country code for geotargeting | `us`, `gb`, `ca` |
+| `tld` | Google domain TLD | `com`, `co.uk`, `ca` |
+| `outputFormat` | Response format | `json`, `csv` |
+| `uule` | Location targeting (UULE parameter) | `w+CAIQICINUGFyaXMsIEZyYW5jZQ` |
+| `num` | Number of results | `10`, `20` |
+| `hl` | Host language | `en`, `de` |
+| `gl` | Country boost | `us`, `de` |
+| `tbs` | Time-based filter | `d` (day), `w` (week), `m` (month), `y` (year) |
+| `ie` | Input encoding | `UTF8` |
+| `oe` | Output encoding | `UTF8` |
+| `start` | Pagination offset | `0`, `10`, `20` |
+
+### Time-Based Filters (tbs)
+
+| Value | Description |
+|-------|-------------|
+| `qdr:d` | Past 24 hours |
+| `qdr:w` | Past week |
+| `qdr:m` | Past month |
+| `qdr:y` | Past year |
+| `w` | Past week (news) |
+| `m` | Past month (news) |
+| `y` | Past year (news) |
+
+## Rate Limiting and Usage
+
+- **ScraperAPI quotas**: Respects your plan's rate limits
+- **429 handling**: Automatic retry with exponential backoff via `doFetchWithRetry`
+- **Usage tracking**: Monitor your usage through ScraperAPI dashboard
+- **Best practices**: Implement caching for repeated queries
+
+## Ethical Considerations
+
+- **Rate Limits**: Respect ScraperAPI's usage limits and quotas
+- **Robots.txt**: The service automatically respects robots.txt directives
+- **Frequency**: Avoid high-frequency scraping; implement caching where appropriate
+- **Terms of Service**: Comply with ScraperAPI's terms of service and target websites' policies
+- **Geographic Targeting**: Use appropriate country codes for targeted content
 
 ## Troubleshooting
 
@@ -445,6 +710,17 @@ const validatedConfig = ScraperAPIWebSearchProviderOptionsSchema.parse(config);
 // Monitor API responses
 const response = await provider.searchWeb('test query');
 console.log('Response status:', response);
+
+// Log errors with context
+try {
+  await provider.searchWeb('test query');
+} catch (error) {
+  console.error('Error details:', {
+    message: error.message,
+    status: error.status,
+    hint: error.hint
+  });
+}
 ```
 
 ## Package Structure
@@ -455,7 +731,13 @@ pkg/scraperapi/
 ├── ScraperAPIWebSearchProvider.ts     # Main provider implementation
 ├── plugin.ts                          # Token Ring plugin integration
 ├── package.json                       # Package metadata and dependencies
-└── vitest.config.ts                   # Vitest configuration
+├── README.md                          # Package documentation
+├── vitest.config.ts                   # Vitest configuration
+└── design/                            # Design documentation
+    ├── implementation.md              # Implementation design
+    ├── endpoint_docs.md               # ScraperAPI endpoint documentation
+    ├── google_serp.md                 # Google SERP API documentation
+    └── google_news.md                 # Google News API documentation
 ```
 
 ## Version History
@@ -465,9 +747,18 @@ pkg/scraperapi/
 - Initial release with ScraperAPI integration
 - Support for Google SERP, Google News, and HTML fetching
 - Provider-based architecture with Token Ring web search service
+- Zod schema validation for configuration
+- Comprehensive error handling with retry logic
+
+## Migration Guide
+
+### From v0.1.x to v0.2.0
+
+- Provider registration now uses the `websearch.providers` configuration structure
+- The `type` field is required when registering the provider
+- Configuration schema validation is now enforced via Zod schemas
+- Error responses now include status codes and hints for better debugging
 
 ## License
 
 MIT License - see [LICENSE](https://github.com/tokenring-ai/monorepo/blob/main/LICENSE) for details.
-
-END FILE ATTACHMENT

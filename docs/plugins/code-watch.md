@@ -1,10 +1,10 @@
 # Code Watch
 
-Code Watch is a service that monitors files for AI comments and triggers automated code modification workflows. It integrates with the Token Ring AI framework to execute actions based on special comments like `# AI!`, `// AI!`, `# AI?`, or `// AI?` in code files.
+Code Watch is a service that monitors files for AI comments and triggers automated code modification workflows. It integrates with the Token Ring AI framework to execute actions based on special comments like `# AI!` or `// AI!` in code files.
 
 ## Overview
 
-Code Watch provides real-time file system monitoring for detecting code changes and processing AI instructions embedded in comments. When an AI comment containing `AI!` or `AI?` is detected, the service spawns an agent in headless mode to execute the specified instructions.
+Code Watch provides real-time file system monitoring for detecting code changes and processing AI instructions embedded in comments. When an AI comment containing `AI!` is detected, the service spawns an agent in headless mode to execute the specified instructions.
 
 ### Key Features
 
@@ -39,6 +39,50 @@ Coordinates service registration and configuration handling using TokenRingPlugi
 **Location**: `pkg/code-watch/plugin.ts`
 
 **Exports**: Default token ring plugin configuration
+
+## Services
+
+### CodeWatchService
+
+The primary service implementation that provides file monitoring and AI comment processing capabilities.
+
+**Implements**: `TokenRingService`
+
+**Constructor**:
+```typescript
+constructor(app: TokenRingApp, config: z.output<typeof CodeWatchConfigSchema>)
+```
+
+**Methods**:
+
+- `async run(signal: AbortSignal): Promise<void>`
+  - Starts the service and begins monitoring all configured filesystems
+  - Returns when all watchers are set up and the abort signal is received
+
+- `async watchFileSystem(fileSystemProviderName: string, filesystemConfig: FileSystemConfig, signal: AbortSignal): Promise<void>`
+  - Configures and starts watching a specific filesystem
+  - Sets up event handlers for file add, change, unlink, and error events
+  - Implements debouncing using stability thresholds
+
+- `async processFileForAIComments({filePath, fileSystemProviderName}): Promise<void>`
+  - Scans a file for AI comments
+  - Processes each line for Python/shell and C-style comment patterns
+
+- `async checkAndTriggerAIAction(line: string, filePath: string, lineNumber: number, fileSystemProviderName: string): Promise<void>`
+  - Checks if a comment line contains AI triggers
+  - Initiates action handling for matching patterns
+
+- `async handleAIComment(commentLine: string, filePath: string, lineNumber: number, fileSystemProviderName: string): Promise<void>`
+  - Handles processing of AI comments
+  - Triggers code modification for `AI!` markers
+
+- `async triggerCodeModification(content: string, filePath: string, lineNumber: number, fileSystemProviderName: string): Promise<void>`
+  - Spawns a code modification agent
+  - Executes the AI instruction from the comment
+
+- `async runCodeModification(prompt: string, filePath: string, agent: Agent): Promise<void>`
+  - Executes the code modification command on the agent
+  - Adds the file to the agent's chat context
 
 ## Configuration
 
@@ -105,6 +149,14 @@ export const CodeWatchConfigSchema = z.object({
 | `stabilityThreshold` | `number` | `2000` | Time in milliseconds to wait after a change before processing |
 | `agentType` | `string` | - | Type of agent to spawn for code modifications |
 
+## Chat Commands
+
+This package does not provide chat commands. It operates as a background service that monitors files for changes and processes AI comments automatically.
+
+## RPC Endpoints
+
+This package does not define RPC endpoints. It operates as a background service within the TokenRing application.
+
 ## Usage Examples
 
 ### Basic Installation
@@ -166,7 +218,7 @@ await service.run(abortController.signal);
 
 ### Writing AI Comments
 
-Use `AI!` or `AI?` tags in comments to trigger code modifications:
+Use `AI!` tags in comments to trigger code modifications:
 
 ```typescript
 // Python/shell style - triggers code modification
@@ -181,11 +233,8 @@ function readFile(path: string) {
   // ... code that needs error handling
 }
 
-// AI? is also detected for comments ending with question mark
-# AI? Suggest improvements to this function
-
-// AI comments that don't end with AI! or AI? are detected but don't trigger actions
-# AI Consider refactoring this code
+// AI! can also appear at the end of a line
+const data = fetchData(); // AI! Add error handling here
 ```
 
 ### Starting and Stopping the Service
@@ -255,29 +304,6 @@ await service.run(abortController.signal)
   });
 ```
 
-## AI Comment Detection Pattern
-
-The service detects AI triggers using two patterns:
-
-1. **Lines starting with `# AI` or `// AI`**: Triggers code modification if line also ends with `AI!` or `AI?`
-2. **Lines ending with `AI!` or `AI?`**: Triggers code modification regardless of prefix content
-
-**Detection flow**:
-- Lines starting with `#` or `//` are scanned
-- Lines matching either pattern are sent to `checkAndTriggerAIAction()`
-- Comments starting with `# AI` or `// AI` call `handleAIComment()`
-- Comments ending with `AI!` or `AI?` call `handleAIComment()`
-- Only comments with `AI!` or `AI?` in content trigger code modification via `triggerCodeModification()`
-
-### AI Comment Types
-
-The service supports two types of AI comments:
-
-| Pattern | Description |
-|---------|-------------|
-| `AI!` | Indicates a command that AI must execute. This is a critical instruction that requires completion. |
-| `AI?` | Indicates a question or request for AI to consider or provide input. This is a softer request. |
-
 ## Integration
 
 ### Service Integration Flow
@@ -287,7 +313,7 @@ The service supports two types of AI comments:
 3. **Change Detection**: Filesystem watcher detects additions and modifications
 4. **Debouncing**: Multiple rapid changes trigger stability thresholds to filter out incomplete writes
 5. **Comment Detection**: File content is scanned for AI comment patterns
-6. **AI Trigger Detection**: Comments with `AI!` or `AI?` markers trigger action handling
+6. **AI Trigger Detection**: Comments with `AI!` markers trigger action handling
 7. **Agent Spawning**: Code modification agent is spawned in headless mode
 8. **Instruction Execution**: Agent processes the AI instruction
 9. **File Update**: Agent modifies the file and removes AI markers
@@ -304,7 +330,7 @@ The CodeWatch service integrates with:
 
 ### Agent Integration Workflow
 
-When an `AI!` or `AI?` comment is detected:
+When an `AI!` comment is detected:
 
 ```typescript
 // 1. Agent is spawned in headless mode with specified agentType
@@ -349,6 +375,30 @@ pkg/code-watch/
 ├── CodeWatchService.ts      # Main service implementation
 └── plugin.ts                # Plugin registration
 ```
+
+## AI Comment Detection Pattern
+
+The service detects AI triggers using two patterns:
+
+1. **Lines starting with `# AI` or `// AI`**: Triggers code modification processing
+2. **Lines ending with `AI!`**: Triggers code modification processing regardless of prefix content
+
+**Detection flow**:
+- Lines starting with `#` or `//` are scanned
+- Lines matching either pattern are sent to `checkAndTriggerAIAction()`
+- Comments starting with `# AI` or `// AI` call `handleAIComment()`
+- Comments ending with `AI!` call `handleAIComment()`
+- Only comments with `AI!` in content trigger code modification via `triggerCodeModification()`
+
+### AI Comment Types
+
+The service supports one type of AI comment:
+
+| Pattern | Description |
+|---------|-------------|
+| `AI!` | Indicates a command that AI must execute. This is a critical instruction that requires completion. |
+
+**Note**: The `AI!` marker must be present in the comment content for code modification to be triggered. Comments that start with `# AI` or `// AI` but don't contain `AI!` will be detected but won't trigger action.
 
 ## Best Practices
 
@@ -512,7 +562,7 @@ Creates a new CodeWatchService instance.
   - **Returns**: `Promise<void>` - Resolves when action is initiated
   - **AI Trigger Patterns**:
     - Lines starting with `# AI` or `// AI`
-    - Lines ending with `AI!` or `AI?`
+    - Lines ending with `AI!`
 
 - `async handleAIComment(commentLine: string, filePath: string, lineNumber: number, fileSystemProviderName: string): Promise<void>`
   - Handles processing of a specific AI comment type
@@ -524,7 +574,7 @@ Creates a new CodeWatchService instance.
   - **Returns**: `Promise<void>` - Resolves when handling is complete
   - **Behavior**:
     - Extracts actual comment content (removes `# ` or `// ` prefix)
-    - Checks if content includes `AI!` or `AI?` marker
+    - Checks if content includes `AI!` marker
     - Calls `triggerCodeModification()` if `AI!` is present
 
 - `async triggerCodeModification(content: string, filePath: string, lineNumber: number, fileSystemProviderName: string): Promise<void>`
@@ -576,6 +626,25 @@ Creates a new CodeWatchService instance.
 
 - **@tokenring-ai/utility**: Utility functions
   - Async queue handling
+
+## Dependencies
+
+### Production Dependencies
+
+- `@tokenring-ai/app`: 0.2.0 - Core application framework
+- `@tokenring-ai/chat`: 0.2.0 - Chat functionality
+- `zod`: ^4.3.6 - Schema validation
+- `@tokenring-ai/agent`: 0.2.0 - Agent management
+- `@tokenring-ai/filesystem`: 0.2.0 - File system abstraction
+- `@tokenring-ai/utility`: 0.2.0 - Utility functions
+- `async`: ^3.2.6 - Concurrent processing
+- `ignore`: ^7.0.5 - Ignore pattern matching
+
+### Development Dependencies
+
+- `vitest`: ^4.0.18 - Testing framework
+- `typescript`: ^5.9.3 - TypeScript compiler
+- `@types/async`: ^3.2.25 - Async type definitions
 
 ## License
 

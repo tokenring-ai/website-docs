@@ -67,7 +67,7 @@ const sidebars: SidebarsConfig = {
         'plugins/audio',
         'plugins/aws',
         'plugins/blog',
-        'plugins/browser-agent-storage',
+        'plugins/browser-storage',
         'plugins/browser-file-system',
         'plugins/cdn',
         'plugins/chat',

@@ -6,13 +6,13 @@ The `@tokenring-ai/utility` package provides a comprehensive collection of gener
 
 ## Key Features
 
-- **Object Utilities**: Safe object manipulation with type safety
-- **String Utilities**: Comprehensive string processing and formatting
-- **HTTP Utilities**: Robust HTTP client with automatic retry logic
-- **Promise Utilities**: Advanced promise handling and management
-- **Registry Utilities**: Flexible registry patterns for service management
-- **Timer Utilities**: Throttle and debounce functions
-- **Buffer Utilities**: Binary data detection
+- **Object Utilities**: Safe object manipulation with type safety (`pick`, `omit`, `transform`, `deepMerge`, `deepEquals`, `isEmpty`, `parametricObjectFilter`, `pickValue`, `requireFields`)
+- **String Utilities**: Comprehensive string processing and formatting (`convertBoolean`, `trimMiddle`, `shellEscape`, `joinDefault`, `formatLogMessages`, `createAsciiTable`, `wrapText`, `indent`, `markdownList`, `numberedList`, `codeBlock`, `errorToString`, `markdownTable`, `dedupe`, `like`)
+- **HTTP Utilities**: Robust HTTP client with automatic retry logic (`HttpService`, `doFetchWithRetry`)
+- **Promise Utilities**: Advanced promise handling and management (`abandon`, `waitForAbort`, `backoff`)
+- **Registry Utilities**: Flexible registry patterns for service management (`KeyedRegistry`, `TypedRegistry`)
+- **Timer Utilities**: Throttle and debounce functions for rate limiting
+- **Buffer Utilities**: Binary data detection in buffers
 - **Type Safety**: Comprehensive TypeScript definitions
 - **Error Handling**: Built-in error handling and validation
 
@@ -20,79 +20,94 @@ The `@tokenring-ai/utility` package provides a comprehensive collection of gener
 
 ### Object Utilities
 
+Located in `pkg/utility/object/`:
+
 | Function | Type | Description |
 |----------|------|-------------|
 | `pick` | `(obj: T, keys: K[]) => Pick<T, K>` | Creates an object with picked properties |
 | `omit` | `(obj: T, keys: K[]) => Omit<T, K>` | Creates an object without specified properties |
 | `transform` | `(obj: T, transformer) => { [K]: R }` | Transforms object values using a transformer function |
-| `requireFields` | `(obj: T, required: (keyof T)[], context?) => void` | Validates required fields exist |
+| `requireFields` | `(obj: T, required: (keyof T)[], context?) => void` | Validates required fields exist, throws error if missing |
 | `pickValue` | `(obj: T, key: unknown) => T[keyof T] \| undefined` | Safely picks a single value by key |
-| `deepMerge` | `(target: T \| null \| undefined, source: S \| null \| undefined) => T & S` | Deeply merges two objects |
-| `parametricObjectFilter` | `(requirements) => (obj) => boolean` | Creates a filter function for object arrays |
+| `deepMerge` | `(target: T \| null, source: S \| null) => T & S` | Deeply merges two objects, plain objects are recursively merged |
+| `parametricObjectFilter` | `(requirements) => (obj) => boolean` | Creates a filter function for object arrays with numeric/string comparisons |
 | `isEmpty` | `(obj: Object \| Array \| Map \| Set \| null \| undefined) => boolean` | Checks if object is empty |
 | `deepEquals` | `(a: unknown, b: unknown) => boolean` | Deeply compares two values for equality |
 
 ### String Utilities
 
+Located in `pkg/utility/string/`:
+
 | Function | Type | Description |
 |----------|------|-------------|
-| `convertBoolean` | `(text: string \| undefined \| null) => boolean` | Converts string to boolean |
-| `trimMiddle` | `(str, startLength, endLength) => string` | Truncates middle of string |
+| `convertBoolean` | `(text: string \| undefined \| null) => boolean` | Converts string to boolean, throws on unknown values |
+| `trimMiddle` | `(str: string, startLength: number, endLength: number) => string` | Truncates middle of string with `...omitted...` marker |
 | `shellEscape` | `(arg: string) => string` | Escapes string for shell usage |
 | `joinDefault` | `(separator, iterable, default?) => string \| OtherReturnType` | Joins with default if iterable is empty |
-| `formatLogMessages` | `(msgs: (string \| Error)[]) => string` | Formats log messages |
-| `createAsciiTable` | `(data, options) => string` | Generates ASCII table |
-| `wrapText` | `(text, maxWidth) => string[]` | Wraps text to specified width |
+| `formatLogMessages` | `(msgs: (string \| Error)[]) => string` | Formats log messages with stack traces |
+| `createAsciiTable` | `(data: string[][], options: TableOptions) => string` | Generates ASCII table with wrapping |
+| `wrapText` | `(text: string, maxWidth: number) => string[]` | Wraps text to specified width |
 | `indent` | `(input: string \| string[], level: number) => string` | Indents text by level |
 | `markdownList` | `(items: string[], indentLevel?) => string` | Creates markdown list |
 | `numberedList` | `(items: string[], indentLevel?) => string` | Creates numbered list |
-| `codeBlock` | `(code, language?) => string` | Wraps code in markdown code block |
-| `errorToString` | `(error: any) => string` | Converts error to string |
-| `markdownTable` | `(columns, rows) => string` | Generates Markdown table |
+| `codeBlock` | `(code: string, language?) => string` | Wraps code in markdown code block |
+| `errorToString` | `(error: any) => string` | Converts error to string representation |
+| `markdownTable` | `(columns: string[], rows: string[][]) => string` | Generates Markdown table |
 | `dedupe` | `(items: string[]) => string[]` | Removes duplicates from string array |
-| `like` | `(likeName, thing) => boolean` | Pattern matching for strings |
+| `like` | `(likeName: string, thing: string) => boolean` | Pattern matching for strings (prefix or exact) |
 
 ### HTTP Utilities
 
+Located in `pkg/utility/http/`:
+
 | Component | Type | Description |
 |-----------|------|-------------|
-| `HttpService` | `abstract class` | Base class for HTTP services |
-| `doFetchWithRetry` | `(url, init?) => Promise<Response>` | Fetch with automatic retry logic |
+| `HttpService` | `abstract class` | Base class for HTTP services with JSON parsing and retry logic |
+| `doFetchWithRetry` | `(url: string, init?) => Promise<Response>` | Fetch with automatic retry logic for 429 and 5xx errors |
 
 ### Promise Utilities
 
+Located in `pkg/utility/promise/`:
+
 | Function | Type | Description |
 |----------|------|-------------|
-| `abandon` | `(promise: Promise<T>) => void` | Prevents unhandled rejection |
-| `waitForAbort` | `(signal, callback) => Promise<T>` | Waits for abort signal |
-| `backoff` | `(options, fn) => Promise<T>` | Retries with exponential backoff |
+| `abandon` | `(promise: Promise<T>) => void` | Prevents unhandled rejection warnings |
+| `waitForAbort` | `(signal: AbortSignal, callback) => Promise<T>` | Waits for abort signal and resolves with callback result |
+| `backoff` | `(options: BackoffOptions, fn) => Promise<T>` | Retries with exponential backoff |
 
 ### Registry Utilities
 
+Located in `pkg/utility/registry/`:
+
 | Component | Type | Description |
 |-----------|------|-------------|
-| `KeyedRegistry<T>` | `class` | Generic registry by string keys |
+| `KeyedRegistry<T>` | `class` | Generic registry by string keys with callback support |
 | `TypedRegistry<T>` | `class` | Registry for classes with constructor property |
 
 ### Timer Utilities
 
+Located in `pkg/utility/timer/`:
+
 | Function | Type | Description |
 |----------|------|-------------|
-| `throttle` | `(func) => (minWait, ...args) => void` | Throttles function calls |
-| `debounce` | `(func, delay) => (...args) => void` | Debounces function calls |
+| `throttle` | `(func: T) => (minWait: number, ...args) => void` | Throttles function calls with dynamic minWait |
+| `debounce` | `(func: T, delay: number) => (...args) => void` | Debounces function calls |
 
 ### Buffer Utilities
 
+Located in `pkg/utility/buffer/`:
+
 | Function | Type | Description |
 |----------|------|-------------|
-| `isBinaryData` | `(buffer: Buffer) => boolean` | Detects binary data in Buffer |
+| `isBinaryData` | `(buffer: Buffer) => boolean` | Detects binary data in Buffer (null bytes, non-printable ratio) |
 
 ### Type Definitions
+
+Located in `pkg/utility/types.ts`:
 
 | Type | Definition | Description |
 |------|------------|-------------|
 | `PrimitiveType` | `string \| number \| boolean \| null \| undefined` | Primitive JavaScript types |
-| `ParametricObjectRequirements` | `Record<string, number \| string \| null \| undefined>` | Requirements for parametric filtering |
 
 ## Core Methods
 
@@ -116,6 +131,12 @@ registerAll(items: Record<string, T> | Map<string, T>): void
 getLongestPrefixMatch(input: string): { key: string; item: T; remainder: string } | undefined
 ```
 
+**Pattern Matching**: The `likeName` parameter supports:
+- Prefix matching: `'db*'` matches `'database'`, `'dbconnection'`, etc.
+- Exact matching: `'db'` matches `'db'` exactly
+- Case-insensitive matching
+- Array of patterns: `['db*', 'cache*']`
+
 ### TypedRegistry Methods
 
 ```typescript
@@ -125,8 +146,6 @@ getItems: MinimumType[]
 waitForItemByType<R>(type: abstract new (...args: any[]) => R, callback: (item: R) => void): void
 getItemByType<R>(type: abstract new (...args: any[]) => R): R | undefined
 requireItemByType<R>(type: abstract new (...args: any[]) => R): R
-getItemByName(name: string): MinimumType | undefined
-requireItemByName(name: string): MinimumType
 ```
 
 ### HttpService Methods
@@ -135,16 +154,29 @@ requireItemByName(name: string): MinimumType
 protected abstract baseUrl: string
 protected abstract defaultHeaders: Record<string, string>
 
+async parseJsonOrThrow(res: Response, context: string): Promise<any>
 protected async fetchJson(path: string, opts?: RequestInit, context: string): Promise<any>
-protected async parseJsonOrThrow(res: Response, context: string): Promise<any>
 ```
+
+### Error Types
+
+- `CommandFailedError`: Thrown when command execution fails
+- Generic `Error`: Thrown by various utilities with descriptive messages
 
 ## Usage Examples
 
 ### Object Manipulation
 
 ```typescript
-import { pick, omit, transform, pickValue, deepMerge, deepEquals, isEmpty, parametricObjectFilter, requireFields } from '@tokenring-ai/utility/object';
+import pick from '@tokenring-ai/utility/object/pick';
+import omit from '@tokenring-ai/utility/object/omit';
+import transform from '@tokenring-ai/utility/object/transform';
+import pickValue from '@tokenring-ai/utility/object/pickValue';
+import deepMerge from '@tokenring-ai/utility/object/deepMerge';
+import deepEquals from '@tokenring-ai/utility/object/deepEquals';
+import isEmpty from '@tokenring-ai/utility/object/isEmpty';
+import parametricObjectFilter from '@tokenring-ai/utility/object/parametricObjectFilter';
+import requireFields from '@tokenring-ai/utility/object/requireFields';
 
 const user = {
   id: 1,
@@ -204,40 +236,39 @@ try {
   console.log('All required fields present');
 } catch (error) {
   console.error(error.message);
+  // "Config: Missing required field \"email\""
 }
 ```
 
 ### String Formatting
 
 ```typescript
-import {
-  convertBoolean,
-  trimMiddle,
-  shellEscape,
-  joinDefault,
-  formatLogMessages,
-  createAsciiTable,
-  wrapText,
-  indent,
-  markdownList,
-  numberedList,
-  codeBlock,
-  errorToString,
-  markdownTable,
-  dedupe,
-  like
-} from '@tokenring-ai/utility/string';
+import convertBoolean from '@tokenring-ai/utility/string/convertBoolean';
+import trimMiddle from '@tokenring-ai/utility/string/trimMiddle';
+import { shellEscape } from '@tokenring-ai/utility/string/shellEscape';
+import joinDefault from '@tokenring-ai/utility/string/joinDefault';
+import formatLogMessages from '@tokenring-ai/utility/string/formatLogMessage';
+import { createAsciiTable } from '@tokenring-ai/utility/string/asciiTable';
+import { wrapText } from '@tokenring-ai/utility/string/wrapText';
+import indent from '@tokenring-ai/utility/string/indent';
+import markdownList from '@tokenring-ai/utility/string/markdownList';
+import numberedList from '@tokenring-ai/utility/string/numberedList';
+import codeBlock from '@tokenring-ai/utility/string/codeBlock';
+import errorToString from '@tokenring-ai/utility/string/errorToString';
+import markdownTable from '@tokenring-ai/utility/string/markdownTable';
+import { dedupe } from '@tokenring-ai/utility/string/dedupe';
+import { like } from '@tokenring-ai/utility/string/like';
 
 // Boolean conversion
 convertBoolean('true');   // true
 convertBoolean('yes');    // true
 convertBoolean('false');  // false
 convertBoolean('no');     // false
-convertBoolean('maybe');  // Throws: Unknown string used as boolean value: maybe
+// convertBoolean('maybe');  // Throws: Unknown string used as boolean value: maybe
 
 // String shrinking
 trimMiddle('FullDocumentWithLotsOfText', 10, 10);
-// 'FullDocu...omitted...xample.txt'
+// 'FullDocumen...omitted...xt'
 
 // Shell escaping
 const filename = "my file's name.txt";
@@ -357,7 +388,7 @@ class MySqlDatabase implements Database {
 }
 
 const typedRegistry = new TypedRegistry<Database>();
-typedRegistry.register(PostgresDatabase, MySqlDatabase);
+typedRegistry.register(new PostgresDatabase(), new MySqlDatabase());
 
 const db = typedRegistry.getItemByType(PostgresDatabase);
 db.connect();
@@ -366,7 +397,8 @@ db.connect();
 ### Timer Utilities
 
 ```typescript
-import { throttle, debounce } from '@tokenring-ai/utility/timer';
+import throttle from '@tokenring-ai/utility/timer/throttle';
+import debounce from '@tokenring-ai/utility/timer/debounce';
 
 // Throttle example - limit function calls to once per second
 const throttledApiCall = throttle(async (param: string) => {
@@ -420,7 +452,9 @@ const repo = await github.getRepository('tokenring-ai', 'token-ring');
 ### Promise Utilities
 
 ```typescript
-import { abandon, waitForAbort, backoff } from '@tokenring-ai/utility/promise';
+import { abandon } from '@tokenring-ai/utility/promise/abandon';
+import waitForAbort from '@tokenring-ai/utility/promise/waitForAbort';
+import { backoff } from '@tokenring-ai/utility/promise/backoff';
 
 // Abandon promise to prevent unhandled rejection warning
 const fetchPromise = fetch('https://api.example.com/data');
@@ -450,7 +484,7 @@ await backoff(
 ### Buffer Detection
 
 ```typescript
-import isBinaryData from '@tokenring-ai/utility/buffer/isBinaryData';
+import { isBinaryData } from '@tokenring-ai/utility/buffer/isBinaryData';
 import fs from 'fs';
 
 // Check if a file is binary
@@ -461,6 +495,32 @@ console.log('Is binary:', isBinary);
 const textBuffer = Buffer.from('hello world', 'utf-8');
 const isText = isBinaryData(textBuffer);
 console.log('Is text:', isText);
+```
+
+### Parametric Object Filter
+
+```typescript
+import parametricObjectFilter from '@tokenring-ai/utility/object/parametricObjectFilter';
+
+// Numeric comparisons
+const filter = parametricObjectFilter({
+  age: '>20',      // Greater than 20
+  score: '>=90',   // Greater than or equal to 90
+  status: 'active' // Exact match for 'name' field
+});
+
+const users = [
+  { name: 'Alice', age: 25, status: 'active' },
+  { name: 'Bob', age: 18, status: 'active' },
+  { name: 'Charlie', age: 30, status: 'inactive' }
+];
+
+const filtered = users.filter(filter);
+// [{ name: 'Alice', age: 25, status: 'active' }]
+
+// Supported operators:
+// Numeric: '>', '<', '>=', '<=', '=', '' (no operator)
+// String: '' or '=' only for 'name' field
 ```
 
 ## Configuration
@@ -484,6 +544,12 @@ interface BackoffOptions {
   interval: number;           // Initial delay in milliseconds
   multiplier: number;         // Multiplier for exponential backoff
 }
+```
+
+### ParametricObjectRequirements
+
+```typescript
+type ParametricObjectRequirements = Record<string, number | string | null | undefined>;
 ```
 
 ## Integration
@@ -575,6 +641,8 @@ pluginRegistry.waitForItemByName('plugin-a', (plugin) => {
 - Use `convertBoolean` for parsing configuration values
 - Use `dedupe` to remove duplicates from arrays
 - Use `like` for prefix-based string matching
+- Use `parametricObjectFilter` for filtering object arrays with numeric comparisons
+- Use `requireFields` for validating configuration objects
 
 ## Testing
 
@@ -589,8 +657,10 @@ bun test:coverage
 ### Example Test
 
 ```typescript
-import { pick, omit } from '@tokenring-ai/utility/object';
-import { throttle, debounce } from '@tokenring-ai/utility/timer';
+import pick from '@tokenring-ai/utility/object/pick';
+import omit from '@tokenring-ai/utility/object/omit';
+import throttle from '@tokenring-ai/utility/timer/throttle';
+import debounce from '@tokenring-ai/utility/timer/debounce';
 
 describe('Object Utilities', () => {
   test('pick extracts specified properties', () => {
@@ -627,7 +697,7 @@ describe('Timer Utilities', () => {
 
 ### Production Dependencies
 
-- `@tokenring-ai/agent`: ^0.2.0
+- `@tokenring-ai/agent`: 0.2.0
 
 ### Development Dependencies
 
@@ -647,12 +717,13 @@ describe('Timer Utilities', () => {
 - All utilities are type-safe and tested with vitest
 - The package follows the Token Ring documentation standards
 - Utilities are organized into logical modules for easy import
-- Consider the specific needs of your application when choosing utilities
 - Error handling is built into most utilities for robustness
 - The registry pattern is particularly useful for service management in the Token Ring ecosystem
 - Timer utilities help manage performance and prevent excessive API calls
 - String utilities provide comprehensive formatting options for CLI and web interfaces
 - Object utilities support both simple and complex transformation scenarios
+- HTTP utilities include automatic retry logic for resilient API calls
+- Binary data detection uses both null byte detection and non-printable ratio analysis
 
 ## Development
 
@@ -669,6 +740,12 @@ This runs TypeScript type checking without emitting files.
 ```bash
 bun install
 ```
+
+### Tech Stack
+
+- **Runtime**: bun
+- **Testing**: vitest
+- **Language**: TypeScript
 
 ## License
 

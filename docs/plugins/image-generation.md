@@ -112,11 +112,34 @@ async reindex(directory: string, agent: Agent): Promise<void>
 - Updates image_index.json with metadata entries
 - Logs progress and errors
 
-### Tools
+## Services
+
+The package provides the following service:
+
+### ImageGenerationService
+
+Core service for image generation and indexing functionality.
+
+**Registration:**
+
+```typescript
+app.addServices(new ImageGenerationService(config.imageGeneration));
+```
+
+**Configuration:**
+
+```typescript
+{
+  outputDirectory: string;  // Base directory for storing generated images
+  model: string;            // Default AI model for image generation
+}
+```
+
+## Tools
 
 The package provides the following tools:
 
-#### image_generate
+### image_generate
 
 Generate an AI image with configurable parameters and save it to the output directory with EXIF metadata.
 
@@ -169,7 +192,7 @@ const result = await agent.useTool("image_generate", {
 console.log(result.data.path); // ./images/generated/abc123.png
 ```
 
-#### image_search
+### image_search
 
 Search for generated images based on keyword similarity using a custom similarity algorithm that matches query terms against image keywords from the index.
 
@@ -237,9 +260,9 @@ for (const image of searchResults.data.results) {
 }
 ```
 
-### Chat Commands
+## Chat Commands
 
-#### /image
+### /image
 
 Manage image generation and indexing.
 
@@ -251,7 +274,7 @@ Manage image generation and indexing.
 
 **Subcommands:**
 
-##### reindex
+#### reindex
 
 Regenerate the image index by scanning all images and reading their metadata.
 
@@ -486,7 +509,7 @@ pkg/image-generation/
 ├── plugin.ts                    # Plugin integration logic and configuration schema
 ├── ImageGenerationService.ts    # Core service implementation
 ├── tools.ts                     # Tool exports
-├── chatCommands.ts              # Chat command definitions
+├── commands.ts                  # Chat command exports
 ├── commands/
 │   └── image.ts                 # /image command implementation
 ├── tools/
@@ -501,12 +524,12 @@ pkg/image-generation/
 
 ### Production Dependencies
 
-- `@tokenring-ai/agent` (^0.2.0) - Agent orchestration system
-- `@tokenring-ai/app` (^0.2.0) - Application framework
-- `@tokenring-ai/chat` (^0.2.0) - Chat service integration
-- `@tokenring-ai/filesystem` (^0.2.0) - File system operations
-- `@tokenring-ai/ai-client` (^0.2.0) - AI client and model registry
-- `exiftool-vendored` (^35.9.0) - EXIF metadata processing
+- `@tokenring-ai/agent` (0.2.0) - Agent orchestration system
+- `@tokenring-ai/app` (0.2.0) - Application framework
+- `@tokenring-ai/chat` (0.2.0) - Chat service integration
+- `@tokenring-ai/filesystem` (0.2.0) - File system operations
+- `@tokenring-ai/ai-client` (0.2.0) - AI client and model registry
+- `exiftool-vendored` (^35.12.1) - EXIF metadata processing
 - `uuid` (^13.0.0) - Unique ID generation
 - `zod` (^4.3.6) - Schema validation
 
@@ -546,4 +569,4 @@ bun test --coverage
 
 ## License
 
-MIT License - see [LICENSE](./LICENSE) file for details.
+MIT License - see `LICENSE` file for details.

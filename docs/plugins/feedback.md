@@ -81,12 +81,10 @@ askQuestions.execute({
 
 **Browser Response Format**:
 
-```typescript
-{
-  status: "accept" | "reject",
-  comments: string  // User's comments
-}
-```
+The tool uses the agent's `askQuestion` API with a form-based interface. Users can:
+- Select from provided choices (treeSelect)
+- Provide freeform text responses (text input)
+- Choose "Other" to provide custom answers for multiple-choice questions
 
 **Example Usage**:
 
@@ -150,8 +148,10 @@ Answer 2
 - Supports multiple questions that are collected until all are answered
 - Allows users to select from choices or provide "Other" for freeform responses
 - Non-response behavior: Returns "The user did not provide an answer, use your own judgement"
-- Uses agent's askQuestion API with form-based structured questions
+- Uses agent's `askQuestion` API with form-based structured questions
 - Question items are dynamically transformed from choices to treeSelect questions
+- If user doesn't respond (null), throws an error to halt execution
+- Clears previously answered questions as they're completed
 
 **Use Cases**:
 
@@ -188,7 +188,7 @@ Browser-based file content review tool that displays file contents (text, Markdo
 getFileFeedback.execute({
   filePath: string,
   content: string,
-  contentType: z.enum(["text/plain", "text/markdown", "text/x-markdown", "text/html", "application/json"]).optional()
+  contentType: z.string().default("text/plain")
 }, agent)
 ```
 
@@ -206,10 +206,13 @@ getFileFeedback.execute({
 
 ```typescript
 {
-  status: string;  // "accepted" | "rejected"
-  comment?: string;  // Optional user comment
-  filePath?: string;  // File path of accepted content
-  rejectedFilePath?: string;  // File path of rejected content
+  type: "json",
+  data: {
+    status: "accepted" | "rejected",
+    comment?: string,
+    filePath?: string,
+    rejectedFilePath?: string
+  }
 }
 ```
 
@@ -252,17 +255,17 @@ const result = await getFileFeedback.execute({
 **Response Handling**:
 
 ```typescript
-if (result.status === "accepted") {
+if (result.data.status === "accepted") {
   // Content successfully saved to filePath
-  console.log("Content accepted:", result.filePath);
-  if (result.comment) {
-    console.log("User comment:", result.comment);
+  console.log("Content accepted:", result.data.filePath);
+  if (result.data.comment) {
+    console.log("User comment:", result.data.comment);
   }
 } else {
   // Content saved with rejected suffix
-  console.log("Content rejected:", result.rejectedFilePath);
-  if (result.comment) {
-    console.log("User comment:", result.comment);
+  console.log("Content rejected:", result.data.rejectedFilePath);
+  if (result.data.comment) {
+    console.log("User comment:", result.data.comment);
   }
 }
 ```
@@ -274,22 +277,23 @@ if (result.status === "accepted") {
 3. **Server**: Starts Express server in temp directory
 4. **Browser**: Automatically launches browser to show review page
 5. **Content Rendering**:
-   - Markdown: Uses marked.js library on client side
+   - Markdown: Uses marked.js library on client side with styled markdown body
    - HTML: Renders in iframe for proper isolation
-   - JSON: Syntax highlighting with escaped content
+   - JSON: Syntax highlighting with escaped content in pre tag
    - Plain text: Safe HTML escaping for display
 6. **File Operations**:
-   - Accepted content: Saved to requested filePath
+   - Accepted content: Saved to requested filePath via FileSystemService
    - Rejected content: Saved with `.rejectedyyyyMMdd-HHmmss` suffix
 7. **Cleanup**: Automatically removes temp directory on completion
 8. **User Feedback Display**: Shows feedback bar at top of page with styling for accept/reject buttons
+9. **Server Management**: Returns promise that resolves when user submits feedback
 
 **Content Type Rendering**:
 
-- **Plain Text**: Safe HTML escaping of content for display
-- **Markdown**: Client-side rendering with CSS styling for markdown elements
+- **Plain Text**: Safe HTML escaping of content for display in pre tag
+- **Markdown**: Client-side rendering with CSS styling for markdown elements (headers, paragraphs, lists, code)
 - **HTML**: Iframe rendering with proper isolation from page styles
-- **JSON**: Pre-formatted display with syntax highlighting
+- **JSON**: Pre-formatted display with escaped content for safety
 
 **Use Cases**:
 
@@ -339,14 +343,20 @@ reactFeedback.execute({
 ```typescript
 // Accepted response
 {
-  status: "accept",      // or "reject"
-  comment?: string       // Optional user comment
+  type: "json",
+  data: {
+    status: "accept",
+    comment?: string
+  }
 }
 
 // Rejected response
 {
-  status: "reject",
-  comment?: string
+  type: "json",
+  data: {
+    status: "reject" | "rejected",
+    comment?: string
+  }
 }
 ```
 
@@ -391,8 +401,8 @@ const result = await reactFeedback.execute({
 }, agent);
 
 // Packaged result types (Internal use, return type)
-type ReactToolResult = {
-  status: "accept" | "reject";
+type ReactFeedbackResult = {
+  status: "accept" | "reject" | "rejected";
   comment?: string;
 };
 ```
@@ -400,12 +410,12 @@ type ReactToolResult = {
 **Response Handling**:
 
 ```typescript
-if (result.status === "accept") {
+if (result.data.status === "accept") {
   // Component saved to configured location
-  console.log("Component accepted:", result.comment || "with no comments");
+  console.log("Component accepted:", result.data.comment || "with no comments");
 } else {
   // Component saved with rejected suffix
-  console.log("Component rejected:", result.comment || "with no comments");
+  console.log("Component rejected:", result.data.comment || "with no comments");
 }
 ```
 
@@ -432,7 +442,7 @@ if (result.status === "accept") {
 6. **Server**: Express server running in temp directory
 7. **Browser Launch**: Automatically opens browser to preview page
 8. **File Operations**:
-   - Accepted component: Saved to specified file path
+   - Accepted component: Saved to specified file path via FileSystemService
    - Rejected component: Saved with `.rejectedyyyyMMdd-HH:mm` suffix
 9. **Cleanup**: Removes temp directory after user feedback
 10. **Error Handling**: Throws error if code parameter is missing or invalid
@@ -441,9 +451,9 @@ if (result.status === "accept") {
 **Bundling Configuration**:
 
 ```typescript
-esbuild.build({
-  entryPoints: [componentPath],
-  outfile: "./bundle.ts",
+await esbuild.build({
+  entryPoints: [jsxPath],
+  outfile: bundlePath,
   bundle: true,
   jsx: "automatic",        // JSX transformation mode
   platform: "browser",     // Browser platform
@@ -453,12 +463,14 @@ esbuild.build({
     "react/jsx-runtime"
   ],
   globalName: "window.App",
-  plugins: esbuildExternalGlobalPlugin({
-    react: "window.React",
-    "react-dom": "window.ReactDOM",
-    "react/jsx-runtime": "window.JSX",
-    jQuery: "$"
-  })
+  plugins: [
+    externalGlobalPlugin({
+      react: "window.React",
+      "react-dom": "window.ReactDOM",
+      "react/jsx-runtime": "window.JSX",
+      jQuery: "$"
+    })
+  ]
 });
 ```
 
@@ -466,7 +478,7 @@ esbuild.build({
 
 - React 18 development build: `react@18/umd/react.development.ts`
 - React DOM 18 development build: `react-dom@18/umd/react-dom.development.ts`
-- Runtime module: `JSX = { "jsx": React.createElement, "jsxs": React.createElement }`
+- Runtime module: `window.JSX = { "jsx": React.createElement, "jsxs": React.createElement }`
 
 **Use Cases**:
 
@@ -487,21 +499,22 @@ The package uses a minimal configuration schema that accepts no custom configura
 import {TokenRingPlugin} from "@tokenring-ai/app";
 import {ChatService} from "@tokenring-ai/chat";
 import {z} from "zod";
-import feedbackTools from "./tools.ts";
+import packageJSON from './package.json' with {type: 'json'};
+import tools from "./tools.ts";
 
-const configSchema = z.object({});
+const packageConfigSchema = z.object({});
 
 export default {
-  name: "@tokenring-ai/feedback",
-  version: "0.2.0",
-  description: "Feedback package for Token Ring",
+  name: packageJSON.name,
+  version: packageJSON.version,
+  description: packageJSON.description,
   install(app, config) {
     app.waitForService(ChatService, chatService =>
-      chatService.addTools(feedbackTools)
+      chatService.addTools(tools)
     );
   },
-  config: configSchema
-} satisfies TokenRingPlugin<typeof configSchema>;
+  config: packageConfigSchema
+} satisfies TokenRingPlugin<typeof packageConfigSchema>;
 ```
 
 ### Configuration Schema
@@ -703,6 +716,10 @@ async function execute(params: unknown, agent: Agent) {
 
 ### Runtime Dependencies
 
+- `@tokenring-ai/app@0.2.0` - Base application framework
+- `@tokenring-ai/chat@0.2.0` - Chat service
+- `@tokenring-ai/agent@0.2.0` - Agent system and question schema
+- `@tokenring-ai/filesystem@0.2.0` - File system service
 - `zod@^4.3.6` - Schema validation
 - `esbuild@^0.27.3` - React component bundling
 - `esbuild-plugin-external-global@^1.0.1` - External global plugin for esbuild
@@ -719,13 +736,6 @@ async function execute(params: unknown, agent: Agent) {
 - `typescript@^5.9.3` - TypeScript compiler
 - `@types/express@^5.0.6` - Express type definitions
 - `vitest@^4.0.18` - Testing framework
-
-### Token Ring Dependencies
-
-- `@tokenring-ai/app@0.2.0` - Base application framework
-- `@tokenring-ai/chat@0.2.0` - Chat service
-- `@tokenring-ai/agent@0.2.0` - Agent system and question schema
-- `@tokenring-ai/filesystem@0.2.0` - File system service
 
 ## Error Handling
 
@@ -859,7 +869,7 @@ const result = await getFileFeedback.execute({
   contentType: "text/markdown"
 }, agent);
 
-if (result.status === "accepted") {
+if (result.data.status === "accepted") {
   // Commit approved documentation
   await gitCommit(`docs/api-endpoint-v2.md`);
 }
@@ -892,7 +902,7 @@ const result = await reactFeedback.execute({
 }, agent);
 
 // Handle acceptance
-if (result.status === "accept") {
+if (result.data.status === "accept") {
   console.log("Component approved for integration");
 }
 ```
@@ -923,7 +933,7 @@ const codeResult = await reactFeedback.execute({
 }, agent);
 
 // Continue only if all approvals are received
-if (planResult.status === "accepted" && codeResult.status === "accept") {
+if (planResult.data.status === "accepted" && codeResult.data.status === "accept") {
   // Proceed with implementation
 }
 ```

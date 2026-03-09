@@ -46,6 +46,8 @@ for await (const filePath of fs.getDirectoryTree('/', { recursive: true })) {
 await fs.writeFile('/src/app.js', 'console.log("Hello from mock app");');
 ```
 
+**Note:** All instances of `BrowserFileSystemProvider` share the same file system state as it is a module-level object.
+
 ## Plugin Configuration
 
 The plugin integrates with the TokenRing configuration system and FileSystemService:
@@ -104,6 +106,41 @@ The provider includes built-in mock files for testing and demonstration:
   '/src/components/Button.jsx': 'const Button = () => <button>Click Me</button>;\nexport default Button;',
   '/package.json': '{ "name": "mock-project", "version": "1.0.0" }'
 }
+```
+
+**Note:** The mock file system is a shared module-level object. All instances share the same file system state.
+
+## Services
+
+### FileSystemService Integration
+
+This package integrates with the `FileSystemService` from `@tokenring-ai/filesystem`. The provider is automatically registered when the plugin is loaded with the appropriate configuration.
+
+The plugin waits for the FileSystemService to be available and then registers the BrowserFileSystemProvider:
+
+```typescript
+export default {
+  name: packageJSON.name,
+  version: packageJSON.version,
+  description: packageJSON.description,
+  install(app, config) {
+    if (config.filesystem) {
+      app.services
+        .waitForItemByType(FileSystemService, (fileSystemService) => {
+          for (const name in config.filesystem.providers) {
+            const provider = config.filesystem.providers[name];
+            if (provider.type === "browser") {
+              fileSystemService.registerFileSystemProvider(
+                name,
+                new BrowserFileSystemProvider(),
+              );
+            }
+          }
+        });
+    }
+  },
+  config: packageConfigSchema
+} satisfies TokenRingPlugin<typeof packageConfigSchema>;
 ```
 
 ## API Reference
@@ -227,7 +264,7 @@ async writeFile(
 | Parameter | Type | Description |
 |-----------|------|-------------|
 | filePath | string | Path where to write the file |
-| content | string \| Buffer | Content to write |
+| content | string | Buffer | Content to write |
 
 **Returns:** `Promise<boolean>` - Always returns `true`
 
@@ -253,7 +290,7 @@ async appendFile(
 | Parameter | Type | Description |
 |-----------|------|-------------|
 | filePath | string | Path to the file to append to |
-| content | string \| Buffer | Content to append |
+| content | string | Buffer | Content to append |
 
 **Returns:** `Promise<boolean>` - Always returns `true`
 
@@ -277,7 +314,7 @@ async deleteFile(filePath: string): Promise<boolean>
 |-----------|------|-------------|
 | filePath | string | Path to the file to delete |
 
-**Returns:** `Promise<boolean>` - Always returns `true`
+**Returns:** `Promise<boolean>` - Always returns `true` (even for non-existent files)
 
 ##### exists
 
@@ -317,6 +354,10 @@ async copy(
 
 **Returns:** `Promise<boolean>` - Always returns `true`
 
+**Throws:** Error if destination exists and overwrite is false
+
+**Note:** Returns `true` for non-existent source files (mock behavior)
+
 **Example:**
 
 ```typescript
@@ -325,6 +366,10 @@ await fs.copy('/src/index.js', '/src/main.js', { overwrite: true });
 
 // Copy without overwrite (throws error if destination exists)
 await fs.copy('/src/index.js', '/src/main.js');
+
+// Note: copy returns true for non-existent source (mock behavior)
+const result = await fs.copy('/non-existent.txt', '/dest.txt');
+console.log(result); // true
 ```
 
 ##### rename
@@ -347,10 +392,18 @@ async rename(
 
 **Returns:** `Promise<boolean>` - Always returns `true`
 
+**Throws:** Error if destination exists
+
+**Note:** Returns `true` for non-existent source files (mock behavior)
+
 **Example:**
 
 ```typescript
 await fs.rename('/src/main.js', '/src/app.js');
+
+// Note: rename returns true for non-existent source (mock behavior)
+const result = await fs.rename('/non-existent.txt', '/new.txt');
+console.log(result); // true
 ```
 
 ##### stat
@@ -367,7 +420,31 @@ async stat(filePath: string): Promise<StatLike>
 |-----------|------|-------------|
 | filePath | string | Path to the file |
 
-**Returns:** `Promise<StatLike>` - File statistics (see [StatLike type](#statlike-type))
+**Returns:** `Promise<StatLike>` - File statistics (see [StatLike type](#statlike))
+
+For existing files:
+```typescript
+{
+  exists: true,
+  path: string,
+  absolutePath: string,
+  isFile: boolean,
+  isDirectory: boolean,
+  isSymbolicLink: boolean,
+  size: number,
+  created: Date,
+  modified: Date,
+  accessed: Date
+}
+```
+
+For non-existent files:
+```typescript
+{
+  exists: false,
+  path: string
+}
+```
 
 **Example:**
 
@@ -399,6 +476,8 @@ async glob(
 
 **Returns:** `Promise<string[]>` - Array of matching file paths
 
+**Note:** The glob pattern parameter is currently ignored; only the ignoreFilter is applied
+
 **Example:**
 
 ```typescript
@@ -429,6 +508,8 @@ async watch(
 
 **Returns:** `Promise<any>` - Always returns `null`
 
+**Note:** Logs a warning as this functionality is not implemented
+
 ##### grep
 
 Searches file contents for matching strings.
@@ -450,12 +531,12 @@ async grep(
 
 | Parameter | Type | Description |
 |-----------|------|-------------|
-| searchString | string \| string[] | Search string(s) |
+| searchString | string | string[] | Search string(s) |
 | options.ignoreFilter | (path: string) => boolean | Optional filter function |
 | options.includeContent.linesBefore | number | Number of lines before match (default: 0) |
 | options.includeContent.linesAfter | number | Number of lines after match (default: 0) |
 
-**Returns:** `Promise<GrepResult[]>` - Array of search results (see [GrepResult type](#grepresult-type))
+**Returns:** `Promise<GrepResult[]>` - Array of search results (see [GrepResult type](#grepresult))
 
 **Example:**
 
@@ -511,32 +592,13 @@ type GrepResult = {
 }
 ```
 
-#### DirectoryTreeOptions
-
-```typescript
-type DirectoryTreeOptions = {
-  ignoreFilter: (path: string) => boolean;
-  recursive?: boolean;
-}
-```
-
 #### GlobOptions
 
 ```typescript
 type GlobOptions = {
-  ignoreFilter: (path: string) => boolean;
+  ignoreFilter?: (path: string) => boolean;
   absolute?: boolean;
   includeDirectories?: boolean;
-}
-```
-
-#### WatchOptions
-
-```typescript
-type WatchOptions = {
-  ignoreFilter: (path: string) => boolean;
-  pollInterval?: number;
-  stabilityThreshold?: number;
 }
 ```
 
@@ -544,7 +606,7 @@ type WatchOptions = {
 
 ```typescript
 type GrepOptions = {
-  ignoreFilter: (path: string) => boolean;
+  ignoreFilter?: (path: string) => boolean;
   includeContent?: { linesBefore?: number; linesAfter?: number };
 }
 ```
@@ -785,6 +847,7 @@ const mockFileSystem: Record<string, { content: string }> = {
 
 - State is **not persisted** across page reloads
 - All operations are **in-memory only**
+- State is **shared across all instances** (module-level object)
 - State is lost when the provider instance is destroyed
 - No background processes or file watchers
 - Changes made programmatically are immediately reflected in the mock file system
@@ -798,12 +861,14 @@ const mockFileSystem: Record<string, { content: string }> = {
 - **Partial API**: Some advanced features log warnings for unsupported operations
 - **No Symbolic Links**: `isSymbolicLink` always returns `false`
 - **Fixed Timestamps**: `created`, `modified`, and `accessed` timestamps are simulated
+- **Glob Pattern Ignored**: The glob pattern parameter is currently ignored; only the ignoreFilter is applied
+- **Shared State**: All instances share the same file system state
 
 ## Error Handling
 
 The provider implements comprehensive error handling:
 
-- **File Not Found**: Returns `null` for reads or ignores non-existent files for write operations
+- **File Not Found**: Returns `null` for missing files in `readFile`
 - **Path Conflicts**: Validates copy and rename operations, throwing errors for conflicts
 - **Invalid Operations**: Logs warnings for unsupported operations
 - **Path Normalization**: Automatically normalizes paths for consistency
@@ -812,8 +877,8 @@ The provider implements comprehensive error handling:
 
 The provider may throw the following errors:
 
-- `Error` - General errors for file operations
 - `Error` - Path conflicts during copy/rename operations (when destination exists without overwrite option)
+- `Error` - General errors for file operations
 
 ### Error Handling Example
 

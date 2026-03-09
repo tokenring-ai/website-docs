@@ -4,7 +4,7 @@
 
 `@tokenring-ai/filesystem` provides a unified filesystem abstraction service for Token Ring AI agents. It enables secure file operations including reading, writing, searching, and directory management through a provider-based architecture that supports multiple filesystem implementations.
 
-The package integrates deeply with the agent system, providing both tools for AI-driven operations and chat commands for user interface control. It features state management for tracking selected files in chat sessions and comprehensive RPC endpoints for remote filesystem access.
+The package integrates deeply with the agent system, providing both tools for AI-driven operations and chat commands for user interface control. It features state management for tracking selected files in chat sessions, comprehensive RPC endpoints for remote filesystem access, and scripting functions for common file operations.
 
 ## Key Features
 
@@ -14,9 +14,11 @@ The package integrates deeply with the agent system, providing both tools for AI
 - **Tool suite**: file_read, file_write, and file_search tools for AI operations
 - **Chat commands**: /file command for managing files in chat sessions
 - **RPC endpoints**: Full filesystem access via JSON-RPC
-- **Security controls**: Read-before-write policy, file size limits, and ignore filtering
+- **Scripting functions**: createFile, deleteFile, globFiles, searchFiles for programmatic access
+- **Security controls**: Read-before-write policy, file size limits, ignore filtering, and file validation
 - **Grep functionality**: Content search with snippet extraction and context lines
 - **Glob support**: Pattern-based file matching and directory traversal
+- **File validators**: Extension-based validation system for file contents after writing
 
 ## Core Components
 
@@ -36,6 +38,8 @@ The main service class implementing `TokenRingService`. It manages filesystem pr
 | `requireFileSystemProviderByName` | `name: string` | Retrieves a registered provider |
 | `setActiveFileSystem` | `providerName: string, agent: Agent` | Sets the active provider for an agent |
 | `requireActiveFileSystem` | `agent: Agent` | Gets the active provider for an agent |
+| `registerFileValidator` | `extension: string, validator: FileValidator` | Registers a validator for file extension |
+| `getFileValidatorForExtension` | `extension: string` | Gets validator for file extension |
 | `getDirectoryTree` | `path: string, options, agent` | Async generator for directory traversal |
 | `writeFile` | `path: string, content, agent` | Write or overwrite file |
 | `appendFile` | `filePath: string, content, agent` | Append to file |
@@ -54,6 +58,8 @@ The main service class implementing `TokenRingService`. It manages filesystem pr
 | `removeFileFromChat` | `file: string, agent` | Remove file from chat context |
 | `getFilesInChat` | `agent: Agent` | Returns set of files in chat |
 | `setFilesInChat` | `files: Iterable<string>, agent` | Sets files in chat context |
+| `setDirty` | `dirty: boolean, agent` | Marks filesystem as modified |
+| `isDirty` | `agent: Agent` | Checks if files have been modified |
 
 **Service Lifecycle:**
 
@@ -66,14 +72,14 @@ start(): void {
 }
 
 // Attach to agent (called when agent is created)
-attach(agent: Agent): void {
+attach(agent: Agent, creationContext: AgentCreationContext): void {
   const config = deepMerge(
     this.options.agentDefaults, 
     agent.getAgentConfigSlice('filesystem', FileSystemAgentConfigSchema)
   );
   agent.initializeState(FileSystemState, config);
   if (config.selectedFiles.length > 0) {
-    agent.infoMessage(`Selected files: ${config.selectedFiles.join(', ')}`);
+    creationContext.items.push(`Selected files: ${config.selectedFiles.join(', ')}`);
   }
 }
 ```
@@ -186,11 +192,31 @@ interface MatchItem {
 }
 
 class FileMatchResource {
-  constructor({items}: { items: MatchItem[] })
+  constructor(items: MatchItem[])
 
   async* getMatchedFiles(agent: Agent): AsyncGenerator<string>
   async addFilesToSet(set: Set<string>, agent: Agent): Promise<void>
 }
+```
+
+**Usage:**
+
+```typescript
+import FileMatchResource from "@tokenring-ai/filesystem/FileMatchResource";
+
+const resource = new FileMatchResource([
+  { path: "src", include: /\.ts$/ },
+  { path: "pkg", exclude: /node_modules/ }
+]);
+
+// Get matched files
+for await (const file of resource.getMatchedFiles(agent)) {
+  console.log(file);
+}
+
+// Add matched files to a set
+const fileSet = new Set<string>();
+await resource.addFilesToSet(fileSet, agent);
 ```
 
 ## Services
@@ -298,22 +324,22 @@ The package registers RPC endpoints under `/rpc/filesystem` for remote filesyste
 
 ### Endpoints
 
-| Method | Type | Description |
-|--------|------|-------------|
-| `readTextFile` | Query | Read file content as text |
-| `exists` | Query | Check if a file exists |
-| `stat` | Query | Get file statistics |
-| `glob` | Query | Match files with glob pattern |
-| `listDirectory` | Query | List directory contents |
-| `writeFile` | Mutation | Write a file |
-| `appendFile` | Mutation | Append to a file |
-| `deleteFile` | Mutation | Delete a file |
-| `rename` | Mutation | Rename a file |
-| `createDirectory` | Mutation | Create a directory |
-| `copy` | Mutation | Copy a file or directory |
-| `addFileToChat` | Mutation | Add file to chat context |
-| `removeFileFromChat` | Mutation | Remove file from chat context |
-| `getSelectedFiles` | Query | Get currently selected files in chat |
+| Method | Type | Description | Request Params | Response Params |
+|--------|------|-------------|----------------|-----------------|
+| `readTextFile` | Query | Read file content as text | `{ agentId, path }` | `{ content: string \| null }` |
+| `exists` | Query | Check if a file exists | `{ agentId, path }` | `{ exists: boolean }` |
+| `stat` | Query | Get file statistics | `{ agentId, path }` | `{ stats: string }` |
+| `glob` | Query | Match files with glob pattern | `{ agentId, pattern }` | `{ files: string[] }` |
+| `listDirectory` | Query | List directory contents | `{ agentId, path, showHidden?, recursive? }` | `{ files: string[] }` |
+| `writeFile` | Mutation | Write a file | `{ agentId, path, content }` | `{ success: boolean }` |
+| `appendFile` | Mutation | Append to a file | `{ agentId, path, content }` | `{ success: boolean }` |
+| `deleteFile` | Mutation | Delete a file | `{ agentId, path }` | `{ success: boolean }` |
+| `rename` | Mutation | Rename a file | `{ agentId, oldPath, newPath }` | `{ success: boolean }` |
+| `createDirectory` | Mutation | Create a directory | `{ agentId, path, recursive? }` | `{ success: boolean }` |
+| `copy` | Mutation | Copy a file or directory | `{ agentId, source, destination, overwrite? }` | `{ success: boolean }` |
+| `addFileToChat` | Mutation | Add file to chat context | `{ agentId, file }` | `{ success: boolean }` |
+| `removeFileFromChat` | Mutation | Remove file from chat context | `{ agentId, file }` | `{ success: boolean }` |
+| `getSelectedFiles` | Query | Get currently selected files in chat | `{ agentId }` | `{ files: string[] }` |
 
 ### RPC Request Examples
 
@@ -383,6 +409,8 @@ Manage files in the chat session with various actions to add, remove, list, or c
 
 Tools are exported from `tools.ts` and registered with `ChatService` during plugin installation.
 
+**Note:** Currently, only `write`, `read`, and `search` tools are actively exported. The `append` and `patch` tools are defined but commented out in the exports.
+
 ### file_write
 
 Writes a file to the filesystem.
@@ -414,12 +442,13 @@ const displayName = "Filesystem/write";
 - Returns diff if file existed before (up to `maxReturnedDiffSize` limit)
 - Sets filesystem as dirty on success
 - Marks file as read in state
-- Generates artifact output (diff)
+- Generates artifact output (diff or full content)
+- Runs file validator if configured (`validateWrittenFiles`)
 
 **Error Cases:**
 
-- Throws error if path or content is missing
 - Returns helpful message if file wasn't read before write and policy is enforced
+- Includes original file contents in error message to expedite the workflow
 
 **Agent State:**
 
@@ -465,13 +494,15 @@ const displayName = "Filesystem/read";
 - Reads file contents (up to `maxFileSize` limit)
 - Marks read files in `FileSystemState`
 - Returns file names only if too many files are matched
-- Handles binary files gracefully
+- Handles binary files gracefully (returns "[File is binary and cannot be displayed]")
+- Handles directories by recursively reading contents
+- Treats pattern resolution errors as informational
 
 **Error Cases:**
 
-- Returns "No files were found" if no files match
+- Returns "No files were found that matched the search criteria" if no files match
 - Returns directory listing if more than `maxFileReadCount` files matched
-- Treats pattern resolution errors as informational
+- Returns "[File is too large to retrieve]" for files exceeding `maxFileSize`
 
 **Agent State:**
 
@@ -518,18 +549,25 @@ const displayName = "Filesystem/search";
 **Behavior:**
 
 - Supports substring, regex, and exact matching
-- Returns grep-style snippets with context lines
+- Returns grep-style snippets with context lines (`snippetLinesBefore` and `snippetLinesAfter`)
 - Automatically decides whether to return full file contents, snippets, or file names based on match count
 - Marks read files in state
 - Supports fuzzy matching and keyword extraction
 
 **Search Patterns:**
 
-- Plain strings: Fuzzy substring matching
+- Plain strings: Fuzzy substring matching (case-insensitive)
 - Regex: Enclosed in `/` (e.g., `/class \w+Service/`)
+
+**Output Format:**
+
+- When matches are few: Returns grep-style snippets with line numbers
+- When snippet is too large: Returns full file contents
+- When too many files match: Returns directory listing with file names
 
 **Error Cases:**
 
+- Returns "No files were found that matched the search criteria" if no files match
 - Returns directory listing if more than `maxSnippetCount` files matched
 
 **Agent State:**
@@ -574,6 +612,7 @@ const FileSystemConfigSchema = z.object({
     fileWrite: z.object({
       requireReadBeforeWrite: z.boolean().default(true),
       maxReturnedDiffSize: z.number().default(1024),
+      validateWrittenFiles: z.boolean().default(true),
     }).prefault({}),
     fileRead: z.object({
       maxFileReadCount: z.number().default(10),
@@ -601,6 +640,7 @@ const FileSystemAgentConfigSchema = z.object({
   fileWrite: z.object({
     requireReadBeforeWrite: z.boolean().optional(),
     maxReturnedDiffSize: z.number().optional(),
+    validateWrittenFiles: z.boolean().optional(),
   }).optional(),
   fileRead: z.object({
     maxFileReadCount: z.number().optional(),
@@ -629,6 +669,7 @@ const config = {
       fileWrite: {
         requireReadBeforeWrite: true,
         maxReturnedDiffSize: 2048,
+        validateWrittenFiles: true,
       },
       fileRead: {
         maxFileReadCount: 20,
@@ -663,7 +704,6 @@ import packageJSON from "./package.json" with {type: "json"};
 import FileSystemService from "./FileSystemService.ts";
 import {FileSystemConfigSchema} from "./schema.ts";
 import tools from "./tools.ts";
-import chatCommands from "./chatCommands.ts";
 import contextHandlers from "./contextHandlers.ts";
 import filesystemRPC from "./rpc/filesystem.ts";
 import {RpcService} from "@tokenring-ai/rpc";
@@ -681,31 +721,12 @@ export default {
   description: packageJSON.description,
   install(app, config) {
     if (config.filesystem) {
-      // Register tools
-      app.waitForService(ChatService, chatService => {
-        chatService.addTools(tools);
-        chatService.registerContextHandlers(contextHandlers);
-      });
-      
-      // Register chat commands
-      app.waitForService(AgentCommandService, agentCommandService =>
-        agentCommandService.addAgentCommands(chatCommands)
-      );
-      
-      // Add service
-      app.addServices(new FileSystemService(config.filesystem));
-
-      // Register RPC endpoints
-      app.waitForService(RpcService, rpcService => {
-        rpcService.registerEndpoint(filesystemRPC);
-      });
-      
       // Register scripting functions
       app.waitForService(ScriptingService, (scriptingService: ScriptingService) => {
         scriptingService.registerFunction("createFile", {
           type: 'native',
           params: ['path', 'content'],
-          async execute(this, path, content) {
+          async execute(this: ScriptingThis, path: string, content: string): Promise<string> {
             await this.agent.requireServiceByType(FileSystemService).writeFile(path, content, this.agent);
             return `Created file: ${path}`;
           }
@@ -714,7 +735,7 @@ export default {
         scriptingService.registerFunction("deleteFile", {
           type: 'native',
           params: ['path'],
-          async execute(this, path) {
+          async execute(this: ScriptingThis, path: string): Promise<string> {
             await this.agent.requireServiceByType(FileSystemService).deleteFile(path, this.agent);
             return `Deleted file: ${path}`;
           }
@@ -723,7 +744,7 @@ export default {
         scriptingService.registerFunction("globFiles", {
           type: 'native',
           params: ['pattern'],
-          async execute(this, pattern) {
+          async execute(this: ScriptingThis, pattern: string): Promise<string[]> {
             return await this.agent.requireServiceByType(FileSystemService).glob(pattern, {}, this.agent);
           }
         });
@@ -731,11 +752,30 @@ export default {
         scriptingService.registerFunction("searchFiles", {
           type: 'native',
           params: ['searchString'],
-          async execute(this, searchString) {
+          async execute(this: ScriptingThis, searchString: string): Promise<string[]> {
             const results = await this.agent.requireServiceByType(FileSystemService).grep([searchString], {}, this.agent);
             return results.map(r => `${r.file}:${r.line}: ${r.match}`);
           }
         });
+      });
+
+      // Register tools and context handlers
+      app.waitForService(ChatService, chatService => {
+        chatService.addTools(tools);
+        chatService.registerContextHandlers(contextHandlers);
+      });
+
+      // Register chat commands
+      app.waitForService(AgentCommandService, agentCommandService =>
+        agentCommandService.addAgentCommands([file])
+      );
+
+      // Add service
+      app.addServices(new FileSystemService(config.filesystem));
+
+      // Register RPC endpoints
+      app.waitForService(RpcService, rpcService => {
+        rpcService.registerEndpoint(filesystemRPC);
       });
     }
   },
@@ -783,6 +823,19 @@ Provides file search results based on user input keywords.
 - Removes stop words
 - Deduplicates while preserving order
 
+**Scoring Algorithm:**
+
+- Filename match: 10 points
+- Filename without extension match: 8 points
+- Filename contains keyword: 5 * fuzzyScore
+- Path contains keyword: 2 * fuzzyScore
+- Penalties for deeply nested files: 0.05 per level
+
+**Search Strategies:**
+
+1. **Path/Filename matching**: Uses glob pattern matching over all files
+2. **Content search**: Uses grep for high-value keywords (length > 3, alphanumeric pattern)
+
 ### State Management
 
 #### FileSystemState
@@ -807,10 +860,10 @@ Tracks filesystem-related state for agents.
 **State Methods:**
 
 ```typescript
-state.reset('chat')           // Reset chat context
-state.serialize()             // Return serializable state
-state.deserialize(data)       // Restore state from object
-state.show()                  // Return human-readable summary
+state.reset()                    // Reset to initial config
+state.serialize()                // Return serializable state
+state.deserialize(data)          // Restore state from object
+state.show()                     // Return human-readable summary
 ```
 
 **State Transfers:**
@@ -886,6 +939,29 @@ options.ignoreFilter ??= await createIgnoreFilter(activeFileSystem);
 const files = await fs.glob(pattern, options, agent);
 ```
 
+### File Validator System
+
+File validators can be registered to validate file contents after writing:
+
+**Registration:**
+
+```typescript
+const fileSystemService = app.requireService(FileSystemService);
+
+fileSystemService.registerFileValidator('.ts', async (path: string, content: string) => {
+  // Validate TypeScript file
+  const result = await runTypeScriptValidator(content);
+  return result ? `TypeScript validation failed: ${result}` : null;
+});
+```
+
+**Usage:**
+
+- Validators are automatically run after file writes if `validateWrittenFiles` is enabled
+- Validators receive the file path and content
+- Return `null` for success, or an error message string for failure
+- Error messages are appended to the tool result
+
 ## Usage Examples
 
 ### Basic File Operations
@@ -951,6 +1027,7 @@ const results = await scripting.execute('searchFiles', 'function execute');
 3. **Handle binary files** - The package automatically detects and handles binary files
 4. **Respect limits** - Respect `maxFileReadCount`, `maxFileSize`, and other configured limits
 5. **Read before write** - Enable `requireReadBeforeWrite` for safety in production
+6. **Use file validators** - Register validators for critical file types to catch errors early
 
 ### Chat Integration
 
@@ -1023,7 +1100,7 @@ describe('FileSystemService', () => {
       agentDefaults: {
         provider: 'mock',
         selectedFiles: [],
-        fileWrite: { requireReadBeforeWrite: false },
+        fileWrite: { requireReadBeforeWrite: false, validateWrittenFiles: false },
         fileRead: { maxFileReadCount: 100, maxFileSize: 1024 * 1024 },
         fileSearch: { maxSnippetCount: 100 }
       },
@@ -1038,7 +1115,7 @@ describe('FileSystemService', () => {
         selectedFiles: new Set(),
         dirty: false,
         readFiles: new Set(),
-        fileWrite: { requireReadBeforeWrite: false },
+        fileWrite: { requireReadBeforeWrite: false, validateWrittenFiles: false },
         fileRead: { maxFileReadCount: 100, maxFileSize: 1024 * 1024 },
         fileSearch: { maxSnippetCount: 100 }
       }),
@@ -1079,7 +1156,7 @@ describe('FileSystemService Integration', () => {
       agentDefaults: {
         provider: 'local',
         selectedFiles: [],
-        fileWrite: { requireReadBeforeWrite: false },
+        fileWrite: { requireReadBeforeWrite: false, validateWrittenFiles: false },
         fileRead: { maxFileReadCount: 100, maxFileSize: 1024 * 1024 },
         fileSearch: { maxSnippetCount: 100 }
       },
@@ -1096,7 +1173,7 @@ describe('FileSystemService Integration', () => {
         selectedFiles: new Set(),
         dirty: false,
         readFiles: new Set(),
-        fileWrite: { requireReadBeforeWrite: false },
+        fileWrite: { requireReadBeforeWrite: false, validateWrittenFiles: false },
         fileRead: { maxFileReadCount: 100, maxFileSize: 1024 * 1024 },
         fileSearch: { maxSnippetCount: 100 }
       }),
@@ -1140,7 +1217,7 @@ describe('FileSystemService Integration', () => {
 | `path-browserify` | ^1.0.1 | Path manipulation for browser |
 | `zod` | ^4.3.6 | Schema validation |
 | `diff` | ^8.0.3 | Diff generation for file operations |
-| `mime-types` | - | MIME type detection |
+| `mime-types` | ^2.1.35 | MIME type detection |
 
 **Development Dependencies:**
 
@@ -1175,6 +1252,28 @@ describe('FileSystemService Integration', () => {
 - **RPC Endpoints** - Expose filesystem operations via JSON-RPC
 - **Scripting** - Register `createFile`, `deleteFile`, `globFiles`, `searchFiles` functions
 
+## Testing
+
+```bash
+# Run tests
+bun test
+
+# Run with watch mode
+bun test:watch
+
+# Run coverage
+bun test:coverage
+
+# Run integration tests
+bun test:integration
+
+# Run e2e tests
+bun test:e2e
+
+# Run all tests including integration
+bun test:all
+```
+
 ## License
 
-MIT License - see [LICENSE](./LICENSE) file for details.
+MIT License - see `LICENSE` file for details.

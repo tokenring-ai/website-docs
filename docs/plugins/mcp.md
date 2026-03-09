@@ -1,8 +1,8 @@
-# MCP Client Plugin
+# @tokenring-ai/mcp
 
 ## Overview
 
-The `@tokenring-ai/mcp` package provides MCP (Model Context Protocol) client functionality to connect TokenRing agents with MCP servers. It automatically registers MCP server tools with the TokenRing chat service, making them available for agent use. The plugin supports multiple transport types (stdio, SSE, HTTP) and provides comprehensive configuration validation.
+The `@tokenring-ai/mcp` package provides MCP (Model Context Protocol) client functionality to connect TokenRing agents with MCP servers. It automatically registers MCP server tools with the TokenRing chat service, making them available for agent use. The plugin supports multiple transport types (stdio, SSE, HTTP) and provides comprehensive configuration validation using Zod schemas with passthrough support for additional properties.
 
 ## Key Features
 
@@ -14,6 +14,7 @@ The `@tokenring-ai/mcp` package provides MCP (Model Context Protocol) client fun
 - **Error handling**: Proper error handling for transport connections and tool registration
 - **Tool schema preservation**: Maintains original MCP tool schemas during registration
 - **Plugin-based architecture**: Integrates as a TokenRing plugin with automatic service registration
+- **Passthrough configuration**: Supports additional configuration properties via Zod passthrough
 
 ## Core Components
 
@@ -62,6 +63,32 @@ Registers an MCP server with the TokenRing application.
 5. Registers each tool with the TokenRing chat service with namespaced format `{serverName}/{toolName}`
 6. Preserves tool schemas, descriptions, and execution handlers
 
+**Throws:**
+
+- `Error` - when transport type is unknown
+- `Error` - when MCP client creation fails
+- `Error` - when tool retrieval fails
+
+**Example:**
+
+```typescript
+import { MCPService } from '@tokenring-ai/mcp';
+import TokenRingApp from '@tokenring-ai/app';
+
+const mcpService = new MCPService();
+const app = new TokenRingApp();
+
+// Register an MCP server with stdio transport
+await mcpService.register('myserver', {
+  type: 'stdio',
+  command: 'mcp-server',
+  args: ['--config', 'config.json'],
+  env: {
+    DEBUG: 'true'
+  }
+}, app);
+```
+
 ### Configuration Schemas
 
 #### MCPConfigSchema
@@ -76,6 +103,8 @@ export const MCPConfigSchema = z.object({
 
 - `transports`: Record mapping server names to transport configuration objects
 - Each transport must include a `type` field specifying the connection method
+- Configuration is optional for the plugin
+- Uses `z.looseObject()` which allows additional properties beyond the `type` field
 
 #### MCPTransportConfigSchema
 
@@ -89,20 +118,30 @@ export const MCPTransportConfigSchema = z.discriminatedUnion("type", [
 
 **Discriminated Union Types:**
 
-| Type | Required Fields | Optional Fields |
-|------|----------------|-----------------|
-| `stdio` | `type`, `command` | `args`, `env`, `cwd` |
-| `sse` | `type`, `url` | `headers`, `timeout` |
-| `http` | `type`, `url` | `method`, `headers`, `timeout` |
+| Type | Required Fields | Optional Fields | Passthrough |
+|------|----------------|-----------------|-------------|
+| `stdio` | `type`, `command` | `args`, `env`, `cwd` | Yes |
+| `sse` | `type`, `url` | `headers`, `timeout` | Yes |
+| `http` | `type`, `url` | `method`, `headers`, `timeout` | Yes |
 
-### MCPTransportConfig Type
+**Key Features:**
+
+- **Discriminated Union**: Uses `type` field to determine transport type
+- **Passthrough**: Allows additional properties beyond the defined schema
+- **URL Validation**: SSE and HTTP transports require valid URLs
+- **Type Safety**: TypeScript types are inferred from the schema
+
+#### MCPTransportConfig Type
 
 ```typescript
-type MCPTransportConfig =
-  | { type: "stdio"; command: string; args?: string[]; env?: Record<string, string>; cwd?: string }
-  | { type: "sse"; url: string; headers?: Record<string, string>; timeout?: number }
-  | { type: "http"; url: string; method?: "GET" | "POST" | "PUT" | "DELETE"; headers?: Record<string, string>; timeout?: number };
+type MCPTransportConfig = z.infer<typeof MCPTransportConfigSchema>;
 ```
+
+The schema uses discriminated union with passthrough, allowing three transport types:
+
+- **stdio**: `{ type: "stdio"; command: string; args?: string[]; env?: Record<string, string>; cwd?: string; [key: string]: any }`
+- **sse**: `{ type: "sse"; url: string; headers?: Record<string, string>; timeout?: number; [key: string]: any }`
+- **http**: `{ type: "http"; url: string; method?: "GET" | "POST" | "PUT" | "DELETE"; headers?: Record<string, string>; timeout?: number; [key: string]: any }`
 
 ## Services
 
@@ -134,6 +173,12 @@ install(app, config) {
 }
 ```
 
+**Behavior:**
+
+- If `config.mcp` is undefined, no service is added
+- If `config.mcp` exists (even with empty transports), the service is added
+- The service is added regardless of whether transports are configured
+
 #### Registering Multiple Servers
 
 The plugin supports registering multiple MCP servers with different transport types:
@@ -148,6 +193,12 @@ async start(app, config) {
   }
 }
 ```
+
+**Behavior:**
+
+- Iterates through all configured transports
+- Registers each transport with the MCPService
+- Awaits each registration before proceeding to the next
 
 ## Provider Documentation
 
@@ -215,11 +266,34 @@ Execute an MCP server as a child process:
 ```typescript
 {
   type: 'stdio',
-  command: 'mcp-server',           // Required: Command to execute
-  args?: string[],                // Optional: Command arguments
+  command: string,           // Required: Command to execute
+  args?: string[],          // Optional: Command arguments
   env?: Record<string, string>,   // Optional: Environment variables
-  cwd?: string                    // Optional: Working directory
+  cwd?: string,             // Optional: Working directory
+  [key: string]: any        // Additional properties passed through
 }
+```
+
+**Transport Creation:**
+
+The stdio transport is created by passing the entire config object to `StdioClientTransport`:
+
+```typescript
+transport = new StdioClientTransport(config as any);
+```
+
+**Example:**
+
+```typescript
+await mcpService.register('local-server', {
+  type: 'stdio',
+  command: 'mcp-server',
+  args: ['--config', 'config.json'],
+  env: {
+    DEBUG: 'true'
+  },
+  cwd: '/path/to/server'
+}, app);
 ```
 
 #### SSE Transport
@@ -229,10 +303,32 @@ Connect to an MCP server using Server-Sent Events:
 ```typescript
 {
   type: 'sse',
-  url: 'http://localhost:3000/sse', // Required: SSE endpoint URL
+  url: string,              // Required: SSE endpoint URL
   headers?: Record<string, string>, // Optional: Custom headers
-  timeout?: number                // Optional: Connection timeout in ms
+  timeout?: number,         // Optional: Connection timeout in ms
+  [key: string]: any        // Additional properties passed through
 }
+```
+
+**Transport Creation:**
+
+The SSE transport is created with a URL object:
+
+```typescript
+transport = new SSEClientTransport(new URL(config.url));
+```
+
+**Example:**
+
+```typescript
+await mcpService.register('remote-server', {
+  type: 'sse',
+  url: 'http://localhost:3000/sse',
+  headers: {
+    'Authorization': 'Bearer token123'
+  },
+  timeout: 10000
+}, app);
 ```
 
 #### HTTP Transport
@@ -242,11 +338,34 @@ Connect to an MCP server using HTTP (streamable HTTP):
 ```typescript
 {
   type: 'http',
-  url: 'http://localhost:3001/api/mcp', // Required: HTTP endpoint URL
-  method?: 'GET' | 'POST' | 'PUT' | 'DELETE',     // Optional: HTTP method (default: GET)
-  headers?: Record<string, string>,    // Optional: Custom headers
-  timeout?: number                   // Optional: Connection timeout in ms
+  url: string,              // Required: HTTP endpoint URL
+  method?: 'GET' | 'POST' | 'PUT' | 'DELETE', // Optional: HTTP method
+  headers?: Record<string, string>, // Optional: Custom headers
+  timeout?: number,         // Optional: Connection timeout in ms
+  [key: string]: any        // Additional properties passed through
 }
+```
+
+**Transport Creation:**
+
+The HTTP transport is created with a URL object:
+
+```typescript
+transport = new StreamableHTTPClientTransport(new URL(config.url));
+```
+
+**Example:**
+
+```typescript
+await mcpService.register('api-server', {
+  type: 'http',
+  url: 'http://localhost:3001/api/mcp',
+  method: 'POST',
+  headers: {
+    'Content-Type': 'application/json'
+  },
+  timeout: 5000
+}, app);
 ```
 
 ### Complete Configuration Example
@@ -268,6 +387,21 @@ Connect to an MCP server using HTTP (streamable HTTP):
         "type": "http",
         "url": "http://localhost:3001/api/mcp",
         "method": "POST"
+      }
+    }
+  }
+}
+```
+
+### Minimal Configuration
+
+```json
+{
+  "mcp": {
+    "transports": {
+      "my-server": {
+        "type": "stdio",
+        "command": "mcp-server"
       }
     }
   }
@@ -297,6 +431,12 @@ install(app, config) {
 }
 ```
 
+**Behavior:**
+
+- If `config.mcp` is undefined, no service is added
+- If `config.mcp` exists (even with empty transports), the service is added
+- The service is added regardless of whether transports are configured
+
 **start(app, config)**
 
 Called when the plugin starts. Iterates through configured transports and registers each MCP server.
@@ -310,6 +450,12 @@ async start(app, config) {
   }
 }
 ```
+
+**Behavior:**
+
+- Iterates through all configured transports
+- Registers each transport with the MCPService
+- Awaits each registration before proceeding to the next
 
 ### Service Dependencies
 
@@ -414,6 +560,19 @@ When an MCP server is registered, the package:
 5. Tool schemas are preserved and passed to the chat service
 6. Tool execution functions are bound to the MCP client
 
+**Registration Structure:**
+
+```typescript
+chatService.registerTool(`${name}/${toolName}`, {
+  name: `${name}/${toolName}`,
+  tool: {
+    inputSchema: tool.inputSchema,
+    execute: tool.execute,
+    description: tool.description
+  }
+});
+```
+
 ### Tool Naming Convention
 
 Each tool from an MCP server is registered with a composite name:
@@ -431,25 +590,9 @@ The package maintains the original MCP tool schemas:
 - Execution handlers are bound to the MCP client
 - Type safety is maintained through TypeScript types
 
-## RPC Endpoints
-
-This package does not define RPC endpoints.
-
 ## State Management
 
 This package does not implement state management.
-
-## Scripting Integration
-
-This package does not register functions with the ScriptingService.
-
-## Agent Configuration
-
-This package does not have agent-specific configuration.
-
-## Tools
-
-This package does not define tools directly but registers tools from MCP servers. Each server's tools are automatically discovered and registered with the chat service.
 
 ## Error Handling
 
@@ -499,6 +642,60 @@ The package provides comprehensive error handling:
 }
 ```
 
+#### MCP Client Creation Failure
+
+```typescript
+// When the MCP server is unreachable
+{
+  type: 'sse',
+  url: 'http://unreachable-server:3000/sse'
+  // Will throw connection error from MCP client creation
+}
+```
+
+#### Tool Retrieval Failure
+
+```typescript
+// When the server cannot provide tools
+{
+  type: 'stdio',
+  command: 'mcp-server'
+  // Will throw error if server fails to respond to tools() request
+}
+```
+
+## Best Practices
+
+### Transport Selection
+
+- **Use stdio** for local MCP servers that can be executed as child processes
+- **Use SSE** for remote MCP servers that support Server-Sent Events
+- **Use HTTP** for MCP servers that expose streamable HTTP endpoints
+
+### Tool Naming
+
+- Choose descriptive server names that identify the server's purpose
+- Server names become prefixes for all tools, so keep them concise
+- Avoid special characters in server names that might conflict with tool naming
+
+### Error Handling
+
+- Always wrap MCP server registration in try/catch blocks
+- Log connection errors for debugging
+- Implement retry logic for transient connection failures
+
+### Configuration Validation
+
+- Use TypeScript to catch configuration errors at compile time
+- Validate configurations before passing to the plugin
+- Use Zod schemas for runtime validation when needed
+
+### Passthrough Configuration
+
+- The schema uses `.passthrough()` to allow additional properties
+- Additional properties are passed through to transport constructors
+- Be aware that invalid properties may cause runtime errors in transport creation
+
 ## Testing
 
 ### Running Tests
@@ -526,6 +723,18 @@ bun run test:coverage
 bun run build
 ```
 
+### Test Coverage
+
+The test suite covers:
+
+- Configuration validation for all transport types
+- Transport type discrimination
+- Tool registration with proper naming
+- Error handling for various failure scenarios
+- Integration with TokenRing services
+- Concurrent operations
+- Tool schema preservation
+
 ## Package Structure
 
 ```
@@ -551,9 +760,9 @@ pkg/mcp/
 | `@tokenring-ai/app` | `0.2.0` | Core TokenRing application framework |
 | `@tokenring-ai/chat` | `0.2.0` | Chat service for tool registration |
 | `@tokenring-ai/agent` | `0.2.0` | Agent system for tool execution |
-| `@ai-sdk/mcp` | `^1.0.21` | AI SDK integration for MCP protocol |
-| `@modelcontextprotocol/sdk` | `^1.27.0` | Official MCP SDK implementation |
-| `ai` | `^6.0.90` | AI SDK core functionality |
+| `@ai-sdk/mcp` | `^1.0.22` | AI SDK integration for MCP protocol |
+| `@modelcontextprotocol/sdk` | `^1.27.1` | Official MCP SDK implementation |
+| `ai` | `^6.0.105` | AI SDK core functionality |
 | `zod` | `^4.3.6` | Schema validation library |
 
 ### Development Dependencies
@@ -562,34 +771,6 @@ pkg/mcp/
 |---------|---------|-------------|
 | `vitest` | `^4.0.18` | Testing framework |
 | `typescript` | `^5.9.3` | TypeScript compiler |
-
-## Best Practices
-
-### Transport Selection
-
-- **Stdio**: Use for local MCP servers or when you need to launch servers as child processes
-- **SSE**: Use for long-lived connections to remote MCP servers with real-time updates
-- **HTTP**: Use for stateless connections or when SSE is not available
-
-### Configuration Management
-
-- Define transports with clear, descriptive names
-- Use environment variables for sensitive configuration (API keys, tokens)
-- Validate transport configurations before deployment
-- Consider connection timeouts for remote servers
-
-### Tool Organization
-
-- Group tools from different servers with clear prefixes
-- Document tool naming conventions for your team
-- Monitor tool registration for errors during startup
-
-### Error Prevention
-
-- Always wrap MCP registration in try-catch blocks for manual usage
-- Implement retry logic for transient connection failures
-- Monitor service logs for connection issues
-- Use health checks for remote MCP servers
 
 ## Related Components
 

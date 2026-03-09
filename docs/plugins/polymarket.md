@@ -8,14 +8,16 @@ This plugin serves as a service that integrates with the TokenRing agent system.
 
 ## Key Features
 
-- **Market Search**: Search for prediction markets by query
-- **Event Listing**: List events with filtering options
+- **Market Search**: Search for prediction markets, events, and profiles by query
+- **Event Listing**: List events with filtering options (limit, offset, closed status, tag_id)
 - **Event Retrieval**: Get detailed information about specific events by slug
+- **Market Retrieval**: Get detailed information about specific markets by slug
 - **Configurable Base URL**: Support for custom Polymarket API endpoints
 - **RESTful API**: Uses standard HTTP requests for API interactions
 - **Error Handling**: Comprehensive error handling for API operations
 - **TypeScript Support**: Full type definitions and validation
 - **Tool Integration**: Tools are registered with the chat service for agent use
+- **Service Architecture**: PolymarketService extends HttpService for robust HTTP handling
 
 ## Core Components
 
@@ -28,12 +30,12 @@ The main service class that implements `TokenRingService`. It extends `HttpServi
 - `name`: Service identifier (`"PolymarketService"`)
 - `description`: Service description (`"Service for querying Polymarket prediction markets"`)
 - `defaultHeaders`: Default HTTP headers (empty object)
-- `baseUrl`: Polymarket API base URL (configurable)
+- `config`: Service configuration containing `baseUrl`
 
 **Constructor:**
 
 ```typescript
-constructor(config: ParsedPolymarketServiceConfig = {})
+constructor(config: ParsedPolymarketServiceConfig)
 ```
 
 **Service Methods:**
@@ -50,20 +52,20 @@ async getMarketBySlug(slug: string): Promise<any>
 
 **Method Descriptions:**
 
-- `searchMarkets(query)`: Searches for prediction markets matching the query
+- `searchMarkets(query)`: Searches for prediction markets, events, and profiles matching the query
 - `listEvents(opts)`: Lists events with optional filtering
 - `getEventBySlug(slug)`: Retrieves detailed information about an event by its slug
 - `getMarketBySlug(slug)`: Retrieves detailed information about a market by its slug
 
-**Search Options:**
+**PolymarketSearchOptions:**
 
 ```typescript
-interface PolymarketSearchOptions {
+type PolymarketSearchOptions = {
   limit?: number;      // Number of results to return (default: 10)
   offset?: number;     // Number of results to skip (default: 0)
   closed?: boolean;    // Whether to include closed markets (default: false)
   tag_id?: number;     // Filter by tag ID
-}
+};
 ```
 
 ### Configuration Schema
@@ -104,46 +106,122 @@ interface TokenRingService {
 - `name`: Service identifier (`"PolymarketService"`)
 - `description`: Service description
 - `defaultHeaders`: Default HTTP headers (empty object)
+- `config`: Service configuration
 
 **Constructor:**
 
 ```typescript
-constructor(config: ParsedPolymarketServiceConfig = {})
+constructor(config: ParsedPolymarketServiceConfig)
 ```
 
 **Service Methods:**
 
+#### `searchMarkets(query: string): Promise<any>`
+
+Searches for prediction markets, events, and profiles matching the query.
+
+**Parameters:**
+
+- `query` (string): Search query (required, must be non-empty)
+
+**Returns:** Promise resolving to Polymarket API search response containing events, tags, and profiles
+
+**Throws:** Error if query is empty
+
+**API Endpoint:** `GET /public-search?q={query}`
+
+**Example:**
+
 ```typescript
-async searchMarkets(query: string): Promise<any>
+const polymarket = new PolymarketService({
+  baseUrl: "https://gamma-api.polymarket.com"
+});
 
-async listEvents(opts: PolymarketSearchOptions = {}): Promise<any>
-
-async getEventBySlug(slug: string): Promise<any>
-
-async getMarketBySlug(slug: string): Promise<any>
+const results = await polymarket.searchMarkets("Artificial intelligence");
+console.log("Search results:", results);
 ```
 
-**Method Descriptions:**
+#### `listEvents(opts?: PolymarketSearchOptions): Promise<any>`
 
-- `searchMarkets(query)`: Searches for prediction markets matching the query
-- `listEvents(opts)`: Lists events with optional filtering
-- `getEventBySlug(slug)`: Retrieves detailed information about an event by its slug
-- `getMarketBySlug(slug)`: Retrieves detailed information about a market by its slug
+Lists prediction market events with optional filtering.
 
-**Search Options:**
+**Parameters:**
+
+- `opts` (PolymarketSearchOptions, optional):
+  - `limit` (number): Number of results (default: 10, max: 100)
+  - `offset` (number): Pagination offset (default: 0)
+  - `closed` (boolean): Include closed markets (default: false)
+  - `tag_id` (number): Filter by tag ID
+
+**Returns:** Promise resolving to array of events
+
+**API Endpoint:** `GET /events?limit={limit}&offset={offset}&closed={closed}&tag_id={tag_id}`
+
+**Example:**
 
 ```typescript
-interface PolymarketSearchOptions {
-  limit?: number;      // Number of results to return (default: 10)
-  offset?: number;     // Number of results to skip (default: 0)
-  closed?: boolean;    // Whether to include closed markets (default: false)
-  tag_id?: number;     // Filter by tag ID
-}
+const events = await polymarket.listEvents({
+  limit: 20,
+  closed: false
+});
+console.log("Events:", events);
+```
+
+#### `getEventBySlug(slug: string): Promise<any>`
+
+Retrieves detailed information about an event by its slug.
+
+**Parameters:**
+
+- `slug` (string): Event slug from Polymarket URL (required, must be non-empty)
+
+**Returns:** Promise resolving to event object with markets, tags, and metadata
+
+**Throws:** Error if slug is empty
+
+**API Endpoint:** `GET /events/slug/{slug}`
+
+**Example:**
+
+```typescript
+const event = await polymarket.getEventBySlug("will-ai-exceed-human-level-performance-by-2025");
+console.log("Event:", event);
+```
+
+#### `getMarketBySlug(slug: string): Promise<any>`
+
+Retrieves detailed information about a market by its slug.
+
+**Parameters:**
+
+- `slug` (string): Market slug from Polymarket URL (required, must be non-empty)
+
+**Returns:** Promise resolving to market object with outcomes and trading data
+
+**Throws:** Error if slug is empty
+
+**API Endpoint:** `GET /markets/slug/{slug}`
+
+**Example:**
+
+```typescript
+const market = await polymarket.getMarketBySlug("will-ai-exceed-human-level-performance-by-2025");
+console.log("Market:", market);
 ```
 
 ## Provider Documentation
 
-This package does not implement provider architecture.
+This package does not implement provider architecture. The `PolymarketService` is registered directly with the application and can be accessed by agents using `requireServiceByType`.
+
+**Accessing the Service:**
+
+```typescript
+import { PolymarketService } from "@tokenring-ai/polymarket";
+
+// In an agent context
+const polymarket = agent.requireServiceByType(PolymarketService);
+const results = await polymarket.searchMarkets("AI regulation");
+```
 
 ## RPC Endpoints
 
@@ -379,7 +457,7 @@ The plugin provides the following tools for Polymarket operations:
 
 ### polymarket_search
 
-Searches for prediction markets matching the query.
+Searches for prediction markets, events, and profiles matching the query.
 
 **Tool Definition:**
 
@@ -530,6 +608,7 @@ console.log("Event details:", result.data.event);
 - **Pagination**: Use offset and limit for large result sets (max 100 per request)
 - **Filtering**: Use tag_id and closed filters to narrow results
 - **Slug Format**: Extract slugs from Polymarket URLs for accurate lookups
+- **Rate Limiting**: Implement delays between requests for production use
 
 ### Market Analysis
 
@@ -580,7 +659,7 @@ try {
 ### Running Tests
 
 ```bash
-bun test
+bun run test
 ```
 
 ### Test Configuration
@@ -606,7 +685,7 @@ export default defineConfig({
 ### Test Coverage
 
 ```bash
-bun test --coverage
+bun run test:coverage
 ```
 
 ### Package Structure
@@ -618,13 +697,20 @@ pkg/polymarket/
 ├── tools/
 │   ├── search.ts            # Search tool
 │   ├── listEvents.ts        # List events tool
-│   ├── getEvent.ts          # Get event tool
+│   └── getEvent.ts          # Get event tool
 ├── index.ts                  # Package exports
 ├── plugin.ts                 # Plugin registration
 ├── package.json              # Package metadata
 ├── schema.ts                 # Configuration schema
 ├── vitest.config.ts         # Vitest configuration
-└── README.md                # Documentation
+├── README.md                # Documentation
+└── design/                  # Design documentation
+    ├── fetch-markets-guide.md
+    ├── search-markets-events-and-profiles.md
+    ├── list-markets.md
+    ├── get-market-by-slug.md
+    ├── list-events.md
+    └── get-event-by-slug.md
 ```
 
 ### Build Instructions
@@ -637,13 +723,13 @@ bun run build
 
 ```bash
 # Run tests
-bun test
+bun run test
 
 # Run tests in watch mode
-bun test:watch
+bun run test:watch
 
 # Run tests with coverage
-bun test:coverage
+bun run test:coverage
 ```
 
 ### Dependencies
@@ -662,8 +748,34 @@ bun test:coverage
 - `@vitest/coverage-v8` - Coverage reporting
 - `typescript` - TypeScript compiler
 
+## Error Handling
+
+The service includes comprehensive error handling:
+
+- **Invalid inputs**: Throws descriptive errors for missing required parameters
+- **API failures**: Handles HTTP errors and non-OK responses via HttpService
+- **Network issues**: Uses retry logic for transient failures (inherited from HttpService)
+- **JSON parsing**: Validates and sanitizes API responses
+
+**Error examples:**
+
+```typescript
+// Empty query throws error
+await polymarket.searchMarkets("");  // Error: "query is required"
+
+// Empty slug throws error
+await polymarket.getEventBySlug("");  // Error: "slug is required"
+
+// Empty query in tool throws error
+await agent.executeTool("polymarket_search", { query: "" });  // Error: "[polymarket_search] query is required"
+```
+
 ## Related Components
 
+- **@tokenring-ai/app**: Base application framework providing plugin and service architecture
+- **@tokenring-ai/agent**: Agent system that uses the Polymarket tools
+- **@tokenring-ai/chat**: Chat service that registers the Polymarket tools
+- **@tokenring-ai/utility**: Provides HttpService base class for API interactions
 - **HttpService**: HTTP service from `@tokenring-ai/utility`
 - **TokenRingService**: Base interface for all services
 - **TokenRingToolDefinition**: Interface for tools
@@ -675,7 +787,7 @@ bun test:coverage
 
 **Problem**: API requests fail with HTTP errors
 
-**Solution**:
+**Solution:**
 - Verify the baseUrl is correct
 - Check network connectivity to Polymarket API
 - Ensure API is not temporarily down
@@ -685,7 +797,7 @@ bun test:coverage
 
 **Problem**: Search returns no results
 
-**Solution**:
+**Solution:**
 - Try different search queries
 - Check that markets exist for the query
 - Verify the search syntax is correct
@@ -695,7 +807,7 @@ bun test:coverage
 
 **Problem**: getEvent returns error
 
-**Solution**:
+**Solution:**
 - Verify the slug is correct (check from search results)
 - Ensure the event exists and is not closed
 - Check that the slug matches the API format
@@ -705,7 +817,7 @@ bun test:coverage
 
 **Problem**: API returns 429 Too Many Requests
 
-**Solution**:
+**Solution:**
 - Implement retry logic with exponential backoff
 - Add delays between requests
 - Monitor API rate limits
@@ -715,7 +827,7 @@ bun test:coverage
 
 **Problem**: API requests fail with incorrect configuration
 
-**Solution**:
+**Solution:**
 - Verify baseUrl is set correctly
 - Check that the URL uses HTTPS
 - Ensure the base URL ends with a trailing slash
@@ -723,7 +835,7 @@ bun test:coverage
 
 ## License
 
-MIT License
+MIT License - see LICENSE file for details.
 
 ## Version
 
