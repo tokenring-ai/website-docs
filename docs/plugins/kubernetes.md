@@ -6,6 +6,14 @@ Kubernetes integration for TokenRing AI agents, enabling discovery and interacti
 
 The `@tokenring-ai/kubernetes` package provides comprehensive Kubernetes cluster integration for TokenRing AI agents. Agents can discover and query cluster resources including core and custom resources across namespaces. This package enables agents to interact with Kubernetes clusters without direct kubectl access, leveraging the official `@kubernetes/client-node` library.
 
+### Current Functionality
+
+The package currently provides **read-only resource discovery** capabilities:
+- Lists all accessible API resources across the cluster
+- Supports both core and custom resources
+- Works across multiple namespaces or a specified namespace
+- Provides detailed error information for failed operations
+
 ## Key Features
 
 - **Resource Discovery**: Discover and list all accessible API resources across the cluster
@@ -51,10 +59,6 @@ interface ParsedKubernetesServiceConfig {
   caCertificate?: string;     // Optional: CA certificate for server verification
 }
 ```
-
-**Constructor Throws:**
-- `Error` if `clusterName` is missing
-- `Error` if `apiServerUrl` is missing
 
 **Properties:**
 
@@ -449,7 +453,7 @@ bun run build
 ### Development Dependencies
 
 - `vitest` (^4.0.18): Unit testing framework
-- `typescript` (^5.9.3): TypeScript compiler
+- `typescript` (5.9.3): TypeScript compiler
 
 ## Related Components
 
@@ -466,6 +470,7 @@ pkg/kubernetes/
 ├── schema.ts                   # Configuration schema
 ├── package.json                # Package metadata and dependencies
 ├── vitest.config.ts            # Vitest configuration
+├── BRAINSTORM.md               # Future enhancement plans
 └── README.md                   # Package documentation
 ```
 

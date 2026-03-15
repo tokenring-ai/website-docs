@@ -11,7 +11,7 @@ The `@tokenring-ai/docker` package provides AI agents with comprehensive Docker 
 - **TLS/SSL Support**: Secure Docker daemon connections with certificate-based authentication
 - **Multiple Docker Hosts**: Support for local Unix sockets and remote TCP connections
 - **Agent Integration**: Seamless integration with Token Ring's agent and service architecture
-- **Comprehensive Toolset**: 18 Docker tools for managing images, containers, networks, and more
+- **Comprehensive Toolset**: 19 Docker tools for managing images, containers, networks, and more
 - **Shell Safety**: All operations use proper shell escaping and timeout management
 - **Workdir Bind Mount**: Ephemeral containers automatically bind mount the project directory at `/workdir`
 
@@ -28,7 +28,7 @@ bun install @tokenring-ai/docker
 - **TLS/SSL Support**: Secure Docker daemon connections with certificate-based authentication
 - **Multiple Docker Hosts**: Support for local Unix sockets (`unix:///var/run/docker.sock`) and remote TCP connections (`tcp://remote:2375`)
 - **Agent Integration**: Seamless integration with Token Ring's agent and service architecture
-- **18 Docker Tools**: Comprehensive toolset for container, image, network, and registry management
+- **19 Docker Tools**: Comprehensive toolset for container, image, network, and registry management
 - **Shell Safety**: All operations use proper shell escaping via `@tokenring-ai/utility/string/shellEscape`
 - **Workdir Bind Mount**: Ephemeral containers automatically bind mount the project directory at `/workdir`
 
@@ -158,7 +158,7 @@ app.addServices(dockerService);
 
 ## Tools
 
-The package provides 18 Docker tools for comprehensive container and image management. Each tool follows the TokenRing tool pattern with proper input validation, error handling, and agent integration.
+The package provides 19 Docker tools for comprehensive container and image management. Each tool follows the TokenRing tool pattern with proper input validation, error handling, and agent integration.
 
 ### Exported Tools
 
@@ -305,7 +305,7 @@ Build a Docker image from a Dockerfile.
 - `tag` (string): The tag to apply to the built image
 - `dockerfile` (string, optional): Path to the Dockerfile (relative to context)
 - `buildArgs` (`Record<string, string>`, optional): Build arguments to pass to the build
-- `noCache` (boolean, optional): Whether to use cache when building (default: false)
+- `noCache` (boolean, optional): Whether to NOT use cache when building (default: false)
 - `pull` (boolean, optional): Whether to always pull newer versions of base images (default: false)
 - `timeoutSeconds` (number, optional): Timeout in seconds (default: 300)
 
@@ -440,12 +440,12 @@ const result = await getContainerLogs.execute(
 
 #### docker_getContainerStats
 
-Get stats from Docker containers.
+Get stats from a Docker container.
 
 **Parameters**:
 - `containers` (string | string[]): Container name(s) or ID(s)
 - `all` (boolean, optional): Whether to show all containers (default: false)
-- `noStream` (boolean, optional): Disable streaming stats (default: true)
+- `noStream` (boolean, optional): Whether to disable streaming stats and only pull one stat (default: true)
 - `format` (string, optional): Format the output (json or table, default: "json")
 - `timeoutSeconds` (number, optional): Timeout in seconds (default: 10)
 
@@ -603,8 +603,9 @@ Prune unused Docker images.
 **Parameters**:
 - `all` (boolean, optional): Remove all unused images, not just dangling (default: false)
 - `filter` (string, optional): Filter images based on conditions
-- `force` (boolean, optional): Whether to force removal (default: false)
 - `timeoutSeconds` (number, optional): Timeout in seconds (default: 60)
+
+**Note**: The `force` flag is always set internally to avoid interactive prompts.
 
 **Example**:
 ```typescript
@@ -622,8 +623,9 @@ Prune unused Docker volumes.
 
 **Parameters**:
 - `filter` (string, optional): Filter volumes based on conditions
-- `force` (boolean, optional): Whether to force removal (default: false)
 - `timeoutSeconds` (number, optional): Timeout in seconds (default: 60)
+
+**Note**: The `force` flag is always set internally to avoid interactive prompts.
 
 **Example**:
 ```typescript
@@ -962,6 +964,7 @@ bun test:coverage
 - **Resource Management**: Containers and images should be properly cleaned up to avoid resource exhaustion
 - **TLS Configuration**: TLS verification requires proper certificate files to be accessible
 - **Tool Files**: Tools are implemented as TypeScript files but use `.ts` extensions for imports
+- **Force Flag**: The `docker_pruneImages` and `docker_pruneVolumes` tools always use the `-f` flag internally to avoid interactive prompts
 
 ## License
 

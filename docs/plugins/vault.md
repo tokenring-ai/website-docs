@@ -688,14 +688,14 @@ await fs.remove(tempDir);
 | `@tokenring-ai/utility` | `0.2.0` | Shared utilities |
 | `@types/fs-extra` | `^11.0.4` | Type definitions for fs-extra |
 | `commander` | `^14.0.3` | CLI framework |
-| `fs-extra` | `^11.3.3` | Enhanced file system operations |
+| `fs-extra` | `^11.3.4` | Enhanced file system operations |
 | `zod` | `^4.3.6` | Schema validation |
 
 ### Development Dependencies
 
 | Package | Version | Description |
 |---------|---------|-------------|
-| `vitest` | `^4.0.18` | Testing framework |
+| `vitest` | `^4.1.0` | Testing framework |
 | `typescript` | `^5.9.3` | TypeScript compiler |
 
 ## Related Components

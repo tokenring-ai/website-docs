@@ -1,4 +1,4 @@
-# Linux Audio Plugin
+# @tokenring-ai/linux-audio
 
 ## Overview
 
@@ -15,6 +15,7 @@ The `@tokenring-ai/linux-audio` package implements the `AudioProvider` interface
 - **Abort Signal Support**: Recording can be stopped via AbortSignal with automatic cleanup
 - **Plugin Integration**: Automatically registers with Token Ring AI AudioService when configured
 - **16-bit Audio**: Records audio in 16-bit PCM format for high quality
+- **Linux-Only**: Designed specifically for Linux systems with ALSA support
 
 ## Core Components
 
@@ -904,7 +905,7 @@ testAudio().catch(console.error);
 
 ### Development Dependencies
 
-- `vitest`: ^4.0.18
+- `vitest`: ^4.1.0
 - `typescript`: ^5.9.3
 
 ### Peer Dependencies

@@ -1,10 +1,10 @@
-# Wikipedia Plugin
+# @tokenring-ai/wikipedia
 
-Plugin: Knowledge Base Search and Content Retrieval
+The `@tokenring-ai/wikipedia` package provides seamless integration with Wikipedia's API, enabling Token Ring agents and applications to search for articles, retrieve content, and access a global knowledge base. This plugin wraps Wikipedia's REST API, providing a clean interface for article searches and page content retrieval.
 
 ## Overview and Purpose
 
-The `@tokenring-ai/wikipedia` package provides seamless integration with Wikipedia's API, enabling Token Ring agents and applications to search for articles, retrieve content, and access a global knowledge base. This plugin wraps Wikipedia's REST API, providing a clean interface for article searches and page content retrieval.
+The `@tokenring-ai/wikipedia` package enables Token Ring AI agents to interact with Wikipedia programmatically. It provides a service-based architecture with pre-built tools for searching articles and retrieving raw wiki markup content. The package is designed for integration within the Token Ring ecosystem, allowing agents to leverage Wikipedia's knowledge base for research, fact-checking, and content generation tasks.
 
 ### Key Features
 
@@ -16,7 +16,8 @@ The `@tokenring-ai/wikipedia` package provides seamless integration with Wikiped
 - **Agent Tools**: Two tools automatically registered for agent interaction
 - **Configurable**: Optional baseUrl for different Wikipedia language editions
 - **Error Handling**: Comprehensive error handling with status codes and clear error messages
-- **Retry Logic**: Built-in retry logic for transient network failures
+- **Retry Logic**: Built-in retry logic via `doFetchWithRetry` for transient network failures
+- **Service Architecture**: Extends `HttpService` for consistent HTTP handling
 
 ## Core Components
 
@@ -41,7 +42,7 @@ constructor(config: ParsedWikipediaConfig)
 - `description`: "Service for searching Wikipedia articles"
 - `options`: Service configuration (ParsedWikipediaConfig)
 - `baseUrl`: Protected property storing the base URL
-- `defaultHeaders`: Protected property with User-Agent header
+- `defaultHeaders`: Protected property with User-Agent header (`"TokenRing-Writer/1.0 (https://github.com/tokenring/writer)"`)
 
 #### Service Methods
 
@@ -99,7 +100,7 @@ const specializedResults = await wikipedia.search("Token Ring AI framework", {
 
 ##### `getPage(title: string): Promise<string>`
 
-Retrieves raw wiki markup content for a specific Wikipedia page title.
+Retrieves raw wiki markup content for a specific Wikipedia page title. Uses `doFetchWithRetry` from `@tokenring-ai/utility` for reliable network requests.
 
 **Parameters:**
 - `title` (required): Page title (URL-encoded in practice, but the service handles this)
@@ -107,7 +108,7 @@ Retrieves raw wiki markup content for a specific Wikipedia page title.
 **Returns:**
 - Raw wiki markup content as a text string
 
-**Throws:** Error if title is empty or page retrieval fails
+**Throws:** Error if title is empty or page retrieval fails (includes status code in error object)
 
 **Example:**
 ```typescript
@@ -150,7 +151,7 @@ app.install(wikipediaPlugin, {
 
 ## Providers
 
-This package does not use a provider registry pattern. The `WikipediaService` is a standalone service class that implements `TokenRingService`.
+This package does not use a provider registry pattern. The `WikipediaService` is a standalone service class that implements `TokenRingService` and is registered directly with the application.
 
 ## RPC Endpoints
 
@@ -210,6 +211,20 @@ const germanConfig = {
 const frenchConfig = {
   wikipedia: {
     baseUrl: "https://fr.wikipedia.org"
+  }
+};
+
+// For Spanish Wikipedia
+const spanishConfig = {
+  wikipedia: {
+    baseUrl: "https://es.wikipedia.org"
+  }
+};
+
+// For Japanese Wikipedia
+const japaneseConfig = {
+  wikipedia: {
+    baseUrl: "https://ja.wikipedia.org"
   }
 };
 ```
@@ -526,6 +541,7 @@ The service implements comprehensive error handling:
 - **HTTP Errors**: Non-2xx responses include status code
 - **Error Properties**: Errors include `message` and optional `status` properties
 - **Tool-level Error Wrapping**: The `wikipedia_getPage` tool wraps errors with tool name prefix
+- **Retry Logic**: `getPage()` uses `doFetchWithRetry` for transient network failures
 
 ### Error Examples
 
@@ -569,7 +585,7 @@ try {
 1. **Missing Query**: `Error: query is required`
 2. **Missing Title**: `Error: title is required`
 3. **HTTP Error**: `Error: Wikipedia page retrieval failed (404)` with `status` property
-4. **Network Error**: Service-level errors from fetch implementation
+4. **Network Error**: Service-level errors from fetch implementation (retry logic applied)
 5. **Rate Limiting**: HTTP 429 error with rate limit information
 
 ## API Reference
@@ -703,11 +719,12 @@ This is required by Wikipedia's API policy for proper identification of API clie
    - Consider URL-encoding when dealing with special characters programmatically
    - Wikipedia API expects underscores in page titles
 
-5. **Namespace Filtering**: Use namespace parameter to target specific content types
+5. **Namespace Filtering**: Use namespace parameter in service calls to target specific content types
    - 0: Main article namespace (default)
    - 14: Category namespace
    - 108: Template namespace
    - Other namespaces available per Wikipedia documentation
+   - Note: The `wikipedia_search` tool does not expose the namespace parameter; use the service directly for namespace filtering
 
 6. **Error Handling**: Always wrap API calls in try-catch blocks
    ```typescript
@@ -754,6 +771,8 @@ This is required by Wikipedia's API policy for proper identification of API clie
    - Consider using a wiki markup parser library
    - Strip templates and references for clean text
    - Handle special characters and formatting
+
+10. **Retry Logic**: The `getPage()` method uses `doFetchWithRetry` from `@tokenring-ai/utility` for automatic retry on transient failures. The `search()` method uses the base `HttpService.fetchJson()` which does not include retry logic.
 
 ## Integration
 
@@ -901,7 +920,7 @@ describe("WikipediaService", () => {
 - `@vitest/coverage-v8` (^4.0.18): Code coverage
 - `typescript` (^5.9.3): TypeScript support
 
-The service extends `HttpService` from `@tokenring-ai/utility` for base HTTP functionality and uses `doFetchWithRetry` for reliable network requests.
+The service extends `HttpService` from `@tokenring-ai/utility` for base HTTP functionality and uses `doFetchWithRetry` for reliable network requests on page retrieval.
 
 ## Limitations
 
@@ -910,9 +929,10 @@ The service extends `HttpService` from `@tokenring-ai/utility` for base HTTP fun
 - **No Article Editing**: Read-only API access; cannot create or modify articles
 - **Network Dependency**: Requires network connectivity to Wikipedia API
 - **Content Type**: Returns raw wiki markup; does not render HTML or formatted content
-- **Namespace Support**: Supports standard Wikipedia namespaces (0, 14, 108, etc.)
+- **Namespace Support**: Service supports standard Wikipedia namespaces (0, 14, 108, etc.), but the `wikipedia_search` tool does not expose the namespace parameter
 - **No Image Handling**: Does not provide direct access to images or media files
 - **No Category Browsing**: Search only, no category tree traversal
+- **Retry Logic**: Only `getPage()` uses retry logic via `doFetchWithRetry`; `search()` does not
 
 ## Related Components
 
@@ -922,18 +942,21 @@ The service extends `HttpService` from `@tokenring-ai/utility` for base HTTP fun
 - `HttpService` - Base class for HTTP service implementations in `@tokenring-ai/utility`
 - `TokenRingAgent` - Agent framework for tool execution and service access
 - `ChatService` - Chat service for tool registration in `@tokenring-ai/chat`
+- `doFetchWithRetry` - Retry-enabled fetch utility in `@tokenring-ai/utility`
 
 ## Notes
 
 - Wikipedia API uses underscores for spaces in titles (`Token_Ring` not `Token Ring`)
-- The service uses `doFetchWithRetry` from utility package for reliability
+- The `getPage()` method uses `doFetchWithRetry` from utility package for reliability
+- The `search()` method uses base `HttpService.fetchJson()` without retry logic
 - User-Agent header defaults to `"TokenRing-Writer/1.0 (https://github.com/tokenring/writer)"`
 - Search results include HTML-formatted snippets for display purposes
 - Page content returns raw wiki markup
 - Maximum search results per request: 500
-- Namespace parameter values match Wikipedia's namespace ID system
+- Namespace parameter values match Wikipedia's namespace ID system (available in service, not in tool)
 - All API calls are asynchronous and return Promises
 - Configuration uses Zod schema validation for type safety
+- Tool-level error wrapping adds tool name prefix to error messages
 
 ## License
 

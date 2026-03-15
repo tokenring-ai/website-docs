@@ -91,7 +91,7 @@ export default class DatabaseService implements TokenRingService {
 
   registerDatabase = this.databases.register;
   getDatabaseByName = this.databases.getItemByName;
-  getAvailableDatabases = this.databases.getAllItemNames();
+  getAvailableDatabases = this.databases.getAllItemNames;
 }
 ```
 
@@ -104,7 +104,7 @@ Abstract base class for concrete database implementations. All database provider
 **Constructor:**
 
 ```typescript
-constructor(allowWrites: boolean = false)
+constructor(private allowWrites: boolean = false)
 ```
 
 **Parameters:**
@@ -113,7 +113,7 @@ constructor(allowWrites: boolean = false)
 
 **Properties:**
 
-- `allowWrites: boolean` - Whether write operations are allowed on this provider
+- `allowWrites: boolean` - Whether write operations are allowed on this provider (private property)
 
 **Result Interface:**
 

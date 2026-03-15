@@ -17,6 +17,7 @@ This package is designed as a Token Ring plugin that integrates with the applica
 - **Comprehensive Error Handling**: Clear error messages for common scenarios
 - **Flexible Configuration**: Customizable options for different CDN providers
 - **Default Implementations**: Built-in HTTP-based download and exists operations using fetch
+- **String to Buffer Conversion**: Automatic conversion of string data to Buffer on upload
 
 ## Core Components
 
@@ -34,30 +35,31 @@ const cdnService = new CDNService();
 
 - **name**: `"CDNService"` - Service identifier for the Token Ring registry
 - **description**: `"Abstract interface for CDN operations"` - Human-readable service description
+- **registerProvider**: Exposed public method from KeyedRegistry for registering CDN providers
 
 #### Methods
 
 ##### registerProvider
 
-Register a CDN provider with a unique name. Uses KeyedRegistry internally for provider management. The name is automatically extracted from the provider instance.
-
-This method is exposed as a public property for convenience:
+Register a CDN provider with a unique name. Uses KeyedRegistry internally for provider management.
 
 ```typescript
 cdnService.registerProvider = this.providers.register;
 ```
 
 ```typescript
-// Register a provider
-cdnService.registerProvider(new S3CDNProvider());
+// Register a provider with an explicit name
+cdnService.registerProvider('s3', new S3CDNProvider());
+cdnService.registerProvider('cloudflare', new CloudflareCDNProvider());
 ```
 
 **Parameters:**
+- `name` (string): Unique identifier for the provider
 - `provider` (CDNProvider): Provider implementation instance
 
 **Returns:** Registered CDNProvider instance
 
-**Note:** The provider's name is automatically extracted from the instance for registration
+**Note:** The name must be explicitly provided when registering a provider. This name is used to retrieve the provider later.
 
 ##### getCDNByName
 
@@ -84,6 +86,12 @@ const result = await cdnService.upload('s3', fileBuffer, {
   contentType: 'text/plain',
   metadata: { author: 'test' }
 });
+
+// String data is automatically converted to Buffer
+const result = await cdnService.upload('s3', 'Hello, World!', {
+  filename: 'hello.txt',
+  contentType: 'text/plain'
+});
 ```
 
 **Parameters:**
@@ -94,8 +102,8 @@ const result = await cdnService.upload('s3', fileBuffer, {
 **Returns:** Promise resolving to `UploadResult`
 
 **Throws:** 
-- Error if no CDN provider is found with the given name
 - Error if CDNName is empty ("No active CDN set. Please set an active CDN before uploading.")
+- Error if no CDN provider is found with the given name
 
 **Implementation Detail:**
 ```typescript
@@ -126,7 +134,7 @@ const result = await cdnService.delete('s3', 'https://example.com/file.txt');
 - Error if CDN provider not found
 - Error if delete method is not supported by the provider ("Active CDN does not support deletion")
 
-**Note:** The delete method is optional - providers may not implement it
+**Note:** The delete method is optional - providers may not implement it. The service checks if the provider has a delete method before calling it.
 
 **Implementation Detail:**
 ```typescript
@@ -418,7 +426,7 @@ class CustomCDNProvider extends CDNProvider {
 
 #### Provider Registration
 
-Providers are registered with the CDNService using the KeyedRegistry pattern:
+Providers are registered with the CDNService using the KeyedRegistry pattern with explicit names:
 
 ```typescript
 import CDNService from "@tokenring-ai/cdn";
@@ -426,8 +434,8 @@ import CDNService from "@tokenring-ai/cdn";
 const cdnService = new CDNService();
 const provider = new CustomCDNProvider();
 
-// Register provider - name is extracted from provider instance
-cdnService.registerProvider(provider);
+// Register provider with explicit name
+cdnService.registerProvider('custom', provider);
 
 // Retrieve by name
 const retrievedProvider = cdnService.getCDNByName('custom');
@@ -586,7 +594,7 @@ class MyCustomCDNProvider extends CDNProvider {
 
 // Register the provider
 const cdnService = new CDNService();
-cdnService.registerProvider(new MyCustomCDNProvider());
+cdnService.registerProvider('my-custom', new MyCustomCDNProvider());
 ```
 
 ### Working with Multiple Providers
@@ -596,9 +604,9 @@ import CDNService from "@tokenring-ai/cdn";
 
 const cdnService = new CDNService();
 
-// Register multiple providers
-cdnService.registerProvider(new S3CDNProvider());
-cdnService.registerProvider(new CloudflareCDNProvider());
+// Register multiple providers with explicit names
+cdnService.registerProvider('s3', new S3CDNProvider());
+cdnService.registerProvider('cloudflare', new CloudflareCDNProvider());
 
 // Upload to specific provider
 const s3Result = await cdnService.upload('s3', fileBuffer, { 
@@ -635,7 +643,7 @@ class HTTPCDNProvider extends CDNProvider {
 }
 
 const cdnService = new CDNService();
-cdnService.registerProvider(new HTTPCDNProvider());
+cdnService.registerProvider('http', new HTTPCDNProvider());
 ```
 
 ### String to Buffer Conversion
@@ -659,6 +667,38 @@ const bufferResult = await cdnService.upload('provider', Buffer.from('Hello, Wor
 });
 ```
 
+### Error Handling
+
+```typescript
+import CDNService from "@tokenring-ai/cdn";
+
+const cdnService = new CDNService();
+
+// Register a provider first
+cdnService.registerProvider('s3', new S3CDNProvider());
+
+try {
+  // This will succeed
+  const result = await cdnService.upload('s3', Buffer.from('data'), { filename: 'test.txt' });
+} catch (error) {
+  console.error('Upload failed:', error.message);
+}
+
+try {
+  // This will throw - provider not found
+  const result = await cdnService.upload('non-existent', Buffer.from('data'), { filename: 'test.txt' });
+} catch (error) {
+  console.error('Error:', error.message); // "CDN non-existent not found..."
+}
+
+try {
+  // This will throw - delete not supported
+  await cdnService.delete('provider-without-delete', 'https://example.com/file.txt');
+} catch (error) {
+  console.error('Error:', error.message); // "Active CDN does not support deletion"
+}
+```
+
 ## Best Practices
 
 ### Provider Implementation
@@ -668,13 +708,15 @@ const bufferResult = await cdnService.upload('provider', Buffer.from('Hello, Wor
 3. **Leverage Defaults**: Use the default `download` and `exists` implementations for HTTP-based CDNs
 4. **Error Handling**: Provide clear error messages when operations fail
 5. **Metadata**: Include relevant metadata in upload results when available
+6. **Binary Data**: Ensure your upload implementation handles Buffer data correctly for binary files
 
 ### Service Usage
 
 1. **Provider Registration**: Register all providers before attempting to use them
-2. **Error Handling**: Handle errors from `getCDNByName` as it throws when provider is not found
-3. **Optional Operations**: Check if `delete` is available before calling it on a provider
-4. **Type Safety**: Use TypeScript for type-safe CDN operations
+2. **Explicit Names**: Use clear, descriptive names when registering providers
+3. **Error Handling**: Handle errors from `getCDNByName` as it throws when provider is not found
+4. **Optional Operations**: Check if `delete` is available before calling it on a provider
+5. **Type Safety**: Use TypeScript for type-safe CDN operations
 
 ### Configuration
 
@@ -716,6 +758,9 @@ Tests use vitest and cover:
 - CDNService provider registration and retrieval
 - CDNProvider default implementations
 - Type definitions and schemas
+- Upload, download, delete, and exists operations
+- Error handling scenarios
+- Performance and edge cases (large files, concurrent operations)
 
 ### Building
 
@@ -747,7 +792,7 @@ This runs TypeScript type checking with `tsc --noEmit`.
 
 ### Dev Dependencies
 
-- `vitest`: `^4.0.18` - Testing framework
+- `vitest`: `^4.1.0` - Testing framework
 - `typescript`: `^5.9.3` - TypeScript compiler
 
 ## Related Components
@@ -756,9 +801,6 @@ This runs TypeScript type checking with `tsc --noEmit`.
 - **@tokenring-ai/agent**: Agent orchestration system
 - **@tokenring-ai/utility**: Utility functions including KeyedRegistry
 - **@tokenring-ai/chat**: Chat interface for human interaction
-- **@tokenring-ai/s3**: AWS S3 CDN provider implementation
-- **@tokenring-ai/wordpress**: WordPress CDN provider implementation
-- **@tokenring-ai/ghost-io**: Ghost.io CDN provider implementation
 
 ## License
 

@@ -1,8 +1,8 @@
-# Workflow Plugin
+# @tokenring-ai/workflow
 
 ## Overview
 
-The Workflow Plugin provides a comprehensive system for defining and executing multi-step agent workflows within the TokenRing AI ecosystem. It enables users to configure sequences of commands that can be executed either on the current agent or in a newly spawned agent with specific agent types. The plugin integrates seamlessly with the agent system and provides both chat commands and JSON-RPC endpoints for workflow management.
+The `@tokenring-ai/workflow` package provides a comprehensive system for defining and executing multi-step agent workflows within the TokenRing AI ecosystem. It enables users to configure sequences of commands that can be executed either on the current agent or in a newly spawned agent with specific agent types. The package integrates seamlessly with the agent system and provides both chat commands and JSON-RPC endpoints for workflow management.
 
 Workflows are configuration-driven, defined in your application's configuration file with Zod schema validation. Each workflow consists of a sequence of commands that are executed in order, allowing for automated multi-step tasks that can span research, analysis, content generation, and other agent operations.
 
@@ -12,7 +12,7 @@ Workflows are configuration-driven, defined in your application's configuration 
 - **Agent Spawning**: Create new agents of specified types to run workflows independently
 - **Configuration-driven**: Workflows defined in configuration files with Zod schema validation
 - **JSON-RPC API**: Remote workflow management via WebSocket API endpoints
-- **Interactive Commands**: `/workflow` chat command with subcommands for listing, running, and spawning workflows
+- **Interactive Commands**: Three separate chat commands (`/workflow list`, `/workflow run`, `/workflow spawn`)
 - **Headless Support**: Run workflows in background agents without user interaction
 - **Workflow Listing**: Display available workflows with names, descriptions, and step counts
 - **Abort Support**: Workflow execution can be aborted via agent abort signal
@@ -26,7 +26,7 @@ The primary service managing workflow execution within the TokenRing application
 
 **Properties:**
 - `name`: The service identifier ("WorkflowService")
-- `description`: Human-readable service description
+- `description`: Human-readable service description ("Manages multi-step agent workflows")
 - `workflows`: Map of workflow configurations keyed by workflow name
 
 **Methods:**
@@ -213,36 +213,25 @@ const result = await rpcClient.spawnWorkflow({ workflowName: "morning-article", 
 
 ## Chat Commands
 
-### `/workflow - Manage and run workflows`
+The workflow package provides three separate chat commands for workflow management:
 
-The `/workflow` command provides functionality for listing, running, and spawning workflows.
-
-**Help Text:**
-```markdown
-# /workflow
-
-Manage and run workflows on the current agent.
-
-## Usage
-
-/workflow              - List available workflows
-/workflow list         - List available workflows
-/workflow run <name>   - Run a workflow by name on current agent
-/workflow spawn <name> - Spawn new agent and run workflow
-
-## Example
-
-/workflow
-/workflow run myWorkflow
-/workflow spawn myWorkflow
-```
-
-#### `/workflow list`
+### `/workflow list`
 
 Lists all available workflows with their names, descriptions, and step counts.
 
 **Syntax:**
 ```
+/workflow list
+```
+
+**Help Text:**
+```markdown
+# /workflow list
+
+List all available workflows with their names, descriptions, and step counts.
+
+## Example
+
 /workflow list
 ```
 
@@ -264,14 +253,30 @@ Available workflows:
   Steps: 3
 ```
 
-#### `/workflow run <name>`
+**Implementation Details:**
+- Retrieves workflows from `WorkflowService.listWorkflows()`
+- Displays workflow key, name, description, and step count
+- Returns "Workflow service is not running." if service is unavailable
+
+### `/workflow run`
 
 Executes a workflow by name on the current agent.
 
 **Syntax:**
 - `<name>` - Required workflow identifier
 
-**Errors:** Throws `CommandFailedError` if workflow not found or if no name is provided
+**Help Text:**
+```markdown
+# /workflow run <name>
+
+Run a workflow by name on the current agent.
+
+## Example
+
+/workflow run myWorkflow
+```
+
+**Errors:** Throws `CommandFailedError` if workflow not found, if no name is provided, or if workflow execution fails
 
 **Examples:**
 ```bash
@@ -281,16 +286,29 @@ Executes a workflow by name on the current agent.
 **Implementation Details:**
 - Uses `AgentCommandService.executeAgentCommand` to execute each step
 - Processes steps sequentially with abort signal support
+- Checks for abort signal before each step execution
 - Returns completion message when all steps are executed
+- Returns "Workflow was aborted." if abort signal is triggered
 
-#### `/workflow spawn <name>`
+### `/workflow spawn`
 
 Spawns a new agent and runs the specified workflow.
 
 **Syntax:**
 - `<name>` - Required workflow identifier
 
-**Errors:** Throws `CommandFailedError` if workflow not found or if no name is provided
+**Help Text:**
+```markdown
+# /workflow spawn <name>
+
+Spawn a new agent and run a workflow on it.
+
+## Example
+
+/workflow spawn myWorkflow
+```
+
+**Errors:** Throws `CommandFailedError` if workflow not found, if no name is provided, or if workflow service is unavailable
 
 **Examples:**
 ```bash
@@ -299,8 +317,9 @@ Spawns a new agent and runs the specified workflow.
 
 **Implementation Details:**
 - Uses `runSubAgent` to spawn a new agent with the specified agent type
-- Executes workflow steps on the spawned agent
+- Executes workflow steps on the spawned agent by sending `/workflow run <name>`
 - Output is forwarded back to the parent agent
+- Respects the parent agent's headless mode setting
 
 ## Configuration
 
@@ -435,19 +454,19 @@ The workflow package requires these services to be available:
 | AgentManager | Handles agent spawning and lifecycle management |
 | Agent | Provides access to service instances and workflow execution |
 
-### Workflow Command Router
+### Command Registration
 
-The `/workflow` command acts as a router that handles subcommands:
+The workflow package exports three separate commands via `commands.ts`:
 
 ```typescript
-const subcommands = [
-  {name: "list", command: list},
-  {name: "run", command: run},
-  {name: "spawn", command: spawn},
-];
+import list from './commands/workflow/list.ts';
+import spawn from './commands/workflow/spawn.ts';
+import run from './commands/workflow/run.ts';
+
+export default [list, spawn, run];
 ```
 
-When no subcommand is provided, the `list` subcommand is executed by default. Unknown subcommands return a list of available subcommands.
+These commands are registered with the `AgentCommandService` when the plugin is installed.
 
 ## Usage Examples
 
@@ -456,7 +475,7 @@ When no subcommand is provided, the `list` subcommand is executed by default. Un
 #### List Available Workflows
 
 ```bash
-/workflow
+/workflow list
 ```
 
 Displays all configured workflows with their names, descriptions, and step counts.
@@ -605,13 +624,12 @@ bun test --coverage
 
 ### Test Coverage
 
-- **Command Implementation**: Tests for list, run, and spawn subcommands
+- **Command Implementation**: Tests for list, run, and spawn commands
 - **Workflow Execution**: Tests for workflow step-by-step execution
 - **Agent Spawning**: Tests for runSubAgent integration
 - **Error Handling**: Tests for workflow not found scenarios
 - **Input Parsing**: Tests for various input formats and edge cases
 - **Integration**: Full workflow execution flow tests
-- **Command Routing**: Tests for subcommand routing in main workflow command
 
 ### Example Test
 
@@ -621,13 +639,14 @@ import createTestingAgent from '@tokenring-ai/agent/test/createTestingAgent';
 import TokenRingApp from '@tokenring-ai/app';
 import createTestingApp from '@tokenring-ai/app/test/createTestingApp';
 import WorkflowService from '../WorkflowService';
-import workflowCommand from './commands/workflow';
+import listCommand from './commands/workflow/list.ts';
+import runCommand from './commands/workflow/run.ts';
+import spawnCommand from './commands/workflow/spawn.ts';
 
-describe('workflow command', () => {
+describe('workflow list command', () => {
   let app: TokenRingApp;
   let agent: Agent;
   let workflowService: WorkflowService;
-  let agentCommandService: AgentCommandService;
 
   const mockWorkflows = {
     testWorkflow: {
@@ -641,26 +660,24 @@ describe('workflow command', () => {
   beforeEach(() => {
     app = createTestingApp();
     workflowService = new WorkflowService(app, mockWorkflows);
-    agentCommandService = new AgentCommandService();
     app.addServices(workflowService);
-    app.addServices(agentCommandService);
     agent = createTestingAgent(app);
   });
 
-  it('should execute workflow steps', async () => {
-    const result = await workflowCommand.execute('run testWorkflow', agent);
-    // Test implementation
-  });
-
   it('should list workflows', async () => {
-    const result = await workflowCommand.execute('list', agent);
+    const result = await listCommand.execute('', agent);
     expect(result).toContain('Available workflows');
+    expect(result).toContain('testWorkflow');
+    expect(result).toContain('Test Workflow');
   });
+});
 
-  it('should spawn workflow agent', async () => {
-    const result = await workflowCommand.execute('spawn testWorkflow', agent);
-    expect(result).toContain('Spawned agent for workflow');
-  });
+describe('workflow run command', () => {
+  // Test implementation for run command
+});
+
+describe('workflow spawn command', () => {
+  // Test implementation for spawn command
 });
 ```
 
@@ -677,7 +694,7 @@ describe('workflow command', () => {
 
 ### Development Dependencies
 
-- `vitest` (^4.0.18) - Testing framework
+- `vitest` (^4.1.0) - Testing framework
 - `typescript` (^5.9.3) - TypeScript compiler
 
 ## Related Components
@@ -706,17 +723,17 @@ pkg/workflow/
 ├── schema.ts                # Zod schema definitions
 ├── WorkflowService.ts       # Core service implementation
 ├── vitest.config.ts         # Vitest configuration
-├── commands.ts              # Command registry (exports main workflow command)
+├── commands.ts              # Command registry (exports list, run, spawn commands)
 ├── commands/
-│   ├── workflow.ts          # Main /workflow command with subcommand router
-│   ├── workflow.test.ts     # Unit tests for chat commands
 │   └── workflow/
-│       ├── list.ts          # /workflow list implementation
-│       ├── run.ts           # /workflow run implementation
-│       └── spawn.ts         # /workflow spawn implementation
-└── rpc/
-    ├── schema.ts            # JSON-RPC schema definition
-    └── workflow.ts          # RPC endpoint implementation
+│       ├── list.ts          # /workflow list command implementation
+│       ├── run.ts           # /workflow run command implementation
+│       └── spawn.ts         # /workflow spawn command implementation
+├── rpc/
+│   ├── schema.ts            # JSON-RPC schema definition
+│   └── workflow.ts          # RPC endpoint implementation
+└── commands/
+    └── workflow.test.ts     # Unit tests for chat commands
 ```
 
 ### Building
@@ -752,7 +769,7 @@ The workflow commands use the following error types:
 import {CommandFailedError} from '@tokenring-ai/agent/AgentError';
 
 try {
-  await workflowCommand.execute('run nonexistent', agent);
+  await runCommand.execute('run nonexistent', agent);
 } catch (error) {
   if (error instanceof CommandFailedError) {
     console.error('Workflow execution failed:', error.message);

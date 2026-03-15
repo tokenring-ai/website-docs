@@ -1,10 +1,12 @@
-# Slack Plugin
+# @tokenring-ai/slack
 
-Slack integration for TokenRing agents with multi-bot support, per-channel agent instances, escalation workflows, direct messaging, and file attachment support.
+The `@tokenring-ai/slack` package provides comprehensive Slack integration for TokenRing agents, enabling natural language conversations through Slack channels, @mentions, thread-based responses, direct messages, and file attachments. The plugin supports managing multiple Slack bots simultaneously, with each channel getting a dedicated agent instance that maintains conversation history and context.
 
 ## Overview
 
-The `@tokenring-ai/slack` package provides comprehensive Slack integration for TokenRing agents, enabling natural language conversations through Slack channels, @mentions, thread-based responses, direct messages, and file attachments. The plugin supports managing multiple Slack bots simultaneously, with each channel getting a dedicated agent instance that maintains conversation history and context.
+This package provides a Slack bot service that integrates with TokenRing agents, enabling natural language conversations through Slack. Each Slack channel gets its own dedicated agent instance that maintains conversation history and context. The service handles message routing, event processing, and automatic agent management. It also supports escalation workflows for agent-to-human communication.
+
+The package uses the `@slack/bolt` framework for event handling and supports Socket Mode for firewall-friendly connections.
 
 Key capabilities include:
 - Multi-bot management with independent configurations
@@ -34,69 +36,6 @@ Key capabilities include:
 - **Plugin Integration**: Seamless integration with TokenRing plugin system with automatic escalation provider registration when both slack and escalation plugins are installed
 - **Error Handling**: Robust error handling with user-friendly error messages and service logging via `serviceOutput` and `serviceError`
 - **Timeout Management**: Configurable agent timeout handling via `maxRunTime`
-
-## Prerequisites
-
-To use the Slack plugin, you need:
-
-- Slack workspace with app creation permissions
-- **Bot Token (`botToken`)**: OAuth token starting with `xoxb-`
-- **Signing Secret (`signingSecret`)**: Verifies incoming Slack requests
-- **App-Level Token (`appToken`)** (Optional): Token starting with `xapp-` for Socket Mode
-- **Channel ID (`channelId`)**: Slack channel ID for each configured channel
-- **Allowed User IDs (`allowedUsers`)** (Optional): Array of Slack user IDs allowed to interact (defaults to empty array for all users)
-- **Agent Type (`agentType`)**: Agent type to create for the channel
-- **DM Agent Type (`dmAgentType`)** (Optional): Agent type for direct messages (enables DMs if set)
-- **DM Allowed Users (`dmAllowedUsers`)** (Optional): Array of user IDs allowed to DM the bot
-
-## Setup
-
-### 1. Create Slack App
-
-Visit [https://api.slack.com/apps](https://api.slack.com/apps) and create a new app from scratch.
-
-### 2. Configure Bot Permissions
-
-Add these OAuth scopes under "OAuth & Permissions":
-
-- `chat:write` - Send messages
-- `app_mentions:read` - Receive @mentions
-- `channels:history` - Read channel messages
-- `channels:read` - View channel info
-- `groups:history` - Read private channel messages (for private channels)
-- `groups:read` - View private channel info (for private channels)
-- `im:history` - Read direct messages
-- `mpim:history` - Read group direct messages
-- `files:read` - Read files (for file attachment support)
-
-### 3. Enable Socket Mode (Optional)
-
-1. Go to "Socket Mode" in your app settings
-2. Enable Socket Mode
-3. Generate an app-level token with `connections:write` scope
-
-### 4. Install App to Workspace
-
-1. Go to "Install App"
-2. Click "Install to Workspace"
-3. Copy the "Bot User OAuth Token" (starts with `xoxb-`)
-
-### 5. Get Signing Secret
-
-1. Go to "Basic Information"
-2. Copy the "Signing Secret"
-
-### 6. Invite Bot to Channels
-
-In each channel: `/invite @YourBotName`
-
-### 7. Set Up Environment Variables
-
-```bash
-export SLACK_BOT_TOKEN="xoxb-your-bot-token"
-export SLACK_SIGNING_SECRET="your-signing-secret"
-export SLACK_APP_TOKEN="xapp-your-app-token"  # Optional for Socket Mode
-```
 
 ## Core Components
 
@@ -300,6 +239,14 @@ escalationService.registerProvider('slackProvider', new SlackEscalationProvider(
 ));
 ```
 
+## RPC Endpoints
+
+This package does not define RPC endpoints. Communication is handled through Slack's API via `@slack/bolt` and `@slack/web-api`.
+
+## Chat Commands
+
+This package does not define chat commands. Communication is handled through Slack messages and @mentions.
+
 ## Configuration
 
 ### Configuration Schemas
@@ -467,6 +414,8 @@ const app = new TokenRingApp({
 app.install(slackPlugin);
 await app.start();
 ```
+
+**Note**: When both `slackPlugin` and `escalationPlugin` are installed and escalation configuration is present, the plugin automatically registers `SlackEscalationProvider` instances for each provider with `type: 'slack'`.
 
 ### Manual Service Creation
 
@@ -738,14 +687,6 @@ The Slack bot implements message buffering and throttling to handle long respons
    - If update fails (message not found), post a new message
 5. A 250ms throttle delay is enforced between sends
 
-## RPC Endpoints
-
-This package does not define RPC endpoints. Communication is handled through Slack's API via `@slack/bolt` and `@slack/web-api`.
-
-## Chat Commands
-
-This package does not define chat commands. Communication is handled through Slack messages and @mentions.
-
 ## Best Practices
 
 ### Security
@@ -816,12 +757,12 @@ pkg/slack/
 - `@tokenring-ai/utility` (0.2.0) - Shared utilities
 - `@tokenring-ai/escalation` (0.2.0) - Escalation service
 - `@slack/bolt` (^4.6.0) - Slack Bolt framework
-- `@slack/web-api` (^7.14.1) - Slack Web API
+- `@slack/web-api` (^7.15.0) - Slack Web API
 - `axios` (^1.13.6) - HTTP client for file downloads
 - `zod` (^4.3.6) - Schema validation
 
 **Development Dependencies:**
-- `vitest` (^4.0.18) - Testing framework
+- `vitest` (^4.1.0) - Testing framework
 - `typescript` (^5.9.3) - TypeScript compiler
 
 ## Error Handling

@@ -1,8 +1,6 @@
-# Codebase Plugin
+# @tokenring-ai/codebase
 
-## Overview
-
-The Codebase Plugin provides codebase context to AI agents by managing multiple types of resources that deliver file structures, symbol information, and complete file contents. It allows selective inclusion of project files and directories, enabling AI agents to reason about and interact with the codebase effectively.
+The Codebase plugin provides codebase context to AI agents by managing multiple types of resources that deliver file structures, symbol information, and complete file contents. It allows selective inclusion of project files and directories, enabling AI agents to reason about and interact with the codebase effectively.
 
 The plugin serves as a context provider that injects relevant codebase information into chat sessions through a context handler. It supports three resource types: file trees (directory structure), repo maps (symbol information), and whole files (complete file contents). Users can manage which resources are enabled through interactive commands or programmatic configuration.
 
@@ -13,47 +11,9 @@ The plugin serves as a context provider that injects relevant codebase informati
 - **Wildcard Pattern Support**: Enable resources using wildcard patterns (e.g., `src/*`)
 - **Agent-Specific Configuration**: Each agent can have different enabled resources
 - **State Persistence**: Enabled resources persist across agent sessions
-- **Repository Map Generation**: Automatically generates symbol-based code maps
+- **Repository Map Generation**: Automatically generates symbol-based code maps using `code-chopper`
 - **Context Injection**: Automatically injects codebase context into chat sessions
 - **Multi-language Support**: Supports TypeScript, JavaScript, Python, C, C++, Rust, Go, Java, Ruby, and Bash
-
-## Chat Commands
-
-The plugin provides the following slash-prefixed chat commands for managing codebase resources:
-
-| Command | Description | Example |
-|---------|-------------|---------|
-| `/codebase select` | Interactive resource selection via tree view | `/codebase select` |
-| `/codebase enable [resources...]` | Enable specific codebase resources | `/codebase enable src/utils src/types` |
-| `/codebase disable [resources...]` | Disable specific codebase resources | `/codebase disable test/*` |
-| `/codebase set [resources...]` | Set specific codebase resources (replaces existing) | `/codebase set src/api src/docs` |
-| `/codebase list` | List all currently enabled resources | `/codebase list` |
-| `/codebase show repo` | Display repository map with symbols | `/codebase show repo` |
-
-### Usage Examples
-
-```bash
-# Interactive resource selection
-/codebase select
-
-# Enable specific resources
-/codebase enable src/* utils/*
-
-# Enable multiple resources on one line
-/codebase enable src/components src/utils src/types
-
-# Disable specific resources
-/codebase disable test/*
-
-# List enabled resources
-/codebase list
-
-# Generate repository map
-/codebase show repo
-
-# Set specific resources (replaces existing)
-/codebase set src/api src/docs
-```
 
 ## Core Components
 
@@ -381,6 +341,33 @@ Set the enabled codebase resources, replacing the current selection.
 }
 ```
 
+### `/codebase reset`
+
+Reset the enabled codebase resources to the initial configuration defined in `agentDefaults`.
+
+**Command Definition:**
+
+```typescript
+{
+  name: "codebase reset",
+  description: "/codebase reset - Reset enabled codebase resources",
+  help: `# /codebase reset
+
+Reset the enabled codebase resources to the initial configuration.
+
+## Example
+
+/codebase reset`,
+  execute: async (remainder: string, agent: Agent): Promise<string> => {
+    const enabled = agent.mutateState(CodeBaseState, state => {
+      state.reset();
+      return state.enabledResources;
+    })
+    return `Currently enabled codebase resources: ${Array.from(enabled).join(", ")}`;
+  }
+}
+```
+
 ### `/codebase list`
 
 List all currently enabled codebase resources.
@@ -612,7 +599,7 @@ show(): string[]
 **State Behavior:**
 
 - `transferStateFromParent`: Copies enabled resources from parent agent state
-- `reset`: No-op method (resources are not reset by default)
+- `reset`: Resets enabled resources to the initial configuration from `agentDefaults`
 - `serialize`: Returns an object with `enabledResources` as an array
 - `deserialize`: Restores enabled resources from serialized data
 - `show`: Returns a formatted string showing enabled resources
@@ -886,6 +873,11 @@ codebaseService.disableResources(["test/*"], agent);
 
 // Set specific resources (replaces existing)
 codebaseService.setEnabledResources(["src/api"], agent);
+
+// Reset to initial configuration
+codebaseService.mutateState(CodeBaseState, state => {
+  state.reset();
+});
 ```
 
 ### Generating Repository Map
@@ -995,7 +987,7 @@ The context handler automatically injects codebase information when the agent ne
 
 - Resources persist across agent sessions through state serialization
 - Use `transferStateFromParent` to inherit resources from parent agents
-- Reset resources when needed using `reset()` method
+- Reset resources when needed using the `/codebase reset` command
 
 ### Error Handling
 
@@ -1062,6 +1054,7 @@ pkg/codebase/
 │       ├── disable.ts
 │       ├── enable.ts
 │       ├── list.ts
+│       ├── reset.ts
 │       ├── select.ts
 │       ├── set.ts
 │       └── showRepo.ts
@@ -1090,13 +1083,13 @@ bun run build
 
 ### Dev Dependencies
 
-- `vitest` - Testing framework (^4.0.18)
+- `vitest` - Testing framework (^4.1.0)
 - `typescript` - TypeScript compiler (^5.9.3)
 
 ## Related Components
 
 - **FileMatchResource**: Base class for all file-based resources from `@tokenring-ai/filesystem`
-- **Chat Commands**: `/codebase select`, `/codebase enable`, `/codebase disable`, `/codebase set`, `/codebase list`, `/codebase show repo`
+- **Chat Commands**: `/codebase select`, `/codebase enable`, `/codebase disable`, `/codebase set`, `/codebase reset`, `/codebase list`, `/codebase show repo`
 - **Context Handlers**: `codebase-context` - Automatic codebase context injection
 - **Agent State**: `CodeBaseState` - Resource enablement state management
 - **KeyedRegistry**: Resource registry pattern from `@tokenring-ai/utility`

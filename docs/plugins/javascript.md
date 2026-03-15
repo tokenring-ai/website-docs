@@ -1,8 +1,12 @@
-# JavaScript Plugin
+# @tokenring-ai/javascript
+
+The `@tokenring-ai/javascript` package provides JavaScript file validation capabilities for the TokenRing AI ecosystem. This package integrates with the TokenRing FileSystemService to register ESLint-based validation for JavaScript files, ensuring code quality and consistency across JavaScript projects.
 
 ## Overview
 
 The `@tokenring-ai/javascript` package provides JavaScript file validation capabilities for the TokenRing AI ecosystem. This package integrates with the TokenRing FileSystemService to register ESLint-based validation for JavaScript files, ensuring code quality and consistency across JavaScript projects.
+
+The JavaScript package integrates seamlessly with the TokenRing file management system, providing automatic validation for all JavaScript files through the FileSystemService. It leverages ESLint to analyze code and report issues with detailed location and rule information.
 
 ## Key Features
 
@@ -339,7 +343,7 @@ if (validationResult) {
 }
 ```
 
-## Testing
+## Testing and Development
 
 ### Running Tests
 
@@ -359,25 +363,23 @@ bun run test:watch
 bun run test:coverage
 ```
 
-### Development
-
-The package uses `vitest` for testing and `typescript` for type checking:
+### Type Checking
 
 ```bash
-bun run build  # Type checking
+bun run build
 ```
+
+The package uses `vitest` for testing and `typescript` for type checking.
 
 ## Package Structure
 
 ```
 pkg/javascript/
-├── index.ts                      # Package entry point
+├── index.ts                      # Package entry point (empty)
 ├── plugin.ts                     # TokenRing plugin registration
 ├── JavascriptFileValidator.ts    # ESLint-based file validator
 ├── package.json                  # Dependencies and metadata
-├── README.md                     # Package documentation
 ├── vitest.config.ts             # Test configuration
-├── .gitignore                   # Git ignore rules
 └── LICENSE                      # MIT License
 ```
 
@@ -389,7 +391,7 @@ pkg/javascript/
 |---------|---------|---------|
 | `@tokenring-ai/app` | 0.2.0 | Plugin framework and application core |
 | `@tokenring-ai/filesystem` | 0.2.0 | FileSystemService for file validation |
-| `eslint` | ^10.0.2 | JavaScript linting engine |
+| `eslint` | ^10.0.3 | JavaScript linting engine |
 | `zod` | ^4.3.6 | Schema validation |
 
 ### Development Dependencies
@@ -397,7 +399,7 @@ pkg/javascript/
 | Package | Version | Purpose |
 |---------|---------|---------|
 | `typescript` | ^5.9.3 | TypeScript compiler |
-| `vitest` | ^4.0.18 | Testing framework |
+| `vitest` | ^4.1.0 | Testing framework |
 
 ## Related Components
 
@@ -407,4 +409,4 @@ pkg/javascript/
 
 ## License
 
-MIT License - see [LICENSE](https://github.com/tokenring/ai/blob/main/pkg/javascript/LICENSE) file for details.
+MIT License - see LICENSE file for details.

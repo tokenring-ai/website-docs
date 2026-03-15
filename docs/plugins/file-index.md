@@ -1,4 +1,4 @@
-# File Index
+# @tokenring-ai/file-index
 
 The `@tokenring-ai/file-index` package provides file indexing and search capabilities for AI agents, enabling efficient codebase exploration and retrieval through intelligent search algorithms.
 
@@ -24,7 +24,7 @@ The File Index package allows AI agents to search across project files using hyb
 The base interface for all file indexing providers. Implement this class to create custom storage backends and search algorithms.
 
 ```typescript
-import FileIndexProvider from '@tokenring-ai/file-index/FileIndexProvider.ts';
+import FileIndexProvider, { SearchResult } from '@tokenring-ai/file-index/FileIndexProvider.ts';
 
 interface SearchResult {
   path: string;
@@ -84,7 +84,7 @@ await provider.start();
 
 ### FileIndexService
 
-A registry service that manages multiple providers and allows dynamic switching between implementations.
+The main service implementation that manages file index providers and handles search queries.
 
 ```typescript
 import FileIndexService from '@tokenring-ai/file-index/FileIndexService.ts';
@@ -116,19 +116,6 @@ const service = new FileIndexService(config);
 | `waitReady` | `agent: Agent` | `Promise<void>` | Wait for provider initialization |
 | `close` | `agent: Agent` | `Promise<void>` | Close and cleanup provider |
 | `attach` | `agent: Agent` | `void` | Attach service to agent and initialize state |
-
-### StringSearchFileIndexService
-
-Alternative implementation focused on string-based search functionality.
-
-```typescript
-import StringSearchFileIndexService from '@tokenring-ai/file-index/StringSearchFileIndexService.ts';
-
-const service = new StringSearchFileIndexService(app, '/path/to/project');
-await service.run();
-
-const results = await service.search('query', 10, agent);
-```
 
 ## Services
 
@@ -201,7 +188,7 @@ class EphemeralFileIndexProvider extends FileIndexProvider {
 ```typescript
 import EphemeralFileIndexProvider from '@tokenring-ai/file-index/EphemeralFileIndexProvider.ts';
 
-fileIndexService.registerFileIndexProvider('ephemeral', new EphemeralFileIndexProvider('/project/root'));
+fileIndexService.registerFileIndexProvider('ephemeral', new EphemeralFileIndexProvider('/project-root'));
 ```
 
 **KeyedRegistry Pattern:**
@@ -239,6 +226,7 @@ Display the currently active file index provider.
 ```
 
 **Response:**
+
 ```
 Active provider: ephemeral
 ```
@@ -252,11 +240,13 @@ Set a specific file index provider by name.
 ```
 
 **Response:**
+
 ```
 Active provider set to: ephemeral
 ```
 
 **Error Handling:**
+
 - If provider name is empty: `Usage: /fileindex provider set <name>`
 - If provider not found: `Provider "name" not found. Available providers: ephemeral, persistent`
 
@@ -269,6 +259,7 @@ Reset to the default provider from agent configuration.
 ```
 
 **Response:**
+
 ```
 Default provider: ephemeral
 ```
@@ -282,6 +273,7 @@ Interactively select an active file index provider from available options.
 ```
 
 **Behavior:**
+
 - Shows interactive tree-select menu with available providers
 - Displays "(current)" marker for currently active provider
 - Auto-selects sole available provider if only one is configured
@@ -299,6 +291,7 @@ Search for text across indexed files.
 ```
 
 **Response:**
+
 ```
 Found 3 result(s):
 📄 /path/to/file.ts:
@@ -306,6 +299,7 @@ Found 3 result(s):
 ```
 
 **Error Handling:**
+
 - If query is empty: `Usage: /fileindex search <query>`
 - If no results found: `No results found.`
 
@@ -481,7 +475,7 @@ const stateInfo = state.show();
 | Method | Parameters | Returns | Description |
 |--------|------------|---------|-------------|
 | `transferStateFromParent` | `parent: Agent` | `void` | Inherit active provider from parent agent |
-| `reset` | `what: ResetWhat[]` | `void` | Reset state (currently no-op) |
+| `reset` | - | `void` | Reset state to initial configuration |
 | `serialize` | - | `object` | Return serializable state object |
 | `deserialize` | `data: object` | `void` | Restore state from object |
 | `show` | - | `string[]` | Display state information |
@@ -811,11 +805,13 @@ The default chunk size is ~1000 characters. For specific use cases:
 ### Common Errors
 
 **No Active Provider:**
+
 ```
 Error: No file index provider has been enabled.
 ```
 
 **Solution:** Set an active provider before searching:
+
 ```typescript
 fileIndexService.setActiveProvider('ephemeral', agent);
 ```
@@ -913,14 +909,14 @@ All Token Ring packages are referenced as `@tokenring-ai/*` versions from the ca
 | `@tokenring-ai/filesystem` | 0.2.0 | File system operations |
 | `@tokenring-ai/utility` | 0.2.0 | Shared utility functions |
 | `zod` | ^4.3.6 | Schema validation |
-| `fs-extra` | ^11.3.3 | File system operations |
+| `fs-extra` | ^11.3.4 | File system operations |
 | `chokidar` | ^5.0.0 | File watching |
 | `commander` | ^14.0.3 | Command-line interface |
 | `glob-gitignore` | ^1.0.15 | Gitignore-style pattern matching |
 | `gpt-tokenizer` | ^3.4.0 | Token counting for chunking |
-| `mysql2` | ^3.18.2 | MySQL client |
-| `sentencex` | ^1.0.13 | Sentence segmentation |
-| `sqlite-vec` | 0.1.7-alpha.10 | Vector database |
+| `mysql2` | ^3.19.1 | MySQL client (dependency, not currently used) |
+| `sentencex` | ^1.0.17 | Sentence segmentation |
+| `sqlite-vec` | 0.1.7-alpha.10 | Vector database (dependency, not currently used) |
 | `tree-sitter` | ^0.25.0 | Syntax parsing |
 | `tree-sitter-javascript` | ^0.25.0 | JavaScript grammar |
 
@@ -928,7 +924,7 @@ All Token Ring packages are referenced as `@tokenring-ai/*` versions from the ca
 
 | Package | Version | Purpose |
 |---------|---------|---------|
-| `vitest` | ^4.0.18 | Unit testing framework |
+| `vitest` | ^4.1.0 | Unit testing framework |
 | `typescript` | ^5.9.3 | TypeScript compiler |
 | `@types/fs-extra` | ^11.0.4 | Type definitions for fs-extra |
 
@@ -942,12 +938,10 @@ pkg/file-index/
 ├── schema.ts                         # Zod schemas for configuration
 ├── FileIndexProvider.ts              # Abstract provider interface
 ├── FileIndexService.ts               # Service registry for providers
-├── StringSearchFileIndexService.ts   # Alternative file search implementation
 ├── EphemeralFileIndexProvider.ts     # In-memory provider implementation
 ├── commands.ts                       # Exports chat commands
 │   └── commands/
 │       └── fileindex/
-│           ├── provider.ts           # Provider command router
 │           ├── search.ts             # Search command implementation
 │           └── provider/
 │               ├── get.ts            # Display current provider
@@ -967,11 +961,199 @@ pkg/file-index/
 └── vitest.config.ts                  # Test configuration
 ```
 
+## Utilities
+
+### chunkText
+
+Token-aware text chunking function that splits text into segments based on token count with optional overlap.
+
+**Location:** `pkg/file-index/util/chunker.ts`
+
+**Function Signature:**
+
+```typescript
+import { chunkText } from '@tokenring-ai/file-index/util/chunker.ts';
+
+interface ChunkOptions {
+  maxTokens?: number;
+  overlapTokens?: number;
+}
+
+function chunkText(
+  text: string,
+  options: ChunkOptions = {}
+): string[];
+```
+
+**Parameters:**
+
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `text` | string | - | Text to chunk into segments |
+| `options` | ChunkOptions | `{}` | Chunking options |
+| `options.maxTokens` | number | 256 | Maximum tokens per chunk |
+| `options.overlapTokens` | number | 32 | Number of overlapping tokens between chunks |
+
+**Returns:** `string[]` - Array of text chunks
+
+**Algorithm:**
+
+1. Splits text into sentences using sentencex library
+2. Encodes each sentence to count tokens using GPT-4 tokenizer (cl100k_base)
+3. Groups sentences into chunks until maxTokens is reached
+4. Creates overlap by encoding the last part of each chunk and decoding it
+5. Returns array of text chunks with specified overlap
+
+**Example Usage:**
+
+```typescript
+import { chunkText } from '@tokenring-ai/file-index/util/chunker.ts';
+
+const text = `
+This is a sample text. It contains multiple sentences.
+We want to split it into chunks based on token count.
+Each chunk will have some overlap with the previous chunk.
+`;
+
+// Default options (maxTokens: 256, overlapTokens: 32)
+const chunks1 = chunkText(text);
+
+// Custom options
+const chunks2 = chunkText(text, {
+  maxTokens: 128,
+  overlapTokens: 16
+});
+
+console.log(`Created ${chunks1.length} chunks`);
+console.log(`Chunk 1: ${chunks1[0].substring(0, 100)}...`);
+```
+
+**Notes:**
+
+- Uses GPT-4 tokenizer (cl100k_base) for accurate token counting
+- Preserves sentence boundaries when possible
+- Overlap helps maintain context between chunks
+- Empty or whitespace-only text returns empty array
+- **Not currently exported from main package**
+
+### computeChunkLineStarts
+
+Computes the starting line numbers for each chunk in the original text.
+
+**Location:** `pkg/file-index/util/ComputeChunkLineStarts.ts`
+
+**Function Signature:**
+
+```typescript
+import { computeChunkLineStarts } from '@tokenring-ai/file-index/util/ComputeChunkLineStarts.ts';
+
+function computeChunkLineStarts(
+  text: string,
+  chunks: string[]
+): number[];
+```
+
+**Parameters:**
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `text` | string | Original text containing all chunks |
+| `chunks` | string[] | Array of chunk strings |
+
+**Returns:** `number[]` - Array of line numbers where each chunk starts
+
+**Algorithm:**
+
+1. Creates array of line offsets starting with 0
+2. For each chunk, finds its position in the original text
+3. Counts newline characters before the chunk position to determine line number
+4. If chunk not found, uses the previous line number
+5. Returns array of line numbers corresponding to each chunk
+
+**Example Usage:**
+
+```typescript
+import { computeChunkLineStarts } from '@tokenring-ai/file-index/util/ComputeChunkLineStarts.ts';
+
+const text = `
+Line 1: Introduction
+Line 2: First paragraph
+Line 3: More content
+Line 4: Second paragraph
+Line 5: Conclusion
+`;
+
+const chunks = [
+  "Line 1: Introduction\nLine 2: First paragraph",
+  "Line 3: More content\nLine 4: Second paragraph",
+  "Line 5: Conclusion"
+];
+
+const lineStarts = computeChunkLineStarts(text, chunks);
+console.log(lineStarts); // [1, 3, 5]
+
+// Each number represents the line where the corresponding chunk starts
+```
+
+**Notes:**
+
+- Line numbers are 1-indexed (first line is 1)
+- If a chunk cannot be found in the text, it uses the previous line number
+- Useful for tracking chunk positions in source files
+- **Not currently exported from main package**
+
+### sha256
+
+Calculates SHA256 hash of the input text.
+
+**Location:** `pkg/file-index/util/sha256.ts`
+
+**Function Signature:**
+
+```typescript
+import { sha256 } from '@tokenring-ai/file-index/util/sha256.ts';
+
+function sha256(text: string): string;
+```
+
+**Parameters:**
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `text` | string | Text to hash |
+
+**Returns:** `string` - Hexadecimal SHA256 hash string
+
+**Example Usage:**
+
+```typescript
+import { sha256 } from '@tokenring-ai/file-index/util/sha256.ts';
+
+const hash1 = sha256('Hello, World!');
+console.log(hash1); // d9014c4624844aa5bac314773d6b689ad467fa4e1d1a50a1b8a99d5a95f72ff5
+
+const hash2 = sha256('Different text');
+console.log(hash2); // Different hash value
+
+// Use case: Generate unique identifiers for file chunks
+const chunkContent = 'This is file content to index';
+const chunkId = sha256(chunkContent);
+console.log(`Chunk ID: ${chunkId}`);
+```
+
+**Notes:**
+
+- Uses Node.js crypto module's createHash function
+- Returns lowercase hexadecimal string
+- Deterministic: same input always produces same hash
+- Useful for content-based deduplication and indexing
+- **Not currently exported from main package**
+
 ## Limitations and Considerations
 
 - **Memory Usage**: The ephemeral provider stores all indexed files in memory, which may be unsuitable for very large codebases (5000+ files)
 - **Search Methods**: The default `search()` method delegates to `fullTextSearch()`, so both achieve similar results from the current implementation
-- **Storage Backend**: Currently only ephemeral in-memory provider is implemented. Database and vector providers are planned for future versions
+- **Storage Backend**: Currently only ephemeral in-memory provider is implemented. Database and vector providers are dependencies but not currently used
 - **File Types**: Focuses on text files. Binary files are silently skipped during indexing
 - **Search Dimensions**: Currently provides full-text and hybrid scoring. True semantic search requires embedding model integration
 - **Indexing Performance**: Large codebases may experience initial indexing lag due to lazy loading and batch processing
@@ -980,19 +1162,7 @@ pkg/file-index/
 - **Provider Switching**: Provider selection is session-specific. Changing provider affects only current agent session
 - **Updates**: File modifications are only indexed after processing queue settles (250ms delay)
 - **searchFileIndex Tool**: The semantic search tool is currently commented out in the tools export and not available for use
-
-## Future Enhancements
-
-Potential improvements for future versions:
-
-- **Persistent Storage Providers**: SQLite, PostgreSQL, or cloud-based persistence options
-- **Vector Search Providers**: Integration with embedding models and vector databases
-- **Semantic Chunking**: Smart sentence-based or content-aware chunking
-- **File Type Filtering**: Configuration options for which file types to index
-- **Directory Exclusions**: Gitignore-style patterns for folder filtering
-- **Incremental Indexing**: Optimized updates for changed files only
-- **Search Rankings**: More sophisticated BM25 implementations
-- **Index Statistics**: Metrics for indexed file count, total size, last update
+- **Utility Functions**: The utility functions (chunkText, computeChunkLineStarts, sha256) are not exported from the main package index
 
 ## Related Components
 

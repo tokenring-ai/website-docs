@@ -65,9 +65,17 @@ interface IterableProvider {
 State slice that persists iterable definitions across sessions:
 
 ```typescript
-class IterableState implements AgentStateSlice<typeof serializationSchema> {
+class IterableState extends AgentStateSlice<typeof serializationSchema> {
   readonly name = "IterableState";
-  serializationSchema = serializationSchema;
+  serializationSchema = z.object({
+    iterables: z.array(z.object({
+      name: z.string(),
+      type: z.string(),
+      spec: z.any(),
+      createdAt: z.date(),
+      updatedAt: z.date()
+    }))
+  });
   iterables: Map<string, StoredIterable> = new Map();
 
   constructor({iterables = []}: { iterables?: StoredIterable[] } = {});
@@ -105,6 +113,18 @@ interface IterableItem {
 ```typescript
 interface IterableSpec {
   [key: string]: any;
+}
+```
+
+#### IterableMetadata
+
+```typescript
+interface IterableMetadata {
+  name: string;
+  type: string;
+  description?: string;
+  createdAt: Date;
+  updatedAt: Date;
 }
 ```
 
@@ -170,6 +190,16 @@ for await (const item of iterableService.generate('files', agent)) {
   console.log(item.value);
   console.log(item.variables);
 }
+```
+
+#### Attach to Agent
+
+Initialize the service with an agent and register state:
+
+```typescript
+const service = new IterableService();
+service.attach(agent);
+// Initializes IterableState for the agent
 ```
 
 ## Provider Documentation
@@ -618,7 +648,7 @@ try {
 
 ### Variable Interpolation
 
-The `/foreach` command supports variable interpolation using the following syntax:
+The `/foreach` command supports variable interpolation using the following implementation:
 
 ```typescript
 function interpolate(template: string, variables: Record<string, any>): string {
@@ -870,7 +900,7 @@ describe('IterableService', () => {
 
 ### Development Dependencies
 
-- `vitest` (^4.0.18) - Testing framework
+- `vitest` (^4.1.0) - Testing framework
 - `typescript` (^5.9.3) - TypeScript compiler
 
 ## Related Components

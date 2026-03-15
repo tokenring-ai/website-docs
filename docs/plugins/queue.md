@@ -192,7 +192,7 @@ agent.mutateState(WorkQueueState, (state) => {
 
 All `/queue` commands are registered with the `AgentCommandService` and are available through the chat interface.
 
-### /queue list
+### `/queue list`
 
 Display all queued prompts with their indices.
 
@@ -214,7 +214,7 @@ Queue contents:
 - Shows only task names
 - Returns "Queue is empty." if queue is empty
 
-### /queue add <prompt>
+### `/queue add <prompt>`
 
 Add a new chat prompt to the end of the queue.
 
@@ -237,7 +237,7 @@ Added to queue. Queue length: 1
 - Raises `CommandFailedError` if no prompt provided
 - Usage: `Usage: /queue add <prompt>`
 
-### /queue remove <index>
+### `/queue remove <index>`
 
 Remove the prompt at the given zero-based index.
 
@@ -260,7 +260,7 @@ Removed "Fix bug in login" from queue. Remaining: 3
 - Raises `CommandFailedError` for invalid indices
 - Usage: `Usage: /queue remove <index>  (index starts from 0)`
 
-### /queue details <index>
+### `/queue details <index>`
 
 Show detailed information about a specific queue item.
 
@@ -288,7 +288,7 @@ Queue item details:
 - Index must be >= 0 and < queue size
 - Raises `CommandFailedError` for invalid indices
 
-### /queue clear
+### `/queue clear`
 
 Remove all prompts from the queue.
 
@@ -306,7 +306,7 @@ Queue cleared!
 - Calls `queueService.clear(agent)`
 - Sets queue array to empty
 
-### /queue start
+### `/queue start`
 
 Begin queue processing. This command saves the current agent state as an initial checkpoint.
 
@@ -325,13 +325,12 @@ Queue started, use /queue next to start working on the first item in the queue, 
 2. Checks if queue is already started (returns message if already started)
 3. Saves current agent state as initial checkpoint via `setInitialCheckpoint()`
 4. Sets `started` flag to true via `startWork()`
-5. Creates a checkpoint entry using `checkpointCreate.execute()` from `@tokenring-ai/checkpoint`
 
 **Error Cases:**
 - Empty queue: "Queue is empty."
 - Already started: "Queue already started. Use /queue next to load the next item in the queue, or queue done to end the queue."
 
-### /queue next
+### `/queue next`
 
 Load the first queued item (does not execute it).
 
@@ -347,15 +346,14 @@ Queue Item loaded: Write README for the project Use /queue run to run the queue 
 
 **Process:**
 1. Checks if queue is started (returns error if not)
-2. Creates checkpoint for current item via `checkpointCreate.execute()`
-3. Dequeues the first item via `dequeue()`
-4. Sets it as the current item via `setCurrentItem()`
-5. Displays the item name
+2. Dequeues the first item via `dequeue()`
+3. Sets it as the current item via `setCurrentItem()`
+4. Displays the item name
 
 **Error Cases:**
 - Queue not started: "Queue not started. Use /queue start to start the queue."
 
-### /queue run
+### `/queue run`
 
 Execute the currently loaded queued prompt.
 
@@ -377,7 +375,7 @@ Execute the currently loaded queued prompt.
 - No item loaded: "No queue item loaded. Use /queue next to load the next item..."
 - Execution error: "Error running queued prompt: [error message]"
 
-### /queue skip
+### `/queue skip`
 
 Skip the current item and re-add it to the end of the queue.
 
@@ -401,7 +399,7 @@ Queue item skipped. It has been added to the end of the queue in case you would 
 - Queue not started: "Queue not started. Use /queue start to start the queue."
 - No item loaded: "No queue item loaded. Use /queue next to load the next item..."
 
-### /queue done
+### `/queue done`
 
 End queue processing and restore the initial agent state.
 
@@ -417,12 +415,11 @@ Restored chat state to preserved state.
 
 **Process:**
 1. Checks if queue is started (returns error if not)
-2. Creates checkpoint for current item via `checkpointCreate.execute()`
-3. Checks if queue is empty or action is "done"
-4. Retrieves initial checkpoint via `getInitialCheckpoint()`
-5. Restores agent state to initial checkpoint via `agent.restoreState()`
-6. Stops work via `stopWork()`
-7. Returns appropriate message
+2. Checks if queue is empty or action is "done"
+3. Retrieves initial checkpoint via `getInitialCheckpoint()`
+4. Restores agent state to initial checkpoint via `agent.restoreState()`
+5. Stops work via `stopWork()`
+6. Returns appropriate message
 
 **Error Cases:**
 - Queue not started: "Queue not started. Use /queue start to start the queue."
@@ -757,6 +754,7 @@ console.log(result);
 
 ```typescript
 import WorkQueueService from "@tokenring-ai/queue/WorkQueueService";
+import { WorkQueueState } from "@tokenring-ai/queue/state/workQueueState";
 
 // Create service with size limit
 const boundedQueue = new WorkQueueService({
@@ -778,7 +776,10 @@ for (let i = 0; i < 7; i++) {
   // Tasks 0-4 will be added (true), tasks 5-6 will fail (false)
 }
 
-console.log(`Queue size: ${boundedQueue.size(agent)}`);  // 5
+// Check queue size through state
+const state = agent.getState(WorkQueueState);
+console.log(`Queue size: ${state.queue.length}`);  // 5
+console.log(`Max size: ${state.maxSize}`);  // 5
 ```
 
 ### Advanced: Loading and Processing Items
@@ -824,8 +825,6 @@ while (true) {
   } catch (error: any) {
     agent.errorMessage("Error running queued prompt: " + (error.message || error));
   }
-
-  await agent.createCheckpoint(`Completed: ${next.name}`);
 }
 
 // Restore initial state
@@ -939,23 +938,22 @@ state.reset();
 
 ### Checkpoint Integration
 
-The queue automatically creates checkpoints:
+The queue uses checkpoints for state preservation:
 
 - **Initial Checkpoint**: Created when queue is started via `setInitialCheckpoint()`
-- **Completion Checkpoints**: Created for each completed item using `checkpointCreate.execute()`
-- **Start Checkpoint**: Created using `@tokenring-ai/checkpoint` when queue starts processing
-- **End Checkpoint**: Created for each item when done processing
+- **Item Checkpoints**: Each queue item stores its own checkpoint when added
 
 **Checkpoint Flow:**
 ```typescript
 // When /queue start is called
 queueService.setInitialCheckpoint(agent.generateCheckpoint(), agent);
 
-// When /queue next is called
-await checkpointCreate.execute(`End of queue operation: ${item.name}`, agent);
-
-// When /queue run completes
-await agent.createCheckpoint(`Completed: ${item.name}`);
+// When adding items via /queue add
+queueService.enqueue({
+  checkpoint: agent.generateCheckpoint(),
+  name: prompt,
+  input: prompt
+}, agent);
 ```
 
 ### State Circular References
@@ -999,7 +997,7 @@ The serialization schema uses `z.any()` for checkpoint fields to handle circular
 ### Checkpoint Strategy
 
 1. **Start Checkpoint**: Enable state restoration after successful completion
-2. **Completion Checkpoints**: Track what has been done for debugging
+2. **Item Checkpoints**: Each item preserves its state for execution context
 3. **Error Recovery**: System attempts auto-recovery using checkpoints
 
 ### Queue Size Management
@@ -1084,6 +1082,7 @@ The package includes comprehensive unit tests using `vitest`:
 ```typescript
 import { describe, it, expect, beforeEach, vi } from "vitest";
 import WorkQueueService from "@tokenring-ai/queue/WorkQueueService";
+import { WorkQueueState } from "@tokenring-ai/queue/state/workQueueState";
 import createTestingAgent from "@tokenring-ai/agent/test/createTestingAgent";
 import createTestingApp from "@tokenring-ai/app/test/createTestingApp";
 
@@ -1243,7 +1242,16 @@ bun run test:coverage
 ├── tools.ts                       # Tool exports
 ├── schema.ts                      # Configuration schemas
 ├── commands/
-│   └── queue.ts                   # /queue command implementation
+│   └── queue/                     # Queue command implementations
+│       ├── add.ts                 # /queue add command
+│       ├── remove.ts              # /queue remove command
+│       ├── details.ts             # /queue details command
+│       ├── clear.ts               # /queue clear command
+│       ├── list.ts                # /queue list command
+│       ├── start.ts               # /queue start command
+│       ├── next-done.ts           # /queue next and /queue done commands
+│       ├── skip.ts                # /queue skip command
+│       └── run.ts                 # /queue run command
 ├── tools/
 │   └── addTaskToQueue.ts          # addTaskToQueue tool
 ├── state/
@@ -1260,8 +1268,7 @@ bun run test:coverage
 - `@tokenring-ai/agent`: Agent framework and state management
 - `@tokenring-ai/app`: Application framework and plugin system
 - `@tokenring-ai/chat`: Chat service for command execution (`runChat`)
-- `@tokenring-ai/checkpoint`: Checkpoint management for state saving
-- `@tokenring-ai/utility`: Shared utilities including `deepMerge`
+- `@tokenring-ai/utility`: Shared utilities including `deepMerge` and `numberedList`
 - `zod`: Schema validation and configuration
 
 ### Development Dependencies
@@ -1551,7 +1558,6 @@ Returns all items in the queue without removing them.
 - **@tokenring-ai/agent**: Core agent framework used for state management
 - **@tokenring-ai/app**: Application framework for plugin registration
 - **@tokenring-ai/chat**: Chat service for command execution
-- **@tokenring-ai/checkpoint**: Checkpoint system for state preservation
 - **@tokenring-ai/utility**: Utility functions including `deepMerge` and `numberedList`
 
 ## License

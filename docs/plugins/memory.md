@@ -1,6 +1,4 @@
-# Memory Plugin
-
-## Overview
+# @tokenring-ai/memory
 
 The `@tokenring-ai/memory` package provides short-term memory management functionality for Token Ring AI agents. It enables agents to store and recall information during chat sessions, maintaining context across interactions with a simple, effective memory system. Memories are stored in agent state and accessible via service methods, tools, chat commands, context handlers, and scripting functions.
 
@@ -204,21 +202,125 @@ This package does not define any RPC endpoints. Memory operations are accessed t
 
 ## Chat Commands
 
-### /memory [operation] [arguments]
+The package provides the following slash-prefixed commands for memory management:
 
-The `/memory` command provides interactive memory management through chat.
+| Command | Description | Example |
+|---------|-------------|---------|
+| `/memory list` | Display all stored memory items | `/memory list` |
+| `/memory add <text>` | Add a new memory item | `/memory add Remember to call client` |
+| `/memory clear` | Clear all memory items | `/memory clear` |
+| `/memory remove <index>` | Remove memory item at specified index (0-based) | `/memory remove 0` |
+| `/memory set <index> <text>` | Update memory item at specified index | `/memory set 1 Updated meeting notes` |
 
-**No arguments:** Shows help message with command usage
+### Command Details
 
-**Operations:**
+#### `/memory list`
 
-| Operation | Description | Example |
-|-----------|-------------|---------|
-| `list` | Display all stored memory items with indices | `/memory list` |
-| `add <text>` | Add a new memory item | `/memory add Remember to call client` |
-| `clear` | Clear all memory items | `/memory clear` |
-| `remove <index>` | Remove memory item at specified index (0-based) | `/memory remove 0` |
-| `set <index> <text>` | Update memory item at specified index | `/memory set 1 Updated meeting notes` |
+Display all stored memory items.
+
+**Help:**
+```
+# /memory list
+
+Display all stored memory items.
+
+## Example
+
+/memory list
+```
+
+**Output Format:**
+```
+Memory items:
+[0] First memory item
+[1] Second memory item
+```
+
+#### `/memory add <text>`
+
+Add a new memory item.
+
+**Help:**
+```
+# /memory add
+
+Add a new memory item.
+
+## Example
+
+/memory add Remember to buy groceries tomorrow
+```
+
+**Output:**
+```
+Added new memory: Remember to buy groceries tomorrow
+Memory items:
+[0] Remember to buy groceries tomorrow
+```
+
+#### `/memory clear`
+
+Remove all memory items.
+
+**Help:**
+```
+# /memory clear
+
+Remove all memory items.
+
+## Example
+
+/memory clear
+```
+
+**Output:**
+```
+Cleared all memory items
+```
+
+#### `/memory remove <index>`
+
+Remove memory item at specific index.
+
+**Help:**
+```
+# /memory remove
+
+Remove memory item at specific index.
+
+## Example
+
+/memory remove 0
+```
+
+**Output:**
+```
+Removed memory item at index 0
+Memory items:
+[0] Remaining memory item
+```
+
+#### `/memory set <index> <text>`
+
+Update memory item at specific index.
+
+**Help:**
+```
+# /memory set
+
+Update memory item at specific index.
+
+## Example
+
+/memory set 0 Updated meeting notes
+```
+
+**Output:**
+```
+Updated memory item at index 0
+Memory items:
+[0] Updated meeting notes
+```
 
 **Usage Examples**
 
@@ -237,86 +339,21 @@ const result = await agent.executeCommand('/memory list');
 // Remove memory at index 0
 await agent.executeCommand('/memory remove 0');
 // Output:
-// [memory] Removed memory item at index 0
+// Removed memory item at index 0
 // Memory items:
 // [0] Meeting notes: Discuss project timeline
 
 // Update memory at index 0
 await agent.executeCommand('/memory set 0 Updated meeting time');
 // Output:
-// [memory] Updated memory item at index 0
+// Updated memory item at index 0
 // Memory items:
 // [0] Updated meeting time
 
 // Clear all memories
 await agent.executeCommand('/memory clear');
 // Output:
-// [memory] Cleared all memory items
-```
-
-**Help Message**
-
-When called without arguments, the command displays comprehensive help:
-
-```
-# MEMORY MANAGEMENT COMMAND
-
-## Usage
-
-/memory [operation] [arguments...]
-
-## Operations
-
-### list
-
-Display all stored memory items
-
-**Example:**
-/memory list
-
-### add <text>
-
-Add a new memory item
-
-**Examples:**
-/memory add Remember to buy groceries tomorrow
-/memory add Meeting notes: Discuss project timeline
-
-### clear
-
-Remove all memory items
-
-**Example:**
-/memory clear
-
-### remove <index>
-
-Remove memory item at specific index
-
-**Examples:**
-/memory remove 0
-/memory remove 3
-
-### set <index> <text>
-
-Update memory item at specific index
-
-**Examples:**
-/memory set 0 Updated meeting notes
-/memory set 2 Remember to buy groceries tomorrow
-
-## General Usage
-
-- Use /memory without arguments to show this help message
-- Memory items are displayed with their index number in brackets
-- Index numbers start from 0 (first item is [0])
-- Use the list command to see current memory items and their indices
-
-## Tips
-
-- Use descriptive text for better memory organization
-- Regularly review and clean up memory items
-- Use the list command before removing or updating items
+// Cleared all memory items
 ```
 
 ## Configuration
@@ -352,7 +389,7 @@ import memoryPlugin from '@tokenring-ai/memory/plugin';
 app.installPlugin(memoryPlugin);
 
 // The plugin automatically registers:
-// - memory_add tool with ChatService
+// - addMemory tool with ChatService
 // - short-term-memory context handler with ChatService
 ```
 
@@ -362,7 +399,12 @@ Chat commands are registered with the agent command service for interactive mana
 
 ```typescript
 // Automatic registration via plugin
-// The /memory command is registered with AgentCommandService
+// The memory commands are registered with AgentCommandService:
+// - memory list
+// - memory add
+// - memory clear
+// - memory remove
+// - memory set
 ```
 
 ### Scripting Service
@@ -560,7 +602,9 @@ try {
 }
 ```
 
-## Testing
+## Testing and Development
+
+### Testing
 
 ```bash
 # Run tests
@@ -576,24 +620,7 @@ bun test:coverage
 bun run build
 ```
 
-## Dependencies
-
-- `@tokenring-ai/app` — Application framework for service registration and plugin system
-- `@tokenring-ai/chat` — Chat functionality and tool definitions
-- `@tokenring-ai/agent` — Agent framework and state management
-- `@tokenring-ai/scripting` — Scripting capability for custom functions
-- `@tokenring-ai/utility` — Utility functions
-- `zod` — Runtime type validation for state serialization
-
-## Related Components
-
-- **@tokenring-ai/agent** — Agent framework with state management
-- **@tokenring-ai/app** — Application system and service registration
-- **@tokenring-ai/chat** — Chat functionality and tool system
-- **@tokenring-ai/scripting** — Scripting context for custom functions
-- **State Management** — Agent state slices for persistence
-
-## Package Structure
+### Package Structure
 
 ```
 pkg/memory/
@@ -606,7 +633,14 @@ pkg/memory/
 ├── tools/
 │   └── addMemory.ts                      # Tool to add memory items
 ├── commands/
-│   └── memory.ts                         # Chat commands for memory management
+│   ├── memory.ts                         # /memory command index
+│   └── memory/
+│       ├── list.ts                       # /memory list
+│       ├── add.ts                        # /memory add
+│       ├── clear.ts                      # /memory clear
+│       ├── remove.ts                     # /memory remove
+│       ├── set.ts                        # /memory set
+│       └── _listMemories.ts              # Shared list helper
 ├── tools.ts                              # Exports agent tools
 ├── commands.ts                           # Exports chat commands
 ├── contextHandlers.ts                    # Exports context handlers
@@ -615,6 +649,32 @@ pkg/memory/
 ├── vitest.config.ts                      # Vitest configuration
 └── README.md                             # Package documentation
 ```
+
+## Dependencies
+
+| Package | Version | Purpose |
+|---------|---------|---------|
+| `@tokenring-ai/app` | 0.2.0 | Application framework for service registration and plugin system |
+| `@tokenring-ai/chat` | 0.2.0 | Chat functionality and tool definitions |
+| `@tokenring-ai/agent` | 0.2.0 | Agent framework and state management |
+| `@tokenring-ai/scripting` | 0.2.0 | Scripting capability for custom functions |
+| `@tokenring-ai/utility` | 0.2.0 | Utility functions |
+| `zod` | ^4.3.6 | Runtime type validation for state serialization |
+
+### Dev Dependencies
+
+| Package | Version | Purpose |
+|---------|---------|---------|
+| `vitest` | ^4.0.18 | Testing framework |
+| `typescript` | 5.9.3 | TypeScript compiler |
+
+## Related Components
+
+- **@tokenring-ai/agent** — Agent framework with state management
+- **@tokenring-ai/app** — Application system and service registration
+- **@tokenring-ai/chat** — Chat functionality and tool system
+- **@tokenring-ai/scripting** — Scripting context for custom functions
+- **State Management** — Agent state slices for persistence
 
 ## License
 

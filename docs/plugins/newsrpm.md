@@ -1,12 +1,21 @@
-# NewsRPM Plugin
-
-## Overview
+# @tokenring-ai/newsrpm
 
 The `@tokenring-ai/newsrpm` package provides comprehensive integration with NewsRPM, a powerful Cloud News Platform for ingesting, processing, storing, indexing, and distributing news articles and textual content. This package wraps common API calls and exposes them as services, tools, and chat commands for seamless integration with TokenRing agents and interactive use in the REPL.
 
 **Package Name:** `@tokenring-ai/newsrpm`  
 **Version:** 0.2.0  
 **Description:** NewsRPM integration for Token Ring (search, retrieve, upload articles)
+
+## Overview
+
+NewsRPM is a Cloud News Platform designed for the ingestion, processing, storage, indexing, and distribution of news articles and other textual content. The package provides:
+
+- **NewsRPMService**: A TokenRingService for direct API interactions
+- **8 Tools**: Ready-to-use tools for the TokenRing tools registry
+- **`/newsrpm` Chat Command**: Interactive CLI command with 6 subcommands for quick access
+- **4 Scripting Functions**: Global functions available when scripting service is enabled
+
+The package integrates seamlessly with the TokenRing agent framework, providing both tool-based interactions and scripting functions for programmatic news article management.
 
 ## Key Features
 
@@ -592,12 +601,12 @@ Search NewsRPM indexed data by taxonomy key/value.
 ```typescript
 {
   key: string,                    // Index key specifier (e.g., NormalizedTicker, topic, region)
-  value: string \| string[],      // Value to look up in the index (string or array)
+  value: string | string[],      // Value to look up in the index (string or array)
   count?: number,                 // Number of articles to return
   offset?: number,                // How many articles to skip
   minDate?: string,               // Earliest date (ISO 8601)
   maxDate?: string,               // Latest date (ISO 8601)
-  order?: "date" \| "dateWithQuality"  // Sort order
+  order?: "date" | "dateWithQuality"  // Sort order
 }
 ```
 
@@ -618,9 +627,9 @@ Search NewsRPM articles by publisher/provider/type/fullText.
 **Input Schema:**
 ```typescript
 {
-  publisher?: string \| string[],  // Name(s) of the publisher
-  provider?: string \| string[],   // Name(s) of the provider
-  type?: string \| string[],       // Type(s) of article
+  publisher?: string | string[],  // Name(s) of the publisher
+  provider?: string | string[],   // Name(s) of the provider
+  type?: string | string[],       // Type(s) of article
   fullText?: string,               // Full text query
   sponsored?: boolean,             // Restrict to sponsored/non-sponsored
   count?: number,                  // Number of articles to return
@@ -978,16 +987,23 @@ pkg/newsrpm/
 ├── commands.ts                       # Command exports
 ├── schema.ts                         # Configuration schema
 ├── commands/
-│   └── newsrpm.ts                    # Chat command implementation
+│   └── newsrpm/
+│       ├── index.ts                  # /newsrpm index
+│       ├── search.ts                 # /newsrpm search
+│       ├── article.ts                # /newsrpm article
+│       ├── providers.ts              # /newsrpm providers
+│       ├── body.ts                   # /newsrpm body
+│       ├── upload.ts                 # /newsrpm upload
+│       └── _utils.ts                 # Shared parseFlags/saveIfRequested
 ├── tools/
-│   ├── searchIndexedData.ts
-│   ├── searchArticles.ts
-│   ├── getArticleBySlug.ts
 │   ├── getArticleById.ts
-│   ├── uploadArticle.ts
-│   ├── listProviders.ts
+│   ├── getArticleBySlug.ts
 │   ├── getBody.ts
-│   └── renderBody.ts
+│   ├── listProviders.ts
+│   ├── renderBody.ts
+│   ├── searchArticles.ts
+│   ├── searchIndexedData.ts
+│   └── uploadArticle.ts
 ├── design/
 │   ├── newsrpm.openapi.json         # OpenAPI specification
 │   ├── newsrpm_api.txt              # Text summary
@@ -996,6 +1012,21 @@ pkg/newsrpm/
 ├── vitest.config.ts                 # Test configuration
 └── README.md                        # Package documentation
 ```
+
+## Design Files
+
+The package includes comprehensive design documentation in the `pkg/newsrpm/design/` directory:
+
+- **newsrpm.openapi.json**: Complete OpenAPI 3.0 specification for the NewsRPM API
+- **newsrpm_api.txt**: Text summary of the API endpoints and authentication methods
+- **implementation.md**: Implementation notes and developer guidance
+
+These files provide detailed information about:
+- API endpoint definitions
+- Request/response schemas
+- Authentication mechanisms
+- Implementation patterns
+- Usage examples
 
 ## Related Components
 

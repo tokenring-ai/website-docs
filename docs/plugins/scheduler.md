@@ -1,4 +1,4 @@
-# Scheduler Plugin
+# @tokenring-ai/scheduler
 
 Service for scheduling AI agents to run at specified intervals.
 
@@ -6,19 +6,22 @@ Service for scheduling AI agents to run at specified intervals.
 
 The `@tokenring-ai/scheduler` package provides a scheduling system that runs within AI agents to automatically spawn and execute other agents at defined intervals or conditions. It supports recurring tasks, one-time executions, time window constraints, and timezone-aware scheduling with comprehensive monitoring and state management.
 
+The scheduler integrates seamlessly with the TokenRing agent framework, providing both tool-based interactions and chat commands for task management. It leverages agent state management for persistence and provides real-time monitoring through the `/schedule` command and `/loop` command.
+
 ## Key Features
 
 - **Task Scheduling**: Schedule agents to run at specified intervals or conditions
 - **Time Windows**: Define running time windows with start and end times
 - **Recurring Tasks**: Support for second, minute, hour, day, week, and month intervals
-- **One-time Tasks**: Execute tasks once at a specific time
+- **One-time Tasks**: Execute tasks once at a specific time using `once` flag
 - **Agent Integration**: Automatically spawn and run agents for scheduled tasks
 - **Monitoring**: Track task execution history and current status
-- **Chat Commands**: `/schedule` command to manage and view scheduled tasks
+- **Chat Commands**: `/schedule` and `/loop` commands to manage and view scheduled tasks
 - **Task Conditions**: Run tasks on specific days of the week or days of the month
 - **Timezone Support**: Schedule tasks in specific IANA timezones
 - **State Persistence**: Task state persists across agent restarts
-- **Utility Functions**: `parseInterval`, `getNextRunTime`, and `checkDayConditions` for time calculations
+- **Utility Functions**: `parseInterval`, `getNextRunTime`, `checkDayConditions`, and `parseLoopCommand` for time calculations
+- **Tool Integration**: Programmatic task management through chat tools
 
 ## Core Components
 
@@ -80,14 +83,14 @@ Creates a new scheduler service instance.
 - `app` (TokenRingApp): The TokenRing application instance
 - `options` (SchedulerConfigSchema): The scheduler configuration
 
-#### attach(agent: Agent): void
+#### `attach(agent: Agent): void`
 
 Attaches the scheduler to an agent, initializing task and execution state. Merges configuration using `deepMerge` and optionally auto-starts the scheduler.
 
 **Parameters:**
 - `agent` (Agent): The agent to attach to
 
-#### runScheduler(agent: Agent): void
+#### `runScheduler(agent: Agent): void`
 
 Starts the scheduler loop for the given agent. Creates a background task that watches for task executions. Starts a scheduler only if:
 - No scheduler is already running
@@ -96,14 +99,14 @@ Starts the scheduler loop for the given agent. Creates a background task that wa
 **Parameters:**
 - `agent` (Agent): The agent with scheduler configuration
 
-#### stopScheduler(agent: Agent): void
+#### `stopScheduler(agent: Agent): void`
 
 Stops the scheduler loop for the given agent by aborting the running scheduler.
 
 **Parameters:**
 - `agent` (Agent): The agent to stop
 
-#### addTask(name: string, task: ScheduledTask, agent: Agent): void
+#### `addTask(name: string, task: ScheduledTask, agent: Agent): void`
 
 Adds a new scheduled task to the agent. If autoStart is enabled and the scheduler is not running, it will start automatically.
 
@@ -112,7 +115,7 @@ Adds a new scheduled task to the agent. If autoStart is enabled and the schedule
 - `task` (ScheduledTask): Task configuration
 - `agent` (Agent): The agent to add the task to
 
-#### removeTask(name: string, agent: Agent): void
+#### `removeTask(name: string, agent: Agent): void`
 
 Removes a scheduled task from the agent, clearing any timers or running tasks. Throws `Error` if task not found.
 
@@ -120,7 +123,7 @@ Removes a scheduled task from the agent, clearing any timers or running tasks. T
 - `name` (string): Name of the task to remove
 - `agent` (Agent): The agent with the task
 
-#### watchTasks(agent: Agent, signal: AbortSignal): Promise<void>
+#### `watchTasks(agent: Agent, signal: AbortSignal): Promise<void>`
 
 Watches task state and schedules executions. Monitors for task changes and updates timers accordingly. Subscribes to `ScheduleTaskState` changes and manages execution state.
 
@@ -128,7 +131,7 @@ Watches task state and schedules executions. Monitors for task changes and updat
 - `agent` (Agent): The agent with scheduled tasks
 - `signal` (AbortSignal): Abort signal to stop watching
 
-#### runTask(name: string, task: ScheduledTask, agent: Agent): Promise<void>
+#### `runTask(name: string, task: ScheduledTask, agent: Agent): Promise<void>`
 
 Executes a scheduled task by sending the task message to the agent and monitoring execution. Tracks execution state and records history.
 
@@ -147,9 +150,13 @@ The scheduler does not define RPC endpoints.
 
 ## Chat Commands
 
-**/schedule**: Manage and monitor scheduled tasks
+The scheduler provides two main chat commands for task management.
 
-### /schedule start
+### /schedule
+
+Manage and monitor scheduled tasks.
+
+#### /schedule start
 
 Starts the scheduler for the current agent.
 
@@ -158,7 +165,7 @@ Starts the scheduler for the current agent.
 /schedule start
 ```
 
-### /schedule stop
+#### /schedule stop
 
 Stops the scheduler for the current agent.
 
@@ -167,7 +174,7 @@ Stops the scheduler for the current agent.
 /schedule stop
 ```
 
-### /schedule show
+#### /schedule show
 
 Displays the current schedules and running status of all tasks.
 
@@ -192,7 +199,7 @@ Displays the current schedules and running status of all tasks.
   Next Run: Mon, Jan 14, 2024, 2:30:00 PM
 ```
 
-### /schedule add
+#### /schedule add
 
 Adds a new task interactively through a form prompt.
 
@@ -205,16 +212,16 @@ The command will prompt for:
 - **Task Name**: Unique identifier for the task
 - **Instructions for the agent**: The message to send to the agent when the task runs
 - **How often to run**: One of:
-  - Once (runs only one time)
+  - Once (runs only one time, sets `once: true`)
   - Every 5 minutes
   - Every hour
   - Every day
 - **Earliest time of day**: Optional start time (hh:mm, 24-hour clock)
 - **Latest time of day**: Optional end time (hh:mm, 24-hour clock)
 
-**Note:** If "Once" is selected, the `repeat` field is omitted from the task configuration.
+**Note:** If "Once" is selected, the task configuration includes `once: true` instead of a `repeat` field.
 
-### /schedule remove
+#### /schedule remove
 
 Removes a task by name.
 
@@ -225,7 +232,7 @@ Removes a task by name.
 
 **Throws:** `CommandFailedError` if no name provided or task not found
 
-### /schedule history
+#### /schedule history
 
 Displays the execution history of all tasks, including status and duration.
 
@@ -242,6 +249,41 @@ Displays the execution history of all tasks, including status and duration.
 - [Mon, Jan 15, 2024, 9:00:00 AM] Daily Report - completed (120s) Task completed successfully
 - [Sun, Jan 14, 2024, 9:00:00 AM] Daily Report - failed (45s) Task failed with error: ...
 ```
+
+### /loop
+
+Schedule a prompt to run repeatedly in the current session. This is a quick way to schedule repeated tasks without using the full `/schedule add` interface.
+
+**Usage:**
+```bash
+/loop [interval] <prompt>
+/loop <prompt> every <interval>
+```
+
+If no interval is provided, the prompt runs every 10 minutes.
+
+**Examples:**
+```bash
+# Run every 5 minutes
+/loop 5m check if the deployment finished
+
+# Run every 2 hours
+/loop check the build every 2 hours
+
+# Run every 20 minutes
+/loop /review-pr 1234 every 20m
+
+# Run every 10 minutes (default interval)
+/loop monitor the logs
+```
+
+**Supported Intervals:**
+- Seconds: `s`, `sec`, `secs`, `second`, `seconds` (rounded up to minutes)
+- Minutes: `m`, `min`, `mins`, `minute`, `minutes`
+- Hours: `h`, `hr`, `hrs`, `hour`, `hours`
+- Days: `d`, `day`, `days`
+
+**Note:** Seconds are rounded up to the nearest minute since the scheduler operates on minute granularity. A task name is automatically generated (e.g., `loop-abc123def`).
 
 ## Configuration
 
@@ -330,6 +372,8 @@ z.object({
 })
 ```
 
+**Note:** For one-time tasks, use `once: true` instead of `repeat`.
+
 ## Usage Examples
 
 ### Basic Setup
@@ -399,6 +443,17 @@ app.install(scheduler);
 }
 ```
 
+### One-time Task
+
+```javascript
+{
+  message: "/chat Run cleanup task",
+  once: true,
+  after: "14:00",
+  timezone: "America/New_York"
+}
+```
+
 ## Tools
 
 The scheduler package provides three tools for programmatic task management.
@@ -413,7 +468,7 @@ Add a new scheduled task to run an agent at specified intervals.
 |----------|------|----------|-------------|
 | `taskName` | `string` | Yes | Unique name for the scheduled task |
 | `task.description` | `string` | Yes | A long, several paragraph description of the exact task to execute. This should provide enough detail for an AI agent to understand the purpose and requirements of the task. |
-| `task.context` | `string` | No | Additional context or information relevant to task execution. This should include background information, dependencies, or any other details that could help the agent perform the task more effectively. |
+| `task.context` | `string` | No | Additional context or information relevant to the task execution. This should include background information, dependencies, or any other details that could help the agent perform the task more effectively. |
 | `task.repeat` | `string` | No | Interval string (e.g., "1 hour", "30 minutes"). Omit for one-time tasks. |
 | `task.after` | `string` | No | Start time in HH:mm format (24-hour clock) |
 | `task.before` | `string` | No | End time in HH:mm format (24-hour clock) |
@@ -425,6 +480,8 @@ Add a new scheduled task to run an agent at specified intervals.
 
 ADDITIONAL CONTEXT:{context}
 ```
+
+**Required Context Handlers:** `["available-agents"]`
 
 **Example:**
 
@@ -572,6 +629,39 @@ const matches = checkDayConditions(task, now);
 - Checks if current day of week is in `weekdays` list (if specified)
 - Returns `true` if both conditions match (or if no conditions specified)
 
+### parseLoopCommand
+
+Parses `/loop` command syntax into structured task configuration.
+
+**Location:** `@tokenring-ai/scheduler/utility/parseLoopCommand`
+
+```typescript
+import { parseLoopCommand } from "@tokenring-ai/scheduler/utility/parseLoopCommand";
+
+// Parse leading interval format
+const result1 = parseLoopCommand("5m check deployment");
+// { prompt: "check deployment", repeat: "5 minutes", displayInterval: "5 minutes" }
+
+// Parse trailing "every" format
+const result2 = parseLoopCommand("check build every 2 hours");
+// { prompt: "check build", repeat: "2 hours", displayInterval: "2 hours" }
+
+// Parse default interval (10 minutes)
+const result3 = parseLoopCommand("monitor logs");
+// { prompt: "monitor logs", repeat: "10 minutes", displayInterval: "10 minutes" }
+
+// Parse seconds (rounded up to minutes)
+const result4 = parseLoopCommand("30s ping server");
+// { prompt: "ping server", repeat: "1 minute", displayInterval: "1 minute", note: "Rounded 30 seconds up to 1 minute..." }
+```
+
+**Behavior:**
+- Supports leading interval format: `<interval> <prompt>`
+- Supports trailing "every" format: `<prompt> every <interval>`
+- Defaults to 10 minutes if no interval specified
+- Rounds seconds up to the nearest minute
+- Returns `null` for invalid input
+
 ## State Management
 
 The scheduler maintains task state within the agent using two state slices.
@@ -636,7 +726,7 @@ The scheduler integrates with the agent system by:
 3. **State Management**: Registers state slices for task and execution tracking
 4. **Agent Execution**: Sends messages to agents to trigger their work
 5. **Event Monitoring**: Monitors agent execution and handles completion
-6. **Command Registration**: Registers `/schedule` command with subcommand routing
+6. **Command Registration**: Registers `/schedule` and `/loop` commands
 7. **Tool Registration**: Registers tools with `ChatService` for programmatic access
 8. **State Persistence**: Maintains task state across agent restarts
 
@@ -717,6 +807,13 @@ When a task is scheduled to run, the scheduler:
 - Plan for scheduler restart behavior (use `/schedule start` if needed)
 - Verify task configurations after agent restarts
 
+### Loop Command Usage
+
+- Use `/loop` for quick, temporary repeated tasks
+- Use `/schedule add` for permanent, configurable tasks
+- Remember that loop tasks are auto-generated and may be harder to manage
+- Use `/schedule show` to see all running tasks including loops
+
 ## Error Handling
 
 - **Task Not Found**: `removeTask` throws `Error` when task doesn't exist
@@ -726,6 +823,7 @@ When a task is scheduled to run, the scheduler:
 - **Cancelled Operations**: Interactive task creation throws `CommandFailedError` when cancelled (e.g., user cancels form)
 - **Missing Task Name**: `/schedule remove` throws `CommandFailedError` if no name provided
 - **Task Exited Without Reason**: If task execution completes without proper event handling, marked as failed with "Task exited without any reason given"
+- **Invalid Loop Command**: `/loop` throws `CommandFailedError` if command syntax is invalid
 
 ## Monitoring and Logging
 
@@ -757,6 +855,7 @@ bun test:coverage
 - `utility/getNextRunTime.test.ts` - Tests for next run time calculation
 - `utility/parseInterval.test.ts` - Tests for interval parsing
 - `utility/checkDayConditions.test.ts` - Tests for day condition checking
+- `utility/parseLoopCommand.test.ts` - Tests for loop command parsing
 
 ### Package Structure
 
@@ -776,17 +875,19 @@ pkg/scheduler/
 │   ├── scheduleTaskState.ts    # ScheduleTaskState implementation
 │   └── scheduleExecutionState.ts # ScheduleExecutionState implementation
 ├── commands/
-│   └── schedule/
-│       ├── add.ts              # /schedule add subcommand
-│       ├── remove.ts           # /schedule remove subcommand
-│       ├── show.ts             # /schedule show subcommand
-│       ├── start.ts            # /schedule start subcommand
-│       ├── stop.ts             # /schedule stop subcommand
-│       └── history.ts          # /schedule history subcommand
+│   ├── schedule/
+│   │   ├── add.ts              # /schedule add subcommand
+│   │   ├── remove.ts           # /schedule remove subcommand
+│   │   ├── show.ts             # /schedule show subcommand
+│   │   ├── start.ts            # /schedule start subcommand
+│   │   ├── stop.ts             # /schedule stop subcommand
+│   │   └── history.ts          # /schedule history subcommand
+│   └── loop.ts                 # /loop command
 ├── utility/
 │   ├── parseInterval.ts        # parseInterval utility function
 │   ├── getNextRunTime.ts       # getNextRunTime utility function
-│   └── checkDayConditions.ts   # checkDayConditions utility function
+│   ├── checkDayConditions.ts   # checkDayConditions utility function
+│   └── parseLoopCommand.ts     # parseLoopCommand utility function
 ├── vitest.config.ts            # Vitest configuration
 └── README.md                   # Package documentation
 ```
@@ -805,7 +906,7 @@ pkg/scheduler/
 
 ### Development Dependencies
 
-- `vitest` (^4.0.18) - Testing framework
+- `vitest` (^4.1.0) - Testing framework
 - `typescript` (^5.9.3) - TypeScript compiler
 
 ## Related Components

@@ -17,8 +17,11 @@ The `@tokenring-ai/cli` package provides a comprehensive command-line interface 
 - **Background Loading Screen**: Optional loading screen while agents initialize
 - **Graceful Shutdown**: Proper signal handling and cleanup
 - **Markdown Styling**: Applied markdown formatting to terminal output
-- **Workflow Support**: Launch and interact with workflows from the agent selection screen
-- **Web Application Integration**: Connect to web applications hosted by WebHostService
+- **File Selection**: Interactive file system browser for file selection questions
+- **Tree Selection**: Hierarchical tree-based selection for complex choices
+- **Multi-field Forms**: Support for multi-section forms with various field types
+- **Bracketed Paste**: Support for bracketed paste mode for efficient text input
+- **Workspace File Search**: File path completion using `@` syntax
 
 ## Core Components
 
@@ -78,15 +81,14 @@ class AgentLoop {
 **AgentLoopOptions Interface:**
 ```typescript
 interface AgentLoopOptions {
-  availableCommands: string[];
-  rl: readline.Interface;
+  availableCommands: CommandDefinition[];
   config: z.infer<typeof CLIConfigSchema>;
 }
 ```
 
 **Properties:**
 - `agent`: The `Agent` instance to interact with
-- `options`: Configuration including available commands, readline interface, and CLI config
+- `options`: Configuration including available commands and CLI config
 
 **Methods:**
 
@@ -98,20 +100,89 @@ interface AgentLoopOptions {
 The `AgentLoop` processes the following agent events:
 - `agent.created`: Display agent creation message
 - `agent.stopped`: Shutdown the interaction loop
-- `output.artifact`: Display artifact information
 - `output.chat`: Stream chat output with formatting
 - `output.reasoning`: Stream reasoning output with formatting
 - `output.info/warning/error`: Display system messages
+- `output.artifact`: Display artifact information
 - `input.received`: Display user input
-- `input.handled`: Display input handling status
 - `question.request`: Display agent question to user
 - `question.response`: Display response to agent question
-- `pause/resume/abort`: Display control messages
 
-**Spinner Management:**
-- Automatically starts/stops spinner based on agent execution state
-- Uses `SimpleSpinner` for visual feedback during busy operations
-- Syncs with `exec.busyWith` property from execution state
+**State Management:**
+- Tracks event cursor for incremental updates
+- Subscribes to `AgentEventState` for real-time updates
+- Handles abort signals for graceful cancellation
+
+### RawChatUI Class
+
+The main chat UI component that handles terminal rendering, input editing, and interaction management. This is a raw terminal-based UI that works directly with ANSI escape codes.
+
+**Interface:**
+```typescript
+class RawChatUI {
+  constructor(options: RawChatUIOptions);
+
+  start(): void;
+  stop(): void;
+  suspend(): void;
+  resume(): void;
+  renderEvent(event: AgentEventEnvelope): void;
+  syncState(state: AgentEventState): void;
+  flash(text: string, tone?: FlashMessage["tone"], durationMs?: number): void;
+}
+```
+
+**RawChatUIOptions Interface:**
+```typescript
+interface RawChatUIOptions {
+  agent: Agent;
+  config: z.output<typeof CLIConfigSchema>;
+  commands: CommandDefinition[];
+  onSubmit: (message: string) => void;
+  onOpenAgentSelection: () => void;
+  onDeleteIdleAgent: () => void;
+  onAbortCurrentActivity: () => boolean;
+}
+```
+
+**Properties:**
+- `chatEditor`: Multi-line input editor for chat messages
+- `transcript`: Array of transcript entries showing conversation history
+- `followupEditors`: Map of editors for follow-up interactions
+- `questionSessions`: Map of inline question sessions
+
+**Methods:**
+
+| Method | Description | Parameters |
+|--------|-------------|------------|
+| `start` | Attaches terminal and starts rendering | - |
+| `stop` | Detaches terminal and stops rendering | - |
+| `suspend` | Temporarily detaches terminal | - |
+| `resume` | Re-attaches terminal and replays UI | - |
+| `renderEvent` | Renders an agent event to the transcript | `event: AgentEventEnvelope` |
+| `syncState` | Synchronizes UI with agent state | `state: AgentEventState` |
+| `flash` | Shows a temporary flash message | `text: string`, `tone?: FlashMessage["tone"]`, `durationMs?: number` |
+
+**Keyboard Shortcuts:**
+- `Ctrl+C`: Exit the CLI
+- `Ctrl+L`: Clear and replay the screen
+- `Alt+A` / `F1`: Open agent selection
+- `Alt+M` / `F3`: Open model selector
+- `Alt+T` / `F2`: Open tools selector
+- `Alt+V` / `F4`: Toggle verbose mode
+- `Alt+Q` / `F6`: Toggle optional questions
+- `Tab`: Command completion
+- `Escape`: Cancel current activity
+- `Ctrl+O`: Insert newline
+- `Ctrl+P` / `Up`: Browse command history (previous)
+- `Ctrl+N` / `Down`: Browse command history (next)
+
+**Input Editor Features:**
+- Multi-line text editing
+- Word navigation (Alt+B/F or Ctrl+Left/Right)
+- Line navigation (Home/End)
+- Delete operations (Ctrl+U/K/W/D)
+- Bracketed paste support
 
 ### commandPrompt Function
 
@@ -740,6 +811,7 @@ const CLIConfigSchema = z.object({
   loadingBannerCompact: z.string(),
   screenBanner: z.string(),
   uiFramework: z.enum(['ink', 'opentui']).default('opentui'),
+  verbose: z.boolean().default(false),
   startAgent: z.object({
     type: z.string(),
     prompt: z.string().optional(),
@@ -758,6 +830,7 @@ const CLIConfigSchema = z.object({
 | `loadingBannerCompact` | string | Yes | - | Banner for compact terminal layouts during loading |
 | `screenBanner` | string | Yes | - | Banner message displayed on all interactive screens |
 | `uiFramework` | 'ink' \| 'opentui' | No | 'opentui' | UI rendering framework to use |
+| `verbose` | boolean | No | false | Enable verbose output including reasoning and artifacts |
 | `startAgent` | object | No | undefined | Optional agent to automatically spawn on startup |
 | `startAgent.type` | string | If startAgent | - | Agent type to spawn |
 | `startAgent.prompt` | string | If startAgent | undefined | Initial prompt to send to the agent |
@@ -773,6 +846,7 @@ const config = {
     loadingBannerCompact: 'Loading',
     screenBanner: 'TokenRing CLI',
     uiFramework: 'opentui',
+    verbose: true,
     startAgent: {
       type: 'coder',
       prompt: 'Write a function to calculate Fibonacci',
@@ -861,7 +935,7 @@ The CLI integrates with the agent system through:
 1. **Agent Selection**: Presents available agents from `AgentManager` service
 2. **Event Subscription**: Subscribes to `AgentEventState` for real-time updates
 3. **Input Handling**: Sends user input via `agent.handleInput()`
-4. **Question Responses**: Sends responses to agent questions via `agent.sendQuestionResponse()`
+4. **Question Responses**: Sends responses to agent questions via `agent.sendInteractionResponse()`
 5. **Command Registration**: Registers chat commands via `AgentCommandService`
 
 ### Integration with WebHostService
@@ -1094,6 +1168,22 @@ const config = {
 };
 ```
 
+### Enable Verbose Mode
+
+```typescript
+const config = {
+  cli: {
+    chatBanner: 'TokenRing CLI',
+    uiFramework: 'opentui',
+    verbose: true, // Show reasoning and artifacts
+    loadingBannerNarrow: 'Loading...',
+    loadingBannerWide: 'Loading TokenRing CLI...',
+    loadingBannerCompact: 'Loading',
+    screenBanner: 'TokenRing CLI',
+  },
+};
+```
+
 ### Custom Theme Usage
 
 ```typescript
@@ -1218,6 +1308,21 @@ const styledText = applyMarkdownStyles('# Heading\n- Item 1\n- Item 2');
 console.log(styledText);
 ```
 
+### File Search Syntax
+
+Use the `@` syntax for file path completion in the chat input:
+
+```
+# Type @ followed by a search query to find files
+Write code for @utils/helper.ts
+```
+
+The file search will:
+- Index all files in the workspace
+- Show matches as you type
+- Allow navigation with arrow keys
+- Insert the selected path with Tab or Enter
+
 ### Loading Screen Usage
 
 Use the loading screen during initialization:
@@ -1297,6 +1402,7 @@ pkg/cli/
 │   └── applyMarkdownStyles.ts
 ├── AgentCLI.ts          # Main CLI service
 ├── AgentLoop.ts         # Agent interaction loop
+├── AgentSelection.ts    # Agent selection parsing
 ├── commandPrompt.ts     # Command prompt implementation
 ├── commands.ts          # Command registry
 ├── index.ts             # Package exports
@@ -1311,6 +1417,7 @@ pkg/cli/
 ### Runtime Dependencies
 
 - `@tokenring-ai/app` (0.2.0)
+- `@tokenring-ai/ai-client` (0.2.0)
 - `@tokenring-ai/chat` (0.2.0)
 - `@tokenring-ai/agent` (0.2.0)
 - `@tokenring-ai/utility` (0.2.0)
@@ -1319,18 +1426,19 @@ pkg/cli/
 - `@tokenring-ai/filesystem` (0.2.0)
 - `zod` (^4.3.6)
 - `@inquirer/prompts` (^8.3.0)
+- `@mishieck/ink-titled-box` (^0.4.2)
 - `execa` (^9.6.1)
 - `chalk` (^5.6.2)
 - `open` (^11.0.0)
-- `@opentui/core` (^0.1.84)
-- `@opentui/react` (^0.1.84)
+- `@opentui/core` (^0.1.87)
+- `@opentui/react` (^0.1.87)
 - `react` (^19.2.4)
-- `ink` (^6.6.0)
+- `ink` (^6.8.0)
 - `fullscreen-ink` (^0.1.0)
 
 ### Development Dependencies
 
-- `vitest` (^4.0.18)
+- `vitest` (^4.1.0)
 - `typescript` (^5.9.3)
 - `@types/react` (^19.2.14)
 

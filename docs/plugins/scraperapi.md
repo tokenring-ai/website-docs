@@ -1,12 +1,10 @@
-# ScraperAPI Plugin
+# @tokenring-ai/scraperapi
 
-Web scraping integration via ScraperAPI for structured Google SERP, Google News, and HTML fetching with geotargeting capabilities.
+ScraperAPI integration for Token Ring - A web search provider that enables structured Google SERP, Google News, and HTML fetching through ScraperAPI.
 
 ## Overview
 
-The `@tokenring-ai/scraperapi` package provides a ScraperAPI-based web search provider that integrates with the Token Ring AI platform. It enables AI agents and applications to perform web searches, fetch structured Google Search Engine Results Pages (SERP), retrieve Google News articles, and scrape web pages through a unified interface.
-
-This package extends the `WebSearchProvider` from `@tokenring-ai/websearch`, offering:
+The `@tokenring-ai/scraperapi` package provides a ScraperAPI-based web search provider that integrates with the Token Ring AI platform. It extends the `WebSearchProvider` from `@tokenring-ai/websearch`, offering:
 
 - **Google SERP Search**: Structured search results with organic listings, knowledge graphs, and related questions
 - **Google News Search**: Structured news articles with sources, thumbnails, dates, and links
@@ -20,10 +18,9 @@ This package extends the `WebSearchProvider` from `@tokenring-ai/websearch`, off
 ### Core Capabilities
 
 - **Web Scraping**: Fetch HTML content from any URL with optional rendering
-- **Google Search**: Perform structured searches with comprehensive parameter support
+- **Google Search**: Perform structured SERP searches with comprehensive parameter support
 - **Google News**: Retrieve news articles with metadata and thumbnails
 - **Geotargeting**: Country-specific searches with support for multiple Google TLDs
-- **Pagination**: Support for result pagination and continuation
 - **Structured Data**: JSON responses with consistent response formats
 
 ### Configuration Options
@@ -219,7 +216,7 @@ interface WebPageResult {
 
 ### Package Configuration
 
-Add the ScraperAPI configuration to your Token Ring configuration file (e.g., `.tokenring/writer-config.js`):
+Add the ScraperAPI configuration to your Token Ring configuration file:
 
 ```javascript
 export default {

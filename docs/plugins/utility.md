@@ -1,4 +1,4 @@
-# Utility Plugin
+# @tokenring-ai/utility
 
 ## Overview
 
@@ -7,14 +7,14 @@ The `@tokenring-ai/utility` package provides a comprehensive collection of gener
 ## Key Features
 
 - **Object Utilities**: Safe object manipulation with type safety (`pick`, `omit`, `transform`, `deepMerge`, `deepEquals`, `isEmpty`, `parametricObjectFilter`, `pickValue`, `requireFields`)
-- **String Utilities**: Comprehensive string processing and formatting (`convertBoolean`, `trimMiddle`, `shellEscape`, `joinDefault`, `formatLogMessages`, `createAsciiTable`, `wrapText`, `indent`, `markdownList`, `numberedList`, `codeBlock`, `errorToString`, `markdownTable`, `dedupe`, `like`)
-- **HTTP Utilities**: Robust HTTP client with automatic retry logic (`HttpService`, `doFetchWithRetry`)
+- **String Utilities**: Comprehensive string processing and formatting (`convertBoolean`, `trimMiddle`, `shellEscape`, `joinDefault`, `formatLogMessages`, `createAsciiTable`, `wrapText`, `indent`, `markdownList`, `numberedList`, `codeBlock`, `errorToString`, `markdownTable`, `dedupe`, `like`, `oneOf`, `generateHumanId`, `getRandomItem`, `intelligentTruncate`, `workingMessages`, `ridiculousMessages`)
+- **HTTP Utilities**: Robust HTTP client with automatic retry logic (`HttpService`, `doFetchWithRetry`, `cachedDataRetriever`)
 - **Promise Utilities**: Advanced promise handling and management (`abandon`, `waitForAbort`, `backoff`)
 - **Registry Utilities**: Flexible registry patterns for service management (`KeyedRegistry`, `TypedRegistry`)
 - **Timer Utilities**: Throttle and debounce functions for rate limiting
 - **Buffer Utilities**: Binary data detection in buffers
+- **Environment Utilities**: Environment variable management with file-based secrets support
 - **Type Safety**: Comprehensive TypeScript definitions
-- **Error Handling**: Built-in error handling and validation
 
 ## Core Components
 
@@ -33,6 +33,7 @@ Located in `pkg/utility/object/`:
 | `parametricObjectFilter` | `(requirements) => (obj) => boolean` | Creates a filter function for object arrays with numeric/string comparisons |
 | `isEmpty` | `(obj: Object \| Array \| Map \| Set \| null \| undefined) => boolean` | Checks if object is empty |
 | `deepEquals` | `(a: unknown, b: unknown) => boolean` | Deeply compares two values for equality |
+| `isPlainObject` | `(value: unknown) => value is Record<string, any>` | Checks if value is a plain object (not array, Date, etc.) |
 
 ### String Utilities
 
@@ -55,6 +56,12 @@ Located in `pkg/utility/string/`:
 | `markdownTable` | `(columns: string[], rows: string[][]) => string` | Generates Markdown table |
 | `dedupe` | `(items: string[]) => string[]` | Removes duplicates from string array |
 | `like` | `(likeName: string, thing: string) => boolean` | Pattern matching for strings (prefix or exact) |
+| `oneOf` | `(str: string, ...args: string[]) => boolean` | Checks if string is one of the provided options |
+| `generateHumanId` | `() => string` | Generates human-readable unique identifier with random suffix |
+| `getRandomItem` | `(items: string[], seed?) => string` | Returns random item from array, optionally with seed |
+| `intelligentTruncate` | `(str: string, length: number, ellipsis?) => string` | Truncates string at word boundaries |
+| `workingMessages` | `string[]` | Array of working/status messages for loading indicators |
+| `ridiculousMessages` | `string[]` | Array of humorous messages for loading indicators |
 
 ### HTTP Utilities
 
@@ -64,6 +71,7 @@ Located in `pkg/utility/http/`:
 |-----------|------|-------------|
 | `HttpService` | `abstract class` | Base class for HTTP services with JSON parsing and retry logic |
 | `doFetchWithRetry` | `(url: string, init?) => Promise<Response>` | Fetch with automatic retry logic for 429 and 5xx errors |
+| `cachedDataRetriever` | `(baseURL: string, options: RetrieverOptions) => () => Promise<T \| null>` | Creates cached data fetcher with TTL and deduplication |
 
 ### Promise Utilities
 
@@ -100,6 +108,16 @@ Located in `pkg/utility/buffer/`:
 | Function | Type | Description |
 |----------|------|-------------|
 | `isBinaryData` | `(buffer: Buffer) => boolean` | Detects binary data in Buffer (null bytes, non-printable ratio) |
+
+### Environment Utilities
+
+Located in `pkg/utility/env/`:
+
+| Function | Type | Description |
+|----------|------|-------------|
+| `defaultEnv` | `(names: string \| string[], defaultValue: string) => string` | Gets env var with _FILE support and caching |
+| `isProductionEnvironment` | `() => boolean` | Checks if NODE_ENV !== 'development' |
+| `isDevelopmentEnvironment` | `() => boolean` | Checks if NODE_ENV === 'development' |
 
 ### Type Definitions
 
@@ -160,8 +178,59 @@ protected async fetchJson(path: string, opts?: RequestInit, context: string): Pr
 
 ### Error Types
 
-- `CommandFailedError`: Thrown when command execution fails
 - Generic `Error`: Thrown by various utilities with descriptive messages
+- HTTP errors include `status` and `details` properties
+
+## Services
+
+The utility package does not define `TokenRingService` implementations. It provides foundational utilities used by other packages that implement services.
+
+## Configuration
+
+### TableOptions for `createAsciiTable`
+
+```typescript
+interface TableOptions {
+  columnWidths: number[];     // Width for each column
+  padding?: number;           // Padding between content and borders (default: 0)
+  header?: string[];          // Optional header row
+  grid?: boolean;             // Whether to draw table borders (default: false)
+}
+```
+
+### BackoffOptions for `backoff`
+
+```typescript
+interface BackoffOptions {
+  times: number;              // Number of retry attempts
+  interval: number;           // Initial delay in milliseconds
+  multiplier: number;         // Multiplier for exponential backoff
+}
+```
+
+### RetrieverOptions for `cachedDataRetriever`
+
+```typescript
+interface RetrieverOptions {
+  headers: Record<string, string>;  // HTTP headers to include
+  cacheTime?: number;               // Cache TTL in ms (default: 30000)
+  timeout?: number;                 // Request timeout in ms (default: 1000)
+}
+```
+
+### ParametricObjectRequirements
+
+```typescript
+type ParametricObjectRequirements = Record<string, number | string | null | undefined>;
+```
+
+## RPC Endpoints
+
+The utility package does not define RPC endpoints.
+
+## Chat Commands
+
+The utility package does not define chat commands.
 
 ## Usage Examples
 
@@ -228,7 +297,7 @@ const users = [
 ];
 
 const filtered = users.filter(filter);
-// [{ name: 'Alice', age: 25 }, { name: 'Charlie', age: 30 }]
+// [{ name: 'Alice', age: 25 }, { name: 'Charlie', age: 30 }];
 
 // Require fields
 try {
@@ -258,6 +327,12 @@ import errorToString from '@tokenring-ai/utility/string/errorToString';
 import markdownTable from '@tokenring-ai/utility/string/markdownTable';
 import { dedupe } from '@tokenring-ai/utility/string/dedupe';
 import { like } from '@tokenring-ai/utility/string/like';
+import oneOf from '@tokenring-ai/utility/string/oneOf';
+import { generateHumanId } from '@tokenring-ai/utility/string/generateHumanId';
+import getRandomItem from '@tokenring-ai/utility/string/getRandomItem';
+import intelligentTruncate from '@tokenring-ai/utility/string/intelligentTruncate';
+import workingMessages from '@tokenring-ai/utility/string/workingMessages';
+import ridiculousMessages from '@tokenring-ai/utility/string/ridiculousMessages';
 
 // Boolean conversion
 convertBoolean('true');   // true
@@ -273,7 +348,7 @@ trimMiddle('FullDocumentWithLotsOfText', 10, 10);
 // Shell escaping
 const filename = "my file's name.txt";
 const command = `rm ${shellEscape(filename)}`;
-// "rm 'my file's'\\'''s name.txt'"
+// "rm 'my file's'\\\"\\\"\\\"'s name.txt'"
 
 // Join with default
 const items = null;
@@ -334,6 +409,34 @@ like('db*', 'database');      // true
 like('db', 'database');       // false
 like('database', 'database'); // true
 like('DB', 'database');       // true (case-insensitive)
+
+// One of check
+oneOf('red', 'red', 'green', 'blue');  // true
+oneOf('yellow', 'red', 'green', 'blue'); // false
+
+// Generate human ID
+const userId = generateHumanId();
+// 'clever-hamster-427'
+
+// Get random item
+const colors = ['red', 'green', 'blue'];
+const randomColor = getRandomItem(colors);
+// 'green' (or any other color)
+
+// With seed for reproducibility
+const sameColor = getRandomItem(colors, 42);
+
+// Intelligent truncation
+const truncated = intelligentTruncate('This is a long sentence', 15);
+// 'This is...'
+
+// Working messages
+const status = workingMessages[0];
+// 'Processing...'
+
+// Ridiculous messages
+const funStatus = ridiculousMessages[0];
+// 'Reticulating splines'
 ```
 
 ### Registry Pattern
@@ -449,6 +552,27 @@ const github = new GitHubApi();
 const repo = await github.getRepository('tokenring-ai', 'token-ring');
 ```
 
+### Cached Data Retriever
+
+```typescript
+import cachedDataRetriever from '@tokenring-ai/utility/http/cachedDataRetriever';
+
+// Create a cached retriever for API data
+const getApiData = cachedDataRetriever('https://api.example.com/data', {
+  headers: { 'Authorization': 'Bearer token' },
+  cacheTime: 60000,  // Cache for 1 minute
+  timeout: 5000      // 5 second timeout
+});
+
+// First call fetches data
+const data1 = await getApiData();
+
+// Second call within cache period returns cached data
+const data2 = await getApiData(); // Returns cached data
+
+// After cacheTime expires, fetches fresh data
+```
+
 ### Promise Utilities
 
 ```typescript
@@ -523,33 +647,29 @@ const filtered = users.filter(filter);
 // String: '' or '=' only for 'name' field
 ```
 
-## Configuration
-
-### TableOptions for `createAsciiTable`
+### Environment Utilities
 
 ```typescript
-interface TableOptions {
-  columnWidths: number[];     // Width for each column
-  padding?: number;           // Padding between content and borders (default: 0)
-  header?: string[];          // Optional header row
-  grid?: boolean;             // Whether to draw table borders (default: false)
+import { defaultEnv, isProductionEnvironment, isDevelopmentEnvironment } from '@tokenring-ai/utility/env';
+
+// Get environment variable with fallback
+const port = defaultEnv('PORT', '3000');
+
+// Get secret from file (if API_KEY_FILE is set)
+// Reads the file content instead of the environment variable
+const apiKey = defaultEnv('API_KEY', '');
+
+// Multiple variable names (returns first found)
+const databaseUrl = defaultEnv(['DATABASE_URL', 'DB_URL'], 'sqlite://localhost');
+
+// Check environment
+if (isDevelopmentEnvironment()) {
+  console.log('Running in development mode');
 }
-```
 
-### BackoffOptions for `backoff`
-
-```typescript
-interface BackoffOptions {
-  times: number;              // Number of retry attempts
-  interval: number;           // Initial delay in milliseconds
-  multiplier: number;         // Multiplier for exponential backoff
+if (isProductionEnvironment()) {
+  console.log('Running in production mode');
 }
-```
-
-### ParametricObjectRequirements
-
-```typescript
-type ParametricObjectRequirements = Record<string, number | string | null | undefined>;
 ```
 
 ## Integration
@@ -643,8 +763,11 @@ pluginRegistry.waitForItemByName('plugin-a', (plugin) => {
 - Use `like` for prefix-based string matching
 - Use `parametricObjectFilter` for filtering object arrays with numeric comparisons
 - Use `requireFields` for validating configuration objects
+- Use `generateHumanId` for human-readable unique identifiers
+- Use `workingMessages` and `ridiculousMessages` for loading indicators
+- Use `defaultEnv` with `_FILE` support for secrets management
 
-## Testing
+## Testing and Development
 
 The package uses vitest for unit testing. Run tests with:
 
@@ -697,11 +820,11 @@ describe('Timer Utilities', () => {
 
 ### Production Dependencies
 
-- `@tokenring-ai/agent`: 0.2.0
+- `human-id`: ^4.1.3
 
 ### Development Dependencies
 
-- `vitest`: ^4.0.18
+- `vitest`: ^4.1.0
 - `typescript`: ^5.9.3
 
 ## Related Components
@@ -713,7 +836,7 @@ describe('Timer Utilities', () => {
 
 ## Notes
 
-- This package is designed to be dependency-free except for core Token Ring packages
+- This package is designed to be dependency-free except for core utilities
 - All utilities are type-safe and tested with vitest
 - The package follows the Token Ring documentation standards
 - Utilities are organized into logical modules for easy import
@@ -724,28 +847,9 @@ describe('Timer Utilities', () => {
 - Object utilities support both simple and complex transformation scenarios
 - HTTP utilities include automatic retry logic for resilient API calls
 - Binary data detection uses both null byte detection and non-printable ratio analysis
-
-## Development
-
-### Build
-
-```bash
-bun build
-```
-
-This runs TypeScript type checking without emitting files.
-
-### Dependencies
-
-```bash
-bun install
-```
-
-### Tech Stack
-
-- **Runtime**: bun
-- **Testing**: vitest
-- **Language**: TypeScript
+- Environment utilities support `_FILE` suffix for loading secrets from files
+- The `doFetchWithRetry` function performs up to 4 attempts (initial + 3 retries)
+- The `cachedDataRetriever` prevents concurrent duplicate requests
 
 ## License
 

@@ -30,9 +30,10 @@ The main service that manages all blog operations and provider registration.
 **Implements:** `TokenRingService`
 
 **Key Properties:**
-- `name`: "BlogService"
-- `description`: "Abstract interface for blog operations"
+- `name`: `"BlogService"`
+- `description`: `"Abstract interface for blog operations"`
 - `providers`: `KeyedRegistry<BlogProvider>` - Registry of registered blog providers
+- `options`: Configuration object from `BlogConfigSchema`
 
 **Key Methods:**
 
@@ -87,7 +88,7 @@ Retrieve recent posts with filtering options.
 Create a new post.
 
 **Parameters:**
-- `data`: Post creation data (title, content, tags)
+- `data`: Post creation data (title, content, tags, feature_image)
 - `agent`: The agent to create the post for
 
 **Returns:** The created blog post
@@ -138,7 +139,7 @@ Publish the currently selected post with review escalation support.
 **Review Escalation Flow:**
 1. Checks if post content matches any configured review patterns
 2. If a pattern matches and an escalation target is configured:
-   - Sends escalation message to the target
+   - Sends escalation message to the target via EscalationService
    - Waits for user response (approve/reject)
    - Publishes if approved, rejects if rejected
 3. If no patterns match or no escalation target:
@@ -146,7 +147,7 @@ Publish the currently selected post with review escalation support.
 
 #### `registerBlog(name: string, provider: BlogProvider): void`
 
-Register a blog provider with the service.
+Register a blog provider with the service. This is an alias for `providers.register`.
 
 **Parameters:**
 - `name`: The name to register the provider under
@@ -154,7 +155,7 @@ Register a blog provider with the service.
 
 #### `getAvailableBlogs(): string[]`
 
-Get list of registered blog provider names.
+Get list of registered blog provider names. This is an alias for `providers.getAllItemNames`.
 
 **Returns:** Array of provider names
 
@@ -226,6 +227,131 @@ The main blog service that implements `TokenRingService`.
 - Integrates with RpcService for endpoints
 - Integrates with ScriptingService for programmatic API
 
+## Tools
+
+The package registers the following tools with the ChatService:
+
+### `blog_createPost`
+
+Create a new blog post.
+
+**Parameters:**
+- `title` (string): Title of the blog post
+- `contentInMarkdown` (string): The content of the post in Markdown format. The title of the post goes in the title tag, NOT inside the content
+- `tags` (string[], optional): Tags for the post
+
+**Returns:** `{ type: 'json', data: BlogPost }`
+
+**Note:** The tool automatically strips the header from the markdown content and converts it to HTML using `marked`.
+
+**Example:**
+```typescript
+{
+  title: "Getting Started with AI",
+  contentInMarkdown: "# Getting Started with AI\n\nThis is a comprehensive guide...",
+  tags: ["ai", "tutorial"]
+}
+```
+
+### `blog_updatePost`
+
+Update the currently selected blog post.
+
+**Parameters:**
+- `title` (string, optional): New title for the post
+- `contentInMarkdown` (string, optional): The content of the post in Markdown format
+- `tags` (string[], optional): New tags for the post
+
+**Returns:** `{ type: 'json', data: BlogPost }`
+
+**Note:** The tool automatically strips the header from the markdown content and converts it to HTML using `marked`.
+
+**Important:** This tool only updates title, content, and tags. To update status or feature_image, use the RPC endpoint or call the service method directly.
+
+**Example:**
+```typescript
+{
+  title: "Updated Title",
+  contentInMarkdown: "# Updated Title\n\nNew content here...",
+  tags: ["ai", "updated"]
+}
+```
+
+### `blog_getRecentPosts`
+
+Retrieves the most recent published posts, optionally filtered by status and keyword.
+
+**Parameters:**
+- `status` ("draft" | "published" | "all", optional): Filter by status
+- `keyword` (string, optional): Keyword to filter by
+- `limit` (number, optional): Maximum number of posts to return (default: 50)
+
+**Returns:** Formatted table of recent posts as a string
+
+**Example:**
+```typescript
+{
+  status: "published",
+  keyword: "ai",
+  limit: 10
+}
+```
+
+### `blog_getCurrentPost`
+
+Get the currently selected post from a blog service.
+
+**Parameters:** None
+
+**Returns:** 
+- Success: `{ type: 'json', data: { success: true, post: BlogPost, message: string } }`
+- Failure: `{ type: 'json', data: { success: false, error: string, suggestion: string } }`
+
+### `blog_selectPost`
+
+Selects a blog post by its ID to perform further actions on it.
+
+**Parameters:**
+- `id` (string): The unique identifier of the post to select
+
+**Returns:** Formatted string with post details and JSON representation
+
+**Example:**
+```typescript
+{
+  id: "abc-123-def"
+}
+```
+
+### `blog_generateImageForPost`
+
+Generate an AI image for the currently selected blog post.
+
+**Parameters:**
+- `prompt` (string): Description of the image to generate
+- `aspectRatio` ("square" | "tall" | "wide", optional): Aspect ratio for the image (default: "square")
+
+**Returns:** `{ type: 'json', data: { success: boolean, imageUrl: string, message: string } }`
+
+**Note:** This tool:
+1. Gets the active blog provider's image generation model
+2. Generates an image using the AI client
+3. Uploads the image to the provider's configured CDN
+4. Updates the current post with the featured image
+
+**Aspect Ratio Options:**
+- `square`: 1024x1024
+- `tall`: 1024x1536
+- `wide`: 1536x1024
+
+**Example:**
+```typescript
+{
+  prompt: "A futuristic AI brain with neural networks",
+  aspectRatio: "wide"
+}
+```
+
 ## RPC Endpoints
 
 The package provides JSON-RPC endpoints at `/rpc/blog`.
@@ -250,7 +376,10 @@ The package provides JSON-RPC endpoints at `/rpc/blog`.
 | `setActiveProvider` | `agentId: string`, `name: string` | `success: boolean`, `message: string` |
 | `generateImageForPost` | `agentId: string`, `prompt: string`, `aspectRatio?` ("square" \| "tall" \| "wide") | `success: boolean`, `imageUrl?`, `message: string` |
 
-**Note:** The RPC `publishPost` endpoint does not include review escalation logic. Review escalation is only available through the `BlogService.publishPost()` method when called directly.
+**Important Notes:**
+- The RPC `publishPost` endpoint does **not** include review escalation logic. Review escalation is only available through the `BlogService.publishPost()` method when called directly.
+- The `getActiveProvider` endpoint returns the provider's **description**, not the provider name.
+- The `updatePost` RPC endpoint supports `status` and `feature_image` parameters, which are not available in the `blog_updatePost` tool.
 
 ## Chat Commands
 
@@ -278,6 +407,62 @@ The package provides JSON-RPC endpoints at `/rpc/blog`.
 | Command | Description |
 |---------|-------------|
 | `/blog test` | Test blog connection by listing posts, creating a test post, uploading an image, and updating the post |
+
+## Scripting API
+
+The package registers the following functions with the ScriptingService:
+
+### `createPost(title, content)`
+
+Create a new blog post.
+
+**Parameters:**
+- `title` (string): Post title
+- `content` (string): Post content in Markdown
+
+**Returns:** Post ID as string
+
+**Example:**
+```typescript
+const postId = await scripting.createPost("My Post", "# My Post\nContent here");
+```
+
+### `updatePost(title, content)`
+
+Update the currently selected blog post.
+
+**Parameters:**
+- `title` (string): New title
+- `content` (string): New content in Markdown
+
+**Returns:** Post ID as string
+
+**Example:**
+```typescript
+const postId = await scripting.updatePost("Updated Title", "# Updated\nNew content");
+```
+
+### `getCurrentPost()`
+
+Get the currently selected post.
+
+**Returns:** Post object as JSON string or "No post selected"
+
+**Example:**
+```typescript
+const post = await scripting.getCurrentPost();
+```
+
+### `getAllPosts()`
+
+Get all posts.
+
+**Returns:** Array of posts as JSON string
+
+**Example:**
+```typescript
+const posts = await scripting.getAllPosts();
+```
 
 ## Configuration
 
@@ -440,28 +625,6 @@ console.log('Post published successfully');
 # Publish the post
 /blog post publish
 # Output: Post "My Article" has been published.
-```
-
-### Scripting API
-
-```typescript
-// The plugin registers these functions with the ScriptingService
-
-// Create a post
-const postId = await scripting.createPost("My Post", "# My Post\nContent here");
-console.log(`Created post: ${postId}`);
-
-// Update a post
-const updatedId = await scripting.updatePost("Updated Title", "# Updated\nNew content");
-console.log(`Updated post: ${updatedId}`);
-
-// Get current post
-const post = await scripting.getCurrentPost();
-console.log(`Current post: ${post}`);
-
-// Get all posts
-const posts = await scripting.getAllPosts();
-console.log(`All posts: ${posts}`);
 ```
 
 ### Provider Implementation

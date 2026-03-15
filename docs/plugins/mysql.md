@@ -99,7 +99,7 @@ Retrieves the CREATE TABLE statements for all tables in the database.
 
 **Implementation Details:**
 - Executes `SHOW TABLES` to get all table names
-- For each table, executes `SHOW CREATE TABLE \`${tableName}\``
+- For each table, executes `SHOW CREATE TABLE \`$\{tableName\}\``
 - Returns a record mapping table names to their CREATE TABLE statements
 - If a table's CREATE statement cannot be retrieved, returns "Could not retrieve CREATE TABLE statement."
 - Connection is always released in a `finally` block
@@ -608,8 +608,8 @@ const mysqlProvider = new MySQLProvider({
 const schema = await mysqlProvider.showSchema();
 
 // Log each table's schema
-for (const [tableName, createStatement] of Object.entries(schema)) {
-  console.log(`\n=== Table: ${tableName} ===`);
+for (const [tableName, createStatement] of\ Object.entries(schema)) {
+  console.log(`\n=== Table: $\{tableName\} ===`);
   console.log(createStatement);
 }
 ```
@@ -706,6 +706,6 @@ pkg/mysql/
 
 ## License
 
-MIT License - see [LICENSE](./LICENSE) file for details.
+MIT License
 
 Copyright (c) 2025 Mark Dierolf

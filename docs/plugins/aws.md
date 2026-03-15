@@ -1,8 +1,10 @@
-# AWS Plugin
+# @tokenring-ai/aws
+
+The `@tokenring-ai/aws` package provides AWS service management for Token Ring agents. It handles AWS client initialization, authentication verification using AWS STS, and S3 bucket listing functionality. The package implements a TokenRingPlugin that automatically registers services, tools, and chat commands when configured.
 
 ## Overview
 
-The AWS Plugin for Token Ring AI provides integration with Amazon Web Services, enabling authentication verification and S3 operations. This plugin leverages the AWS SDK v3 and integrates seamlessly with Token Ring's agent framework, offering tools for S3 bucket listing and AWS account identity retrieval via STS.
+The AWS package integrates seamlessly with the Token Ring agent framework, providing AWS authentication verification, S3 bucket listing, and a flexible client initialization system for extending to other AWS services. It leverages the AWS SDK v3 with proper credential management and singleton client patterns for efficient resource usage.
 
 ## Key Features
 
@@ -15,11 +17,28 @@ The AWS Plugin for Token Ring AI provides integration with Amazon Web Services, 
 - **Flexible Configuration**: Zod-based configuration schema for credentials and region
 - **Singleton Client Management**: AWS SDK clients are cached and reused automatically
 
+## Installation
+
+```bash
+bun add @tokenring-ai/aws
+```
+
+## Dependencies
+
+- `@tokenring-ai/agent`: 0.2.0
+- `@tokenring-ai/app`: 0.2.0
+- `@tokenring-ai/chat`: 0.2.0
+- `@aws-sdk/client-s3`: ^3.1009.0
+- `@aws-sdk/client-sts`: ^3.1009.0
+- `@tokenring-ai/filesystem`: 0.2.0
+- `@tokenring-ai/utility`: 0.2.0
+- `zod`: ^4.3.6
+
 ## Core Components
 
 ### AWSService
 
-The main service class that provides AWS integration functionality.
+The main service class that provides AWS integration functionality. Implements the `TokenRingService` interface.
 
 **Service Properties:**
 
@@ -78,9 +97,74 @@ class AWSService implements TokenRingService {
 }
 ```
 
-### Services
+**Detailed Method Documentation:**
 
-#### AWSService
+#### `initializeAWSClient(ClientClass, clientConfig)`
+
+Creates and returns a new AWS SDK client instance using the configured credentials.
+
+**Parameters:**
+- `ClientClass`: The AWS SDK client constructor (e.g., `STSClient`, `S3Client`, `DynamoDBClient`)
+- `clientConfig`: Optional additional configuration to merge with credentials
+
+**Returns:** Initialized AWS SDK client instance
+
+**Example:**
+
+```typescript
+import {DynamoDBClient} from "@aws-sdk/client-dynamodb";
+
+const dynamoDBClient = awsService.initializeAWSClient(DynamoDBClient);
+```
+
+#### `getSTSClient()`
+
+Gets or creates the STS client using singleton pattern.
+
+**Returns:** `STSClient` instance
+
+#### `getS3Client()`
+
+Gets or creates the S3 client using singleton pattern.
+
+**Returns:** `S3Client` instance
+
+#### `isAuthenticated()`
+
+Checks if AWS credentials and region are configured.
+
+**Returns:** `true` if `accessKeyId`, `secretAccessKey`, and `region` are all configured
+
+#### `getCallerIdentity()`
+
+Retrieves AWS account information by calling STS GetCallerIdentity.
+
+**Returns:** Object containing:
+- `Arn`: The ARN of the caller
+- `Account`: The AWS account ID
+- `UserId`: The unique user ID
+
+**Throws:** Error if credentials are not configured or STS call fails
+
+**Implementation Note:** This method logs errors to the console before re-throwing them.
+
+#### `status(agent)`
+
+Reports the current status of the AWSService.
+
+**Parameters:**
+- `agent`: Agent instance (used for service access if needed)
+
+**Returns:** Status object with:
+- `active`: Whether the service is active
+- `service`: Service name ("AWSService")
+- `authenticated`: Whether authentication is successful
+- `accountInfo`: Account information if authenticated
+- `error`: Error message if authentication failed
+
+## Services
+
+### AWSService
 
 The main service providing AWS functionality.
 
@@ -106,11 +190,11 @@ The main service providing AWS functionality.
 | `getCallerIdentity` | Retrieves AWS account information via STS GetCallerIdentity | None | Object with `Arn`, `Account`, `UserId` |
 | `status` | Reports the status of the service including authentication state | `agent`: Agent instance for service access | Service status object with authentication details |
 
-### Tools
+## Tools
 
 The AWS plugin provides one tool for S3 operations registered via the chat service during plugin installation.
 
-#### `aws_listS3Buckets`
+### `aws_listS3Buckets`
 
 Lists all S3 buckets in the configured AWS account and region.
 
@@ -125,6 +209,18 @@ Lists all S3 buckets in the configured AWS account and region.
   execute: async (_args: z.input<typeof inputSchema>, agent: Agent) => Promise<{
     type: 'json';
     data: { buckets: Array<{ Name: string; CreationDate: Date }> }
+  }>
+}
+```
+
+**Input Schema:** Empty object (no parameters required)
+
+**Returns:** JSON object containing:
+```typescript
+{
+  buckets: Array<{
+    Name: string;
+    CreationDate: Date;
   }>
 }
 ```
@@ -171,9 +267,9 @@ async function execute(_args: {}, agent: Agent) {
 }
 ```
 
-### Chat Commands
+## Chat Commands
 
-#### `aws status`
+### `aws status`
 
 View current AWS authentication status and account information.
 
@@ -203,8 +299,8 @@ await agent.sendMessage("aws status");
 // Output:
 // AWS Authentication Status:
 //   Account: 123456789012
-//   Arn: arn:aws:iam::123456789012:user/tokenring-user
-//   UserId: AIDAEXAMPLE123456
+//   Arn: arn:aws:iam::123456789012:user/example
+//   UserId: AIDAI23EXAMPLE
 //   Region: us-east-1
 ```
 
@@ -299,13 +395,17 @@ app.install(awsPlugin, {
 
 ### Required Configuration Parameters
 
-- **accessKeyId**: AWS Access Key ID for authentication
-- **secretAccessKey**: AWS Secret Access Key for authentication
-- **region**: AWS region where credentials apply (e.g., 'us-east-1', 'us-west-2')
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `accessKeyId` | string | AWS Access Key ID for authentication |
+| `secretAccessKey` | string | AWS Secret Access Key for authentication |
+| `region` | string | AWS region where credentials apply (e.g., 'us-east-1', 'us-west-2') |
 
 ### Optional Configuration Parameters
 
-- **sessionToken**: AWS session token for temporary credentials or assume-role scenarios
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `sessionToken` | string | AWS session token for temporary credentials or assume-role scenarios |
 
 ## Integration
 
@@ -336,7 +436,7 @@ const awsService = app.requireService('AWSService');
 1. Plugin install phase waits for ChatService
 2. Registers tool `aws_listS3Buckets` with ChatService
 3. Waits for AgentCommandService
-4. Registers command `aws` with AgentCommandService
+4. Registers command `aws status` with AgentCommandService
 5. Adds AWSService instance to app services
 
 **Plugin Code:**
@@ -785,7 +885,15 @@ try {
 }
 ```
 
-## Testing
+## RPC Endpoints
+
+This package does not define RPC endpoints. It provides AWS functionality through the AWSService class and integrates with the agent system via tools and commands.
+
+## State Management
+
+This package does not implement state management. The AWSService maintains in-memory client instances (STSClient, S3Client) using the singleton pattern, but these are not persisted across application restarts.
+
+## Testing and Development
 
 ### Running Tests
 
@@ -824,8 +932,8 @@ The package uses vitest for unit testing with node environment.
   "@tokenring-ai/app": "0.2.0",
   "@tokenring-ai/agent": "0.2.0",
   "@tokenring-ai/chat": "0.2.0",
-  "@aws-sdk/client-s3": "^3.1000.0",
-  "@aws-sdk/client-sts": "^3.1000.0",
+  "@aws-sdk/client-s3": "^3.1009.0",
+  "@aws-sdk/client-sts": "^3.1009.0",
   "@tokenring-ai/filesystem": "0.2.0",
   "@tokenring-ai/utility": "0.2.0",
   "zod": "^4.3.6"
@@ -847,7 +955,7 @@ The package uses vitest for unit testing with node environment.
 
 ```
 pkg/aws/
-├── index.ts                                  # Main exports (AWSService, AWSConfigSchema)
+├── index.ts                                  # Main exports (AWSService)
 ├── AWSService.ts                             # Core service class implementing TokenRingService
 ├── plugin.ts                                 # Token Ring plugin registration and service setup
 ├── tools.ts                                  # Barrel export for all tools
@@ -875,7 +983,7 @@ pkg/aws/
 - **commands/awsStatus.ts**: AWS status command handler
 - **tools/listS3BucketsTool.ts**: S3 bucket listing tool with error handling
 - **plugin.ts**: Plugin registration via install method
-- **index.ts**: Public API exports and configuration schema
+- **index.ts**: Public API exports (AWSService)
 - **schema.ts**: Zod schema definitions for configuration
 
 ## Additional Resources

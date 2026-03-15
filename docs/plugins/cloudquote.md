@@ -13,7 +13,7 @@ The `@tokenring-ai/cloudquote` package provides comprehensive financial data too
 - **Intraday Price Ticks**: Get intraday price data with time, price, and volume information
 - **Market Leaders**: Access lists of most active stocks, percentage gainers, and percentage losers
 - **News Headlines**: Retrieve news headlines for specified ticker symbols within date ranges
-- **SVG Price Charts**: Generate dynamic price charts for securities (service method only)
+- **Price Chart URLs**: Generate dynamic price chart URLs for securities
 - **Robust Error Handling**: Custom error types for API-related issues with detailed diagnostics
 - **Timezone-Aware Formatting**: All dates are formatted in America/New_York timezone
 - **Automatic Link Generation**: News headline links are automatically populated when available
@@ -90,7 +90,7 @@ const quote = await cloudQuoteService.getJSON('fcon/getQuote', {
 
 ##### `getHeadlinesBySecurity(params: any): Promise<any>`
 
-Retrieve news headlines from the external news API. This method uses a different base URL (`http://api.investcenter.newsrpm.com:16016`) than the main CloudQuote API.
+Retrieve news headlines from the CloudQuote API. This method handles the API communication and returns headline data.
 
 **Parameters:**
 
@@ -102,8 +102,6 @@ Retrieve news headlines from the external news API. This method uses a different
   - `maxDate` (string): End date-time in ISO 8601 format
 
 **Returns:** `Promise<any>` - News headlines data
-
-**API Endpoint:** `http://api.investcenter.newsrpm.com:16016/search/indexedData`
 
 **Example:**
 
@@ -119,7 +117,7 @@ const headlines = await cloudQuoteService.getHeadlinesBySecurity({
 
 ##### `getPriceChart(params: any): Promise<{ svgDataUri: string }>`
 
-Generate an SVG price chart for a security. This method returns a URL that can be used directly in HTML or displayed. **Note: This is a service method only and is not exposed as a tool.**
+Generate a price chart URL for a security. This method returns a URL that can be used directly in HTML or displayed. **Note: This is a service method only and is not exposed as a tool.**
 
 **Parameters:**
 
@@ -617,7 +615,7 @@ export {default as tools} from "./tools.ts";
 
 | Package | Version | Purpose |
 |---------|---------|---------|
-| `vitest` | ^4.0.18 | Unit testing framework |
+| `vitest` | ^4.1.0 | Unit testing framework |
 | `typescript` | ^5.9.3 | TypeScript compiler |
 
 ## Testing

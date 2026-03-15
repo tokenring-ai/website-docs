@@ -1,4 +1,4 @@
-# Git Package Documentation
+# @tokenring-ai/git
 
 The `@tokenring-ai/git` package provides Git integration for Token Ring AI agents, enabling automated Git operations through tools, slash commands, and hooks. This package integrates deeply with the Token Ring ecosystem, providing AI-powered commit messages, safe rollback operations, and comprehensive branch management.
 
@@ -49,7 +49,7 @@ const gitService = agent.requireServiceByType(GitService);
 The main service class that provides Git service metadata.
 
 ```typescript
-import GitService from "@tokenring-ai/git/GitService.ts";
+import GitService from "@tokenring-ai/git/GitService";
 
 const gitService = new GitService();
 console.log(gitService.name); // "GitService"
@@ -359,7 +359,7 @@ import {AgentCommandService, AgentLifecycleService} from "@tokenring-ai/agent";
 import {ChatService} from "@tokenring-ai/chat";
 import {z} from "zod";
 import agentCommands from "./commands.ts";
-import GitService from "./GitService.js";
+import GitService from "./GitService";
 import hooks from "./hooks.ts";
 import packageJSON from './package.json' with {type: 'json'};
 import tools from "./tools.ts";
@@ -387,7 +387,7 @@ export default {
 
     // Register hooks with AgentLifecycleService
     app.waitForService(AgentLifecycleService, lifecycleService =>
-      lifecycleService.addHooks(packageJSON.name, hooks)
+      lifecycleService.addHooks(hooks)
     );
   }
 } satisfies TokenRingPlugin<typeof packageConfigSchema>;
@@ -458,11 +458,34 @@ import autoCommit from "./hooks/autoCommit.ts";
 export default { autoCommit };
 
 // Hook behavior:
-// - Type: afterTesting lifecycle hook
+// - Type: AfterTestsPassed hook from @tokenring-ai/testing/hooks
 // - Triggered after all tests complete
 // - Only commits if all tests pass AND repository is dirty
 // - Commits with empty message (triggers AI generation)
 // - Marks repository clean after commit
+```
+
+**Hook Implementation Details:**
+
+```typescript
+import { HookCallback } from "@tokenring-ai/lifecycle/util/hooks";
+import { AfterTestsPassed } from "@tokenring-ai/testing/hooks";
+
+const callbacks = [
+  new HookCallback(AfterTestsPassed, async (_data, agent) => {
+    const testingService = agent.requireServiceByType(TestingService);
+    const filesystem = agent.requireServiceByType(FileSystemService);
+    if (filesystem.isDirty(agent)) {
+      if (!testingService.allTestsPassed(agent)) {
+        agent.errorMessage(
+          "Not committing changes, due to tests not passing",
+        );
+        return;
+      }
+      await commit({message: ""}, agent);
+    }
+  })
+];
 ```
 
 ### Chat Command Integration
@@ -615,13 +638,15 @@ pkg/git/
 ### Test Configuration
 
 ```typescript
-// vitest.config.ts sample
+// vitest.config.ts
 import {defineConfig} from 'vitest/config';
 
 export default defineConfig({
   test: {
-    environment: 'node',
+    include: ["**/*.test.ts"],
+    environment: "node",
     globals: true,
+    isolate: true,
   },
 });
 ```
@@ -666,6 +691,7 @@ expect(filesystem.isDirty(agent)).toBe(false);
 | @tokenring-ai/chat | 0.2.0 |
 | @tokenring-ai/agent | 0.2.0 |
 | @tokenring-ai/filesystem | 0.2.0 |
+| @tokenring-ai/lifecycle | 0.2.0 |
 | @tokenring-ai/testing | 0.2.0 |
 | @tokenring-ai/utility | 0.2.0 |
 | @tokenring-ai/terminal | 0.2.0 |
@@ -677,7 +703,7 @@ expect(filesystem.isDirty(agent)).toBe(false);
 | Package | Version |
 |---------|---------|
 | vitest | ^4.0.18 |
-| typescript | ^5.9.3 |
+| typescript | 5.9.3 |
 
 ## Related Components
 
@@ -686,6 +712,7 @@ expect(filesystem.isDirty(agent)).toBe(false);
 - **@tokenring-ai/ai-client**: Provides ChatModelRegistry for AI message generation in git_commit tool
 - **@tokenring-ai/chat**: Provides ChatService for message context extraction and tool registration
 - **@tokenring-ai/agent**: Provides AgentCommandService for slash command registration and AgentLifecycleService for hook management
+- **@tokenring-ai/lifecycle**: Provides AgentLifecycleService and hook infrastructure
 
 ## Performance Characteristics
 

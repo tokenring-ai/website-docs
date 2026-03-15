@@ -1,8 +1,6 @@
-# Browser File System Plugin
+# @tokenring-ai/browser-file-system
 
-## Overview
-
-Provides a browser-based mock FileSystemService using in-memory data. This package implements the `FileSystemProvider` interface using in-memory mock data, providing a lightweight, browser-friendly file system abstraction for environments where direct access to the file system is not available. It's ideal for demos, tests, and web-based interfaces like web terminals.
+The `@tokenring-ai/browser-file-system` package provides a browser-based mock file system implementation for the Token Ring ecosystem. It implements the `FileSystemProvider` interface using in-memory data, offering a lightweight, browser-friendly file system abstraction for environments where direct file system access is not available. This package is ideal for demos, tests, and web-based interfaces like web terminals.
 
 ## Key Features
 
@@ -47,40 +45,6 @@ await fs.writeFile('/src/app.js', 'console.log("Hello from mock app");');
 ```
 
 **Note:** All instances of `BrowserFileSystemProvider` share the same file system state as it is a module-level object.
-
-## Plugin Configuration
-
-The plugin integrates with the TokenRing configuration system and FileSystemService:
-
-```typescript
-import { TokenRingApp } from '@tokenring-ai/app';
-import browserFileSystem from '@tokenring-ai/browser-file-system';
-
-const app = new TokenRingApp();
-
-// Register the browser file system plugin
-app.registerPlugin(browserFileSystem, {
-  filesystem: {
-    providers: {
-      browser: {
-        type: 'browser'
-      }
-    }
-  }
-});
-
-// Access the file system service
-app.services.waitForItemByType(
-  FileSystemService,
-  async (fileSystemService) => {
-    const fs = fileSystemService.getFileSystem('browser');
-    const content = await fs.readFile('/README.md');
-    console.log(content?.toString('utf-8'));
-  }
-);
-```
-
-The plugin automatically registers the `BrowserFileSystemProvider` as a file system provider with the FileSystemService when configured with `type: 'browser'`.
 
 ## Core Components
 
@@ -141,6 +105,126 @@ export default {
   },
   config: packageConfigSchema
 } satisfies TokenRingPlugin<typeof packageConfigSchema>;
+```
+
+## Configuration
+
+### Plugin Configuration Schema
+
+The plugin configuration uses the `FileSystemConfigSchema` from `@tokenring-ai/filesystem`:
+
+```typescript
+import { FileSystemConfigSchema } from '@tokenring-ai/filesystem/schema';
+import { z } from 'zod';
+
+const packageConfigSchema = z.object({
+  filesystem: FileSystemConfigSchema
+});
+
+// Example configuration
+const config = {
+  filesystem: {
+    providers: {
+      browser: {
+        type: 'browser'
+      }
+    }
+  }
+};
+```
+
+### Provider Configuration
+
+The provider is registered through the FileSystemService:
+
+```typescript
+import { FileSystemService } from '@tokenring-ai/filesystem';
+import { BrowserFileSystemProvider } from '@tokenring-ai/browser-file-system';
+
+const fileSystemService = new FileSystemService();
+
+// Register the browser provider
+fileSystemService.registerFileSystemProvider(
+  'browser',
+  new BrowserFileSystemProvider()
+);
+```
+
+## Integration
+
+### TokenRing Plugin Integration
+
+The package integrates with the TokenRing plugin system and automatically registers the file system provider when configured:
+
+```typescript
+import { TokenRingApp } from '@tokenring-ai/app';
+import browserFileSystem from '@tokenring-ai/browser-file-system';
+
+const app = new TokenRingApp();
+
+// Register the browser file system plugin
+app.registerPlugin(browserFileSystem, {
+  filesystem: {
+    providers: {
+      browser: {
+        type: 'browser'
+      }
+    }
+  }
+});
+
+// Access the file system service
+app.services.waitForItemByType(
+  FileSystemService,
+  async (fileSystemService) => {
+    const fs = fileSystemService.getFileSystem('browser');
+    const content = await fs.readFile('/README.md');
+    console.log(content?.toString('utf-8'));
+  }
+);
+```
+
+### Agent System Integration
+
+The browser file system provider can be used by agents through the FileSystemService:
+
+```typescript
+import { TokenRingAgent } from '@tokenring-ai/agent';
+import { FileSystemService } from '@tokenring-ai/filesystem';
+
+// Agent can access the file system through the service
+const fileSystemService = agent.requireServiceByType(FileSystemService);
+const fs = fileSystemService.getFileSystem('browser');
+
+// Perform file operations
+const content = await fs.readFile('/README.md');
+```
+
+### Tool Integration
+
+The file system provider can be used to create tools for agents:
+
+```typescript
+import { TokenRingAgentTool } from '@tokenring-ai/app';
+import { FileSystemService } from '@tokenring-ai/filesystem';
+
+const readFileTool: TokenRingAgentTool = {
+  name: 'browser_read_file',
+  description: 'Read a file from the browser file system',
+  parameters: {
+    type: 'object',
+    properties: {
+      path: { type: 'string', description: 'Path to the file to read' }
+    },
+    required: ['path']
+  },
+  execute: async (agent, params) => {
+    const fileSystemService = agent.requireServiceByType(FileSystemService);
+    const fs = fileSystemService.getFileSystem('browser');
+    const content = await fs.readFile(params.path);
+    return content?.toString('utf-8') || 'File not found';
+  }
+};
 ```
 
 ## API Reference
@@ -264,7 +348,7 @@ async writeFile(
 | Parameter | Type | Description |
 |-----------|------|-------------|
 | filePath | string | Path where to write the file |
-| content | string | Buffer | Content to write |
+| content | string \| Buffer | Content to write |
 
 **Returns:** `Promise<boolean>` - Always returns `true`
 
@@ -290,7 +374,7 @@ async appendFile(
 | Parameter | Type | Description |
 |-----------|------|-------------|
 | filePath | string | Path to the file to append to |
-| content | string | Buffer | Content to append |
+| content | string \| Buffer | Content to append |
 
 **Returns:** `Promise<boolean>` - Always returns `true`
 
@@ -531,7 +615,7 @@ async grep(
 
 | Parameter | Type | Description |
 |-----------|------|-------------|
-| searchString | string | string[] | Search string(s) |
+| searchString | string \| string[] | Search string(s) |
 | options.ignoreFilter | (path: string) => boolean | Optional filter function |
 | options.includeContent.linesBefore | number | Number of lines before match (default: 0) |
 | options.includeContent.linesAfter | number | Number of lines after match (default: 0) |
@@ -609,49 +693,6 @@ type GrepOptions = {
   ignoreFilter?: (path: string) => boolean;
   includeContent?: { linesBefore?: number; linesAfter?: number };
 }
-```
-
-## Configuration
-
-### Plugin Configuration Schema
-
-The plugin configuration uses the `FileSystemConfigSchema` from `@tokenring-ai/filesystem`:
-
-```typescript
-import { FileSystemConfigSchema } from '@tokenring-ai/filesystem/schema';
-import { z } from 'zod';
-
-const packageConfigSchema = z.object({
-  filesystem: FileSystemConfigSchema
-});
-
-// Example configuration
-const config = {
-  filesystem: {
-    providers: {
-      browser: {
-        type: 'browser'
-      }
-    }
-  }
-};
-```
-
-### Provider Configuration
-
-The provider is registered through the FileSystemService:
-
-```typescript
-import { FileSystemService } from '@tokenring-ai/filesystem';
-import { BrowserFileSystemProvider } from '@tokenring-ai/browser-file-system';
-
-const fileSystemService = new FileSystemService();
-
-// Register the browser provider
-fileSystemService.registerFileSystemProvider(
-  'browser',
-  new BrowserFileSystemProvider()
-);
 ```
 
 ## Usage Examples
@@ -830,6 +871,18 @@ const jsFiles = await fs.glob('**/*.js', {
 console.log('JavaScript files:', jsFiles);
 ```
 
+## Chat Commands
+
+This package does not define any chat commands. File system operations are accessed through:
+
+- **Tools**: Available as agent tools when integrated with the agent system
+- **Service API**: Direct access through the FileSystemService
+- **Provider API**: Direct usage of BrowserFileSystemProvider
+
+## RPC Endpoints
+
+This package does not define any RPC endpoints. File system operations are accessed through the provider API and service integration.
+
 ## State Management
 
 The BrowserFileSystemProvider maintains state entirely in memory using a JavaScript object:
@@ -863,6 +916,7 @@ const mockFileSystem: Record<string, { content: string }> = {
 - **Fixed Timestamps**: `created`, `modified`, and `accessed` timestamps are simulated
 - **Glob Pattern Ignored**: The glob pattern parameter is currently ignored; only the ignoreFilter is applied
 - **Shared State**: All instances share the same file system state
+- **Mock Behavior for Copy/Rename**: Returns `true` for non-existent source files
 
 ## Error Handling
 
@@ -929,6 +983,11 @@ The package includes comprehensive unit and integration tests covering:
 - **Performance**: Large file handling and batch operations
 - **Integration**: Plugin registration and service integration
 
+### Test Files
+
+- `BrowserFileSystemProvider.test.ts` - Unit tests for provider methods
+- `integration.test.ts` - End-to-end integration tests
+
 ## Development
 
 ### Project Structure
@@ -982,15 +1041,17 @@ To add new mock files for testing:
 
 ### Development Dependencies
 
-- `vitest` (^4.0.18) - Testing framework
+- `vitest` (^4.1.0) - Testing framework
 - `typescript` (^5.9.3) - TypeScript compiler
 
 ## License
 
 MIT License - see the root LICENSE file for details.
 
+Copyright (c) 2025 Mark Dierolf
+
 ## Related Components
 
 - [File System Service](./filesystem.md) - File system service and provider interface
-- [Local File System](./local-filesystem.md) - Local file system provider
 - [TokenRing App](./app.md) - Core application framework
+- [Agent System](./agent.md) - Agent orchestration and tool integration

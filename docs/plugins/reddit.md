@@ -1,8 +1,10 @@
-# Reddit Plugin
+# @tokenring-ai/reddit
 
 ## Overview
 
-The Reddit plugin provides integration with Reddit's JSON API, enabling AI agents to search subreddits, retrieve post content, and fetch the latest posts from communities. This plugin enables intelligent content discovery and research workflows by providing programmatic access to Reddit's vast repository of discussions and information.
+The `@tokenring-ai/reddit` package provides Reddit integration for the Token Ring ecosystem. It enables agents to search subreddits, retrieve post content, and fetch the latest posts from communities using Reddit's public JSON API. This package provides both tool-based interactions for chat systems and scripting functions for programmatic access.
+
+The Reddit package integrates seamlessly with the Token Ring agent framework, providing structured, type-safe access to Reddit's vast repository of discussions and information while maintaining compliance with Reddit's API guidelines through proper User-Agent headers.
 
 ## Key Features
 
@@ -11,9 +13,10 @@ The Reddit plugin provides integration with Reddit's JSON API, enabling AI agent
 - **Latest Posts**: Get newest posts from subreddits in chronological order
 - **Chat Tools Integration**: Three tools registered with the chat service for direct agent interaction
 - **Scripting Support**: Global functions available in scripting contexts for automation
-- **Type-Safe Configuration**: Zod schema validation for all tool inputs
+- **Type-Safe Configuration**: Zod schema validation for all tool inputs and service configuration
 - **Automatic Pagination**: Support for Reddit's pagination mechanism using `after` and `before` cursors
 - **Compliant User-Agent**: Automatic User-Agent header for Reddit API compliance
+- **Retry Logic**: Built-in retry logic for network requests through HttpService base class
 
 ## Core Components
 
@@ -45,81 +48,25 @@ The plugin registers three global functions when the scripting service is availa
 2. **getRedditPost(url)**: Retrieve a post by URL
 3. **getLatestPosts(subreddit)**: Get latest posts from a subreddit
 
-## Tools
-
-### searchSubreddit
-
-Search for posts within a specific subreddit. Returns structured JSON with search results including post titles, authors, scores, and metadata.
-
-**Tool Name**: `reddit_searchSubreddit`
-
-```typescript
-await agent.executeTool("reddit_searchSubreddit", {
-  subreddit: "programming",
-  query: "javascript async await",
-  limit: 10,
-  sort: "relevance",
-  t: "week"
-});
-```
-
-**Input Schema**:
-
-| Property | Type | Required | Description |
-|----------|------|----------|-------------|
-| subreddit | string | Yes | Subreddit name without the r/ prefix |
-| query | string | Yes | Search query string |
-| limit | number | No | Number of results (1-100, default: 25) |
-| sort | enum | No | Sort order: relevance, hot, top, new, comments (default: relevance) |
-| t | enum | No | Time period: hour, day, week, month, year, all |
-| after | string | No | Fullname of a thing for pagination (get items after this) |
-| before | string | No | Fullname of a thing for pagination (get items before this) |
-
-### retrievePost
-
-Retrieve a Reddit post's content and comments by URL. Returns the full post object including title, author, body text, and comments.
-
-**Tool Name**: `reddit_retrievePost`
-
-```typescript
-await agent.executeTool("reddit_retrievePost", {
-  postUrl: "https://www.reddit.com/r/programming/comments/abc123/my_post/"
-});
-```
-
-**Input Schema**:
-
-| Property | Type | Required | Description |
-|----------|------|----------|-------------|
-| postUrl | string (url) | Yes | Reddit post URL (e.g., https://www.reddit.com/r/subreddit/comments/id/title/) |
-
-### getLatestPosts
-
-Get the latest posts from a subreddit. Returns newest posts in chronological order, useful for monitoring trending topics and recent discussions.
-
-**Tool Name**: `reddit_getLatestPosts`
-
-```typescript
-await agent.executeTool("reddit_getLatestPosts", {
-  subreddit: "technology",
-  limit: 20
-});
-```
-
-**Input Schema**:
-
-| Property | Type | Required | Description |
-|----------|------|----------|-------------|
-| subreddit | string | Yes | Subreddit name without the r/ prefix |
-| limit | number | No | Number of posts (1-100, default: 25) |
-| after | string | No | Fullname of a thing for pagination (get items after this) |
-| before | string | No | Fullname of a thing for pagination (get items before this) |
-
 ## Services
 
 ### RedditService
 
 The core service for Reddit API interactions. This service implements `TokenRingService` and extends the `HttpService` base class to handle HTTP requests with retry logic and automatic JSON parsing.
+
+**Service Definition:**
+
+```typescript
+class RedditService extends HttpService implements TokenRingService {
+  readonly name = "RedditService";
+  description = "Service for searching Reddit posts and retrieving content";
+  
+  constructor(config: ParsedRedditConfig);
+  async searchSubreddit(subreddit: string, query: string, opts?: RedditSearchOptions): Promise<any>;
+  async retrievePost(postUrl: string): Promise<any>;
+  async getLatestPosts(subreddit: string, opts?: RedditListingOptions): Promise<any>;
+}
+```
 
 **Constructor**
 
@@ -127,7 +74,7 @@ The core service for Reddit API interactions. This service implements `TokenRing
 constructor(config: ParsedRedditConfig)
 ```
 
-**Parameters**:
+**Parameters:**
 - `config` (ParsedRedditConfig): Configuration object with the following properties:
   - `baseUrl` (string): Base URL for Reddit API (default: "https://www.reddit.com")
 
@@ -141,14 +88,14 @@ Search posts within a specific subreddit.
 async searchSubreddit(subreddit: string, query: string, opts?: RedditSearchOptions): Promise<any>
 ```
 
-**Parameters**:
+**Parameters:**
 - `subreddit` (string): Subreddit name without the r/ prefix
 - `query` (string): Search query string
 - `opts` (RedditSearchOptions, optional): Additional options for the search
 
 **Returns**: Promise containing the search results
 
-**Example**:
+**Example:**
 
 ```typescript
 const results = await reddit.searchSubreddit("programming", "typescript", {
@@ -166,12 +113,12 @@ Retrieve a Reddit post by URL.
 async retrievePost(postUrl: string): Promise<any>
 ```
 
-**Parameters**:
+**Parameters:**
 - `postUrl` (string): Full URL to the Reddit post
 
 **Returns**: Promise containing the post data and comments
 
-**Example**:
+**Example:**
 
 ```typescript
 const post = await reddit.retrievePost("https://www.reddit.com/r/programming/comments/abc123/my_post/");
@@ -185,13 +132,13 @@ Get the latest posts from a subreddit.
 async getLatestPosts(subreddit: string, opts?: RedditListingOptions): Promise<any>
 ```
 
-**Parameters**:
+**Parameters:**
 - `subreddit` (string): Subreddit name without the r/ prefix
 - `opts` (RedditListingOptions, optional): Additional options for the request
 
 **Returns**: Promise containing the latest posts
 
-**Example**:
+**Example:**
 
 ```typescript
 const posts = await reddit.getLatestPosts("technology", {
@@ -211,11 +158,11 @@ interface ParsedRedditConfig {
 
 ```typescript
 interface RedditSearchOptions {
-  limit?: number;                                      // Number of results (1-100, default: 25)
+  limit?: number;                                     // Number of results (1-100, default: 25)
   sort?: 'relevance' | 'hot' | 'top' | 'new' | 'comments';  // Sort order (default: relevance)
   t?: 'hour' | 'day' | 'week' | 'month' | 'year' | 'all';   // Time period
-  after?: string;                                      // Pagination cursor
-  before?: string;                                     // Pagination cursor
+  after?: string;                                     // Pagination cursor
+  before?: string;                                    // Pagination cursor
 }
 ```
 
@@ -241,6 +188,76 @@ This package does not define any RPC endpoints.
 
 This package does not define any chat commands.
 
+## Tools
+
+### reddit_searchSubreddit
+
+Search for posts within a specific subreddit. Returns structured JSON with search results including post titles, authors, scores, and metadata.
+
+**Tool Name**: `reddit_searchSubreddit`
+
+```typescript
+await agent.executeTool("reddit_searchSubreddit", {
+  subreddit: "programming",
+  query: "javascript async await",
+  limit: 10,
+  sort: "relevance",
+  t: "week"
+});
+```
+
+**Input Schema:**
+
+| Property | Type | Required | Description |
+|----------|------|----------|-------------|
+| subreddit | string | Yes | Subreddit name without the r/ prefix |
+| query | string | Yes | Search query string |
+| limit | number | No | Number of results (1-100, default: 25) |
+| sort | enum | No | Sort order: relevance, hot, top, new, comments (default: relevance) |
+| t | enum | No | Time period: hour, day, week, month, year, all |
+| after | string | No | Fullname of a thing for pagination (get items after this) |
+| before | string | No | Fullname of a thing for pagination (get items before this) |
+
+### reddit_retrievePost
+
+Retrieve a Reddit post's content and comments by URL. Returns the full post object including title, author, body text, and comments.
+
+**Tool Name**: `reddit_retrievePost`
+
+```typescript
+await agent.executeTool("reddit_retrievePost", {
+  postUrl: "https://www.reddit.com/r/programming/comments/abc123/my_post/"
+});
+```
+
+**Input Schema:**
+
+| Property | Type | Required | Description |
+|----------|------|----------|-------------|
+| postUrl | string (url) | Yes | Reddit post URL (e.g., https://www.reddit.com/r/subreddit/comments/id/title/) |
+
+### reddit_getLatestPosts
+
+Get the latest posts from a subreddit. Returns newest posts in chronological order, useful for monitoring trending topics and recent discussions.
+
+**Tool Name**: `reddit_getLatestPosts`
+
+```typescript
+await agent.executeTool("reddit_getLatestPosts", {
+  subreddit: "technology",
+  limit: 20
+});
+```
+
+**Input Schema:**
+
+| Property | Type | Required | Description |
+|----------|------|----------|-------------|
+| subreddit | string | Yes | Subreddit name without the r/ prefix |
+| limit | number | No | Number of posts (1-100, default: 25) |
+| after | string | No | Fullname of a thing for pagination (get items after this) |
+| before | string | No | Fullname of a thing for pagination (get items before this) |
+
 ## Configuration
 
 ### Plugin Configuration
@@ -255,7 +272,7 @@ interface RedditPluginConfig {
 }
 ```
 
-**Example Configuration**:
+**Example Configuration:**
 
 ```typescript
 // Default configuration
@@ -283,7 +300,7 @@ interface RedditConfig {
 }
 ```
 
-**Example**:
+**Example:**
 
 ```typescript
 // Default configuration

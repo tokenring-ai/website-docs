@@ -1,10 +1,10 @@
-# Scripting Plugin
+# @tokenring-ai/scripting
 
 Comprehensive scripting language with variables, functions, and LLM integration for automating workflows and chat command sequences.
 
 ## Overview
 
-The TokenRing AI Scripting package provides a powerful scripting language for automating workflows, managing variables, defining functions, and integrating with AI models. It supports script execution, control flow (conditionals, loops), variables, lists, and dynamic function execution with support for static, JavaScript, and LLM-powered functions.
+The TokenRing AI Scripting package provides a powerful scripting language for automating workflows, managing variables, defining functions, and integrating with AI models. It supports script execution, control flow (conditionals, loops), variables, lists, and dynamic function execution with support for static, JavaScript, LLM-powered, and native functions.
 
 ## Key Features
 
@@ -50,21 +50,29 @@ Manages and executes scripts, variables, functions, and scripting language featu
 - `llm` - LLM-powered functions with prompts
 - `native` - Native function implementations (e.g., `runAgent`)
 
-**ScriptResult Type:**
+**Types:**
+
 ```typescript
-type ScriptResult = {
+export type ScriptResult = {
   ok: boolean;
   output?: string;
   error?: string;
   nextScriptResult?: ScriptResult;
 }
-```
 
-**ScriptingThis Type:**
-```typescript
-type ScriptingThis = {
+export type ScriptingThis = {
   agent: Agent;
 }
+
+export type ScriptFunction = {
+  type: 'static' | 'llm' | 'js';
+  params: string[];
+  body: string;
+} | {
+  type: 'native';
+  params: string[];
+  execute(...args: string[]): string | string[] | Promise<string | string[]>;
+};
 ```
 
 ### ScriptingContext
@@ -75,7 +83,7 @@ Manages state for scripting including variables (`$name`), lists (`@name`), and 
 - `name: "ScriptingContext"` - State slice identifier
 - `variables: Map<string, string>` - Variable storage
 - `lists: Map<string, string[]>` - List storage
-- `functions: Map<string, Function>` - Local function storage
+- `functions: Map<string, Function>` - Local function storage (static, llm, js only)
 
 **Methods:**
 - `setVariable(name, value)` - Set a variable value
@@ -88,9 +96,10 @@ Manages state for scripting including variables (`$name`), lists (`@name`), and 
 - `show()` - Get formatted state information as string array
 - `serialize()` - Serialize state for persistence
 - `deserialize(data)` - Restore state from serialization
-- `reset(what)` - Reset state based on reset type (e.g., "chat")
+- `reset()` - Reset state (clears all variables, lists, and functions)
 
 **Serialization Schema:**
+
 ```typescript
 const serializationSchema = z.object({
   variables: z.array(z.tuple([z.string(), z.string()])),
@@ -164,6 +173,25 @@ const serializationSchema = z.object({
 
 - `available-scripts` - Provides context about available scripts for AI assistance
 
+## Services
+
+### ScriptingService
+
+The `ScriptingService` is the core service that manages scripts, functions, and execution:
+
+```typescript
+import ScriptingService from "@tokenring-ai/scripting/ScriptingService";
+
+const scriptingService = new ScriptingService(config.scripting ?? {});
+app.addServices(scriptingService);
+```
+
+**Service Interface:**
+- Implements `TokenRingService`
+- Provides script and function registries
+- Manages script execution
+- Resolves and executes functions
+
 ## Tools
 
 ### script_run
@@ -190,13 +218,199 @@ const result = await agent.useTool("script_run", {
 - `available-scripts` - Required to determine available scripts
 
 **Throws:**
-- `CommandFailedError` - When script execution fails
+- `Error` - When script execution fails
+
+## RPC Endpoints
+
+The scripting package does not define direct RPC endpoints. Instead, it provides:
+
+- **Chat Commands**: Available via the `AgentCommandService`
+- **Tools**: Available via the `ChatService`
+- **Functions**: Available through the `ScriptingService`
+
+## Configuration
+
+Scripts are configured in your application config file:
+
+```typescript
+import {ScriptingServiceConfigSchema} from "@tokenring-ai/scripting";
+
+export default {
+  scripting: {
+    setupProject: [
+      `/agent switch writer`,
+      `/template run projectSetup ${input}`,
+      `/tools enable filesystem`,
+      `/agent switch publisher`
+    ],
+    publishWorkflow: [
+      `/agent switch publisher`,
+      `/publish ${input}`,
+      `/notify "Published successfully"`
+    ]
+  }
+} satisfies z.input<typeof ScriptingServiceConfigSchema>;
+```
+
+Scripts can be defined as:
+- Arrays of command strings
+- Single strings with commands separated by newlines or semicolons
+
+**Configuration Schema:**
+
+```typescript
+export const ScriptSchema = z.union([
+  z.string(),
+  z.array(z.string()),
+]);
+
+export const ScriptingServiceConfigSchema = z.record(z.string(), ScriptSchema);
+```
+
+## Plugin Configuration
+
+The package uses a minimal configuration schema:
+
+```typescript
+const packageConfigSchema = z.object({
+  scripting: ScriptingServiceConfigSchema.prefault({})
+});
+```
+
+No configuration is required by default. The plugin automatically:
+1. Registers chat commands with `AgentCommandService`
+2. Adds `ScriptingService` to the application
+3. Registers tools with `ChatService`
+4. Registers context handlers with `ChatService`
+5. Initializes `ScriptingContext` state slices for each agent
+
+## Integration
+
+### Plugin Registration
+
+```typescript
+import scriptingPlugin from "@tokenring-ai/scripting/plugin";
+
+app.install(scriptingPlugin, {
+  scripting: {
+    // Script configurations
+  }
+});
+```
+
+### Service Registration
+
+The package automatically registers `ScriptingService`:
+
+```typescript
+const scriptingService = new ScriptingService(config.scripting ?? {});
+app.addServices(scriptingService);
+
+// Register function with the service
+scriptingService.registerFunction("runAgent", {
+  type: 'native',
+  params: ['agentType', 'message', 'context'],
+  async execute(this: ScriptingThis, agentType: string, message: string, context: string): Promise<string> {
+    // Implementation
+  }
+});
+```
+
+### Tool Registration
+
+The package registers the `script_run` tool:
+
+```typescript
+chatService.addTools([
+  {
+    name: "script_run",
+    description: "Run a script with the given input",
+    inputSchema: z.object({
+      scriptName: z.string(),
+      input: z.string()
+    }),
+    execute: async ({scriptName, input}, agent) => {
+      const scriptingService = agent.requireServiceByType(ScriptingService);
+      return await scriptingService.runScript({scriptName, input}, agent);
+    }
+  }
+]);
+```
+
+### Context Handler Registration
+
+The package registers context handlers:
+
+```typescript
+chatService.registerContextHandlers({
+  'available-scripts': async function* getContextItems({agent}) {
+    const scriptingService = agent.requireServiceByType(ScriptingService);
+    const scriptNames = scriptingService.listScripts();
+    
+    if (scriptNames.length > 0) {
+      yield {
+        role: "user",
+        content: `/* The following scripts are available for use with the script tool */\n` +
+          scriptNames.map(name => `- ${name}`).join("\n")
+      };
+    }
+  }
+});
+```
+
+## State Management
+
+The scripting package uses `ScriptingContext` for state persistence:
+
+### State Slice
+
+```typescript
+interface ScriptingContext {
+  variables: Map<string, string>;
+  lists: Map<string, string[]>;
+  functions: Map<string, { type: 'static' | 'llm' | 'js', params: string[], body: string }>;
+}
+```
+
+### Persistence
+
+State is automatically persisted and restored:
+
+```typescript
+// State is initialized when agent attaches to service
+agent.initializeState(ScriptingContext, {});
+
+// State is serialized for checkpointing
+const serialized = context.serialize();
+
+// State is restored from checkpoint
+context.deserialize(serialized);
+
+// State is reset on chat reset
+context.reset();
+```
+
+### Checkpoint Generation
+
+State checkpoints are generated automatically during:
+- Chat session persistence
+- Agent state serialization
+- Checkpoint-based recovery
+
+### State Reset
+
+State is automatically reset when the chat is reset:
+
+```typescript
+// Reset happens on chat reset
+context.reset();
+```
 
 ## Native Functions
 
 ### runAgent
 
-The scripting package provides a built-in `runAgent` function for running subagents:
+The scripting package provides a built-in `runAgent` function for running subagents. This is registered globally by the plugin and is not available as a local function.
 
 ```typescript
 scriptingService.registerFunction("runAgent", {
@@ -207,7 +421,8 @@ scriptingService.registerFunction("runAgent", {
       agentType: agentType,
       headless: this.agent.headless,
       input: {
-        message: `/work ${message}\n\nImportant Context:\n${context}`,
+        from: "Scripting plugin runAgent",
+        message: `/work ${message}\n\nImportant Context:\n${context}`
       }
     }, this.agent, true);
 
@@ -396,152 +611,6 @@ scriptingService.registerFunction("runAgent", {
 /eval /process $filename
 ```
 
-## Global Functions
-
-Packages can register global functions available to all scripting contexts:
-
-```typescript
-import {ScriptingService} from "@tokenring-ai/scripting";
-import type {ScriptFunction, ScriptingThis} from "@tokenring-ai/scripting";
-
-async attach(agent: Agent): Promise<void> {
-  const scriptingService = agent.requireServiceByType(ScriptingService);
-  if (scriptingService) {
-    scriptingService.registerFunction("runAgent", {
-      type: 'native',
-      params: ['agentType', 'message', 'context'],
-      async execute(this: ScriptingThis, agentType: string, message: string, context: string): Promise<string> {
-        const res = await runSubAgent({
-          agentType: agentType,
-          headless: this.agent.headless,
-          input: {
-            message: `/work ${message}\n\nImportant Context:\n${context}`,
-          }
-        }, this.agent, true);
-
-        if (res.status === 'success') {
-          return res.response;
-        } else {
-          throw new Error(res.response);
-        }
-      }
-    });
-  }
-}
-```
-
-## Configuration
-
-Scripts are configured in your application config file:
-
-```typescript
-import type {ScriptingServiceConfigSchema} from "@tokenring-ai/scripting";
-
-export default {
-  scripting: {
-    setupProject: [
-      `/agent switch writer`,
-      `/template run projectSetup ${input}`,
-      `/tools enable filesystem`,
-      `/agent switch publisher`
-    ],
-    publishWorkflow: [
-      `/agent switch publisher`,
-      `/publish ${input}`,
-      `/notify "Published successfully"`
-    ]
-  }
-} satisfies typeof ScriptingServiceConfigSchema;
-```
-
-Scripts can be defined as:
-- Arrays of command strings
-- Single strings with commands separated by newlines or semicolons
-
-## Plugin Configuration
-
-The package uses a minimal configuration schema:
-
-```typescript
-const packageConfigSchema = z.object({
-  scripting: ScriptingServiceConfigSchema.prefault({})
-});
-```
-
-No configuration is required by default. The plugin automatically:
-1. Registers chat commands with `AgentCommandService`
-2. Adds `ScriptingService` to the application
-3. Registers tools with `ChatService`
-4. Registers context handlers with `ChatService`
-5. Initializes `ScriptingContext` state slices for each agent
-
-## State Management
-
-The scripting package uses `ScriptingContext` for state persistence:
-
-- Variables, lists, and functions persist across script executions
-- State is cleared when the chat is reset
-- State can be serialized and restored for persistence
-
-### State Schema
-
-```typescript
-interface ScriptingContext {
-  variables: Map<string, string>;
-  lists: Map<string, string[]>;
-  functions: Map<string, { type: 'static' | 'llm' | 'js', params: string[], body: string }>;
-}
-```
-
-### State Serialization
-
-The context supports serialization and deserialization:
-
-```typescript
-// Serialize state
-const serialized = context.serialize();
-
-// Deserialize state
-context.deserialize(serialized);
-```
-
-### State Reset
-
-State is automatically reset when the chat is reset:
-
-```typescript
-// Reset happens on chat reset
-context.reset(["chat"]);
-```
-
-## Integration with Agent System
-
-The package integrates with the Token Ring agent system by:
-
-1. **State Management**: Registers `ScriptingContext` as an agent state slice for persistence
-2. **Command Registration**: Registers chat commands with `AgentCommandService`
-3. **Service Registration**: Implements `TokenRingService` for integration with the app framework
-4. **Tool Registration**: Registers tools with `ChatService`
-5. **Context Handlers**: Registers context handlers with `ChatService`
-
-## Service Registration
-
-The package registers the `ScriptingService` with the application:
-
-```typescript
-const scriptingService = new ScriptingService(config.scripting ?? {});
-app.addServices(scriptingService);
-
-// Register function with the service
-scriptingService.registerFunction("runAgent", {
-  type: 'native',
-  params: ['agentType', 'message', 'context'],
-  async execute(this: ScriptingThis, agentType: string, message: string, context: string): Promise<string> {
-    // Implementation
-  }
-});
-```
-
 ## Reserved Function Names
 
 The following names cannot be used for functions:
@@ -571,7 +640,7 @@ The scripting system provides comprehensive error handling:
 Parses function arguments respecting quotes and nested structures:
 
 ```typescript
-function parseArguments(argsStr: string): string[] {
+export function parseArguments(argsStr: string): string[] {
   // Handles quoted strings, nested parentheses, and escaped characters
 }
 ```
@@ -587,8 +656,9 @@ parseArguments('arg1, (nested), arg3') // ['arg1', '(nested)', 'arg3']
 Parses script content into individual commands:
 
 ```typescript
-function parseScript(script: string): string[] {
+export function parseScript(script: string): string[] {
   // Handles multi-line scripts, semicolon separators, and block structures
+  // Respects brace depth for nested blocks
 }
 ```
 
@@ -596,6 +666,7 @@ function parseScript(script: string): string[] {
 ```typescript
 parseScript('/echo hello; /echo world') // ['/echo hello', '/echo world']
 parseScript('/echo hello\n/echo world') // ['/echo hello', '/echo world']
+parseScript('/if $cond { /echo true }') // ['/if $cond { /echo true }']
 ```
 
 ### blockParser
@@ -618,7 +689,7 @@ parseBlock('/echo hello; /echo world') // ['/echo hello', '/echo world']
 Executes a list of commands in the given agent context:
 
 ```typescript
-async function executeBlock(commands: string[], agent: Agent): Promise<void> {
+export async function executeBlock(commands: string[], agent: Agent): Promise<void> {
   // Executes each command, handling both direct commands and interpolated text
 }
 ```
@@ -673,7 +744,7 @@ bun run test:coverage # Generate coverage report
 
 ```
 pkg/scripting/
-├── index.ts                 # Type exports and schema
+├── index.ts                 # Type exports
 ├── plugin.ts                # Plugin registration
 ├── ScriptingService.ts      # Core scripting service
 ├── schema.ts                # Configuration schema
@@ -706,8 +777,29 @@ pkg/scripting/
 │   ├── parseArguments.ts  # Argument parsing
 │   ├── executeBlock.ts    # Block execution
 │   └── blockParser.ts     # Block parsing
-└── design/                # Design documentation
-    └── PATTERNS.md        # Product design patterns
+├── contextHandlers/       # Context handler implementations
+│   └── availableScripts.ts # Available scripts context
+├── design/                # Design documentation
+│   └── PATTERNS.md        # Product design patterns
+├── docs/                  # Package documentation
+│   ├── README.md          # Package README
+│   ├── 01-getting-started.md
+│   ├── 02-variables.md
+│   ├── 03-functions.md
+│   ├── 04-commands.md
+│   ├── 05-examples.md
+│   ├── 06-advanced.md
+│   └── 07-developer-guide.md
+└── test/                  # Test files
+    ├── blockParser.test.ts
+    ├── context.test.ts
+    ├── ScriptingService.test.ts
+    ├── commands.integration.test.ts
+    ├── utils.test.ts
+    ├── commands.test.ts
+    ├── flaws.test.ts
+    ├── functions.test.ts
+    └── testHelpers.ts
 ```
 
 ## Dependencies
@@ -722,7 +814,7 @@ pkg/scripting/
 
 ### Development Dependencies
 
-- `vitest` (^4.0.18) - Testing framework
+- `vitest` (^4.1.0) - Testing framework
 - `typescript` (^5.9.3) - TypeScript compiler
 
 ## Related Components

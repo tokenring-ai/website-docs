@@ -56,12 +56,11 @@ Registers an MCP server with the TokenRing application.
 
 **Behavior:**
 
-1. Validates the transport configuration using `MCPTransportConfigSchema`
-2. Creates the appropriate transport instance (StdioClientTransport, SSEClientTransport, or StreamableHTTPClientTransport)
-3. Creates an MCP client using the transport
-4. Retrieves available tools from the MCP server
-5. Registers each tool with the TokenRing chat service with namespaced format `{serverName}/{toolName}`
-6. Preserves tool schemas, descriptions, and execution handlers
+1. Creates the appropriate transport instance (StdioClientTransport, SSEClientTransport, or StreamableHTTPClientTransport)
+2. Creates an MCP client using the transport
+3. Retrieves available tools from the MCP server
+4. Registers each tool with the TokenRing chat service with namespaced format `{serverName}/{toolName}`
+5. Preserves tool schemas, descriptions, and execution handlers
 
 **Throws:**
 
@@ -760,16 +759,16 @@ pkg/mcp/
 | `@tokenring-ai/app` | `0.2.0` | Core TokenRing application framework |
 | `@tokenring-ai/chat` | `0.2.0` | Chat service for tool registration |
 | `@tokenring-ai/agent` | `0.2.0` | Agent system for tool execution |
-| `@ai-sdk/mcp` | `^1.0.22` | AI SDK integration for MCP protocol |
+| `@ai-sdk/mcp` | `^1.0.28` | AI SDK integration for MCP protocol |
 | `@modelcontextprotocol/sdk` | `^1.27.1` | Official MCP SDK implementation |
-| `ai` | `^6.0.105` | AI SDK core functionality |
+| `ai` | `^6.0.127` | AI SDK core functionality |
 | `zod` | `^4.3.6` | Schema validation library |
 
 ### Development Dependencies
 
 | Package | Version | Description |
 |---------|---------|-------------|
-| `vitest` | `^4.0.18` | Testing framework |
+| `vitest` | `^4.1.0` | Testing framework |
 | `typescript` | `^5.9.3` | TypeScript compiler |
 
 ## Related Components

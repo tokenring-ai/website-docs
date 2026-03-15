@@ -1,8 +1,8 @@
-# Audio Plugin
+# @tokenring-ai/audio
 
 ## Overview
 
-The `@tokenring-ai/audio` plugin provides comprehensive audio processing capabilities for the TokenRing ecosystem, enabling voice recording, transcription, text-to-speech synthesis, and audio playback. It integrates seamlessly with TokenRing's agent and chat systems through a provider-based architecture.
+The `@tokenring-ai/audio` package provides comprehensive audio processing capabilities for the TokenRing ecosystem, enabling voice recording, transcription, text-to-speech synthesis, and audio playback. It integrates seamlessly with TokenRing's agent and chat systems through a provider-based architecture.
 
 **Key Features:**
 - Voice recording with configurable parameters (sample rate, channels, format, timeout)
@@ -36,7 +36,7 @@ bun install @tokenring-ai/audio
 
 ### Development Dependencies
 
-- `vitest` (^4.0.18) - Testing framework
+- `vitest` (^4.1.0) - Testing framework
 - `typescript` (^5.9.3) - Type checking
 
 ## Core Components
@@ -51,23 +51,24 @@ The `AudioService` class is the primary service managing audio operations and pr
 - `name`: Always `"AudioService"`
 - `description`: Always `"Service for Audio Operations"`
 - `options`: Configuration options passed during construction
+- `providerRegistry`: Internal `KeyedRegistry<AudioProvider>` for provider management
 
 **Service Methods:**
 
 | Method | Description |
 |--------|-------------|
-| `registerProvider(name: string, provider: AudioProvider)` | Registers an audio provider in the KeyedRegistry |
+| `registerProvider(name: string, provider: AudioProvider)` | Registers an audio provider in the KeyedRegistry (exposed from registry) |
 | `getAvailableProviders(): string[]` | Returns list of registered provider names |
 | `attach(agent: Agent): void` | Initializes audio state for an agent with default configuration |
 | `requireAudioProvider(agent: Agent): AudioProvider` | Gets the active audio provider for an agent (throws if none enabled) |
 | `setActiveProvider(name: string, agent: Agent): void` | Sets the active audio provider for an agent |
-| `convertAudioToText(audioFile, { language }, agent): Promise<TranscriptionResult>` | Transcribes audio to text using configured STT model |
-| `convertTextToSpeech(text, { voice, speed }, agent): Promise<AudioResult>` | Converts text to speech using configured TTS model |
+| `convertAudioToText(audioFile: any, { language?: string }, agent: Agent): Promise<TranscriptionResult>` | Transcribes audio to text using configured STT model |
+| `convertTextToSpeech(text: string, { voice?: string, speed?: number }, agent: Agent): Promise<AudioResult>` | Converts text to speech using configured TTS model |
 
 **Constructor:**
 
 ```typescript
-constructor(options: AudioServiceConfig)
+constructor(options: z.output<typeof AudioServiceConfigSchema>)
 ```
 
 **Parameters:**
@@ -107,7 +108,7 @@ Abstract interface for implementing audio providers. Providers must implement bo
 **Package Path:** `@tokenring-ai/audio/AudioProvider`
 
 ```typescript
-interface AudioProvider {
+export interface AudioProvider {
   record(abortSignal: AbortSignal, options: RecordingOptions): Promise<RecordingResult>;
   playback(filename: string): Promise<string>;
 }
@@ -116,7 +117,7 @@ interface AudioProvider {
 **RecordingOptions:**
 
 ```typescript
-interface RecordingOptions {
+export interface RecordingOptions {
   sampleRate?: number;   // Sample rate for recording
   channels?: number;     // Number of audio channels
   format?: string;       // Audio format (e.g., 'wav', 'mp3')
@@ -127,7 +128,7 @@ interface RecordingOptions {
 **RecordingResult:**
 
 ```typescript
-interface RecordingResult {
+export interface RecordingResult {
   filePath: string;      // Path to the recorded audio file
 }
 ```
@@ -135,7 +136,7 @@ interface RecordingResult {
 **AudioResult:**
 
 ```typescript
-interface AudioResult {
+export interface AudioResult {
   data: any;             // Audio data (typically Uint8Array or Buffer)
 }
 ```
@@ -169,18 +170,24 @@ The main service that manages audio operations and provider registry.
 
 **Service Registration:**
 
-The service is automatically registered when the plugin is installed:
+The service is automatically registered when the plugin is installed (if audio configuration is provided):
 
 ```typescript
 import audioPlugin from '@tokenring-ai/audio';
 
-app.registerPlugin(audioPlugin);
+app.registerPlugin(audioPlugin.withConfig({
+  audio: {
+    // configuration
+  }
+}));
 ```
+
+**Note:** The plugin only installs services if the `audio` configuration is provided. If `config.audio` is undefined, the plugin exits early without registering anything.
 
 **Service Attachment:**
 
 When an agent is created, the `AudioService.attach()` method:
-1. Merges service defaults with agent-specific configuration
+1. Merges service defaults with agent-specific configuration using `deepMerge`
 2. Initializes the `AudioState` for the agent
 3. Sets up state persistence and restoration
 
@@ -334,7 +341,7 @@ Converts text to speech and plays it through the speakers.
 - `<text>` - Text to convert to speech
 
 **Options:**
-- `--voice <id>` - Voice ID to use for speech generation
+- `--voice <id>` - Voice ID to use for speech generation (accepted but currently not used in tool implementation)
 - `--speed <n>` - Speech speed (numeric value)
 
 **Example:**
@@ -377,7 +384,6 @@ Transcribes an audio file to text.
 
 | Command | Description |
 |---------|-------------|
-| `/audio model tts` | Show current TTS model and open interactive selector |
 | `/audio model tts get` | Show current TTS model |
 | `/audio model tts set <model>` | Set TTS model |
 | `/audio model tts select` | Interactive model selection |
@@ -396,7 +402,6 @@ Transcribes an audio file to text.
 
 | Command | Description |
 |---------|-------------|
-| `/audio model stt` | Show current STT model and open interactive selector |
 | `/audio model stt get` | Show current STT model |
 | `/audio model stt set <model>` | Set STT model |
 | `/audio model stt select` | Interactive model selection |
@@ -539,8 +544,8 @@ const AudioAgentConfigSchema = z.object({
 | Option | Type | Default | Description |
 |--------|------|---------|-------------|
 | `provider` | `string` | required | Default audio provider name |
-| `transcribe` | `AudioTranscriptionConfigSchema` | `{}` | Default transcription settings |
-| `speech` | `AudioSpeechConfigSchema` | `{}` | Default speech settings |
+| `transcribe` | `AudioTranscriptionConfigSchema` | `{}` | Default transcription settings (prefaulted) |
+| `speech` | `AudioSpeechConfigSchema` | `{}` | Default speech settings (prefaulted) |
 
 #### Transcription Options
 
@@ -569,9 +574,11 @@ app.registerPlugin(audioPlugin);
 ```
 
 The plugin automatically:
-1. Registers the `AudioService` with the application
+1. Registers the `AudioService` with the application (if audio config is provided)
 2. Registers all audio tools with the `ChatService`
 3. Registers all agent commands with the `AgentCommandService`
+
+**Note:** The plugin only installs services if the `audio` configuration is provided. If `config.audio` is undefined, the plugin exits early without registering anything.
 
 ### Agent Integration
 
@@ -761,7 +768,7 @@ The `AudioState` class manages audio configuration persistence across agent sess
 **Package Path:** `@tokenring-ai/audio/state/audioState`
 
 ```typescript
-class AudioState implements AgentStateSlice<typeof serializationSchema> {
+export class AudioState extends AgentStateSlice<typeof serializationSchema> {
   readonly name = "AudioState";
   serializationSchema = serializationSchema;
   
@@ -825,9 +832,9 @@ Speech Speed: <speed>
 ### Provider Selection
 
 - Register providers that match your deployment environment
-- Use the `linux` provider for Linux-based deployments
+- Use the `linux` provider for Linux-based deployments (via `@tokenring-ai/linux-audio`)
 - Implement custom providers for specialized hardware or services
-- Always check provider availability before use
+- Always set a default provider in `agentDefaults.provider`
 
 ### Model Management
 
@@ -841,14 +848,14 @@ Speech Speed: <speed>
 - Always check if a provider is registered before operations
 - Handle `CommandFailedError` for command operations
 - Implement timeout for recording operations
-- Use try/catch blocks for all async audio operations
+- Check for empty text before speech generation
 
 ### State Persistence
 
 - Audio state is automatically persisted across sessions
 - Use `show()` method to display current state
 - Reset models to defaults when needed
-- Transfer state from parent agents when creating child agents
+- Ensure `activeProvider` is set before audio operations
 
 ### Recording Best Practices
 

@@ -1,4 +1,4 @@
-# Ghost.io Integration
+# @tokenring-ai/ghost-io
 
 ## Overview
 
@@ -29,6 +29,8 @@ The `@tokenring-ai/ghost-io` package provides comprehensive integration with the
 - Automatic data structure conversion between Ghost and Token Ring formats
 - Plugin-based architecture for seamless integration with Token Ring applications
 - Support for multiple provider registration via KeyedRegistry pattern
+- Lexical editor integration for content processing
+- Markdown conversion support for content formatting
 
 ## Core Components
 
@@ -320,6 +322,8 @@ state.reset();
 ```
 
 ## Services
+
+This package does not export service classes directly. Instead, it exports provider classes (`GhostBlogProvider`, `GhostCDNProvider`) that are registered with the BlogService and CDNService at runtime via the plugin system.
 
 ### GhostBlogProvider
 
@@ -861,9 +865,11 @@ bun run test:all
 - **@tokenring-ai/cdn**: CDN service interface and provider system
 - **@tokenring-ai/agent**: Agent system and state management
 - **@tokenring-ai/chat**: Chat interface integration
+- **@tokenring-ai/filesystem**: Filesystem operations
+- **@tokenring-ai/ai-client**: AI client integration
 - **@tryghost/admin-api**: Official Ghost Admin SDK (v5.0)
-- **@lexical/headless**: Lexical editor integration
-- **@lexical/markdown**: Markdown content format
+- **@lexical/headless**: Lexical editor headless mode for content processing
+- **@lexical/markdown**: Markdown content format conversion
 - **form-data**: Multipart form data for image uploads
 - **uuid**: Unique identifier generation
 - **zod**: Schema validation
@@ -881,7 +887,6 @@ bun run test:all
 - **@tokenring-ai/agent**: Agent system and state management
 - **@tokenring-ai/app**: Plugin registration framework
 - **@tryghost/admin-api**: Official Ghost Admin SDK
-- **@tryghost/content-api**: Official Ghost Content SDK (for read-only access)
 
 ## License
 
