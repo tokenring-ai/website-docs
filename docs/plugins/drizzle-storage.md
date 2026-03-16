@@ -359,7 +359,7 @@ Stores a new app session checkpoint:
 const checkpoint = {
   sessionId: "session-456",
   hostname: "localhost",
-  workingDirectory: "/home/user/project",
+  projectDirectory: "/home/user/project",
   state: { files: ["index.ts"], config: {} },
   createdAt: Date.now()
 };
@@ -382,7 +382,7 @@ Retrieves an app session checkpoint by its ID:
 const retrieved = await storage.retrieveAppCheckpoint(id);
 if (retrieved) {
   console.log('Retrieved state:', retrieved.state);
-  console.log('Working directory:', retrieved.workingDirectory);
+  console.log('Working directory:', retrieved.projectDirectory);
 }
 ```
 
@@ -456,7 +456,7 @@ interface AgentCheckpointListItem {
 interface AppSessionCheckpoint {
   sessionId: string;
   hostname: string;
-  workingDirectory: string;
+  projectDirectory: string;
   state: any;
   createdAt: number;
 }
@@ -469,7 +469,7 @@ interface AppSessionListItem {
   id: string;
   sessionId: string;
   hostname: string;
-  workingDirectory: string;
+  projectDirectory: string;
   createdAt: number;
 }
 ```
@@ -497,7 +497,7 @@ The package creates two tables in each database: `AgentCheckpoints` and `AppChec
 | `id`            | Integer/BigInt | Auto-incrementing primary key            |
 | `sessionId`     | Text           | Session identifier                       |
 | `hostname`      | Text           | Hostname of the app session              |
-| `workingDirectory` | Text        | Working directory of the app session     |
+| `projectDirectory` | Text        | Working directory of the app session     |
 | `state`         | Text           | JSON-serialized state data               |
 | `createdAt`     | Integer/BigInt | Unix timestamp                           |
 
@@ -528,7 +528,7 @@ export const appCheckpoints = sqliteTable("AppCheckpoints", {
   id: integer("id").primaryKey({ autoIncrement: true }),
   sessionId: text("sessionId").notNull(),
   hostname: text("hostname").notNull(),
-  workingDirectory: text("workingDirectory").notNull(),
+  projectDirectory: text("projectDirectory").notNull(),
   state: text("state").notNull(),
   createdAt: integer("createdAt").notNull(),
 });
@@ -565,7 +565,7 @@ console.log('Agent checkpoint stored with ID:', agentId);
 const appCheckpoint = {
   sessionId: "session-456",
   hostname: "localhost",
-  workingDirectory: "/home/user/project",
+  projectDirectory: "/home/user/project",
   state: { files: ["index.ts"], config: {} },
   createdAt: Date.now()
 };
@@ -600,7 +600,7 @@ const agentId = await storage.storeAgentCheckpoint({
 const appId = await storage.storeAppCheckpoint({
   sessionId: "session-456",
   hostname: "localhost",
-  workingDirectory: "/home/user/project",
+  projectDirectory: "/home/user/project",
   state: { files: ["index.ts"] },
   createdAt: Date.now()
 });
@@ -632,7 +632,7 @@ const agentId = await storage.storeAgentCheckpoint({
 const appId = await storage.storeAppCheckpoint({
   sessionId: "session-456",
   hostname: "localhost",
-  workingDirectory: "/home/user/project",
+  projectDirectory: "/home/user/project",
   state: { files: ["index.ts"] },
   createdAt: Date.now()
 });
@@ -669,7 +669,7 @@ async function checkpointWorkflow() {
   const initialAppCheckpoint = {
     sessionId: 'session-1',
     hostname: 'localhost',
-    workingDirectory: '/home/user/project',
+    projectDirectory: '/home/user/project',
     state: { files: ['index.ts'], step: 0 },
     createdAt: Date.now()
   };
@@ -694,7 +694,7 @@ async function checkpointWorkflow() {
   const latestApp = await storage.retrieveLatestAppCheckpoint();
   if (latestApp) {
     console.log('Latest app session:', latestApp.sessionId);
-    console.log('Working directory:', latestApp.workingDirectory);
+    console.log('Working directory:', latestApp.projectDirectory);
   }
 
   // List all agent checkpoints
@@ -864,7 +864,7 @@ describe("DrizzleAgentStateStorage", () => {
       const checkpoint: AppSessionCheckpoint = {
         sessionId: "session-1",
         hostname: "localhost",
-        workingDirectory: "/home/user/project",
+        projectDirectory: "/home/user/project",
         state: { files: ["index.ts"], config: {} },
         createdAt: Date.now(),
       };
@@ -988,7 +988,7 @@ The package includes comprehensive error handling:
 - Suitable for production workloads with MySQL/PostgreSQL
 - Plugin automatically registers with both Token Ring checkpoint services (AgentCheckpointService and AppCheckpointService)
 - Agent checkpoints include `sessionId` and `agentType` fields for proper organization
-- App checkpoints include `hostname` and `workingDirectory` fields for session context
+- App checkpoints include `hostname` and `projectDirectory` fields for session context
 - Each storage class implements both `AgentCheckpointStorage` and `AppCheckpointStorage` interfaces
 - `retrieveLatestAppCheckpoint()` provides convenient access to the most recent app session state
 - All checkpoint lists are ordered by creation time (descending)

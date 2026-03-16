@@ -278,7 +278,7 @@ View current AWS authentication status and account information.
 ```typescript
 {
   name: "aws status",
-  description: "/aws status - View current AWS authentication status",
+  description: "View current AWS authentication status",
   execute: async (remainder: string, agent: Agent) => Promise<string>,
   help: string
 }

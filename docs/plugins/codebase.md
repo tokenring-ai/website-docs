@@ -230,7 +230,7 @@ Interactive tree-based resource selection. Opens a tree view allowing users to b
 ```typescript
 {
   name: "codebase select",
-  description: "/codebase select - Interactive resource selection",
+  description: "Interactive resource selection",
   help: `# /codebase select
 
 Open an interactive tree view to browse and select codebase resources. Recommended when unsure of exact resource names.
@@ -272,7 +272,7 @@ Enable one or more codebase resources by name. Supports wildcard patterns.
 ```typescript
 {
   name: "codebase enable",
-  description: "/codebase enable - Enable codebase resources",
+  description: "Enable codebase resources",
   help: `# /codebase enable <resource...>
 
 Enable one or more codebase resources by name.
@@ -298,7 +298,7 @@ Disable one or more codebase resources by name.
 ```typescript
 {
   name: "codebase disable",
-  description: "/codebase disable - Disable codebase resources",
+  description: "Disable codebase resources",
   help: `# /codebase disable <resource...>
 
 Disable one or more codebase resources by name.
@@ -324,7 +324,7 @@ Set the enabled codebase resources, replacing the current selection.
 ```typescript
 {
   name: "codebase set",
-  description: "/codebase set - Set enabled codebase resources",
+  description: "Set enabled codebase resources",
   help: `# /codebase set <resource...>
 
 Set the enabled codebase resources, replacing the current selection.
@@ -350,7 +350,7 @@ Reset the enabled codebase resources to the initial configuration defined in `ag
 ```typescript
 {
   name: "codebase reset",
-  description: "/codebase reset - Reset enabled codebase resources",
+  description: "Reset enabled codebase resources",
   help: `# /codebase reset
 
 Reset the enabled codebase resources to the initial configuration.
@@ -377,7 +377,7 @@ List all currently enabled codebase resources.
 ```typescript
 {
   name: "codebase list",
-  description: "/codebase list - List enabled codebase resources",
+  description: "List enabled codebase resources",
   help: `# /codebase list
 
 List all currently enabled codebase resources.
@@ -404,7 +404,7 @@ Display the currently enabled repository map and structure. Requires RepoMap res
 ```typescript
 {
   name: "codebase show repo",
-  description: "/codebase show repo - Display the repository map",
+  description: "Display the repository map",
   help: `# /codebase show repo
 
 Display the currently enabled repository map and structure. Requires RepoMap resources to be enabled first.

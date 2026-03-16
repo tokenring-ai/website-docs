@@ -495,7 +495,7 @@ The `/git` command provides an interactive interface to Git operations:
 ```typescript
 // commands/git.ts
 export default {
-  description: "/git - Git operations. ",
+  description: "Git operations. ",
   execute,
   help
 } satisfies TokenRingAgentCommand;

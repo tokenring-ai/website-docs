@@ -279,7 +279,7 @@ Run and manage tests interactively through the chat interface.
 // /test list
 {
   name: "test list",
-  description: "/test list - List available tests",
+  description: "List available tests",
   help: `# /test list
 
 Show all available tests.
@@ -300,7 +300,7 @@ Show all available tests.
 // /test run
 {
   name: "test run",
-  description: "/test run - Run tests",
+  description: "Run tests",
   help: `# /test run [test_name]
 
 Run a specific test or all tests. If tests fail, the agent may offer to automatically repair the issues.
