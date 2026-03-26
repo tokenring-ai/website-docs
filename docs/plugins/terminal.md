@@ -64,7 +64,7 @@ Execute a shell command with safety validation and timeout support.
 const result = await terminal.executeCommand(
   'npm',
   ['install'],
-  { timeoutSeconds: 120 },
+  { timeoutSeconds: 60 },
   agent
 );
 console.log(result.output);
@@ -383,10 +383,9 @@ type TerminalIsolationLevel = 'none' | 'sandbox' | 'container';
 
 ```typescript
 interface ExecuteCommandOptions {
-  timeoutSeconds: number;
-  env?: Record<string, string | undefined>;
-  workingDirectory?: string;
-  input?: string;
+  timeoutSeconds: number;    // Timeout in seconds
+  env?: Record<string, string | undefined>;  // Environment variables
+  workingDirectory: string;  // Working directory for command execution
 }
 ```
 
@@ -396,6 +395,7 @@ interface ExecuteCommandOptions {
 type ExecuteCommandResult = {
   status: "success",
   output: string,
+  exitCode: 0,
 } | {
   status: "badExitCode",
   output: string,
@@ -448,6 +448,7 @@ Agent state slice for terminal-specific configuration and persistent sessions.
 **Properties:**
 
 - `providerName: string | null` - Active terminal provider name
+- `workingDirectory: string` - Current working directory for commands
 - `bash: { cropOutput: number, timeoutSeconds: number }` - Bash execution options
 - `interactiveConfig: { minInterval: number, settleInterval: number, maxInterval: number }` - Output collection intervals
 - `sessions: Map<string, SessionRecord>` - Active terminal sessions
@@ -821,6 +822,7 @@ class TerminalState implements AgentStateSlice {
 | Property | Type | Description |
 |----------|------|-------------|
 | `providerName` | `string \| null` | Active terminal provider name |
+| `workingDirectory` | `string` | Current working directory for commands |
 | `bash` | `{ cropOutput: number, timeoutSeconds: number }` | Bash execution options |
 | `interactiveConfig` | `{ minInterval: number, settleInterval: number, maxInterval: number }` | Output collection intervals |
 | `sessions` | `Map<string, SessionRecord>` | Active terminal sessions |
@@ -866,15 +868,12 @@ Tool for executing shell commands through the agent interface.
 **Example Output:**
 
 ```
-[ls -la]
-Success: True
-Exit Code: 0
-
-Output:
+$ ls -la
 total 48
 drwxr-xr-x  5 user  staff   160 Jan 1 12:00 .
 drwxr-xr-x  3 user  staff    96 Jan 1 12:00 ..
 -rw-r--r--  1 user  staff  1024 Jan 1 12:00 file.txt
+[exit: 0 | 123ms]
 ```
 
 ### terminal_start
@@ -1032,7 +1031,7 @@ const terminal = new TerminalService(config);
 const result = await terminal.executeCommand(
   'npm',
   ['install'],
-  { timeoutSeconds: 120 },
+  { timeoutSeconds: 60 },
   agent
 );
 
@@ -1263,14 +1262,10 @@ The package may throw the following errors:
 - **Error**: General errors with descriptive messages
   - `"No terminal provider configured for agent"` - When no provider is set
   - `"Session {sessionId} not found"` - When accessing a non-existent session
-  - `"[toolName] {message}"` - Tool-specific errors
+  - `[toolName] {message}` - Tool-specific errors
 
 - **CommandFailedError**: Command execution failures
-  - `"Command cannot be empty"` - When starting a session without a command
-  - `"Usage: /terminal send <sessionId> <input>"` - Invalid send command syntax
-  - `"Usage: /terminal output <sessionId>"` - Missing session ID
-  - `"Usage: /terminal stop <sessionId>"` - Missing session ID
-  - `"Provider \"{name}\" not found."` - Invalid provider name
+  - `"Provider \"{name}\" not found."` - Invalid provider name when using `/terminal provider set`
 
 ### Error Handling Examples
 
@@ -1298,9 +1293,9 @@ try {
 
 ### Development Dependencies
 
-- `@vitest/coverage-v8` (^4.0.18) - Test coverage
-- `vitest` (^4.0.18) - Testing framework
-- `typescript` (^5.9.3) - TypeScript compiler
+- `@vitest/coverage-v8` (^4.1.1) - Test coverage
+- `vitest` (^4.1.1) - Testing framework
+- `typescript` (^6.0.2) - TypeScript compiler
 
 ## Related Components
 

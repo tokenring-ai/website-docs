@@ -500,8 +500,8 @@ bun test --coverage
 
 ### Development Dependencies
 
-- `vitest` (^4.0.18) - Testing framework
-- `typescript` (^5.9.3) - TypeScript compiler
+- `vitest` (^4.1.1) - Testing framework
+- `typescript` (^6.0.2) - TypeScript compiler
 
 ## Related Components
 

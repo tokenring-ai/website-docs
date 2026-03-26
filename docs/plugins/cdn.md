@@ -784,23 +784,18 @@ This runs TypeScript type checking with `tsc --noEmit`.
 ### Runtime Dependencies
 
 - `@tokenring-ai/app`: `0.2.0` - Token Ring application framework
-- `@tokenring-ai/chat`: `0.2.0` - Chat interface integration
-- `@tokenring-ai/agent`: `0.2.0` - Agent system integration
 - `@tokenring-ai/utility`: `0.2.0` - Utility functions including KeyedRegistry
 - `zod`: `^4.3.6` - Schema validation
-- `uuid`: `^13.0.0` - UUID generation (may be used by provider implementations)
 
 ### Dev Dependencies
 
-- `vitest`: `^4.1.0` - Testing framework
-- `typescript`: `^5.9.3` - TypeScript compiler
+- `vitest`: `^4.1.1` - Testing framework
+- `typescript`: `^6.0.2` - TypeScript compiler
 
 ## Related Components
 
 - **@tokenring-ai/app**: Base application framework with service management
-- **@tokenring-ai/agent**: Agent orchestration system
 - **@tokenring-ai/utility**: Utility functions including KeyedRegistry
-- **@tokenring-ai/chat**: Chat interface for human interaction
 
 ## License
 

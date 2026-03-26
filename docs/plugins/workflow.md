@@ -292,7 +292,7 @@ Run a workflow by name on the current agent.
 
 ### `/workflow spawn`
 
-Spawns a new agent and runs the specified workflow.
+Spawns a new agent and runs the specified workflow on it.
 
 **Syntax:**
 - `<name>` - Required workflow identifier
@@ -316,10 +316,11 @@ Spawn a new agent and run a workflow on it.
 ```
 
 **Implementation Details:**
-- Uses `runSubAgent` to spawn a new agent with the specified agent type
-- Executes workflow steps on the spawned agent by sending `/workflow run <name>`
+- Uses `SubAgentService.runSubAgent()` to spawn a new agent with the workflow's specified agent type
+- Sends `/workflow run <name>` command to the spawned agent to execute workflow steps
 - Output is forwarded back to the parent agent
 - Respects the parent agent's headless mode setting
+- The spawned agent runs independently with its own context and state
 
 ## Configuration
 
@@ -452,7 +453,7 @@ The workflow package requires these services to be available:
 | AgentCommandService | Registers and handles chat commands for workflow interaction |
 | RpcService | Exposes JSON-RPC endpoints for remote workflow management |
 | AgentManager | Handles agent spawning and lifecycle management |
-| Agent | Provides access to service instances and workflow execution |
+| SubAgentService | Manages sub-agent creation and command execution |
 
 ### Command Registration
 
@@ -605,7 +606,7 @@ const agent = await rpcClient.spawnWorkflow({ workflowName: "morning-article", h
 2. **Monitor step execution**: Track individual step success/failure
 3. **Implement abort handling**: Support workflow cancellation via abort signals
 
-## Testing
+### Testing
 
 ### Testing Setup
 
@@ -624,12 +625,115 @@ bun test --coverage
 
 ### Test Coverage
 
-- **Command Implementation**: Tests for list, run, and spawn commands
-- **Workflow Execution**: Tests for workflow step-by-step execution
-- **Agent Spawning**: Tests for runSubAgent integration
-- **Error Handling**: Tests for workflow not found scenarios
-- **Input Parsing**: Tests for various input formats and edge cases
-- **Integration**: Full workflow execution flow tests
+The test file `commands/workflow.test.ts` includes:
+
+- **List Command**: Tests for `/workflow list` command output formatting
+- **Run Command**: Tests for sequential workflow step execution, error handling for non-existent workflows
+- **Spawn Command**: Tests for agent spawning with correct agent type, headless mode handling, error handling
+- **Integration Tests**: Full workflow execution and spawn flow scenarios
+- **Abort Signal Handling**: Tests for workflow cancellation via abort signals
+
+### Example Test
+
+```typescript
+import {Agent, AgentCommandService, SubAgentService} from '@tokenring-ai/agent';
+import createTestingAgent from '@tokenring-ai/agent/test/createTestingAgent';
+import TokenRingApp from '@tokenring-ai/app';
+import createTestingApp from '@tokenring-ai/app/test/createTestingApp';
+import {describe, expect, it, vi} from 'vitest';
+import WorkflowService from '../WorkflowService';
+import workflowRunCommand from './workflow/run.js';
+import workflowSpawnCommand from './workflow/spawn.js';
+import workflowListCommand from './workflow/list.js';
+
+describe('workflow list command', () => {
+  let app: TokenRingApp;
+  let agent: Agent;
+  let workflowService: WorkflowService;
+
+  const mockWorkflows = {
+    testWorkflow: {
+      name: 'Test Workflow',
+      description: 'A test workflow',
+      agentType: 'test-agent',
+      steps: ['step1', 'step2', 'step3'],
+    },
+  };
+
+  beforeEach(() => {
+    app = createTestingApp();
+    workflowService = new WorkflowService(app, mockWorkflows);
+    app.addServices(workflowService);
+    agent = createTestingAgent(app);
+  });
+
+  it('should list all workflows', async () => {
+    const result = await workflowListCommand.execute({ agent });
+
+    expect(result).toContain('Available workflows:');
+    expect(result).toContain('**testWorkflow**: Test Workflow');
+    expect(result).toContain('A test workflow');
+    expect(result).toContain('Steps: 3');
+  });
+});
+
+describe('workflow run command', () => {
+  it('should execute workflow steps', async () => {
+    // Mock AgentCommandService
+    vi.spyOn(agentCommandService, 'executeAgentCommand').mockImplementation(() => Promise.resolve());
+
+    const result = await workflowRunCommand.execute({
+      positionals: { workflowName: 'testWorkflow' },
+      args: {},
+      agent
+    });
+
+    expect(result).toContain('Workflow "testWorkflow" completed');
+    expect(agentCommandService.executeAgentCommand).toHaveBeenCalledWith(agent, 'step1');
+    expect(agentCommandService.executeAgentCommand).toHaveBeenCalledWith(agent, 'step2');
+    expect(agentCommandService.executeAgentCommand).toHaveBeenCalledWith(agent, 'step3');
+  });
+
+  it('should show error for non-existent workflow', async () => {
+    await expect(workflowRunCommand.execute({
+      positionals: { workflowName: 'nonExistentWorkflow' },
+      args: {},
+      agent
+    })).rejects.toThrow('Workflow "nonExistentWorkflow" not found.');
+  });
+});
+
+describe('workflow spawn command', () => {
+  it('should spawn agent and run workflow', async () => {
+    const mockRunSubAgent = vi.fn().mockResolvedValue({
+      id: 'spawned-agent-123',
+      name: 'Spawned Agent',
+      config: { description: 'Spawned agent description' },
+    });
+
+    vi.spyOn(subAgentService, 'runSubAgent').mockImplementation(mockRunSubAgent);
+
+    const result = await workflowSpawnCommand.execute({
+      positionals: { workflowName: 'testWorkflow' },
+      args: {},
+      agent
+    });
+
+    expect(result).toContain('Spawned agent for workflow: Test Workflow');
+    expect(subAgentService.runSubAgent).toHaveBeenCalledWith(
+      expect.objectContaining({
+        agentType: 'test-agent',
+        input: {
+          from: 'Workflow testWorkflow',
+          message: '/workflow run testWorkflow'
+        },
+        headless: false,
+        parentAgent: agent
+      })
+    );
+  });
+});
+```
 
 ### Example Test
 
@@ -689,13 +793,13 @@ describe('workflow spawn command', () => {
 - `@tokenring-ai/agent` (0.2.0) - Agent orchestration and management
 - `@tokenring-ai/chat` (0.2.0) - Chat service integration
 - `@tokenring-ai/rpc` (0.2.0) - JSON-RPC endpoint management
-- `@tokenring-ai/utility` (0.2.0) - Utility functions and helpers (for `indent` function)
+- `@tokenring-ai/utility` (0.2.0) - Utility functions and helpers
 - `zod` (^4.3.6) - Schema validation
 
 ### Development Dependencies
 
-- `vitest` (^4.1.0) - Testing framework
-- `typescript` (^5.9.3) - TypeScript compiler
+- `vitest` (^4.1.1) - Testing framework
+- `typescript` (^6.0.2) - TypeScript compiler
 
 ## Related Components
 

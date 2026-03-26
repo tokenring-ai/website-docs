@@ -28,8 +28,8 @@ bun add @tokenring-ai/aws
 - `@tokenring-ai/agent`: 0.2.0
 - `@tokenring-ai/app`: 0.2.0
 - `@tokenring-ai/chat`: 0.2.0
-- `@aws-sdk/client-s3`: ^3.1009.0
-- `@aws-sdk/client-sts`: ^3.1009.0
+- `@aws-sdk/client-s3`: ^3.1017.0
+- `@aws-sdk/client-sts`: ^3.1017.0
 - `@tokenring-ai/filesystem`: 0.2.0
 - `@tokenring-ai/utility`: 0.2.0
 - `zod`: ^4.3.6
@@ -145,8 +145,6 @@ Retrieves AWS account information by calling STS GetCallerIdentity.
 - `UserId`: The unique user ID
 
 **Throws:** Error if credentials are not configured or STS call fails
-
-**Implementation Note:** This method logs errors to the console before re-throwing them.
 
 #### `status(agent)`
 
@@ -932,8 +930,8 @@ The package uses vitest for unit testing with node environment.
   "@tokenring-ai/app": "0.2.0",
   "@tokenring-ai/agent": "0.2.0",
   "@tokenring-ai/chat": "0.2.0",
-  "@aws-sdk/client-s3": "^3.1009.0",
-  "@aws-sdk/client-sts": "^3.1009.0",
+  "@aws-sdk/client-s3": "^3.1017.0",
+  "@aws-sdk/client-sts": "^3.1017.0",
   "@tokenring-ai/filesystem": "0.2.0",
   "@tokenring-ai/utility": "0.2.0",
   "zod": "^4.3.6"
@@ -965,7 +963,7 @@ pkg/aws/
 ├── commands/
 │   └── awsStatus.ts                         # AWS status chat command implementation
 ├── package.json                              # Package metadata and dependencies
-├── schema.ts                                 # Configuration schema definitions
+├── schema.ts                                 # Zod schema definitions for configuration
 ├── vitest.config.ts                          # Test configuration
 └── LICENSE                                   # License file (MIT)
 ```

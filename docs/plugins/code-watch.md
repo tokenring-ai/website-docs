@@ -552,7 +552,7 @@ pkg/code-watch/
 ├── package.json          # Package metadata and dependencies
 ├── README.md             # Package documentation
 ├── vitest.config.ts      # Test configuration
-└── BRAINSTORM.md         # Feature brainstorming and roadmap
+└── LICENSE               # MIT License
 ```
 
 ### Test Configuration
@@ -593,8 +593,8 @@ export default defineConfig({
 
 | Package | Version | Description |
 |---------|---------|-------------|
-| `vitest` | ^4.1.0 | Testing framework |
-| `typescript` | ^5.9.3 | TypeScript compiler |
+| `vitest` | ^4.1.1 | Testing framework |
+| `typescript` | ^6.0.2 | TypeScript compiler |
 | `@types/async` | ^3.2.25 | Async type definitions |
 
 ## Related Components

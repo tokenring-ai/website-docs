@@ -451,6 +451,180 @@ const techEvents = await polymarketService.listEvents({
 
 The Polymarket Plugin does not maintain agent state. All operations are stateless and rely on the PolymarketService instance for API interactions.
 
+## Package Structure
+
+```
+pkg/polymarket/
+├── PolymarketService.ts     # Main service class
+├── tools.ts                  # Tool definitions
+├── tools/
+│   ├── search.ts            # Search tool
+│   ├── listEvents.ts        # List events tool
+│   └── getEvent.ts          # Get event tool
+├── index.ts                  # Package exports
+├── plugin.ts                 # Plugin registration
+├── package.json              # Package metadata
+├── schema.ts                 # Configuration schema
+├── vitest.config.ts         # Vitest configuration
+├── README.md                # Documentation
+└── design/                  # Design documentation
+    ├── fetch-markets-guide.md
+    ├── search-markets-events-and-profiles.md
+    ├── list-markets.md
+    ├── get-market-by-slug.md
+    ├── list-events.md
+    └── get-event-by-slug.md
+```
+
+## Tools
+
+The plugin provides the following tools for Polymarket operations:
+
+### polymarket_search
+
+Searches for prediction markets, events, and profiles matching the query.
+
+**Tool Definition:**
+
+```typescript
+{
+  name: "polymarket_search",
+  displayName: "Polymarket/search",
+  description: "Search Polymarket for prediction markets, events, and profiles.",
+  inputSchema: z.object({
+    query: z.string().min(1).describe("Search query")
+  }),
+  execute: (
+    { query }: z.output<typeof inputSchema>,
+    agent: Agent
+  ): Promise<TokenRingToolJSONResult<{ results?: any }>>
+}
+```
+
+**Tool Properties:**
+
+| Property | Type | Description |
+|----------|------|-------------|
+| `name` | `string` | Tool identifier (`"polymarket_search"`) |
+| `displayName` | `string` | Display name (`"Polymarket/search"`) |
+| `description` | `string` | Tool description |
+| `inputSchema` | `ZodObject` | Input validation schema |
+| `execute` | `Function` | Tool execution function |
+
+**Input Parameters:**
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `query` | `string` | Yes | Search query for prediction markets |
+
+**Example:**
+
+```typescript
+const result = await agent.executeTool("polymarket_search", {
+  query: "Artificial intelligence"
+});
+console.log("Search results:", result.data.results);
+```
+
+### polymarket_listEvents
+
+Lists Polymarket events with optional filtering.
+
+**Tool Definition:**
+
+```typescript
+{
+  name: "polymarket_listEvents",
+  displayName: "Polymarket/listEvents",
+  description: "List active prediction market events on Polymarket.",
+  inputSchema: z.object({
+    limit: z.number().int().positive().max(100).optional().describe("Number of results (default: 10)"),
+    offset: z.number().int().min(0).optional().describe("Offset for pagination (default: 0)"),
+    closed: z.boolean().optional().describe("Include closed markets (default: false)"),
+    tag_id: z.number().int().optional().describe("Filter by tag ID")
+  }),
+  execute: (
+    { limit, offset, closed, tag_id }: z.output<typeof inputSchema>,
+    agent: Agent
+  ): Promise<TokenRingToolJSONResult<{ events?: any }>>
+}
+```
+
+**Tool Properties:**
+
+| Property | Type | Description |
+|----------|------|-------------|
+| `name` | `string` | Tool identifier (`"polymarket_listEvents"`) |
+| `displayName` | `string` | Display name (`"Polymarket/listEvents"`) |
+| `description` | `string` | Tool description |
+| `inputSchema` | `ZodObject` | Input validation schema |
+| `execute` | `Function` | Tool execution function |
+
+**Input Parameters:**
+
+| Parameter | Type | Required | Default | Description |
+|-----------|------|----------|---------|-------------|
+| `limit` | `number` | No | `10` | Number of results (max: 100) |
+| `offset` | `number` | No | `0` | Offset for pagination |
+| `closed` | `boolean` | No | `false` | Include closed markets |
+| `tag_id` | `number` | No | - | Filter by tag ID |
+
+**Example:**
+
+```typescript
+const result = await agent.executeTool("polymarket_listEvents", {
+  limit: 10,
+  closed: false
+});
+console.log("Events:", result.data.events);
+```
+
+### polymarket_getEvent
+
+Retrieves detailed information about a specific event by its slug.
+
+**Tool Definition:**
+
+```typescript
+{
+  name: "polymarket_getEvent",
+  displayName: "Polymarket/getEvent",
+  description: "Get a specific Polymarket event by its slug (from URL).",
+  inputSchema: z.object({
+    slug: z.string().min(1).describe("Event slug from Polymarket URL")
+  }),
+  execute: (
+    { slug }: z.output<typeof inputSchema>,
+    agent: Agent
+  ): Promise<TokenRingToolJSONResult<{ event?: any }>>
+}
+```
+
+**Tool Properties:**
+
+| Property | Type | Description |
+|----------|------|-------------|
+| `name` | `string` | Tool identifier (`"polymarket_getEvent"`) |
+| `displayName` | `string` | Display name (`"Polymarket/getEvent"`) |
+| `description` | `string` | Tool description |
+| `inputSchema` | `ZodObject` | Input validation schema |
+| `execute` | `Function` | Tool execution function |
+
+**Input Parameters:**
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `slug` | `string` | Yes | Event slug from Polymarket URL |
+
+**Example:**
+
+```typescript
+const result = await agent.executeTool("polymarket_getEvent", {
+  slug: "will-ai-exceed-human-level-performance-by-2025"
+});
+console.log("Event details:", result.data.event);
+```
+
 ## Tools
 
 The plugin provides the following tools for Polymarket operations:

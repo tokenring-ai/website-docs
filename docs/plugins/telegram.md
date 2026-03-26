@@ -40,9 +40,29 @@ Key capabilities include:
 - **Error Handling**: Robust error handling with Markdown parse error fallbacks
 - **File Processing**: Photo and document extraction with size validation
 
+## Installation
+
+```bash
+bun add @tokenring-ai/telegram
+```
+
+### Dependencies
+
+This package requires the following dependencies:
+
+- `@tokenring-ai/app` (0.2.0) - Application framework
+- `@tokenring-ai/chat` (0.2.0) - Chat service integration
+- `@tokenring-ai/agent` (0.2.0) - Agent management
+- `@tokenring-ai/utility` (0.2.0) - Utility functions
+- `@tokenring-ai/escalation` (0.2.0) - Escalation provider interface
+- `node-telegram-bot-api` (^0.67.0) - Telegram API binding
+- `axios` (^1.13.6) - HTTP client for file downloads
+- `marked` (^17.0.5) - Markdown parsing
+- `zod` (^4.3.6) - Schema validation
+
 ## Core Components
 
-### TelegramBotService
+### TelegramService
 
 The main service class that manages multiple Telegram bot instances.
 
@@ -81,7 +101,7 @@ The bot implementation that handles Telegram API interactions and message proces
 
 **Key Methods**:
 
-- `constructor(app: TokenRingApp, telegramService: TelegramBotService, botName: string, botConfig: ParsedTelegramBotConfig)`: Initializes bot with configuration
+- `constructor(app: TokenRingApp, telegramService: TelegramService, botName: string, botConfig: ParsedTelegramBotConfig)`: Initializes bot with configuration
 - `start(): Promise<void>`: Starts the bot and begins polling
 - `stop(): Promise<void>`: Gracefully stops the bot and cleans up resources
 - `createCommunicationChannelWithGroup(groupName: string): CommunicationChannel`: Creates a communication channel for escalation
@@ -157,7 +177,7 @@ export const TelegramServiceConfigSchema = z.object({
 ```typescript
 import TokenRingApp from '@tokenring-ai/app';
 import { TelegramService } from '@tokenring-ai/telegram';
-import { TelegramServiceConfigSchema } from '@tokenring-ai/telegram/schema';
+import { TelegramServiceConfigSchema } from '@tokenring-ai/telegram/schema.ts';
 
 const app = new TokenRingApp();
 
@@ -200,6 +220,8 @@ export const TelegramEscalationProviderConfigSchema = z.object({
 
 #### Registration Example
 
+When using the plugin, escalation providers are automatically registered when both `telegram` and `escalation` configurations are present:
+
 ```typescript
 import TokenRingApp from '@tokenring-ai/app';
 import telegramPlugin from '@tokenring-ai/telegram';
@@ -228,15 +250,12 @@ const app = new TokenRingApp({
         bot: "primaryBot",
         group: "admins"
       }
-    },
-    groups: {
-      "admins": ["123456789@telegram"]
     }
   }
 });
 
-app.install(escalationPlugin);
 app.install(telegramPlugin);
+app.install(escalationPlugin);
 ```
 
 ## RPC Endpoints
@@ -277,7 +296,11 @@ Commands not in the mapping that start with `/` will result in an error. Command
 The package uses Zod schemas for configuration validation:
 
 ```typescript
-import { TelegramBotConfigSchema, TelegramServiceConfigSchema, TelegramEscalationProviderConfigSchema } from '@tokenring-ai/telegram/schema';
+import { 
+  TelegramBotConfigSchema, 
+  TelegramServiceConfigSchema, 
+  TelegramEscalationProviderConfigSchema 
+} from '@tokenring-ai/telegram/schema.ts';
 ```
 
 ### TelegramBotConfigSchema
@@ -308,7 +331,7 @@ export const TelegramBotConfigSchema = z.object({
 **Properties**:
 
 - **`name`** (string): Unique name for this bot configuration
-- **`botToken`** (string): Telegram bot token from [@BotFather](https://t.me/botfather)
+- **`botToken`** (string): Telegram bot token from [BotFather](https://t.me/botfather)
 - **`joinMessage`** (string, optional): Message sent to all groups on bot startup
 - **`maxPhotoPixels`** (number): Maximum pixel count for photos (width × height), default 1,000,000
 - **`maxFileSize`** (number): Maximum file size in bytes, default 20MB (20,971,520)
@@ -482,8 +505,8 @@ For advanced usage, services can be registered manually:
 
 ```typescript
 import TokenRingApp from '@tokenring-ai/app';
-import TelegramService from '@tokenring-ai/telegram/TelegramService';
-import { TelegramServiceConfigSchema } from '@tokenring-ai/telegram/schema';
+import TelegramService from '@tokenring-ai/telegram/TelegramService.ts';
+import { TelegramServiceConfigSchema } from '@tokenring-ai/telegram/schema.ts';
 
 const app = new TokenRingApp();
 
@@ -573,11 +596,11 @@ const app = new TokenRingApp({
 ### Communication Channel Example
 
 ```typescript
-import { TelegramBotService } from '@tokenring-ai/telegram';
+import { TelegramService } from '@tokenring-ai/telegram';
 import { EscalationService } from '@tokenring-ai/escalation';
 
 // Get the Telegram service from an agent
-const telegramService = agent.requireServiceByType(TelegramBotService);
+const telegramService = agent.requireServiceByType(TelegramService);
 
 // Get the bot instance
 const bot = telegramService.getBot("primaryBot");
@@ -994,14 +1017,14 @@ pkg/telegram/
 - `@tokenring-ai/escalation` (0.2.0) - Escalation provider interface
 - `node-telegram-bot-api` (^0.67.0) - Telegram API binding
 - `axios` (^1.13.6) - HTTP client for file downloads
-- `marked` (^17.0.4) - Markdown parsing
+- `marked` (^17.0.5) - Markdown parsing
 - `zod` (^4.3.6) - Schema validation
 
 ### Development Dependencies
 
 - `@types/node-telegram-bot-api` (^0.64.14) - TypeScript definitions
-- `vitest` (^4.1.0) - Testing framework
-- `typescript` (^5.9.3) - TypeScript compiler
+- `vitest` (^4.1.1) - Testing framework
+- `typescript` (^6.0.2) - TypeScript compiler
 
 ## Related Components
 

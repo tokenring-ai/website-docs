@@ -217,50 +217,133 @@ This package does not use provider registration patterns. Resources are register
 
 This package does not define any RPC endpoints.
 
+## Utility Functions
+
+### buildResourceTree
+
+Organizes resource names into a hierarchical tree structure for interactive selection. Resources are grouped by their path prefix (everything before the last slash).
+
+**Function Signature:**
+
+```typescript
+import type {TreeLeaf} from "@tokenring-ai/agent/question";
+
+export function buildResourceTree(resourceNames: string[]): TreeLeaf[]
+```
+
+**Example:**
+
+```typescript
+const resources = ["src/utils", "src/types", "api/handlers", "docs/readme"];
+const tree = buildResourceTree(resources);
+
+// Result:
+// [
+//   {
+//     name: "src",
+//     children: [
+//       { name: "utils", value: "src/utils" },
+//       { name: "types", value: "src/types" }
+//     ]
+//   },
+//   {
+//     name: "api",
+//     children: [
+//       { name: "handlers", value: "api/handlers" }
+//     ]
+//   },
+//   {
+//     name: "docs",
+//     children: [
+//       { name: "readme", value: "docs/readme" }
+//     ]
+//   }
+// ]
+
+// Resources without a path prefix are grouped under "Unknown"
+const resources2 = ["utils", "types", "api/handlers"];
+const tree2 = buildResourceTree(resources2);
+// Result includes "Unknown" category for "utils" and "types"
+```
+
+**Behavior:**
+
+- Splits resource names by the last slash (`/`)
+- Groups resources by their parent directory
+- Resources without a slash are grouped under "Unknown"
+- Categories are sorted alphabetically
+- Each category contains children with `name` (display name) and `value` (full resource name)
+
 ## Chat Commands
 
-The plugin registers the following agent commands through `AgentCommandService`:
+The plugin registers the following agent commands through `AgentCommandService`. Commands are exported via the `commands.ts` barrel file:
+
+```typescript
+import agentCommands from "./commands.ts";
+// Exports: [select, enable, disable, set, reset, list, showRepo]
+```
+
+### Available Commands
+
+| Command | Description |
+|---------|-------------|
+| `/codebase select` | Interactive resource selection via tree view |
+| `/codebase enable` | Enable specific codebase resources by name |
+| `/codebase disable` | Disable specific codebase resources |
+| `/codebase set` | Set specific codebase resources (replaces current) |
+| `/codebase reset` | Reset enabled resources to initial configuration |
+| `/codebase list` | List all currently enabled codebase resources |
+| `/codebase show repo` | Display the repository map and structure |
+
+---
+
+## Individual Command Documentation
 
 ### `/codebase select`
 
-Interactive tree-based resource selection. Opens a tree view allowing users to browse and select codebase resources.
+Interactive tree-based resource selection. Opens a tree view allowing users to browse and select codebase resources. Recommended when unsure of exact resource names.
 
 **Command Definition:**
 
 ```typescript
-{
+import {buildResourceTree} from "./buildResourceTree.ts";
+
+const inputSchema = {} as const satisfies AgentCommandInputSchema;
+
+async function execute({agent}: AgentCommandInputType<typeof inputSchema>): Promise<string> {
+  const codebaseService = agent.requireServiceByType(CodeBaseService);
+  const sortedResources = codebaseService.getAvailableResources().sort((a, b) => a.localeCompare(b));
+
+  const selection = await agent.askQuestion({
+    message: `Select resources to include in your chat context`,
+    question: {
+      type: 'treeSelect',
+      label: "Codebase Resource Selection",
+      key: "result",
+      defaultValue: Array.from(codebaseService.getEnabledResourceNames(agent)),
+      minimumSelections: 0,
+      tree: buildResourceTree(sortedResources),
+    }
+  });
+
+  if (selection) {
+    const enabled = codebaseService.setEnabledResources(selection, agent);
+    return `Currently enabled codebase resources: ${Array.from(enabled).join(", ")}`;
+  }
+  return "Resource selection cancelled.";
+}
+
+export default {
   name: "codebase select",
   description: "Interactive resource selection",
-  help: `# /codebase select
-
-Open an interactive tree view to browse and select codebase resources. Recommended when unsure of exact resource names.
+  inputSchema,
+  execute,
+  help: `Open an interactive tree view to browse and select codebase resources. Recommended when unsure of exact resource names.
 
 ## Example
 
 /codebase select`,
-  execute: async (remainder: string, agent: Agent): Promise<string> => {
-    const codebaseService = agent.requireServiceByType(CodeBaseService);
-    const sortedResources = codebaseService.getAvailableResources().sort((a, b) => a.localeCompare(b));
-
-    const selection = await agent.askQuestion({
-      message: `Select resources to include in your chat context`,
-      question: {
-        type: 'treeSelect',
-        label: "Codebase Resource Selection",
-        key: "result",
-        defaultValue: Array.from(codebaseService.getEnabledResourceNames(agent)),
-        minimumSelections: 0,
-        tree: buildResourceTree(sortedResources),
-      }
-    });
-
-    if (selection) {
-      const enabled = codebaseService.setEnabledResources(selection, agent);
-      return `Currently enabled codebase resources: ${Array.from(enabled).join(", ")}`;
-    }
-    return "Resource selection cancelled.";
-  }
-}
+} satisfies TokenRingAgentCommand<typeof inputSchema>;
 ```
 
 ### `/codebase enable`
@@ -270,23 +353,33 @@ Enable one or more codebase resources by name. Supports wildcard patterns.
 **Command Definition:**
 
 ```typescript
-{
+const inputSchema = {
+  args: {},
+  remainder: {
+    name: "resources",
+    description: "Space-separated resource names to enable",
+    required: true,
+  }
+} as const satisfies AgentCommandInputSchema;
+
+async function execute({remainder, agent}: AgentCommandInputType<typeof inputSchema>): Promise<string> {
+  const resourceList = remainder.split(/\\s+/);
+  const enabled = agent.requireServiceByType(CodeBaseService).enableResources(resourceList, agent);
+  return `Currently enabled codebase resources: ${Array.from(enabled).join(", ")}`;
+}
+
+export default {
   name: "codebase enable",
   description: "Enable codebase resources",
-  help: `# /codebase enable <resource...>
-
-Enable one or more codebase resources by name.
+  inputSchema,
+  execute,
+  help: `Enable one or more codebase resources by name.
 
 ## Example
 
 /codebase enable src/utils
 /codebase enable api docs`,
-  execute: async (remainder: string, agent: Agent): Promise<string> => {
-    const enabled = agent.requireServiceByType(CodeBaseService)
-      .enableResources(remainder.split(/\s+/).filter(Boolean), agent);
-    return `Currently enabled codebase resources: ${Array.from(enabled).join(", ")}`;
-  }
-}
+} satisfies TokenRingAgentCommand<typeof inputSchema>;
 ```
 
 ### `/codebase disable`
@@ -296,23 +389,33 @@ Disable one or more codebase resources by name.
 **Command Definition:**
 
 ```typescript
-{
+const inputSchema = {
+  args: {},
+  remainder: {
+    name: "resources",
+    description: "Space-separated resource names to disable",
+    required: true,
+  }
+} as const satisfies AgentCommandInputSchema;
+
+async function execute({remainder, agent}: AgentCommandInputType<typeof inputSchema>): Promise<string> {
+  const resourceList = remainder.split(/\\s+/);
+  const enabled = agent.requireServiceByType(CodeBaseService).disableResources(resourceList, agent);
+  return `Currently enabled codebase resources: ${Array.from(enabled).join(", ")}`;
+}
+
+export default {
   name: "codebase disable",
   description: "Disable codebase resources",
-  help: `# /codebase disable <resource...>
-
-Disable one or more codebase resources by name.
+  inputSchema,
+  execute,
+  help: `Disable one or more codebase resources by name.
 
 ## Example
 
 /codebase disable src/utils
 /codebase disable src/utils src/types`,
-  execute: async (remainder: string, agent: Agent): Promise<string> => {
-    const enabled = agent.requireServiceByType(CodeBaseService)
-      .disableResources(remainder.split(/\s+/).filter(Boolean), agent);
-    return `Currently enabled codebase resources: ${Array.from(enabled).join(", ")}`;
-  }
-}
+} satisfies TokenRingAgentCommand<typeof inputSchema>;
 ```
 
 ### `/codebase set`
@@ -322,23 +425,33 @@ Set the enabled codebase resources, replacing the current selection.
 **Command Definition:**
 
 ```typescript
-{
+const inputSchema = {
+  args: {},
+  remainder: {
+    name: "resources",
+    description: "Space-separated resource names to set as enabled",
+    required: true,
+  }
+} as const satisfies AgentCommandInputSchema;
+
+async function execute({remainder, agent}: AgentCommandInputType<typeof inputSchema>): Promise<string> {
+  const resourceList = remainder.split(/\\s+/);
+  const enabled = agent.requireServiceByType(CodeBaseService).setEnabledResources(resourceList, agent);
+  return `Currently enabled codebase resources: ${Array.from(enabled).join(", ")}`;
+}
+
+export default {
   name: "codebase set",
   description: "Set enabled codebase resources",
-  help: `# /codebase set <resource...>
-
-Set the enabled codebase resources, replacing the current selection.
+  inputSchema,
+  execute,
+  help: `Set the enabled codebase resources, replacing the current selection.
 
 ## Example
 
 /codebase set src/utils
 /codebase set src/utils src/types`,
-  execute: async (remainder: string, agent: Agent): Promise<string> => {
-    const enabled = agent.requireServiceByType(CodeBaseService)
-      .setEnabledResources(remainder.split(/\s+/).filter(Boolean), agent);
-    return `Currently enabled codebase resources: ${Array.from(enabled).join(", ")}`;
-  }
-}
+} satisfies TokenRingAgentCommand<typeof inputSchema>;
 ```
 
 ### `/codebase reset`
@@ -348,24 +461,29 @@ Reset the enabled codebase resources to the initial configuration defined in `ag
 **Command Definition:**
 
 ```typescript
-{
+import {CodeBaseState} from "../../state/codeBaseState.ts";
+
+const inputSchema = {} as const satisfies AgentCommandInputSchema;
+
+async function execute({agent}: AgentCommandInputType<typeof inputSchema>): Promise<string> {
+  const enabled = agent.mutateState(CodeBaseState, state => {
+    state.reset();
+    return state.enabledResources;
+  });
+  return `Currently enabled codebase resources: ${Array.from(enabled).join(", ")}`;
+}
+
+export default {
   name: "codebase reset",
   description: "Reset enabled codebase resources",
-  help: `# /codebase reset
-
-Reset the enabled codebase resources to the initial configuration.
+  inputSchema,
+  execute,
+  help: `Reset the enabled codebase resources to the initial configuration.
 
 ## Example
 
 /codebase reset`,
-  execute: async (remainder: string, agent: Agent): Promise<string> => {
-    const enabled = agent.mutateState(CodeBaseState, state => {
-      state.reset();
-      return state.enabledResources;
-    })
-    return `Currently enabled codebase resources: ${Array.from(enabled).join(", ")}`;
-  }
-}
+} satisfies TokenRingAgentCommand<typeof inputSchema>;
 ```
 
 ### `/codebase list`
@@ -375,24 +493,27 @@ List all currently enabled codebase resources.
 **Command Definition:**
 
 ```typescript
-{
+import numberedList from "@tokenring-ai/utility/string/numberedList";
+
+const inputSchema = {} as const satisfies AgentCommandInputSchema;
+
+async function execute({agent}: AgentCommandInputType<typeof inputSchema>): Promise<string> {
+  const active = Array.from(agent.requireServiceByType(CodeBaseService).getEnabledResourceNames(agent));
+  if (active.length === 0) return "No codebase resources are currently enabled.";
+  return `Enabled codebase resources:\n${numberedList(active)}`;
+}
+
+export default {
   name: "codebase list",
   description: "List enabled codebase resources",
-  help: `# /codebase list
-
-List all currently enabled codebase resources.
+  inputSchema,
+  execute,
+  help: `List all currently enabled codebase resources.
 
 ## Example
 
 /codebase list`,
-  execute: async (_remainder: string, agent: Agent): Promise<string> => {
-    const active = Array.from(
-      agent.requireServiceByType(CodeBaseService).getEnabledResourceNames(agent)
-    );
-    if (active.length === 0) return "No codebase resources are currently enabled.";
-    return `Enabled codebase resources:\n${numberedList(active)}`;
-  }
-}
+} satisfies TokenRingAgentCommand<typeof inputSchema>;
 ```
 
 ### `/codebase show repo`
@@ -402,36 +523,41 @@ Display the currently enabled repository map and structure. Requires RepoMap res
 **Command Definition:**
 
 ```typescript
-{
+import RepoMapResource from "../../RepoMapResource.ts";
+
+const inputSchema = {} as const satisfies AgentCommandInputSchema;
+
+async function execute({agent}: AgentCommandInputType<typeof inputSchema>): Promise<string> {
+  const codebaseService = agent.requireServiceByType(CodeBaseService);
+  const repoMaps = Object.values(codebaseService.getEnabledResources(agent))
+    .filter(r => r instanceof RepoMapResource);
+
+  if (repoMaps.length === 0) return "No RepoMap resources are currently enabled. Enable a RepoMap resource first.";
+
+  const repoMapFiles = new Set<string>();
+  for (const resource of repoMaps) {
+    await resource.addFilesToSet(repoMapFiles, agent);
+  }
+
+  if (repoMapFiles.size > 0) {
+    const repoMap = await codebaseService.generateRepoMap(repoMapFiles, agent.requireServiceByType(FileSystemService), agent);
+    if (repoMap) return `Repository map:\n${repoMap}`;
+  }
+
+  return "No repository map found. Ensure RepoMap resources are configured and enabled.";
+}
+
+export default {
   name: "codebase show repo",
   description: "Display the repository map",
-  help: `# /codebase show repo
-
-Display the currently enabled repository map and structure. Requires RepoMap resources to be enabled first.
+  inputSchema,
+  execute,
+  help: `Display the currently enabled repository map and structure. Requires RepoMap resources to be enabled first.
 
 ## Example
 
 /codebase show repo`,
-  execute: async (_remainder: string, agent: Agent): Promise<string> => {
-    const codebaseService = agent.requireServiceByType(CodeBaseService);
-    const repoMaps = Object.values(codebaseService.getEnabledResources(agent))
-      .filter(r => r instanceof RepoMapResource);
-
-    if (repoMaps.length === 0) return "No RepoMap resources are currently enabled. Enable a RepoMap resource first.";
-
-    const repoMapFiles = new Set<string>();
-    for (const resource of repoMaps) {
-      await resource.addFilesToSet(repoMapFiles, agent);
-    }
-
-    if (repoMapFiles.size > 0) {
-      const repoMap = await codebaseService.generateRepoMap(repoMapFiles, agent.requireServiceByType(FileSystemService), agent);
-      if (repoMap) return `Repository map:\n${repoMap}`;
-    }
-
-    return "No repository map found. Ensure RepoMap resources are configured and enabled.";
-  }
-}
+} satisfies TokenRingAgentCommand<typeof inputSchema>;
 ```
 
 ## Configuration
@@ -598,15 +724,18 @@ show(): string[]
 
 **State Behavior:**
 
+- `constructor(initialConfig)`: Initializes state with enabledResources from initialConfig, converting array to Set
 - `transferStateFromParent`: Copies enabled resources from parent agent state
 - `reset`: Resets enabled resources to the initial configuration from `agentDefaults`
-- `serialize`: Returns an object with `enabledResources` as an array
-- `deserialize`: Restores enabled resources from serialized data
+- `serialize`: Returns an object with `enabledResources` as an array (converts Set to Array)
+- `deserialize`: Restores enabled resources from serialized data (converts Array to Set)
 - `show`: Returns a formatted string showing enabled resources
 
 **State Persistence:**
 
 Enabled resources persist across agent sessions through the state serialization/deserialization mechanism. When an agent is created, it inherits the enabled resources from its parent agent via the `transferStateFromParent` method.
+
+**Important:** The `enabledResources` is stored internally as a `Set<string>` but serialized as an array. During agent attachment, resource names can include wildcards which are mapped to actual resource names via `ensureItemNamesLike()` from the resource registry.
 
 **Serialization Schema:**
 
@@ -1039,30 +1168,33 @@ bun test --coverage
 
 ```
 pkg/codebase/
-├── CodeBaseService.ts      # Main service class
-├── FileTreeResource.ts      # File tree resource implementation
-├── RepoMapResource.ts       # Repository map resource implementation
-├── WholeFileResource.ts     # Whole file resource implementation
-├── commands.ts              # Command exports
-├── contextHandlers.ts       # Context handler exports
-├── schema.ts                # Configuration schemas
-├── state/
-│   └── codeBaseState.ts     # State management implementation
 ├── commands/
 │   └── codebase/
-│       ├── buildResourceTree.ts
-│       ├── disable.ts
-│       ├── enable.ts
-│       ├── list.ts
-│       ├── reset.ts
-│       ├── select.ts
-│       ├── set.ts
-│       └── showRepo.ts
+│       ├── buildResourceTree.ts  # Tree building for interactive selection
+│       ├── disable.ts            # /codebase disable command
+│       ├── enable.ts             # /codebase enable command
+│       ├── list.ts               # /codebase list command
+│       ├── reset.ts              # /codebase reset command
+│       ├── select.ts             # /codebase select command
+│       ├── set.ts                # /codebase set command
+│       └── showRepo.ts           # /codebase show repo command
 ├── contextHandlers/
-│   └── codebaseContext.ts   # Context handler implementation
-├── plugin.ts                # Plugin registration
-├── package.json             # Package metadata
-└── index.ts                 # Public exports
+│   └── codebaseContext.ts       # Context handler for chat integration
+├── state/
+│   └── codeBaseState.ts         # Agent state management
+├── CodeBaseService.ts           # Main service implementation
+├── FileTreeResource.ts          # File tree resource provider
+├── RepoMapResource.ts           # Repository map resource provider
+├── WholeFileResource.ts         # Whole file resource provider
+├── commands.ts                  # Chat command exports (barrel)
+├── contextHandlers.ts           # Context handler exports (barrel)
+├── plugin.ts                    # Plugin registration and installation
+├── index.ts                     # Public API exports
+├── package.json                 # Package metadata
+├── schema.ts                    # Configuration schemas
+├── vitest.config.ts            # Test configuration
+├── LICENSE                      # License file
+└── README.md                    # Package README
 ```
 
 ### Build Instructions
@@ -1083,8 +1215,8 @@ bun run build
 
 ### Dev Dependencies
 
-- `vitest` - Testing framework (^4.1.0)
-- `typescript` - TypeScript compiler (^5.9.3)
+- `vitest` - Testing framework (^4.1.1)
+- `typescript` - TypeScript compiler (^6.0.2)
 
 ## Related Components
 

@@ -365,6 +365,17 @@ for (const endpoint of rpcService.getAllEndpoints()) {
 }
 ```
 
+### RPC Endpoint Path Registration
+
+Each RPC endpoint is registered at its configured path with both HTTP and WebSocket variants:
+
+| Endpoint Name | HTTP Path | WebSocket Path |
+|--------------|-----------|----------------|
+| `Calculator` | `/api/calc` | `/api/calc` (WS) |
+| `UserService` | `/api/users` | `/api/users` (WS) |
+
+Both endpoints accept the same JSON-RPC 2.0 requests, but WebSocket provides real-time streaming capabilities.
+
 ### Creating RPC Endpoints
 
 ```typescript
@@ -558,6 +569,27 @@ The web-host package integrates as a plugin with two phases:
 1. Starts the Bun server
 2. Automatically creates `JsonRpcResource` and `WsRpcResource` for each RPC endpoint registered with `RpcService`
 3. Logs registered endpoint paths
+
+### Plugin Installation
+
+The package is installed as a plugin using the standard TokenRing plugin installation pattern:
+
+```typescript
+import { TokenRingApp } from "@tokenring-ai/app";
+import webHostPackage from "@tokenring-ai/web-host";
+
+// Create app with configuration
+const app = new TokenRingApp({
+  webHost: {
+    port: 3000,
+    host: "127.0.0.1"
+  }
+});
+
+// Install the plugin
+await app.addPlugin(webHostPackage);
+await app.start();
+```
 
 ### Plugin Configuration
 
@@ -799,9 +831,11 @@ for await (const update of wsClient.streamResult({ steps: 5 }, signal)) {
 
 ```bash
 bun test                    # Run all tests
-bun test:watch             # Watch mode
-bun test:coverage          # Coverage report
+bun test:watch              # Watch mode
+bun test:coverage           # Coverage report
 ```
+
+Note: The package uses vitest as the testing framework with Bun as the runtime.
 
 ### Test Files
 
@@ -824,8 +858,14 @@ bun install
 # Run tests
 bun test
 
-# Type check
+# Run tests in watch mode
+bun test:watch
+
+# Run type checking
 bun run build
+
+# Run tests with coverage
+bun test:coverage
 ```
 
 ## Package Structure
@@ -912,8 +952,8 @@ export interface StaticOptions;
 
 ### Development Dependencies
 
-- `vitest` (^4.1.0) - Testing framework
-- `typescript` (^5.9.3) - TypeScript compiler
+- `vitest` (^4.1.1) - Testing framework
+- `typescript` (^6.0.2) - TypeScript compiler
 
 ## Authentication
 

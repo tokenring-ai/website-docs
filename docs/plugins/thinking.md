@@ -796,8 +796,8 @@ describe("ThinkingService", () => {
 
 ### Development Dependencies
 
-- `vitest` (^4.1.0) - Testing framework
-- `typescript` (^5.9.3) - TypeScript compiler
+- `vitest` (^4.1.1) - Testing framework
+- `typescript` (^6.0.2) - TypeScript compiler
 
 ## Package Structure
 
@@ -859,7 +859,6 @@ bun run test:coverage
 - [@tokenring-ai/agent](agent.md) - Agent system and state management
 - [@tokenring-ai/chat](chat.md) - Chat service and tool definitions
 - [@tokenring-ai/app](app.md) - Application framework and service management
-- [@tokenring-ai/utility](utility.md) - Shared utilities and helpers
 
 ## License
 

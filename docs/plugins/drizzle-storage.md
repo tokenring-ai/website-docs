@@ -16,7 +16,6 @@ The `@tokenring-ai/drizzle-storage` package provides a production-ready, multi-d
 - **Unified Interface**: Same API across all database types
 - **Token Ring Service**: Seamless integration via Token Ring's service system
 - **JSON State Management**: Automatic JSON serialization/deserialization
-- **Comprehensive Testing**: Vitest with Docker containers for MySQL and PostgreSQL
 - **Plugin Support**: TokenRingPlugin for automatic configuration
 - **Latest Checkpoint Retrieval**: Specialized method for retrieving the latest app checkpoint
 
@@ -534,6 +533,8 @@ export const appCheckpoints = sqliteTable("AppCheckpoints", {
 });
 ```
 
+**Note:** There is a known inconsistency in the MySQL and PostgreSQL `start()` methods where the table creation SQL does not match the actual schema files. The schema files define the correct structure, but the `start()` method may create tables with incorrect column definitions. This should be addressed in future updates.
+
 ## Usage Examples
 
 ### SQLite Usage
@@ -779,6 +780,7 @@ export default {
 - **Session Tracking**: Always include `sessionId` and `agentType` fields for proper checkpoint organization
 - **Separate Concerns**: Use agent checkpoints for agent-specific state and app checkpoints for application-level session state
 - **Latest Checkpoint**: Use `retrieveLatestAppCheckpoint()` when you need the most recent app session state
+- **Schema Consistency**: Be aware of the schema inconsistency issue in MySQL/PostgreSQL `start()` methods
 
 ## Integration
 
@@ -802,7 +804,7 @@ The package integrates with:
 
 ## Testing
 
-Run comprehensive tests with automatic Docker container provisioning:
+Run comprehensive tests with Bun runtime:
 
 ```bash
 bun run test
@@ -810,29 +812,46 @@ bun run test
 
 ### Test Coverage
 
-- **SQLite**: Local file database (skipped in non-Bun environments)
-- **MySQL**: Docker container (mysql:8.0)
-- **PostgreSQL**: Docker container (postgres:16)
+- **SQLite**: Local file database (requires Bun runtime due to `bun:sqlite` module)
+- **MySQL/PostgreSQL**: Tests are currently skipped (require Docker/testcontainers)
 - CRUD operations for both agent and app checkpoints
 - Error handling and edge cases
-- Non-existent checkpoint retrieval
+- Non-existent checkpoint retrieval (returns `null`)
 - Latest app checkpoint retrieval
-- Connection management
+- Complex state structure preservation
+
+### Important Notes on Testing
+
+- **SQLite tests require Bun runtime**: The SQLite implementation uses Bun's native `bun:sqlite` module, so tests must be run with `bun test`
+- **MySQL/PostgreSQL tests are skipped**: These tests require Docker containers via testcontainers and are currently marked as skipped
+- To enable MySQL/PostgreSQL tests, you'll need to set up Docker containers using testcontainers
 
 ### Example Test
 
 ```typescript
 import { AgentCheckpointStorage, NamedAgentCheckpoint } from "@tokenring-ai/checkpoint/AgentCheckpointStorage";
 import { AppCheckpointStorage, AppSessionCheckpoint } from "@tokenring-ai/checkpoint/AppCheckpointStorage";
-import { describe, expect, it, beforeAll } from "vitest";
+import { describe, expect, it, beforeAll, afterAll } from "vitest";
 import { SQLiteStorage } from "./sqlite/createSQLiteStorage.js";
 
-describe("DrizzleAgentStateStorage", () => {
-  describe("SQLite", () => {
+describe("DrizzleStorage - SQLite (Bun Required)", () => {
+  // Check for Bun runtime
+  const isBun = typeof Bun !== "undefined";
+  
+  if (!isBun) {
+    it.skip("SQLite tests require Bun runtime", () => {
+      expect(true).toBe(true);
+    });
+    return;
+  }
+
+  describe("SQLite Storage Operations", () => {
+    let storage: AgentCheckpointStorage;
     const dbPath = "./test-agent-state.db";
-    let storage: SQLiteStorage;
 
     beforeAll(async () => {
+      // Use dynamic import to avoid bun:sqlite import error in Node.js
+      const { SQLiteStorage } = await import("./sqlite/createSQLiteStorage.js");
       storage = new SQLiteStorage({
         type: "sqlite",
         databasePath: dbPath,
@@ -840,11 +859,19 @@ describe("DrizzleAgentStateStorage", () => {
       await storage.start();
     });
 
-    it("should store and retrieve agent checkpoint", async () => {
+    afterAll(async () => {
+      // Cleanup: remove test database file
+      const { unlinkSync, existsSync } = await import("node:fs");
+      if (existsSync(dbPath)) {
+        unlinkSync(dbPath);
+      }
+    });
+
+    it("should store and retrieve checkpoint", async () => {
       const checkpoint: NamedAgentCheckpoint = {
         agentId: "test-agent-1",
         sessionId: "session-1",
-        agentType: "coder",
+        agentType: "general",
         name: "session-1",
         state: { agentState: { messages: { hello: "world" } }, toolsEnabled: ["foo"], hooksEnabled: ["bar"] },
         createdAt: Date.now(),
@@ -852,55 +879,13 @@ describe("DrizzleAgentStateStorage", () => {
 
       const id = await storage.storeAgentCheckpoint(checkpoint);
       expect(id).toBeDefined();
+      expect(typeof id).toBe("string");
 
       const retrieved = await storage.retrieveAgentCheckpoint(id);
       expect(retrieved).toBeDefined();
       expect(retrieved?.agentId).toBe(checkpoint.agentId);
-      expect(retrieved?.sessionId).toBe(checkpoint.sessionId);
+      expect(retrieved?.name).toBe(checkpoint.name);
       expect(retrieved?.state).toEqual(checkpoint.state);
-    });
-
-    it("should store and retrieve app checkpoint", async () => {
-      const checkpoint: AppSessionCheckpoint = {
-        sessionId: "session-1",
-        hostname: "localhost",
-        projectDirectory: "/home/user/project",
-        state: { files: ["index.ts"], config: {} },
-        createdAt: Date.now(),
-      };
-
-      const id = await storage.storeAppCheckpoint(checkpoint);
-      expect(id).toBeDefined();
-
-      const retrieved = await storage.retrieveAppCheckpoint(id);
-      expect(retrieved).toBeDefined();
-      expect(retrieved?.sessionId).toBe(checkpoint.sessionId);
-      expect(retrieved?.hostname).toBe(checkpoint.hostname);
-      expect(retrieved?.state).toEqual(checkpoint.state);
-    });
-
-    it("should list agent checkpoints", async () => {
-      const list = await storage.listAgentCheckpoints();
-      expect(list.length).toBeGreaterThan(0);
-      expect(list[0]).toHaveProperty("id");
-      expect(list[0]).toHaveProperty("name");
-      expect(list[0]).toHaveProperty("agentId");
-      expect(list[0]).toHaveProperty("createdAt");
-    });
-
-    it("should list app checkpoints", async () => {
-      const list = await storage.listAppCheckpoints();
-      expect(list.length).toBeGreaterThan(0);
-      expect(list[0]).toHaveProperty("id");
-      expect(list[0]).toHaveProperty("sessionId");
-      expect(list[0]).toHaveProperty("hostname");
-      expect(list[0]).toHaveProperty("createdAt");
-    });
-
-    it("should retrieve latest app checkpoint", async () => {
-      const latest = await storage.retrieveLatestAppCheckpoint();
-      expect(latest).toBeDefined();
-      expect(latest?.sessionId).toBe("session-1");
     });
 
     it("should return null for non-existent checkpoint", async () => {
@@ -963,6 +948,7 @@ This package uses Drizzle's codebase-first approach with runtime table creation:
 1. **Define Schema**: Schema is defined in TypeScript files for each database type (`sqlite/schema.ts`, `mysql/schema.ts`, `postgres/schema.ts`)
 2. **Create Tables**: Tables are automatically created at runtime when the `start()` method is called using `CREATE TABLE IF NOT EXISTS` statements
 3. **Note**: Drizzle migrations are not automatically applied via the migration system due to Bun packaging constraints. The `start()` method creates tables directly.
+4. **Known Issue**: There is an inconsistency between the schema files and the table creation SQL in the `start()` methods for MySQL and PostgreSQL. The schema files define the correct structure, but the `start()` method may create tables with incorrect column definitions.
 
 ## Error Handling
 
@@ -992,6 +978,7 @@ The package includes comprehensive error handling:
 - Each storage class implements both `AgentCheckpointStorage` and `AppCheckpointStorage` interfaces
 - `retrieveLatestAppCheckpoint()` provides convenient access to the most recent app session state
 - All checkpoint lists are ordered by creation time (descending)
+- **Important**: There is a known schema inconsistency in MySQL/PostgreSQL `start()` methods that should be addressed
 
 ## Related Components
 

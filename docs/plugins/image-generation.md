@@ -529,14 +529,14 @@ pkg/image-generation/
 - `@tokenring-ai/chat` (0.2.0) - Chat service integration
 - `@tokenring-ai/filesystem` (0.2.0) - File system operations
 - `@tokenring-ai/ai-client` (0.2.0) - AI client and model registry
-- `exiftool-vendored` (^35.12.1) - EXIF metadata processing
+- `exiftool-vendored` (^35.15.1) - EXIF metadata processing
 - `uuid` (^13.0.0) - Unique ID generation
 - `zod` (^4.3.6) - Schema validation
 
 ### Development Dependencies
 
-- `vitest` (^4.0.18) - Testing framework
-- `typescript` (^5.9.3) - TypeScript compiler
+- `vitest` (^4.1.1) - Testing framework
+- `typescript` (^6.0.2) - TypeScript compiler
 
 ## Testing
 

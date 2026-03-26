@@ -1,37 +1,39 @@
 # @tokenring-ai/ghost-io
 
+The `@tokenring-ai/ghost-io` package provides comprehensive integration with the Ghost.io blog platform for the Token Ring ecosystem. It implements both `BlogProvider` and `CDNProvider` interfaces for seamless blog management and content delivery through Ghost's v5.0 Admin API.
+
 ## Overview
 
-The `@tokenring-ai/ghost-io` package provides comprehensive integration with the Ghost.io blog platform for Token Ring AI agents. It wraps the Ghost Admin SDK to provide secure authentication and implements both the `BlogProvider` and `CDNProvider` interfaces for seamless blog management and content delivery.
+The Ghost.io package integrates with the Token Ring agent framework, providing provider-based blog management and CDN services. It enables agents to create, update, and manage blog posts while maintaining agent-specific state for the currently selected post. The package wraps the official Ghost Admin SDK with secure authentication and provides automatic data structure conversion between Ghost's native format and Token Ring's provider model.
 
 ### Core Capabilities
 
-- **Blog Management**: Create, update, select, and clear blog posts with full CRUD operations
-- **CDN Integration**: Upload images directly to Ghost's content delivery network
-- **Agent State Management**: Track currently selected post per agent session
+- **Blog Management**: Full CRUD operations for blog posts with draft, published, and scheduled statuses
+- **CDN Integration**: Image upload to Ghost's content delivery network
+- **Agent State Management**: Per-agent tracking of currently selected post
 - **API Wrapping**: Secure access to Ghost v5.0 Admin API with proper authentication
 - **Post Conversion**: Automatic conversion between Ghost's data structures and Token Ring's blog provider model
+- **Provider Architecture**: Supports multiple Ghost blog and CDN provider registration
 
 ### Integration Points
 
 - **BlogService**: Registers `GhostBlogProvider` for blog post management
 - **CDNService**: Registers `GhostCDNProvider` for media content delivery
 - **Agent State**: Uses `GhostBlogState` to track active post per agent session
-- **Authentication**: Uses API key-based authentication via Ghost Admin SDK
-
+- **Plugin System**: Automatic provider registration via TokenRing plugin architecture
 ## Key Features
 
-- Full Ghost Admin API v5.0 integration
-- Draft, published, and scheduled post status support
-- Image upload to Ghost CDN
-- Post filtering and search by keyword and status
-- Agent state management for tracking current post selection
-- Automatic data structure conversion between Ghost and Token Ring formats
-- Plugin-based architecture for seamless integration with Token Ring applications
-- Support for multiple provider registration via KeyedRegistry pattern
-- Lexical editor integration for content processing
-- Markdown conversion support for content formatting
-
+- **Full Ghost Admin API v5.0 Integration**: Complete wrapper around Ghost's official Admin SDK
+- **CRUD Operations**: Create, read, update, and delete blog posts with full lifecycle management
+- **Post Status Support**: Draft, published, and scheduled post statuses
+- **Image Upload**: Upload images directly to Ghost CDN with metadata support
+- **Post Filtering**: Search posts by keyword, status, and limit results
+- **Agent State Management**: Per-agent `GhostBlogState` for tracking current post selection
+- **Data Structure Conversion**: Automatic conversion between Ghost and Token Ring formats
+- **Plugin-Based Architecture**: Seamless integration with Token Ring applications
+- **Multiple Provider Support**: Register multiple Ghost blog and CDN providers via KeyedRegistry pattern
+- **Lexical Editor Integration**: Content processing with Lexical headless mode
+- **Markdown Support**: Content format conversion with @lexical/markdown
 ## Core Components
 
 ### GhostBlogProvider
@@ -327,9 +329,9 @@ This package does not export service classes directly. Instead, it exports provi
 
 ### GhostBlogProvider
 
-The `GhostBlogProvider` implements the `BlogProvider` interface and provides a typed wrapper over the Ghost Admin API.
+The `GhostBlogProvider` class implements the `BlogProvider` interface for Ghost.io blog management. All methods that interact with agent state require the provider's `attach(agent)` method to be called first.
 
-**Interface**
+**Interface Implementation**
 
 ```typescript
 interface GhostAdminAPI {
@@ -343,7 +345,7 @@ interface GhostAdminAPI {
     browse: () => Promise<string[]>;
   };
   images: {
-    upload: (data: FormData, options?: { filename: string; purpose: string }) => Promise<{
+    upload: (data: FormData, options?: { filename: string; purpose: string }) => Promise< {
       url: string;
       id: string;
       metadata: any;
@@ -371,7 +373,7 @@ The `GhostPostToBlogPost` function converts Ghost posts to Token Ring's `BlogPos
 
 ### GhostCDNProvider
 
-The `GhostCDNProvider` extends the `CDNProvider` interface for image uploads to Ghost's CDN.
+The `GhostCDNProvider` class extends `CDNProvider` for image uploads to Ghost's CDN.
 
 **Interface**
 
@@ -388,11 +390,11 @@ interface GhostCDNProviderOptions {
 
 ## RPC Endpoints
 
-This package does not define any RPC endpoints.
+This package does not define any RPC endpoints. It operates through the BlogService and CDNService provider interfaces.
 
 ## Chat Commands
 
-This package does not define any chat commands.
+This package does not define any chat commands. Blog operations are performed through the provider API or tools registered by other packages.
 
 ## Configuration
 
@@ -501,15 +503,61 @@ export default {
 
 ## Integration
 
-This package integrates with the Token Ring agent system through:
+This package integrates with the Token Ring agent system through the plugin architecture and service registration patterns.
 
-1. **Plugin Registration**: The `plugin.ts` automatically registers `GhostBlogProvider` with `BlogService` and `GhostCDNProvider` with `CDNService` when the application starts.
+### Plugin Registration
 
-2. **Agent State**: Each agent gets its own `GhostBlogState` slice for tracking the current post selection, initialized via `attach(agent)`.
+The `plugin.ts` automatically registers providers when the application starts:
 
-3. **Service Access**: Agents access the providers through the BlogService and CDNService via `requireServiceByType()`.
+```typescript
+install(app, config) {
+  if (config.cdn) {
+    app.services.waitForItemByType(CDNService, cdnService => {
+      for (const name in config.cdn!.providers) {
+        const provider = config.cdn!.providers[name];
+        if (provider.type === "ghost") {
+          cdnService.registerProvider(name, new GhostCDNProvider(GhostCDNProviderOptionsSchema.parse(provider)));
+        }
+      }
+    });
+  }
 
-4. **Provider Registration**: Multiple providers can be registered, and the service manages them via the KeyedRegistry pattern.
+  if (config.blog) {
+    app.services.waitForItemByType(BlogService, blogService => {
+      for (const name in config.blog!.providers) {
+        const provider = config.blog!.providers[name];
+        if (provider.type === "ghost") {
+          blogService.registerBlog(name, new GhostBlogProvider(GhostBlogProviderOptionsSchema.parse(provider)));
+        }
+      }
+    });
+  }
+}
+```
+
+### Agent State Integration
+
+Each agent gets its own `GhostBlogState` slice for tracking the current post selection, initialized via `attach(agent)`:
+
+```typescript
+attach(agent: Agent): void {
+  agent.initializeState(GhostBlogState, {});
+}
+```
+
+### Service Access
+
+Agents access the providers through the BlogService and CDNService via `requireServiceByType() `:
+
+```typescript
+const blogService = agent.requireServiceByType(BlogService);
+const provider = blogService.getCurrentProvider();
+await provider.attach(agent);
+```
+
+### Provider Registration
+
+Multiple providers can be registered, and the service manages them via the KeyedRegistry pattern. Provider selection is handled by the service based on configuration or explicit selection.
 
 ## Usage Examples
 
@@ -788,7 +836,45 @@ console.log(`Draft posts about ghost: ${filtered.length}`);
    }
    ```
 
-## Testing
+## Testing and Development
+
+### Running Tests
+
+```bash
+# Run all tests
+bun run test
+
+# Run tests in watch mode
+bun run test:watch
+
+# Run tests with coverage
+bun run test:coverage
+
+# Run integration tests
+bun run test:integration
+
+# Run e2e tests
+bun run test:e2e
+
+# Run all tests including external integration tests
+bun run test:all
+```
+
+### Test Configuration
+
+```typescript
+// vitest.config.ts
+import { defineConfig } from "vitest/config";
+
+export default defineConfig({
+  test: {
+    include: ["**/*.test.ts"],
+    environment: "node",
+    globals: true,
+    isolate: true,
+  },
+});
+```
 
 ### Example Test Setup
 
@@ -834,60 +920,63 @@ describe("GhostCDNProvider", () => {
 });
 ```
 
-### Running Tests
+### Package Structure
+
+```
+pkg/ghost-io/
+├── index.ts                         # Package entry point and exports
+├── plugin.ts                        # TokenRing plugin integration
+├── GhostBlogProvider.ts             # Blog provider implementation
+├── GhostCDNProvider.ts              # CDN provider implementation
+├── state/
+│   └── GhostBlogState.ts            # Agent state slice for current post
+├── package.json                     # Package metadata and dependencies
+└── vitest.config.ts                 # Test configuration
+```
+
+### Build Instructions
 
 ```bash
-# Run all tests
-bun run test
-
-# Run tests in watch mode
-bun run test:watch
-
-# Run tests with coverage
-bun run test:coverage
-
-# Run integration tests
-bun run test:integration
-
-# Run e2e tests
-bun run test:e2e
-
-# Run all tests including external integration tests
-bun run test:all
+bun run build
 ```
 
 ## Dependencies
 
 ### Production Dependencies
 
-- **@tokenring-ai/app**: Core application framework and plugin registration
-- **@tokenring-ai/blog**: Blog service interface and provider system
-- **@tokenring-ai/cdn**: CDN service interface and provider system
-- **@tokenring-ai/agent**: Agent system and state management
-- **@tokenring-ai/chat**: Chat interface integration
-- **@tokenring-ai/filesystem**: Filesystem operations
-- **@tokenring-ai/ai-client**: AI client integration
-- **@tryghost/admin-api**: Official Ghost Admin SDK (v5.0)
-- **@lexical/headless**: Lexical editor headless mode for content processing
-- **@lexical/markdown**: Markdown content format conversion
-- **form-data**: Multipart form data for image uploads
-- **uuid**: Unique identifier generation
-- **zod**: Schema validation
+| Package | Version | Purpose |
+|---------|---------|---------|
+| `@tokenring-ai/app` | 0.2.0 | Core application framework and plugin registration |
+| `@tokenring-ai/blog` | 0.2.0 | Blog service interface and provider system |
+| `@tokenring-ai/cdn` | 0.2.0 | CDN service interface and provider system |
+| `@tokenring-ai/agent` | 0.2.0 | Agent system and state management |
+| `@tokenring-ai/chat` | 0.2.0 | Chat interface integration |
+| `@tokenring-ai/filesystem` | 0.2.0 | Filesystem operations |
+| `@tokenring-ai/ai-client` | 0.2.0 | AI client integration |
+| `@tryghost/admin-api` | ^1.14.7 | Official Ghost Admin SDK (v5.0) |
+| `@lexical/headless` | ^0.42.0 | Lexical editor headless mode for content processing |
+| `@lexical/markdown` | ^0.42.0 | Markdown content format conversion |
+| `form-data` | ^4.0.5 | Multipart form data for image uploads |
+| `uuid` | ^13.0.0 | Unique identifier generation |
+| `zod` | ^4.3.6 | Schema validation |
 
 ### Development Dependencies
 
-- **vitest**: Unit testing framework
-- **@vitest/coverage-v8**: Code coverage reporting
-- **typescript**: Type definitions
+| Package | Version | Purpose |
+|---------|---------|---------|
+| `vitest` | ^4.1.1 | Unit testing framework |
+| `@vitest/coverage-v8` | ^4.1.1 | Code coverage reporting |
+| `typescript` | ^6.0.2 | Type definitions |
 
 ## Related Components
 
-- **@tokenring-ai/blog**: Blog service interface and provider system
-- **@tokenring-ai/cdn**: CDN service interface and provider system
-- **@tokenring-ai/agent**: Agent system and state management
-- **@tokenring-ai/app**: Plugin registration framework
-- **@tryghost/admin-api**: Official Ghost Admin SDK
+- `@tokenring-ai/blog`: Blog service interface and provider system
+- `@tokenring-ai/cdn`: CDN service interface and provider system
+- `@tokenring-ai/agent`: Agent system and state management
+- `@tokenring-ai/app`: Plugin registration framework
+- `@tokenring-ai/chat`: Chat interface integration
+- `@tryghost/admin-api`: Official Ghost Admin SDK
 
 ## License
 
-MIT License - see LICENSE file for details.
+MIT License - see the LICENSE file for details.

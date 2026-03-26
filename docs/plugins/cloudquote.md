@@ -615,8 +615,8 @@ export {default as tools} from "./tools.ts";
 
 | Package | Version | Purpose |
 |---------|---------|---------|
-| `vitest` | ^4.1.0 | Unit testing framework |
-| `typescript` | ^5.9.3 | TypeScript compiler |
+| `vitest` | ^4.1.1 | Unit testing framework |
+| `typescript` | ^6.0.2 | TypeScript compiler |
 
 ## Testing
 

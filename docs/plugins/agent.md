@@ -231,10 +231,17 @@ await agent.runCommand("Hello, agent!");
 commandService.addAgentCommands({
   name: "myCommand",
   description: "My custom command",
-  execute: async (input, agent) => {
-    return `Processed: ${input}`;
+  inputSchema: {
+    remainder: {
+      name: "message",
+      description: "Message to process",
+      required: true,
+    }
   },
-  help: "# /myCommand\n\nMy custom command help text"
+  execute: async ({remainder, agent}) => {
+    return `Processed: ${remainder}`;
+  },
+  help: "# /myCommand\\n\\nMy custom command help text"
 });
 ```
 
@@ -246,6 +253,7 @@ commandService.addAgentCommands({
 - Agent mention handling (`@agentName message` converts to `/agent run agentName message`)
 - Error handling for unknown commands with suggestions
 - Support for command attachments
+- Hook integration for before/after command execution
 
 **Key Methods:**
 
@@ -256,6 +264,35 @@ commandService.addAgentCommands({
 | `getCommandEntries()` | Get all command entries |
 | `getCommand(name)` | Get specific command by name |
 | `executeAgentCommand(agent, message, attachments)` | Execute command |
+
+**Command Input Schema:**
+
+Commands use `AgentCommandInputSchema` which supports:
+- `args` - Named arguments with flags and strings
+- `positionals` - Positional arguments
+- `remainder` - Remaining text after parsed arguments
+
+Example input schema:
+```typescript
+const inputSchema = {
+  args: {
+    "--bg": {
+      type: "flag",
+      description: "Run in background",
+    },
+    "--type": {
+      type: "string",
+      description: "Agent type",
+      required: true,
+    },
+  },
+  remainder: {
+    name: "message",
+    description: "Message to process",
+    required: true,
+  }
+} as const satisfies AgentCommandInputSchema;
+```
 
 ## Services
 
@@ -270,6 +307,47 @@ const agentManager = new AgentManager(app);
 app.addServices(agentManager);
 ```
 
+**Key Features:**
+
+- Agent configuration management via `KeyedRegistry`
+- Automatic agent spawning from configurations
+- Sub-agent creation with state transfer
+- Idle agent cleanup (checks every 15 seconds)
+- Maximum runtime enforcement
+- Minimum agent count maintenance
+- Checkpoint-based agent restoration
+- Automatic command registration for agents with `command` config
+
+**Agent Lifecycle Management:**
+
+```typescript
+// Add agent configurations
+agentManager.addAgentConfigs({
+  agentType: "myAgent",
+  displayName: "My Agent",
+  description: "Custom development agent",
+  category: "development",
+  idleTimeout: 300,        // 5 minutes idle timeout
+  maxRunTime: 3600,        // 1 hour max runtime
+  minimumRunning: 2,       // Keep 2 agents running
+  // ... other config
+});
+
+// Spawn agents
+const agent = await agentManager.spawnAgent({
+  agentType: "myAgent",
+  headless: false
+});
+
+// Get agents
+const allAgents = agentManager.getAgents();
+const agentTypes = agentManager.getAgentTypes();
+const matchingTypes = agentManager.getAgentTypesLike("worker*");
+
+// Delete agent
+await agentManager.deleteAgent(agentId, "Reason for deletion");
+```
+
 ### AgentCommandService
 
 The `AgentCommandService` handles command parsing, registration, and execution. It manages the command registry and processes user input through the command system.
@@ -279,6 +357,105 @@ The `AgentCommandService` handles command parsing, registration, and execution. 
 ```typescript
 const commandService = new AgentCommandService(app);
 app.addServices(commandService);
+```
+
+**Key Features:**
+
+- Slash command parsing and routing
+- Command registry with prefix matching
+- Default command fallback (`/chat send`)
+- Agent mention handling (`@agentName message`)
+- Help command generation
+- Hook integration for lifecycle events
+- Error handling with suggestions
+
+**Command Execution Flow:**
+
+1. Input is parsed to extract command name and arguments
+2. Command registry is searched for matching command
+3. Command is executed with parsed arguments
+4. Lifecycle hooks are executed (before/after)
+5. Response is returned or error is thrown
+
+### SubAgentService
+
+The `SubAgentService` manages sub-agent execution with configurable output forwarding and permission controls.
+
+**Registration:**
+
+```typescript
+const subAgentService = new SubAgentService(app);
+app.addServices(subAgentService);
+```
+
+**Key Features:**
+
+- Sub-agent permission management with wildcard pattern matching
+- Configurable output forwarding (chat, reasoning, system, artifacts)
+- Parent agent abort propagation to sub-agents
+- Timeout enforcement for sub-agent execution
+- Automatic cleanup of completed sub-agents
+- Human request forwarding with mirrored interactions
+
+**Sub-Agent Configuration:**
+
+```typescript
+const subAgentConfig = {
+  allowedSubAgents: ["worker*", "researcher"],  // Wildcard patterns
+  forwardChatOutput: true,
+  forwardSystemOutput: true,
+  forwardHumanRequests: true,
+  forwardReasoning: false,
+  forwardInputCommands: true,
+  forwardArtifacts: false,
+  timeout: 300,              // 5 minutes timeout
+  maxResponseLength: 10000,  // Max response length
+  minContextLength: 1000,    // Min context length
+};
+```
+
+**Running Sub-Agents:**
+
+```typescript
+import SubAgentService from "@tokenring-ai/agent/services/SubAgentService";
+
+const subAgentService = agent.requireServiceByType(SubAgentService);
+
+// Run sub-agent with forwarding options
+const result = await subAgentService.runSubAgent({
+  agentType: "worker",
+  headless: true,
+  input: {
+    from: "parent",
+    message: "/work Process this data"
+  },
+  parentAgent: agent,
+  options: {
+    forwardChatOutput: true,
+    forwardSystemOutput: true,
+    forwardHumanRequests: true,
+    forwardReasoning: false,
+    forwardInputCommands: true,
+    forwardArtifacts: false,
+    timeout: 60,
+    maxResponseLength: 500,
+    minContextLength: 300
+  },
+  autoCleanup: true,
+  checkPermissions: true,
+});
+
+console.log(result.status, result.response);
+```
+
+**RunSubAgentResult:**
+
+```typescript
+interface RunSubAgentResult {
+  status: "success" | "error" | "cancelled";
+  response: string;
+  childAgent?: Agent; // Only if autoCleanup is false
+}
 ```
 
 ## RPC Endpoints
@@ -294,11 +471,322 @@ The agent package provides the following JSON-RPC endpoints for remote agent man
 | `getAgentTypes` | query | `{}` | `{type, displayName, description, category, callable}[]` |
 | `createAgent` | mutation | `{agentType: string, headless: boolean}` | `{id, displayName, description}` |
 | `deleteAgent` | mutation | `{agentId: string, reason: string}` | `{success: boolean}` |
-| `sendInput` | mutation | `{agentId: string, message: string, attachments?: InputAttachment[]}` | `{requestId: string}` |
-| `sendInteractionResponse` | mutation | `{agentId: string, requestId: string, response: any}` | `{success: boolean}` |
+| `sendInput` | mutation | `{agentId: string, input: {from: string, message: string, attachments?: InputAttachment[]}}` | `{requestId: string}` |
+| `sendInteractionResponse` | mutation | `{agentId: string, response: {requestId: string, interactionId: string, result: any}}` | `{success: boolean}` |
 | `abortCurrentOperation` | mutation | `{agentId: string, message: string}` | `{success: boolean}` |
 | `getCommandHistory` | query | `{agentId: string}` | `string[]` |
 | `getAvailableCommands` | query | `{agentId: string}` | `string[]` |
+| `getAvailableSubAgents` | query | `{agentId: string}` | `{agents: {type, displayName, description, category}[]}` |
+| `getEnabledSubAgents` | query | `{agentId: string}` | `{agents: string[]}` |
+| `enableSubAgents` | mutation | `{agentId: string, agents: string[]}` | `{success: boolean}` |
+| `disableSubAgents` | mutation | `{agentId: string, agents: string[]}` | `{success: boolean}` |
+
+**RPC Endpoint Details:**
+
+### Query Endpoints
+
+#### `getAgent`
+
+Retrieves detailed information about a specific agent.
+
+**Request:**
+```json
+{
+  "jsonrpc": "2.0",
+  "id": 1,
+  "method": "getAgent",
+  "params": {
+    "agentId": "agent-123"
+  }
+}
+```
+
+**Response:**
+```json
+{
+  "jsonrpc": "2.0",
+  "id": 1,
+  "result": {
+    "id": "agent-123",
+    "displayName": "My Agent",
+    "description": "Custom development agent",
+    "debugEnabled": false,
+    "config": {
+      "agentType": "myAgent",
+      "category": "development",
+      // ... other config (excluding workHandler)
+    }
+  }
+}
+```
+
+#### `getAgentEvents`
+
+Retrieves events from a specific position in the agent's event history.
+
+**Request:**
+```json
+{
+  "jsonrpc": "2.0",
+  "id": 1,
+  "method": "getAgentEvents",
+  "params": {
+    "agentId": "agent-123",
+    "fromPosition": 0
+  }
+}
+```
+
+**Response:**
+```json
+{
+  "jsonrpc": "2.0",
+  "id": 1,
+  "result": {
+    "events": [...],
+    "position": 100
+  }
+}
+```
+
+### Streaming Endpoints
+
+#### `streamAgentEvents`
+
+Streams events from a specific position in the agent's event history.
+
+**Request:**
+```json
+{
+  "jsonrpc": "2.0",
+  "id": 1,
+  "method": "streamAgentEvents",
+  "params": {
+    "agentId": "agent-123",
+    "fromPosition": 0
+  }
+}
+```
+
+**Response (streaming):**
+```json
+{
+  "jsonrpc": "2.0",
+  "id": 1,
+  "result": {
+    "events": [...],
+    "position": 100
+  }
+}
+```
+
+### Mutation Endpoints
+
+#### `createAgent`
+
+Creates a new agent of the specified type.
+
+**Request:**
+```json
+{
+  "jsonrpc": "2.0",
+  "id": 1,
+  "method": "createAgent",
+  "params": {
+    "agentType": "myAgent",
+    "headless": false
+  }
+}
+```
+
+**Response:**
+```json
+{
+  "jsonrpc": "2.0",
+  "id": 1,
+  "result": {
+    "id": "agent-456",
+    "displayName": "My Agent",
+    "description": "Custom development agent"
+  }
+}
+```
+
+#### `deleteAgent`
+
+Shuts down and removes an agent.
+
+**Request:**
+```json
+{
+  "jsonrpc": "2.0",
+  "id": 1,
+  "method": "deleteAgent",
+  "params": {
+    "agentId": "agent-123",
+    "reason": "Task completed"
+  }
+}
+```
+
+**Response:**
+```json
+{
+  "jsonrpc": "2.0",
+  "id": 1,
+  "result": {
+    "success": true
+  }
+}
+```
+
+#### `sendInput`
+
+Sends input to an agent.
+
+**Request:**
+```json
+{
+  "jsonrpc": "2.0",
+  "id": 1,
+  "method": "sendInput",
+  "params": {
+    "agentId": "agent-123",
+    "input": {
+      "from": "user",
+      "message": "Hello, agent!",
+      "attachments": []
+    }
+  }
+}
+```
+
+**Response:**
+```json
+{
+  "jsonrpc": "2.0",
+  "id": 1,
+  "result": {
+    "requestId": "req-789"
+  }
+}
+```
+
+#### `sendInteractionResponse`
+
+Sends a response to a human interaction request.
+
+**Request:**
+```json
+{
+  "jsonrpc": "2.0",
+  "id": 1,
+  "method": "sendInteractionResponse",
+  "params": {
+    "agentId": "agent-123",
+    "response": {
+      "requestId": "req-789",
+      "interactionId": "interaction-456",
+      "result": "Approved"
+    }
+  }
+}
+```
+
+**Response:**
+```json
+{
+  "jsonrpc": "2.0",
+  "id": 1,
+  "result": {
+    "success": true
+  }
+}
+```
+
+#### `abortCurrentOperation`
+
+Aborts the current operation of an agent.
+
+**Request:**
+```json
+{
+  "jsonrpc": "2.0",
+  "id": 1,
+  "method": "abortCurrentOperation",
+  "params": {
+    "agentId": "agent-123",
+    "message": "User cancelled operation"
+  }
+}
+```
+
+**Response:**
+```json
+{
+  "jsonrpc": "2.0",
+  "id": 1,
+  "result": {
+    "success": true
+  }
+}
+```
+
+#### `enableSubAgents`
+
+Enables sub-agent types for an agent.
+
+**Request:**
+```json
+{
+  "jsonrpc": "2.0",
+  "id": 1,
+  "method": "enableSubAgents",
+  "params": {
+    "agentId": "agent-123",
+    "agents": ["worker", "researcher"]
+  }
+}
+```
+
+**Response:**
+```json
+{
+  "jsonrpc": "2.0",
+  "id": 1,
+  "result": {
+    "success": true
+  }
+}
+```
+
+#### `disableSubAgents`
+
+Disables sub-agent types for an agent.
+
+**Request:**
+```json
+{
+  "jsonrpc": "2.0",
+  "id": 1,
+  "method": "disableSubAgents",
+  "params": {
+    "agentId": "agent-123",
+    "agents": ["worker"]
+  }
+}
+```
+
+**Response:**
+```json
+{
+  "jsonrpc": "2.0",
+  "id": 1,
+  "result": {
+    "success": true
+  }
+}
+```
 
 ## Chat Commands
 
@@ -306,51 +794,152 @@ The agent package includes the following built-in slash commands:
 
 ### `/agent` - Agent Management
 
+**List Agent Types:**
+
 ```bash
-/agent types                    # List available agent types
-/agent list                     # List running agents
-/agent run <type> <message>     # Run an agent with a message
-/agent run --bg <type> <msg>    # Run agent in background
-/agent shutdown [id]            # Shutdown agent (all or specific)
+/agent types
+```
+
+Lists all available agent types with their descriptions.
+
+**List Running Agents:**
+
+```bash
+/agent list
+```
+
+Lists all currently running agents with their IDs and descriptions.
+
+**Run an Agent:**
+
+```bash
+/agent run --type <agentType> <message>
+/agent run --bg --type <agentType> <message>
+```
+
+Runs an agent of the specified type with the given message.
+
+**Examples:**
+
+```bash
+/agent run --type leader analyze the codebase
+/agent run --bg --type researcher find information about AI
+```
+
+**Shutdown Agent:**
+
+```bash
+/agent shutdown [agentId]
+```
+
+Shuts down the current agent, or the agent with the given ID.
+
+**Examples:**
+
+```bash
+/agent shutdown
+/agent shutdown agent-123
 ```
 
 ### `/help` - Help System
 
 ```bash
-/help                           # Display help for all commands
-/help <command>                 # Display help for specific command
+/help [command]
+```
+
+Displays detailed help information for all available commands or a specific command.
+
+**Examples:**
+
+```bash
+/help                   # Show help for all commands
+/help multi            # Show help for multi command (if implemented)
 ```
 
 ### `/settings` - Settings Display
 
 ```bash
-/settings                       # Display agent settings and state
+/settings
 ```
+
+Displays agent settings and state information.
 
 ### `/work` - Work Handler
 
 ```bash
-/work <task>                    # Execute work handler with task
+/work <task>
 ```
+
+Invokes the work handler for the agent, with the message corresponding to the work which needs to be completed.
+
+**Examples:**
+
+```bash
+/work Write a blog post about AI safety
+/work Analyze the latest market trends
+/work Create a new user account
+```
+
+**Notes:**
+
+- If the agent has a custom `workHandler` configured, it will be used
+- Otherwise, the default `AgentCommandService` will handle the request
 
 ### `/debug` - Debug Commands
 
+**Debug Logging:**
+
 ```bash
-/debug logging on|off           # Enable or disable debug logging
-/debug markdown                 # Output a markdown sample for testing
-/debug services [limit]         # Display service logs (default: last 50)
-/debug questions <type>         # Test human interface request types
-/debug chat throwError          # Throw an error to test error handling
-/debug app shutdown             # Send shutdown command to app
+/debug logging on|off
 ```
 
-**Debug Questions Types:**
+Enable or disable debug logging.
+
+**Debug Markdown:**
+
+```bash
+/debug markdown
+```
+
+Output a markdown sample for testing.
+
+**Debug Services:**
+
+```bash
+/debug services [limit]
+```
+
+Display service logs (default: last 50).
+
+**Debug Questions:**
+
+```bash
+/debug questions <type>
+```
+
+Test human interface request types. Available types:
 
 - `text` - Test text input
 - `confirm` - Test approval dialog
 - `tree` - Test tree selection
 - `file` - Test file selection
 - `form` - Test multi-section form
+
+**Debug Chat:**
+
+```bash
+/debug chat throwError
+```
+
+Throw an error to test error handling.
+
+**Debug App:**
+
+```bash
+/debug app shutdown
+```
+
+Send shutdown command to app.
 
 ### Agent Mention Syntax
 
@@ -628,52 +1217,54 @@ await agentManager.deleteAgent(subAgent.id, "Cleanup");
 
 ### Advanced Sub-Agent Execution
 
-```typescript
-import {runSubAgent} from "@tokenring-ai/agent/runSubAgent";
+For more advanced sub-agent execution with fine-grained control, use the `SubAgentService` directly:
 
-// Run sub-agent with custom options
-const result = await runSubAgent({
+```typescript
+import SubAgentService from "@tokenring-ai/agent/services/SubAgentService";
+
+const subAgentService = agent.requireServiceByType(SubAgentService);
+
+// Run sub-agent with custom forwarding options
+const result = await subAgentService.runSubAgent({
   agentType: "code-assistant",
   headless: true,
   input: {
     from: "parent",
     message: "/work Analyze this code: function test() { return true; }"
   },
-  background: false,
-  forwardChatOutput: true,
-  forwardSystemOutput: true,
-  forwardReasoning: false,
-  forwardHumanRequests: true,
-  forwardInputCommands: true,
-  forwardArtifacts: false,
-  timeout: 60,
-  maxResponseLength: 500,
-  minContextLength: 300
-}, agent, true);
+  parentAgent: agent,
+  options: {
+    forwardChatOutput: true,
+    forwardSystemOutput: true,
+    forwardHumanRequests: true,
+    forwardReasoning: false,
+    forwardInputCommands: true,
+    forwardArtifacts: false,
+    timeout: 60,
+    maxResponseLength: 500,
+    minContextLength: 300
+  },
+  autoCleanup: true,
+  checkPermissions: true,
+});
 
 console.log("Result:", result.status, result.response);
 ```
 
-**RunSubAgent Options:**
+**RunSubAgentOptions:**
 
 | Option | Type | Default | Description |
 |--------|------|---------|-------------|
 | `agentType` | `string` | - | The type of agent to create |
 | `headless` | `boolean` | - | Whether to run in headless mode |
 | `input` | `InputMessage` | - | The command to send to the agent |
+| `parentAgent` | `Agent` | - | The parent agent instance |
 | `background` | `boolean` | false | Run in background and return immediately |
-| `forwardChatOutput` | `boolean` | true | Forward chat output to parent |
-| `forwardSystemOutput` | `boolean` | true | Forward system output to parent |
-| `forwardHumanRequests` | `boolean` | true | Forward human requests to parent |
-| `forwardReasoning` | `boolean` | false | Forward reasoning output to parent |
-| `forwardInputCommands` | `boolean` | true | Forward input commands to parent |
-| `forwardArtifacts` | `boolean` | false | Forward artifacts to parent |
-| `timeout` | `number` | 0 | Sub-agent timeout in seconds |
-| `maxResponseLength` | `number` | 10000 | Max response length in characters |
-| `minContextLength` | `number` | 1000 | Minimum context length in characters |
-| `disablePermissionCheck` | `boolean` | false | Disable sub-agent permission checks |
+| `options` | `Partial<ParsedSubAgentConfig>` | `{}` | Configuration options for sub-agent |
+| `autoCleanup` | `boolean` | true | Auto-delete child agent when done |
+| `checkPermissions` | `boolean` | true | Check parent agent permissions |
 
-**RunSubAgent Result:**
+**RunSubAgentResult:**
 
 ```typescript
 interface RunSubAgentResult {

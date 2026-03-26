@@ -428,13 +428,13 @@ pkg/typescript/
 |---------|---------|---------|
 | `@tokenring-ai/app` | 0.2.0 | Base application framework |
 | `@tokenring-ai/filesystem` | 0.2.0 | File management and validation |
-| `typescript` | ^5.9.3 | TypeScript compiler API |
+| `typescript` | ^6.0.2 | TypeScript compiler API |
 | `zod` | ^4.3.6 | Schema validation |
 
 **Development Dependencies:**
 | Package | Version | Purpose |
 |---------|---------|---------|
-| `vitest` | ^4.0.18 | Testing framework |
+| `vitest` | ^4.1.1 | Testing framework |
 
 ### Scripts
 
@@ -447,7 +447,7 @@ pkg/typescript/
 
 MIT License - see LICENSE file for details.
 
-Copyright (c) 2024 TokenRing AI
+Copyright (c) 2025 TokenRing AI
 
 ## Related Components
 

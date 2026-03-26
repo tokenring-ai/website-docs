@@ -561,14 +561,13 @@ await scriptingService.eval('clearMemory()');
 
 ## Error Handling
 
-The package provides comprehensive error handling for memory operations:
+The package provides error handling for memory operations through input validation and service methods:
 
 ### Error Types
 
 | Error Type | Description | When Thrown |
 |------------|-------------|-------------|
 | `Error` | Missing parameter error | When `memory_add` tool receives empty memory |
-| `CommandFailedError` | Command execution failure | When memory command receives invalid operation or parameters |
 
 ### Error Examples
 
@@ -580,27 +579,16 @@ try {
   console.error(error.message); // "[memory_add] Missing parameter: memory"
 }
 
-// Command error - invalid operation
-try {
-  await agent.executeCommand('/memory invalid_op');
-} catch (error) {
-  console.error(error.message); // "Unknown operation."
-}
-
-// Command error - missing text
-try {
-  await agent.executeCommand('/memory add');
-} catch (error) {
-  console.error(error.message); // "Please provide text for the memory item"
-}
-
-// Command error - invalid index
+// Command validation errors are handled by the input schema
+// Invalid index will be caught by the command service
 try {
   await agent.executeCommand('/memory remove abc');
 } catch (error) {
-  console.error(error.message); // "Please provide a valid index number"
+  // Error handled by command service
 }
 ```
+
+**Note:** Command validation errors (missing required parameters, invalid types) are automatically handled by the command service through the input schema validation. The `CommandFailedError` may be thrown by the command service for invalid operations, but the memory commands themselves do not throw this error directly.
 
 ## Testing and Development
 
@@ -616,7 +604,7 @@ bun test:watch
 # Run tests with coverage
 bun test:coverage
 
-# Build TypeScript
+# Build TypeScript (type check only)
 bun run build
 ```
 
@@ -665,8 +653,8 @@ pkg/memory/
 
 | Package | Version | Purpose |
 |---------|---------|---------|
-| `vitest` | ^4.0.18 | Testing framework |
-| `typescript` | 5.9.3 | TypeScript compiler |
+| `vitest` | ^4.1.1 | Testing framework |
+| `typescript` | ^6.0.2 | TypeScript compiler |
 
 ## Related Components
 

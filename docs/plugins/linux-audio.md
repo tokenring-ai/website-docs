@@ -129,6 +129,8 @@ await provider.playback('/tmp/recording.mp3');
 - For WAV files: Uses `wav.Reader` to parse the file and naudiodon3 for playback
 - For other formats: Uses `ffmpeg` to convert to raw PCM and streams to naudiodon3
 
+**Note:** When playing non-WAV files via ffmpeg, the audio is converted to stereo (2 channels) 48000Hz PCM format regardless of the original file's format. This may result in channel upconversion for mono files.
+
 ### RecordingResult Interface
 
 ```typescript
@@ -582,6 +584,7 @@ await recordAndPlayback(5000);
 - **Format Selection**: Use WAV format for best compatibility; use ffmpeg for other formats
 - **Error Handling**: Handle both file not found and audio device errors gracefully
 - **Resource Management**: Ensure proper cleanup of audio streams
+- **FFmpeg Conversion**: When playing non-WAV files, note that ffmpeg converts to stereo 48000Hz PCM format, which may upconvert mono files to stereo
 
 ### Performance Optimization
 

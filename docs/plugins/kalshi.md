@@ -1,34 +1,33 @@
-# Kalshi Plugin
+# @tokenring-ai/kalshi
+
+The `@tokenring-ai/kalshi` package provides integration with Kalshi prediction markets for the Token Ring ecosystem. It enables agents to query market series, markets, events, and orderbooks for research, analysis, and decision-making purposes.
+
+This package serves as both a service and a plugin that integrates with the TokenRing agent system, providing tools for programmatic access to Kalshi's prediction market data.
 
 ## Overview
 
-The Kalshi Plugin provides integration with Kalshi prediction markets, enabling AI agents to query market series, markets, events, and orderbooks. It allows agents to interact with Kalshi's prediction market data for research, analysis, and decision-making purposes.
-
-This plugin serves as a service that integrates with the TokenRing agent system. It provides tools for programmatic access to Kalshi's prediction market data, including series, markets, events, and orderbook information.
+The Kalshi package enables seamless integration with the Kalshi API for querying prediction markets and events. It is designed specifically for use within the Token Ring AI agent framework, allowing agents to access real-time prediction market data without authentication.
 
 ### Key Features
 
-- **Series Retrieval**: Get detailed information about market series by ticker
-- **Market Listing**: List markets with filtering options (series, status) and pagination support
-- **Event Retrieval**: Get detailed information about specific events by ticker
-- **Orderbook Access**: Access real-time orderbook data for markets (bids only)
-- **Configurable Base URL**: Support for custom Kalshi API endpoints
-- **RESTful API**: Uses standard HTTP requests for API interactions
-- **Error Handling**: Comprehensive error handling for API operations and invalid inputs
-- **Agent Tools**: Four pre-built tools for AI workflows
-- **Type Safety**: Full TypeScript support with Zod schemas for input validation
-- **No Authentication Required**: Access public market data endpoints
-
-## Key Features
-
-- **kalshi_getSeries**: Get information about a Kalshi market series by ticker
-- **kalshi_getMarkets**: Get Kalshi markets with optional filtering by series, status, and pagination
-- **kalshi_getEvent**: Get a specific Kalshi event by ticker
-- **kalshi_getOrderbook**: Get the orderbook (bids) for a specific Kalshi market
+- **KalshiService**: Core service for direct API interactions with Kalshi
+- **Agent Tools**: Four pre-built tools for AI workflows:
+  - `kalshi_getSeries`: Get series information by ticker
+  - `kalshi_getMarkets`: List and filter markets with pagination
+  - `kalshi_getEvent`: Retrieve event details by ticker
+  - `kalshi_getOrderbook`: Get orderbook data for a market
 - **TypeScript Support**: Full TypeScript definitions and type safety
 - **Input Validation**: Zod schemas for robust input validation
+- **Error Handling**: Built-in error handling for invalid inputs
 - **Configurable**: Support for custom API base URLs
 - **Plugin Architecture**: Integrates seamlessly with Token Ring app ecosystem
+- **No Authentication Required**: Access public market data endpoints
+
+## Installation
+
+```bash
+bun add @tokenring-ai/kalshi
+```
 
 ## Core Components
 
@@ -142,56 +141,18 @@ async getOrderbook(ticker: string): Promise<any>
 - `getEvent(ticker)`: Retrieves detailed information about an event by ticker. Throws error if ticker is empty.
 - `getOrderbook(ticker)`: Retrieves the orderbook for a specific market. Throws error if ticker is empty.
 
-## Provider Documentation
-
-### KalshiService Provider
-
-The `KalshiService` is a `TokenRingService` that can be required by agents using the `requireServiceByType` method.
-
-**Provider Type:**
-
-```typescript
-import KalshiService from "@tokenring-ai/kalshi";
-
-// In an agent context
-const kalshi = agent.requireServiceByType(KalshiService);
-```
-
-**Tool Integration Example:**
-
-```typescript
-import Agent from "@tokenring-ai/agent/Agent";
-import {z} from "zod";
-import KalshiService from "@tokenring-ai/kalshi/KalshiService";
-import {TokenRingToolJSONResult} from "@tokenring-ai/chat/schema";
-
-const name = "kalshi_getSeries";
-const inputSchema = z.object({
-  ticker: z.string().min(1).describe("Series ticker (e.g., KXHIGHNY)"),
-});
-
-async function execute(
-  {ticker}: z.output<typeof inputSchema>,
-  agent: Agent
-): Promise<TokenRingToolJSONResult<{series?: any}>> {
-  const kalshi = agent.requireServiceByType(KalshiService);
-
-  if (!ticker) {
-    throw new Error(`[${name}] ticker is required`);
-  }
-
-  agent.infoMessage(`[kalshiGetSeries] Fetching series: ${ticker}`);
-  const series = await kalshi.getSeries(ticker);
-  return {
-    type: "json",
-    data: {series}
-  };
-}
-```
-
 ## RPC Endpoints
 
-This package does not define RPC endpoints.
+This package does not define RPC endpoints. It uses REST API endpoints through the `HttpService` base class:
+
+| Endpoint | Method | Description |
+|----------|--------|-------------|
+| `/series/{ticker}` | GET | Get series information |
+| `/markets` | GET | List markets with optional filters |
+| `/events/{ticker}` | GET | Get event details |
+| `/markets/{ticker}/orderbook` | GET | Get orderbook data |
+
+Base URL: `https://api.elections.kalshi.com/trade-api/v2`
 
 ## Chat Commands
 
@@ -761,7 +722,10 @@ pkg/kalshi/
 │   └── getOrderbook.ts      # Get orderbook tool
 ├── package.json             # Package metadata and dependencies
 ├── vitest.config.ts         # Vitest configuration
-└── README.md                # Package documentation
+├── README.md                # Package documentation
+├── LICENSE                  # MIT License
+└── design/                  # Design documents
+    └── quick_start_market_data.md  # Quick start guide for market data access
 ```
 
 ### Build Instructions
@@ -814,9 +778,13 @@ await kalshi.getOrderbook(""); // Error: "ticker is required"
 await kalshi.getSeries("KXHIGHNY"); // OK
 ```
 
+## Quick Start
+
+For a quick start guide on accessing market data without authentication, refer to the design documentation in the package source.
+
 ## License
 
-MIT License - see `LICENSE` file for details.
+MIT License - see LICENSE file for details.
 
 ## Version
 

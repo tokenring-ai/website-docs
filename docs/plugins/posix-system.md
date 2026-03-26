@@ -1,31 +1,28 @@
-# posix-system
+# @tokenring-ai/posix-system
 
-A POSIX system package for TokenRing applications, providing Terminal, Filesystem, and other POSIX-related utilities. This package implements filesystem and terminal providers that enable agents to interact with the local system in a controlled, scoped manner.
+A POSIX system package for TokenRing applications, providing Terminal and Filesystem providers that enable agents to interact with the local system in a controlled manner. This package implements concrete providers for the Token Ring filesystem and terminal abstractions.
 
 ## Overview
 
 The `posix-system` package provides two core providers for TokenRing applications:
 
-- **PosixFileSystemProvider**: Safe filesystem operations with root-scoped access
-- **PosixTerminalProvider**: Shell command execution with configurable environment, timeouts, and optional bubblewrap sandboxing
+- **PosixFileSystemProvider**: Local filesystem operations using fs-extra, glob, and chokidar
+- **PosixTerminalProvider**: Shell command execution with PTY support and optional bubblewrap sandboxing
 
-Both providers enforce strict security boundaries by operating only within a specified working directory, preventing agents from accessing sensitive system paths outside the designated scope.
-
-The package integrates with the Token Ring application framework as a plugin and provides providers for both the filesystem and terminal services.
+Both providers integrate with Token Ring's service architecture and support ignore-aware operations for respecting VCS/IDE ignore rules.
 
 ## Key Features
 
-- **Filesystem Provider**: Full-featured filesystem operations with root-scoped access
-- **Terminal Provider**: Shell command execution with configurable environment, timeouts, and sandboxing
-- **Root-scoped operations**: All operations are confined to the `workingDirectory`; attempts to access paths outside are rejected
-- **Ignore-aware**: Most listing/searching methods accept an ignore filter for respecting VCS/IDE ignore rules
-- **Watcher-backed**: Uses chokidar for robust file system watching
-- **Shell execution**: Uses execa with configurable timeouts and environment overrides
-- **Bubblewrap sandboxing**: Optional bubblewrap sandboxing for command execution (auto-detects availability)
-- **Type-safe**: Built with TypeScript and Zod for configuration validation
-- **Plugin architecture**: Designed to integrate with Token Ring applications as a plugin
-- **Interactive sessions**: Support for persistent interactive terminal sessions with PTY
-- **Comprehensive error handling**: Detailed error messages for security violations and operation failures
+- **Filesystem Provider**: Comprehensive filesystem operations (read, write, delete, rename, copy, stat, glob, grep, watch)
+- **Terminal Provider**: Shell command execution with configurable timeouts, environment, and optional sandboxing
+- **Ignore-aware operations**: Most listing/searching methods accept ignore filters for respecting VCS/IDE patterns
+- **File watching**: Uses chokidar for robust filesystem watching with stability thresholds
+- **Shell execution**: Uses execa for reliable command execution with timeout and buffer management
+- **Bubblewrap sandboxing**: Optional bubblewrap sandboxing for terminal commands (auto-detects availability)
+- **Interactive sessions**: Support for persistent interactive terminal sessions with PTY via bun-pty
+- **Type-safe**: Built with TypeScript and validated with Zod schemas
+- **Plugin architecture**: Integrates with Token Ring applications as a plugin
+- **Async generators**: Directory tree traversal via async generators for memory-efficient iteration
 
 ## Installation
 
@@ -47,128 +44,109 @@ bun add @tokenring-ai/posix-system
 
 ### PosixFileSystemProvider
 
-A concrete implementation of the `FileSystemProvider` abstraction that provides safe, root-scoped access to the local filesystem for Token Ring apps and agents.
+A concrete implementation of the `FileSystemProvider` abstraction that provides access to the local filesystem.
+
+**Exports:**
+
+```typescript
+export default class PosixFileSystemProvider implements FileSystemProvider
+```
 
 **Constructor:**
 
 ```typescript
-constructor(options: LocalFileSystemProviderOptions)
+constructor(options: PosixFileSystemProviderOptions)
 ```
 
 **Options:**
 
 ```typescript
-interface LocalFileSystemProviderOptions {
-  workingDirectory: string;  // The root directory for all file operations
-  defaultSelectedFiles?: string[];  // Default file patterns for selection
-}
+const PosixFileSystemProviderOptionsSchema = z.object({
+  // No options currently required
+});
+type PosixFileSystemProviderOptions = z.output<typeof PosixFileSystemProviderOptionsSchema>;
 ```
 
 **Properties:**
 
 - `name: string` - Provider name ("LocalFilesystemProvider")
 - `description: string` - Provider description ("Provides access to the local filesystem")
-- `options: LocalFileSystemProviderOptions` - Configuration options
-
-**Path Utilities:**
-
-- `relativeOrAbsolutePathToAbsolutePath(p: string): string` - Converts any path to absolute path within bounds. Throws error if path is outside workingDirectory
-- `relativeOrAbsolutePathToRelativePath(p: string): string` - Converts absolute path to relative path relative to workingDirectory
+- `options: PosixFileSystemProviderOptions` - Configuration options
 
 **File Operations:**
 
-- `writeFile(filePath: string, content: string | Buffer): Promise<boolean>` - Create or overwrite a file
-- `appendFile(filePath: string, content: string | Buffer): Promise<boolean>` - Append content to a file
-- `readFile(filePath: string): Promise<Buffer | null>` - Read file content. Returns null if file doesn't exist
-- `deleteFile(filePath: string): Promise<boolean>` - Delete a file. Throws error if file doesn't exist or is not a file
-- `rename(oldPath: string, newPath: string): Promise<boolean>` - Rename/move a file. Throws error if source doesn't exist or destination exists
-- `exists(filePath: string): Promise<boolean>` - Check if file exists
-- `stat(filePath: string): Promise<StatLike>` - Get file/directory statistics
-
-**Directory Operations:**
-
-- `createDirectory(dirPath: string, options?: { recursive?: boolean }): Promise<boolean>` - Create directory
-- `copy(source: string, destination: string, options?: { overwrite?: boolean }): Promise<boolean>` - Copy files/directories
+| Method | Signature | Description |
+|--------|-----------|-------------|
+| `writeFile` | `writeFile(filePath: string, content: string \| Buffer): Promise<boolean>` | Create or overwrite a file |
+| `appendFile` | `appendFile(filePath: string, content: string \| Buffer): Promise<boolean>` | Append content to a file |
+| `deleteFile` | `deleteFile(filePath: string): Promise<boolean>` | Delete a file |
+| `readFile` | `readFile(filePath: string): Promise<Buffer\|null>` | Read file content (returns null if not found) |
+| `rename` | `rename(oldPath: string, newPath: string): Promise<boolean>` | Rename/move a file |
+| `exists` | `exists(filePath: string): Promise<boolean>` | Check if file exists |
+| `stat` | `stat(filePath: string): Promise<StatLike>` | Get file/directory statistics |
+| `createDirectory` | `createDirectory(dirPath: string, options?: { recursive?: boolean }): Promise<boolean>` | Create directory |
+| `copy` | `copy(source: string, destination: string, options?: { overwrite?: boolean }): Promise<boolean>` | Copy files/directories |
 
 **Search and Listing:**
 
-- `glob(pattern: string, options?: GlobOptions): Promise<string[]>` - Find files matching glob patterns
-- `grep(searchString: string, options?: GrepOptions): Promise<GrepResult[]>` - Search for text in files with optional context
-- `getDirectoryTree(dir: string, options?: DirectoryTreeOptions): AsyncGenerator<string>` - Traverse directory tree asynchronously
-
-**File Watching:**
-
-- `watch(dir: string, options?: WatchOptions): Promise<FSWatcher>` - Watch directory for changes using chokidar
+| Method | Signature | Description |
+|--------|-----------|-------------|
+| `glob` | `glob(pattern: string, options?: GlobOptions): Promise<string[]>` | Find files matching glob patterns |
+| `grep` | `grep(searchString: string\|string[], options?: GrepOptions): Promise<GrepResult[]>` | Search for text in files |
+| `getDirectoryTree` | `getDirectoryTree(dir: string, options?: DirectoryTreeOptions): AsyncGenerator<string>` | Traverse directory tree |
+| `watch` | `watch(dir: string, options?: WatchOptions): Promise<FSWatcher>` | Watch directory for changes |
 
 ### PosixTerminalProvider
 
-A concrete implementation of the `TerminalProvider` abstraction that provides shell command execution capabilities with support for persistent interactive sessions and optional bubblewrap sandboxing.
+A concrete implementation of the `TerminalProvider` abstraction that provides shell command execution with support for persistent interactive sessions and optional bubblewrap sandboxing.
+
+**Exports:**
+
+```typescript
+export default class PosixTerminalProvider implements TerminalProvider
+```
 
 **Constructor:**
 
 ```typescript
-constructor(app: TokenRingApp, terminalService: TerminalService, options: LocalTerminalProviderOptions)
+constructor(app: TokenRingApp, terminalService: TerminalService, options: PosixTerminalProviderOptions)
 ```
 
 **Options:**
 
 ```typescript
-interface LocalTerminalProviderOptions {
-  workingDirectory: string;  // The root directory for command execution
-  isolation?: 'auto' | 'none' | 'bubblewrap';  // Sandboxing mode (default: 'auto')
-}
+const PosixTerminalProviderOptionsSchema = z.object({
+  isolation: z.enum(['auto', 'none', 'bubblewrap']).default('auto')
+});
+type PosixTerminalProviderOptions = z.output<typeof PosixTerminalProviderOptionsSchema>;
 ```
-
-**Isolation Modes:**
-
-- `"none"` - No sandboxing, commands run directly on the host system
-- `"bubblewrap"` - Commands run in a bubblewrap sandbox with restricted filesystem access
-- `"auto"` (default) - Automatically uses bubblewrap if the `bwrap` executable is available, otherwise falls back to none
 
 **Properties:**
 
 - `name: string` - Provider name ("PosixTerminalProvider")
 - `description: string` - Provider description ("Provides shell command execution on local system")
+- `displayName: string` - Display name with isolation level (e.g., "PosixTerminalProvider (isolation: auto)")
 - `app: TokenRingApp` - Reference to the Token Ring application
 - `terminalService: TerminalService` - Reference to the terminal service
-- `options: LocalTerminalProviderOptions` - Configuration options
+- `options: PosixTerminalProviderOptions` - Configuration options
 
-**Methods:**
+**Command Execution:**
 
-- `executeCommand(command: string, args: string[], options: ExecuteCommandOptions): Promise<ExecuteCommandResult>` - Execute shell commands with arguments
-- `runScript(script: string, options: ExecuteCommandOptions): Promise<ExecuteCommandResult>` - Execute shell scripts
-- `startInteractiveSession(options: ExecuteCommandOptions): Promise<string>` - Start an interactive terminal session, returns session ID
-- `sendInput(sessionId: string, input: string): Promise<void>` - Send input to a session
-- `collectOutput(sessionId: string, fromPosition: number, waitOptions: OutputWaitOptions): Promise<InteractiveTerminalOutput>` - Collect output from a session
-- `terminateSession(sessionId: string): Promise<void>` - Terminate a session
-- `getSessionStatus(sessionId: string): SessionStatus | null` - Get status of a session
-- `getIsolationLevel(): TerminalIsolationLevel` - Get the active isolation level ('none' or 'sandbox')
+| Method | Signature | Description |
+|--------|-----------|-------------|
+| `executeCommand` | `executeCommand(command: string, args: string[], options: ExecuteCommandOptions): Promise<ExecuteCommandResult>` | Execute shell commands with arguments |
+| `runScript` | `runScript(script: string, options: ExecuteCommandOptions): Promise<ExecuteCommandResult>` | Execute shell scripts |
 
-**ExecuteCommandOptions:**
+**Interactive Sessions:**
 
-```typescript
-interface ExecuteCommandOptions {
-  timeoutSeconds?: number;
-  env?: Record<string, string>;
-  workingDirectory?: string;
-  input?: string;  // Not currently used for non-interactive commands
-}
-```
-
-**ExecuteCommandResult:**
-
-```typescript
-interface ExecuteCommandResult {
-  status: "success" | "timeout" | "badExitCode" | "unknownError";
-  output?: string;      // Combined stdout and stderr (only present for success)
-  exitCode?: number;    // Exit code (only present for badExitCode)
-  error?: string;       // Error message (only present for unknownError)
-}
-```
-
-**Isolation Level:**
-
-- `getIsolationLevel(): TerminalIsolationLevel` - Returns either `'none'` or `'sandbox'`
+| Method | Signature | Description |
+|--------|-----------|-------------|
+| `startInteractiveSession` | `startInteractiveSession(options: ExecuteCommandOptions): Promise<string>` | Start interactive session, returns session ID |
+| `sendInput` | `sendInput(sessionId: string, input: string): Promise<void>` | Send input to a session |
+| `collectOutput` | `collectOutput(sessionId: string, fromPosition: number, waitOptions: OutputWaitOptions): Promise<InteractiveTerminalOutput>` | Collect output from session |
+| `terminateSession` | `terminateSession(sessionId: string): Promise<void>` | Terminate a session |
+| `getSessionStatus` | `getSessionStatus(sessionId: string): SessionStatus\|null` | Get status of a session |
+| `getIsolationLevel` | `getIsolationLevel(): TerminalIsolationLevel` | Get active isolation level |
 
 ## Services
 
@@ -183,10 +161,24 @@ The plugin automatically registers providers with the appropriate services when 
 
 ```typescript
 // FileSystemService registration
-fileSystemService.registerFileSystemProvider(name, new PosixFileSystemProvider(options));
+app.waitForService(FileSystemService, fileSystemService => {
+  for (const name in config.filesystem!.providers) {
+    const provider = config.filesystem!.providers[name];
+    if (provider.type === "posix") {
+      fileSystemService.registerFileSystemProvider(name, new PosixFileSystemProvider(PosixFileSystemProviderOptionsSchema.parse(provider)));
+    }
+  }
+});
 
 // TerminalService registration
-terminalService.registerTerminalProvider(name, new PosixTerminalProvider(app, terminalService, options));
+app.waitForService(TerminalService, terminalService => {
+  for (const name in config.terminal!.providers) {
+    const provider = config.terminal!.providers[name];
+    if (provider.type === "posix") {
+      terminalService.registerTerminalProvider(name, new PosixTerminalProvider(app, terminalService, PosixTerminalProviderOptionsSchema.parse(provider)));
+    }
+  }
+});
 ```
 
 ## Provider Documentation
@@ -195,21 +187,20 @@ terminalService.registerTerminalProvider(name, new PosixTerminalProvider(app, te
 
 Implements the `FileSystemProvider` interface with the following capabilities:
 
-- Path resolution with security boundaries
 - File operations (read, write, append, delete, rename, copy)
 - Directory operations (create, copy)
 - Pattern matching (glob)
 - Text searching (grep)
-- Directory traversal (getDirectoryTree)
-- File system watching (watch)
+- Directory traversal (getDirectoryTree via async generator)
+- File system watching (watch via chokidar)
 
 ### PosixTerminalProvider
 
 Implements the `TerminalProvider` interface with the following capabilities:
 
 - Command execution with arguments
-- Script execution
-- Interactive session management
+- Script execution via shell
+- Interactive session management with PTY
 - Output collection with position tracking
 - Session status monitoring
 - Bubblewrap sandboxing support
@@ -237,9 +228,7 @@ const app = new TokenRingApp({
     filesystem: {
       providers: {
         posix: {
-          type: "posix",
-          workingDirectory: "/path/to/your/project",
-          defaultSelectedFiles: ["**/*.ts", "**/*.js"]
+          type: "posix"
         }
       }
     },
@@ -247,8 +236,7 @@ const app = new TokenRingApp({
       providers: {
         posix: {
           type: "posix",
-          workingDirectory: "/path/to/your/project",
-          isolation: "auto"  // Optional: 'none', 'bubblewrap', or 'auto' (default)
+          isolation: "auto"
         }
       }
     }
@@ -272,35 +260,40 @@ const packageConfigSchema = z.object({
 });
 ```
 
-### Configuration Options
+### Provider Options Schemas
 
-#### Filesystem Provider Configuration
-
-```typescript
-filesystem?: {
-  providers: {
-    [providerName: string]: {
-      type: "posix";
-      workingDirectory: string;
-      defaultSelectedFiles?: string[];
-    };
-  };
-};
-```
-
-#### Terminal Provider Configuration
+**Filesystem Provider:**
 
 ```typescript
-terminal?: {
-  providers: {
-    [providerName: string]: {
-      type: "posix";
-      workingDirectory: string;
-      isolation?: "none" | "bubblewrap" | "auto";
-    };
-  };
-};
+const PosixFileSystemProviderOptionsSchema = z.object({
+  // No options currently
+});
 ```
+
+**Terminal Provider:**
+
+```typescript
+const PosixTerminalProviderOptionsSchema = z.object({
+  isolation: z.enum(['auto', 'none', 'bubblewrap']).default('auto')
+});
+```
+
+**Isolation Modes:**
+
+- `"auto"` (default) - Automatically uses bubblewrap if the `bwrap` executable is available, otherwise falls back to none
+- `"bubblewrap"` - Commands run in a bubblewrap sandbox with restricted filesystem access
+- `"none"` - No sandboxing, commands run directly on the host system
+
+**Bubblewrap Sandboxing Details:**
+
+When bubblewrap is enabled, the sandbox provides:
+- Read-only access to system directories (`/usr`, `/lib`, `/lib64`, `/bin`, `/sbin`, `/etc`)
+- Read-write access only to the current working directory
+- Temporary `/tmp` directory (tmpfs)
+- Access to `/proc` and `/dev`
+- Network access (via `--share-net`)
+- Process isolation with `--unshare-all`
+- Automatic termination when parent process exits (`--die-with-parent`)
 
 ## Usage Examples
 
@@ -317,9 +310,7 @@ const app = new TokenRingApp({
     filesystem: {
       providers: {
         posix: {
-          type: "posix",
-          workingDirectory: process.cwd(),
-          defaultSelectedFiles: ["**/*.ts", "**/*.js"]
+          type: "posix"
         }
       }
     },
@@ -327,8 +318,7 @@ const app = new TokenRingApp({
       providers: {
         posix: {
           type: "posix",
-          workingDirectory: process.cwd(),
-          isolation: "auto"  // Auto-detect bubblewrap
+          isolation: "auto"
         }
       }
     }
@@ -346,10 +336,7 @@ await app.start();
 ```typescript
 import { PosixFileSystemProvider } from "@tokenring-ai/posix-system";
 
-const fsProvider = new PosixFileSystemProvider({
-  workingDirectory: process.cwd(),
-  defaultSelectedFiles: ["**/*.ts", "**/*.js"]
-});
+const fsProvider = new PosixFileSystemProvider({});
 
 // Write a file
 await fsProvider.writeFile("test.txt", "Hello, World!");
@@ -369,6 +356,9 @@ const stats = await fsProvider.stat("test.txt");
 console.log(stats.isFile);       // true
 console.log(stats.size);         // 13
 console.log(stats.modified);     // Date object
+
+// Append to a file
+await fsProvider.appendFile("test.txt", "\nAppended text");
 ```
 
 #### Directory Operations
@@ -385,25 +375,6 @@ await fsProvider.rename("subdir/copy.txt", "subdir/renamed.txt");
 
 // Delete a file
 await fsProvider.deleteFile("subdir/renamed.txt");
-```
-
-#### Path Resolution
-
-```typescript
-// Relative paths are resolved relative to workingDirectory
-const absPath = fsProvider.relativeOrAbsolutePathToAbsolutePath("file.txt");
-console.log(absPath);  // "/absolute/path/to/workingDirectory/file.txt"
-
-// Absolute paths are validated to ensure they're within workingDirectory
-const relPath = fsProvider.relativeOrAbsolutePathToRelativePath(absPath);
-console.log(relPath);  // "file.txt"
-
-// Attempting to access paths outside workingDirectory throws an error
-try {
-  fsProvider.relativeOrAbsolutePathToAbsolutePath("/etc/passwd");
-} catch (error) {
-  console.error(error.message);  // "Path /etc/passwd is outside the root directory"
-}
 ```
 
 #### File Watching
@@ -430,6 +401,8 @@ watcher.on('unlink', (path) => {
 
 ### Terminal Provider Usage
 
+**Note:** `PosixTerminalProvider` requires `app` and `terminalService` instances. It is typically used through the plugin registration pattern rather than direct instantiation.
+
 #### Execute Shell Commands
 
 ```typescript
@@ -437,12 +410,10 @@ import { PosixTerminalProvider } from "@tokenring-ai/posix-system";
 import TokenRingApp from "@tokenring-ai/app";
 import { TerminalService } from "@tokenring-ai/terminal";
 
-// Note: PosixTerminalProvider requires app and terminalService instances
 const app = new TokenRingApp({});
 const terminalService = app.getService(TerminalService);
 
 const terminalProvider = new PosixTerminalProvider(app, terminalService, {
-  workingDirectory: process.cwd(),
   isolation: "auto"  // Auto-detect bubblewrap
 });
 
@@ -452,7 +423,6 @@ console.log(`Running with isolation: ${isolationLevel}`);  // 'none' or 'sandbox
 
 // Execute shell commands with arguments
 const result = await terminalProvider.executeCommand("ls", ["-la"], {
-  workingDirectory: ".",
   timeoutSeconds: 30,
   env: { CUSTOM_VAR: "value" }
 });
@@ -473,7 +443,6 @@ if (result.status === "success") {
 
 ```typescript
 const scriptResult = await terminalProvider.runScript("npm install", {
-  workingDirectory: ".",
   timeoutSeconds: 60
 });
 
@@ -500,13 +469,12 @@ const app = new TokenRingApp({});
 const terminalService = app.getService(TerminalService);
 
 const terminalProvider = new PosixTerminalProvider(app, terminalService, {
-  workingDirectory: process.cwd()
+  isolation: "auto"
 });
 
 // Start an interactive session
 const sessionId = await terminalProvider.startInteractiveSession({
-  workingDirectory: ".",
-  timeoutSeconds: 0,  // No timeout for interactive sessions
+  timeoutSeconds: 0  // No timeout for interactive sessions
 });
 
 console.log(`Session started: ${sessionId}`);
@@ -521,7 +489,7 @@ await new Promise(resolve => setTimeout(resolve, 200));
 const output = await terminalProvider.collectOutput(sessionId, 0, {
   minInterval: 0.1,
   settleInterval: 0.5,
-  maxInterval: 5,
+  maxInterval: 5
 });
 
 console.log(output.output);
@@ -548,6 +516,10 @@ await terminalProvider.terminateSession(sessionId);
 #### Glob Patterns
 
 ```typescript
+import { PosixFileSystemProvider } from "@tokenring-ai/posix-system";
+
+const fsProvider = new PosixFileSystemProvider({});
+
 // Find all TypeScript files
 const files = await fsProvider.glob("**/*.ts", {
   ignoreFilter: (file) => file.includes("node_modules"),
@@ -569,8 +541,8 @@ console.log(items);
 #### Directory Tree
 
 ```typescript
-// Get directory tree with ignore filters
-for await (const item of fsProvider.getDirectoryTree("", {
+// Get directory tree with ignore filters (async generator)
+for await (const item of fsProvider.getDirectoryTree(".", {
   ignoreFilter: (file) => file.includes("node_modules"),
   recursive: true
 })) {
@@ -624,7 +596,7 @@ export default {
           if (provider.type === "posix") {
             fileSystemService.registerFileSystemProvider(
               name,
-              new PosixFileSystemProvider(LocalFileSystemProviderOptionsSchema.parse(provider))
+              new PosixFileSystemProvider(PosixFileSystemProviderOptionsSchema.parse(provider))
             );
           }
         }
@@ -637,7 +609,7 @@ export default {
           if (provider.type === "posix") {
             terminalService.registerTerminalProvider(
               name,
-              new PosixTerminalProvider(app, terminalService, LocalTerminalProviderOptionsSchema.parse(provider))
+              new PosixTerminalProvider(app, terminalService, PosixTerminalProviderOptionsSchema.parse(provider))
             );
           }
         }
@@ -657,7 +629,7 @@ The package integrates with the agent system through the app framework. Filesyst
 When bubblewrap is enabled (isolation mode is `'bubblewrap'` or `'auto'` with `bwrap` available), the sandbox provides:
 
 - **Read-only system directories**: `/usr`, `/lib`, `/lib64`, `/bin`, `/sbin`, `/etc`
-- **Read-write working directory**: Only the specified `workingDirectory` is writable
+- **Read-write working directory**: Only the specified working directory is writable
 - **Temporary directory**: `/tmp` is a tmpfs (in-memory filesystem)
 - **System access**: `/proc` and `/dev` are accessible
 - **Network access**: Network is shared with host (`--share-net`)
@@ -668,68 +640,48 @@ This provides a secure execution environment that prevents commands from modifyi
 
 ## Best Practices
 
-### Security
+### Filesystem Provider
 
-1. **Always specify workingDirectory**: Never use `process.cwd()` as the root directory in production. Use a specific project directory instead.
-2. **Use ignore filters**: Always include ignore filters to exclude node_modules, build artifacts, and temporary files.
-3. **Validate paths**: Always validate user input before passing to provider methods.
-4. **Set timeouts**: Always set timeout limits for terminal operations to prevent hanging.
-5. **Use sandboxing**: Consider using bubblewrap sandboxing for untrusted commands.
+1. **Use ignore filters**: When performing glob or grep operations, always provide an ignore filter to respect project conventions (e.g., ignore `node_modules`, `.git`, etc.).
 
-### Performance
+2. **Check existence before operations**: Use `exists()` or `stat()` to check if a file/directory exists before performing operations that might fail.
 
-1. **Use glob patterns**: Prefer glob patterns over individual file operations for batch processing.
-2. **Batch operations**: Combine multiple file operations where possible.
-3. **Watch selectively**: Use specific directories for watching rather than the entire filesystem.
+3. **Handle null returns**: `readFile()` returns `null` for non-existent files, so always check for null before using the result.
 
-### Error Handling
+4. **Use recursive operations wisely**: When creating directories or copying, consider using the `recursive` option to handle nested structures.
 
-1. **Check result.status**: Always check `result.status` for terminal operations and handle each status type appropriately.
-2. **Handle null reads**: Always check if `readFile` returns `null` before processing file content.
-3. **Log errors**: Log both stdout and stderr for failed operations.
-4. **Security violations**: Handle path violation errors gracefully and provide helpful error messages.
+5. **Memory-efficient traversal**: Use `getDirectoryTree()` async generator for large directory trees to avoid loading everything into memory.
 
-### Session Management
-
-1. **Terminate sessions**: Always terminate interactive sessions when done to free up resources.
-2. **Check session status**: Monitor session status to detect when sessions complete or fail.
-3. **Handle disconnections**: Implement reconnection logic for long-running sessions.
-
-### Filesystem Provider Best Practices
-
-1. **Always use relative paths**: When working with the provider, use relative paths. The provider will resolve them to absolute paths within the working directory.
-2. **Use ignore filters**: When performing glob or grep operations, always provide an ignore filter to respect project conventions (e.g., ignore `node_modules`, `.git`, etc.).
-3. **Check existence before operations**: Use `exists()` or `stat()` to check if a file/directory exists before performing operations that might fail.
-4. **Handle null returns**: `readFile()` returns `null` for non-existent files, so always check for null before using the result.
-5. **Use recursive operations wisely**: When creating directories or copying, consider using the `recursive` option to handle nested structures.
-
-### Terminal Provider Best Practices
+### Terminal Provider
 
 1. **Set appropriate timeouts**: For long-running commands, set `timeoutSeconds` to prevent hanging. Use `0` for interactive sessions.
+
 2. **Check isolation level**: Always check the isolation level using `getIsolationLevel()` to understand the security context of command execution.
+
 3. **Handle all status types**: Always check the `status` field in command results and handle all possible states (`success`, `timeout`, `badExitCode`, `unknownError`).
+
 4. **Manage session lifecycle**: For interactive sessions, always terminate them when done to free up resources.
-5. **Use proper environment variables**: When setting environment variables, merge with `process.env` to preserve system variables.
-6. **Wait for output**: When collecting output from interactive sessions, allow sufficient time for output to appear before collecting.
+
+5. **Wait for output**: When collecting output from interactive sessions, allow sufficient time for output to appear before collecting.
+
+6. **Bubblewrap availability**: The `auto` isolation mode will detect bubblewrap availability. Ensure `bwrap` is installed for sandboxed execution.
 
 ## Type Definitions
 
-### LocalFileSystemProviderOptions
+### PosixFileSystemProviderOptions
 
 ```typescript
-interface LocalFileSystemProviderOptions {
-  workingDirectory: string;
-  defaultSelectedFiles?: string[];
-}
+type PosixFileSystemProviderOptions = {
+  // No options currently
+};
 ```
 
-### LocalTerminalProviderOptions
+### PosixTerminalProviderOptions
 
 ```typescript
-interface LocalTerminalProviderOptions {
-  workingDirectory: string;
-  isolation?: "auto" | "none" | "bubblewrap";
-}
+type PosixTerminalProviderOptions = {
+  isolation: 'auto' | 'none' | 'bubblewrap';
+};
 ```
 
 ### StatLike
@@ -778,6 +730,7 @@ interface GrepOptions {
     linesBefore?: number;
     linesAfter?: number;
   };
+  cwd?: string;
 }
 ```
 
@@ -830,7 +783,6 @@ interface ExecuteCommandOptions {
   timeoutSeconds?: number;
   env?: Record<string, string>;
   workingDirectory?: string;
-  input?: string;
 }
 ```
 
@@ -857,7 +809,6 @@ The providers include comprehensive error handling:
 
 ### Filesystem Provider Errors
 
-- **Path outside root directory**: Throws `Error` with message `Path {path} is outside the root directory`
 - **File not found**: 
   - `readFile()` returns `null`
   - `deleteFile()` throws `Error` with message `File {path} does not exist`
@@ -872,7 +823,7 @@ The providers include comprehensive error handling:
 - **Bad exit code**: Returns result with `status: "badExitCode"` and includes `exitCode` and `output`
 - **Unknown errors**: Returns result with `status: "unknownError"` and includes error message
 - **Session not found**: Methods operating on sessions throw `Error` if session ID is not found
-- **Directory not found**: Constructor throws `Error` if workingDirectory does not exist
+- **Directory not found**: Constructor throws `Error` if working directory does not exist for interactive sessions
 
 ### Error Handling Examples
 
@@ -882,13 +833,6 @@ try {
   await fsProvider.deleteFile("nonexistent.txt");
 } catch (error) {
   console.error(error.message);  // "File nonexistent.txt does not exist"
-}
-
-// Path security error handling
-try {
-  fsProvider.relativeOrAbsolutePathToAbsolutePath("/etc/passwd");
-} catch (error) {
-  console.error(error.message);  // "Path /etc/passwd is outside the root directory"
 }
 
 // Terminal command error handling
@@ -909,7 +853,7 @@ try {
 }
 ```
 
-## Testing
+## Testing and Development
 
 Run the test suite:
 
@@ -945,7 +889,6 @@ The test suite includes integration tests covering:
 - Terminal command execution
 - Terminal script execution
 - Interactive session management
-- Path validation and security checks
 - Error handling scenarios
 
 ### Test Files
@@ -953,6 +896,16 @@ The test suite includes integration tests covering:
 - **PosixFileSystemProvider.integration.test.ts**: Integration tests for filesystem operations
 - **PosixTerminalProvider.integration.test.ts**: Integration tests for terminal operations
 - **PosixTerminalProvider.persistent.test.ts**: Tests for persistent session management
+
+### Running Specific Tests
+
+```bash
+# Run filesystem provider tests
+bun run test PosixFileSystemProvider
+
+# Run terminal provider tests
+bun run test PosixTerminalProvider
+```
 
 ## Dependencies
 
@@ -967,7 +920,7 @@ The test suite includes integration tests covering:
 - `zod` (^4.3.6): Runtime type validation
 - `chokidar` (^5.0.0): File system watching
 - `execa` (^9.6.1): Shell command execution
-- `fs-extra` (^11.3.3): File system utilities
+- `fs-extra` (^11.3.4): File system utilities
 - `glob` (^13.0.6): Glob pattern matching
 - `glob-gitignore` (^1.0.15): Gitignore-aware glob patterns
 - `bun-pty` (^0.4.8): Terminal emulation and PTY management
@@ -975,8 +928,8 @@ The test suite includes integration tests covering:
 ### Development Dependencies
 
 - `@types/fs-extra` (^11.0.4): File system type definitions
-- `vitest` (^4.0.18): Testing framework
-- `typescript` (^5.9.3): TypeScript compiler
+- `vitest` (^4.1.1): Testing framework
+- `typescript` (^6.0.2): TypeScript compiler
 
 ## Related Components
 
@@ -987,4 +940,4 @@ The test suite includes integration tests covering:
 
 ## License
 
-MIT License - see `LICENSE` file for details.
+MIT License - see LICENSE file for details.

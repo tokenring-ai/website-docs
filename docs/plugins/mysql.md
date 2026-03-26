@@ -687,15 +687,15 @@ pkg/mysql/
 |---------|---------|-------------|
 | `@tokenring-ai/app` | `0.2.0` | Base application framework and plugin system |
 | `@tokenring-ai/database` | `0.2.0` | Abstract database provider and service |
-| `mysql2` | `^3.18.2` | MySQL driver with promise support |
+| `mysql2` | `^3.20.0` | MySQL driver with promise support |
 | `zod` | `^4.3.6` | Schema validation library |
 
 #### Development Dependencies
 
 | Package | Version | Description |
 |---------|---------|-------------|
-| `vitest` | `^4.0.18` | Test framework |
-| `typescript` | `^5.9.3` | TypeScript compiler |
+| `vitest` | `^4.1.1` | Test framework |
+| `typescript` | `^6.0.2` | TypeScript compiler |
 
 ## Related Components
 

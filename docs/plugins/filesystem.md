@@ -11,7 +11,7 @@ The package integrates deeply with the agent system, providing both tools for AI
 - **Provider-based architecture**: Support for multiple filesystem implementations (local, virtual, remote)
 - **Agent state management**: Tracks selected files, read history, working directory, and filesystem modifications
 - **Chat integration**: Context handlers for file contents and intelligent file search
-- **Tool suite**: file_read, file_write, and file_search tools for AI operations
+- **Tool suite**: file_modify, file_read, file_write, and file_search tools for AI operations
 - **Chat commands**: /file command for managing files in chat sessions
 - **RPC endpoints**: Full filesystem access via JSON-RPC
 - **Scripting functions**: createFile, deleteFile, globFiles, searchFiles for programmatic access
@@ -443,7 +443,84 @@ Manage files in the chat session with various actions to add, remove, list, or c
 
 Tools are exported from `tools.ts` and registered with `ChatService` during plugin installation.
 
-**Note:** Currently, only `write`, `read`, and `search` tools are actively exported. The `append` and `patch` tools are defined but commented out in the exports.
+**Note:** Currently, only `file_modify`, `write`, `read`, and `search` tools are actively exported. The `append` and `patch` tools are defined but commented out in the exports.
+
+### file_modify
+
+Modifies an existing file by finding and replacing contiguous blocks of lines.
+
+**File:** `pkg/filesystem/tools/findReplace.ts`
+
+**Basic Setup:**
+
+```typescript
+import {TokenRingToolDefinition} from "@tokenring-ai/chat/schema";
+import {z} from "zod";
+import findReplace from "@tokenring-ai/filesystem/tools/findReplace";
+
+const name = "file_modify";
+const displayName = "Filesystem/file_modify";
+```
+
+**Parameters:**
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `path` | `string` | Relative path of the file to modify (required). Relative to the project root directory. |
+| `findLines` | `string[]` | The lines to find in the file (required). Up to a maximum of 5 lines, each must be a complete contiguous line. |
+| `replaceLines` | `string[]` | The complete lines that will replace the matched block (required). Provide an empty array to delete the matched lines. |
+
+**Behavior:**
+
+- Finds a contiguous block of complete lines in an existing file
+- Matches must be exact, complete lines with the exact prior content
+- Partial-line matches are not allowed
+- Supports fuzzy matching with similarity threshold (0.95) when exact match fails
+- Automatically writes the updated file if content changes
+- Returns diff if file existed before (up to `maxReturnedDiffSize` limit)
+- Sets filesystem as dirty on success
+- Marks file as read in state
+- Runs file validator if configured (`validateWrittenFiles`)
+
+**Matching Rules:**
+
+- Ignores whitespace when matching lines
+- Requires contiguous block of lines (no gaps)
+- Maximum 5 lines for find operation
+- Fuzzy matching uses Levenshtein similarity when exact match fails
+- Minimum 15 characters required for fuzzy matching
+
+**Error Cases:**
+
+- Returns error if multiple exact matches found
+- Returns error if fuzzy match is not unique enough
+- Returns error if no match found
+- Returns error if file cannot be read
+
+**Agent State:**
+
+- Sets `state.dirty = true`
+- Updates `state.readFiles` with modification time
+
+**Required Context Handlers:** `["selected-files"]`
+
+**Example:**
+
+```typescript
+// Modify an existing file
+const result = await findReplace({
+  path: 'src/main.ts',
+  findLines: ['const x = 1;', 'const y = 2;'],
+  replaceLines: ['const x = 10;', 'const y = 20;']
+}, agent);
+
+// Delete lines
+const result = await findReplace({
+  path: 'src/main.ts',
+  findLines: ['// Old comment', 'const old = true;'],
+  replaceLines: []
+}, agent);
+```
 
 ### file_write
 
@@ -1477,7 +1554,7 @@ describe('FileSystemService Integration', () => {
 - **State Management** - Use `FileSystemState` for tracking file operations
 - **Context Handlers** - Register `selected-files` and `search-files` handlers
 - **Chat Commands** - Use `/file` command for manual file management
-- **Tools** - Register `file_read`, `file_write`, and `file_search` tools
+- **Tools** - Register `file_modify`, `file_read`, `file_write`, and `file_search` tools
 - **RPC Endpoints** - Expose filesystem operations via JSON-RPC
 - **Scripting** - Register `createFile`, `deleteFile`, `globFiles`, `searchFiles` functions
 - **Hooks** - Register `clearReadFiles` hook for automatic cleanup
@@ -1495,6 +1572,7 @@ pkg/filesystem/
 ├── FileMatchResource.ts             # File matching resource class
 ├── tools.ts                         # Tool exports
 ├── tools/
+│   ├── findReplace.ts               # file_modify tool
 │   ├── write.ts                     # file_write tool
 │   ├── read.ts                      # file_read tool
 │   └── search.ts                    # file_search tool

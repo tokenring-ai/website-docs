@@ -10,12 +10,13 @@ The testing package enables automated and manual testing of codebases. It integr
 
 - **Testing Resources**: Pluggable components for defining and running tests (shell commands, custom resources)
 - **Service Layer**: Central `TestingService` for managing and executing tests across resources
-- **Chat Commands**: Interactive `/test` command for manual control
+- **Chat Commands**: Interactive `/test list` and `/test run` commands for manual control
 - **Automation Hooks**: Automatic test execution after file modifications via `autoTest` hook
 - **Configuration-Based Setup**: Declarative resource configuration through plugin system with Zod schemas
 - **State Management**: Checkpoint-based state preservation during repair workflows
 - **Auto-Repair**: Automatic error detection and repair suggestions when tests fail
 - **Resource Registration**: Support for custom `TestingResource` implementations
+- **Hook Events**: `AfterTestsPassed` event type for custom hook subscriptions
 
 ## Core Components
 
@@ -264,89 +265,58 @@ This package does not define RPC endpoints.
 
 ## Chat Commands
 
-### /test Command
+#### /test list Command
 
-Run and manage tests interactively through the chat interface.
+List available tests.
 
-**Subcommands:**
+**Command Name**: `test list`
 
-- `/test list` - Display all available test resources
-- `/test run [test_name|*]` - Execute specific test or all tests
-
-**Command Definitions:**
-
-```typescript
-// /test list
-{
-  name: "test list",
-  description: "List available tests",
-  help: `# /test list
-
-Show all available tests.
-
-## Example
-
-/test list`,
-  execute: async (_remainder: string, agent: Agent): Promise<string> => {
-    const available = Array.from(
-      agent.requireServiceByType(TestingService).getAvailableResources()
-    );
-    return available.length === 0
-      ? "No tests available."
-      : "Available tests:\n" + available.map(n => ` - ${n}`).join('\n');
-  }
-}
-
-// /test run
-{
-  name: "test run",
-  description: "Run tests",
-  help: `# /test run [test_name]
-
-Run a specific test or all tests. If tests fail, the agent may offer to automatically repair the issues.
-
-## Example
-
-/test run
-/test run userAuth`,
-  execute: async (remainder: string, agent: Agent): Promise<string> => {
-    await agent.requireServiceByType(TestingService)
-      .runTests(remainder?.trim() || "*", agent);
-    return "Tests executed";
-  }
-}
-```
-
-**Example Usage:**
+**Usage**:
 
 ```bash
-# List available tests
 /test list
-# Output: Available tests:
-#   - build-test
-#   - unit-tests
-#   - integration-tests
-
-# Run specific test
-/test run build-test
-# Output: - **[Test: build-test]** : ✅ PASSED
-
-# Run all tests
-/test run
-# Output: **All tests passed!** ✨
-
-# Run test matching pattern
-/test run userAuth
-# Output: - **[Test: userAuth]** : ❌ FAILED
-#         (followed by repair prompt if configured)
 ```
 
-**Output Status Indicators:**
+**Input Schema**: No arguments required
 
-- `✅ PASSED` - Test completed successfully
-- `❌ FAILED` - Test failed with output
-- `⏳ TIMEOUT` - Test exceeded timeout
-- `⚠️ ERROR` - Test encountered an error
+**Output**:
+
+- List of available test names formatted as ` - [name]`
+- "No tests available." if no resources are registered
+
+#### /test run Command
+
+Run tests interactively through the chat interface.
+
+**Command Name**: `test run`
+
+**Usage**:
+
+```bash
+/test run [pattern]
+```
+
+**Arguments**:
+
+- `pattern` (optional): Test name or pattern to match (default: `*` for all tests)
+
+**Examples**:
+
+```bash
+/test list              # Lists all available tests
+/test run               # Run all tests (pattern defaults to '*')
+/test run build-test    # Run the 'build-test' resource
+/test run unit*         # Run all tests matching 'unit*' pattern
+```
+
+**Output**:
+
+- `✅ PASSED`: Test completed successfully
+- `❌ FAILED`: Test failed with error details and repair options may be provided
+- `⏳ TIMEOUT`: Test exceeded timeout limit
+- `⚠️ ERROR`: Test encountered an unexpected error
+
+If tests fail, the agent may offer automatic repair options based on `maxAutoRepairs` configuration.
 
 ## Configuration
 
@@ -563,36 +533,54 @@ const autoTestHook = {
 
 ### AfterTestsPassed Hook Event
 
-A custom hook event type that can be used to trigger actions after all tests have passed.
+A custom hook event type exported from the package that can be used to subscribe to test completion events.
 
-**Class Definition:**
+**Class Definition**:
 
 ```typescript
-class AfterTestsPassed {
+export class AfterTestsPassed {
   readonly type = "hook";
   constructor() {}
 }
 ```
 
-This hook event type is exported from the package and can be used to subscribe to test completion events.
+**Usage**:
+
+```typescript
+import { AfterTestsPassed, HookCallback } from '@tokenring-ai/testing/hooks';
+
+const customHook = {
+  name: "customAfterTests",
+  displayName: "Custom/After Tests",
+  description: "Runs custom logic after tests complete",
+  callbacks: [
+    new HookCallback(AfterTestsPassed, async (_data, agent) => {
+      // Custom logic here
+    })
+  ]
+};
+```
+
+**Note**: Currently, the `AfterTestsPassed` event is exported but not automatically triggered by the TestingService. It is available for future use or custom implementations to subscribe to test completion events.
 
 ### State Management
 
 The TestingService manages state through the `TestingState` class.
 
 ```typescript
-class TestingState implements AgentStateSlice<typeof serializationSchema> {
+class TestingState extends AgentStateSlice<typeof serializationSchema> {
   readonly name: string = "TestingState"
-  readonly serializationSchema: z.output<typeof serializationSchema>
 
   testResults: Record<string, TestResult> = {}
   repairCount: number = 0
   maxAutoRepairs: number
 
-  constructor(readonly initialConfig: z.output<typeof TestingServiceConfigSchema>["agentDefaults"])
+  constructor(readonly initialConfig: z.output<typeof TestingServiceConfigSchema>["agentDefaults"]) {
+    super("TestingState", serializationSchema);
+    this.maxAutoRepairs = initialConfig.maxAutoRepairs;
+  }
 
   // Methods
-  reset(what: ResetWhat[]): void
   serialize(): z.output<typeof serializationSchema>
   deserialize(data: z.output<typeof serializationSchema>): void
   show(): string[]
@@ -605,13 +593,12 @@ class TestingState implements AgentStateSlice<typeof serializationSchema> {
 - `repairCount`: Number of auto-repair attempts made
 - `maxAutoRepairs`: Maximum number of auto-repairs allowed before stopping
 
-**State Lifecycle:**
+**State Lifecycle**:
 
 1. **Initialization**: Created via `agent.initializeState(TestingState, config)` during service attach
 2. **Serialization**: State can be serialized using `serialize()` method and checkpointed
 3. **Deserialization**: State can be restored from checkpoint using `deserialize(data)`
 4. **UI Display**: State information shown via `show()` method
-5. **Reset**: `reset(what)` method can clear specific state portions
 
 **Serialization Schema:**
 
@@ -901,7 +888,8 @@ pkg/testing/
 ├── plugin.ts                # Plugin registration
 ├── index.ts                 # Public exports
 ├── package.json             # Dependencies and scripts
-└── vitest.config.ts         # Vitest configuration
+├── LICENSE                  # MIT License
+└── README.md                # Package README
 ```
 
 ### Vitest Configuration
@@ -949,8 +937,8 @@ export default defineConfig({
 
 | Package | Version | Purpose |
 |---------|---------|---------|
-| typescript | ^5.9.3 | TypeScript compiler |
-| vitest | ^4.1.0 | Testing framework |
+| typescript | ^6.0.2 | TypeScript compiler |
+| vitest | ^4.1.1 | Testing framework |
 
 ## Related Components
 

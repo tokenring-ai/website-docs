@@ -6,8 +6,8 @@ The `@tokenring-ai/utility` package provides a comprehensive collection of gener
 
 ## Key Features
 
-- **Object Utilities**: Safe object manipulation with type safety (`pick`, `omit`, `transform`, `deepMerge`, `deepEquals`, `isEmpty`, `parametricObjectFilter`, `pickValue`, `requireFields`)
-- **String Utilities**: Comprehensive string processing and formatting (`convertBoolean`, `trimMiddle`, `shellEscape`, `joinDefault`, `formatLogMessages`, `createAsciiTable`, `wrapText`, `indent`, `markdownList`, `numberedList`, `codeBlock`, `errorToString`, `markdownTable`, `dedupe`, `like`, `oneOf`, `generateHumanId`, `getRandomItem`, `intelligentTruncate`, `workingMessages`, `ridiculousMessages`)
+- **Object Utilities**: Safe object manipulation with type safety (`pick`, `omit`, `transform`, `deepMerge`, `deepEquals`, `deepClone`, `isEmpty`, `parametricObjectFilter`, `pickValue`, `requireFields`, `isPlainObject`)
+- **String Utilities**: Comprehensive string processing and formatting (`convertBoolean`, `trimMiddle`, `shellEscape`, `joinDefault`, `formatLogMessages`, `createAsciiTable`, `wrapText`, `wrapPlainText`, `flattenWrappedLines`, `visibleLength`, `truncateVisible`, `indent`, `markdownList`, `numberedList`, `codeBlock`, `errorToString`, `markdownTable`, `dedupe`, `like`, `oneOf`, `generateHumanId`, `getRandomItem`, `intelligentTruncate`, `workingMessages`, `ridiculousMessages`, `brailleSpinner`)
 - **HTTP Utilities**: Robust HTTP client with automatic retry logic (`HttpService`, `doFetchWithRetry`, `cachedDataRetriever`)
 - **Promise Utilities**: Advanced promise handling and management (`abandon`, `waitForAbort`, `backoff`)
 - **Registry Utilities**: Flexible registry patterns for service management (`KeyedRegistry`, `TypedRegistry`)
@@ -47,7 +47,11 @@ Located in `pkg/utility/string/`:
 | `joinDefault` | `(separator, iterable, default?) => string \| OtherReturnType` | Joins with default if iterable is empty |
 | `formatLogMessages` | `(msgs: (string \| Error)[]) => string` | Formats log messages with stack traces |
 | `createAsciiTable` | `(data: string[][], options: TableOptions) => string` | Generates ASCII table with wrapping |
-| `wrapText` | `(text: string, maxWidth: number) => string[]` | Wraps text to specified width |
+| `wrapText` | `(text: string, maxWidth: number) => string[]` | Wraps text to specified width, preserving paragraphs |
+| `wrapPlainText` | `(text: string, width: number) => string[]` | Wraps plain text with tab and newline handling |
+| `flattenWrappedLines` | `(lines: string[], width: number, prefix?) => string[]` | Flattens already wrapped lines with prefix |
+| `visibleLength` | `(text: string) => number` | Calculates the visible length of a string |
+| `truncateVisible` | `(text: string, width: number) => string` | Truncates text to visible width with ellipsis |
 | `indent` | `(input: string \| string[], level: number) => string` | Indents text by level |
 | `markdownList` | `(items: string[], indentLevel?) => string` | Creates markdown list |
 | `numberedList` | `(items: string[], indentLevel?) => string` | Creates numbered list |
@@ -59,7 +63,7 @@ Located in `pkg/utility/string/`:
 | `oneOf` | `(str: string, ...args: string[]) => boolean` | Checks if string is one of the provided options |
 | `generateHumanId` | `() => string` | Generates human-readable unique identifier with random suffix |
 | `getRandomItem` | `(items: string[], seed?) => string` | Returns random item from array, optionally with seed |
-| `intelligentTruncate` | `(str: string, length: number, ellipsis?) => string` | Truncates string at word boundaries |
+| `intelligentTruncate` | `(str: string, options: TruncateOptions) => string` | Truncates string at word boundaries with options for maxLength, suffix, and maxLines |
 | `workingMessages` | `string[]` | Array of working/status messages for loading indicators |
 | `ridiculousMessages` | `string[]` | Array of humorous messages for loading indicators |
 
@@ -319,6 +323,10 @@ import joinDefault from '@tokenring-ai/utility/string/joinDefault';
 import formatLogMessages from '@tokenring-ai/utility/string/formatLogMessage';
 import { createAsciiTable } from '@tokenring-ai/utility/string/asciiTable';
 import { wrapText } from '@tokenring-ai/utility/string/wrapText';
+import { wrapPlainText } from '@tokenring-ai/utility/string/wrapPlainText';
+import { flattenWrappedLines } from '@tokenring-ai/utility/string/flattenWrappedLines';
+import { visibleLength } from '@tokenring-ai/utility/string/visibleLength';
+import { truncateVisible } from '@tokenring-ai/utility/string/truncateVisible';
 import indent from '@tokenring-ai/utility/string/indent';
 import markdownList from '@tokenring-ai/utility/string/markdownList';
 import numberedList from '@tokenring-ai/utility/string/numberedList';
@@ -427,8 +435,23 @@ const randomColor = getRandomItem(colors);
 const sameColor = getRandomItem(colors, 42);
 
 // Intelligent truncation
-const truncated = intelligentTruncate('This is a long sentence', 15);
-// 'This is...'
+const truncated = intelligentTruncate('This is a long sentence', { maxLength: 15 });
+// 'This is...' 
+
+// Wrap plain text
+const wrapped = wrapPlainText('This is plain text that needs wrapping', 20);
+// ['This is plain', 'text that needs', 'wrapping']
+
+// Flatten wrapped lines
+const flattened = flattenWrappedLines(wrapped, 30, '> ');
+// ['> This is plain', '> text that needs', '> wrapping']
+
+// Visible length
+const len = visibleLength('hello'); // 5
+
+// Truncate visible
+const truncatedVisible = truncateVisible('Hello world', 8);
+// 'Hello wo…'
 
 // Working messages
 const status = workingMessages[0];
@@ -749,6 +772,7 @@ pluginRegistry.waitForItemByName('plugin-a', (plugin) => {
 
 - Use `pick` and `omit` for safe object property manipulation
 - Use `deepMerge` for combining configuration objects
+- Use `deepClone` for creating deep copies of objects
 - Use `abandon` when you intentionally want to ignore promise results
 - Use `throttle` and `debounce` to control the rate of function calls
 - Use `KeyedRegistry` for service discovery and management
@@ -757,6 +781,9 @@ pluginRegistry.waitForItemByName('plugin-a', (plugin) => {
 - Use `formatLogMessages` for consistent log output
 - Use `indent`, `markdownList`, and `numberedList` for formatted output
 - Use `wrapText` for text wrapping in tables and displays
+- Use `wrapPlainText` for text wrapping with tab and newline handling
+- Use `flattenWrappedLines` for re-wrapping already wrapped text with prefixes
+- Use `truncateVisible` for truncating text to visible width
 - Use `shellEscape` for safely executing shell commands with user input
 - Use `convertBoolean` for parsing configuration values
 - Use `dedupe` to remove duplicates from arrays
@@ -764,8 +791,9 @@ pluginRegistry.waitForItemByName('plugin-a', (plugin) => {
 - Use `parametricObjectFilter` for filtering object arrays with numeric comparisons
 - Use `requireFields` for validating configuration objects
 - Use `generateHumanId` for human-readable unique identifiers
-- Use `workingMessages` and `ridiculousMessages` for loading indicators
+- Use `workingMessages`, `ridiculousMessages`, and `brailleSpinner` for loading indicators
 - Use `defaultEnv` with `_FILE` support for secrets management
+- Use `intelligentTruncate` for smart truncation that preserves word boundaries
 
 ## Testing and Development
 
@@ -850,6 +878,12 @@ describe('Timer Utilities', () => {
 - Environment utilities support `_FILE` suffix for loading secrets from files
 - The `doFetchWithRetry` function performs up to 4 attempts (initial + 3 retries)
 - The `cachedDataRetriever` prevents concurrent duplicate requests
+- The `brailleSpinner` provides Unicode braille characters for smooth spinner animations
+- The `visibleLength` function correctly counts Unicode characters (not just bytes)
+- The `truncateVisible` function truncates to visible width with ellipsis
+- The `wrapPlainText` function handles tabs and newlines correctly
+- The `flattenWrappedLines` function re-wraps text with prefixes for indented output
+- The `intelligentTruncate` function preserves word boundaries when truncating
 
 ## License
 

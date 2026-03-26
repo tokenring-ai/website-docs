@@ -391,15 +391,15 @@ pkg/javascript/
 |---------|---------|---------|
 | `@tokenring-ai/app` | 0.2.0 | Plugin framework and application core |
 | `@tokenring-ai/filesystem` | 0.2.0 | FileSystemService for file validation |
-| `eslint` | ^10.0.3 | JavaScript linting engine |
+| `eslint` | ^10.1.0 | JavaScript linting engine |
 | `zod` | ^4.3.6 | Schema validation |
 
 ### Development Dependencies
 
 | Package | Version | Purpose |
 |---------|---------|---------|
-| `typescript` | ^5.9.3 | TypeScript compiler |
-| `vitest` | ^4.1.0 | Testing framework |
+| `typescript` | ^6.0.2 | TypeScript compiler |
+| `vitest` | ^4.1.1 | Testing framework |
 
 ## Related Components
 

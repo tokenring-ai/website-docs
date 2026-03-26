@@ -341,7 +341,7 @@ Converts text to speech and plays it through the speakers.
 - `<text>` - Text to convert to speech
 
 **Options:**
-- `--voice <id>` - Voice ID to use for speech generation (accepted but currently not used in tool implementation)
+- `--voice <id>` - Voice ID for speech generation (note: currently not implemented in the tool)
 - `--speed <n>` - Speech speed (numeric value)
 
 **Example:**

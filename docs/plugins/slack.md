@@ -114,7 +114,7 @@ constructor(config: ParsedSlackEscalationProviderConfig)
 
 ### splitIntoChunks Function
 
-Splits text into chunks suitable for Slack messages.
+Splits text into chunks suitable for Slack messages, respecting Slack's 3900 character limit per message.
 
 ```typescript
 function splitIntoChunks(text: string | null): string[]
@@ -124,9 +124,17 @@ function splitIntoChunks(text: string | null): string[]
   - `text`: The text to split, or null for a "working" message
 - **Returns**: Array of message chunks (max 3900 characters each)
 
+**Chunking Strategy:**
+- **Null Text**: Returns a randomized "working" message (e.g., "***Working... ⏳***")
+- **Section-Based Splitting**: Attempts to split on header lines (lines starting with `#`) for more natural chunk boundaries
+- **Hard Limit Enforcement**: Any chunk exceeding 3900 characters is force-split at the limit
+- **Preserves Structure**: Tries to keep related content together when possible
+
 **Key Features:**
 - Splits long messages into 3900 character chunks
-- Handles null text by returning a "working" message
+- Handles null text by returning a randomized "working" message
+- Uses section-based splitting for more natural chunk boundaries
+- Force-splits oversized chunks to respect Slack's limits
 - Used by SlackBot for message buffering
 
 ## Services
@@ -313,6 +321,8 @@ export type ParsedSlackEscalationProviderConfig = z.output<typeof SlackEscalatio
 - `channelId` (string): Slack channel ID (required)
 - `allowedUsers` (string[]): Array of authorized user IDs (optional, empty array = all users)
 - `agentType` (string): Agent type to create for the channel (required)
+
+**Note**: The `channels` record can be empty. This is useful when the bot is only used for direct messages or when channels are added dynamically.
 
 ### Multiple Bots Configuration
 
@@ -748,7 +758,7 @@ pkg/slack/
 └── integration.test.ts         # Integration tests
 ```
 
-### Dependencies
+## Dependencies
 
 **Production Dependencies:**
 - `@tokenring-ai/app` (0.2.0) - TokenRing application framework
@@ -762,8 +772,8 @@ pkg/slack/
 - `zod` (^4.3.6) - Schema validation
 
 **Development Dependencies:**
-- `vitest` (^4.1.0) - Testing framework
-- `typescript` (^5.9.3) - TypeScript compiler
+- `vitest` (^4.1.1) - Testing framework
+- `typescript` (^6.0.2) - TypeScript compiler
 
 ## Error Handling
 

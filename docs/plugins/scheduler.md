@@ -13,7 +13,7 @@ The scheduler integrates seamlessly with the TokenRing agent framework, providin
 - **Task Scheduling**: Schedule agents to run at specified intervals or conditions
 - **Time Windows**: Define running time windows with start and end times
 - **Recurring Tasks**: Support for second, minute, hour, day, week, and month intervals
-- **One-time Tasks**: Execute tasks once at a specific time using `once` flag
+- **One-time Tasks**: Execute tasks once by omitting the `repeat` field
 - **Agent Integration**: Automatically spawn and run agents for scheduled tasks
 - **Monitoring**: Track task execution history and current status
 - **Chat Commands**: `/schedule` and `/loop` commands to manage and view scheduled tasks
@@ -212,14 +212,14 @@ The command will prompt for:
 - **Task Name**: Unique identifier for the task
 - **Instructions for the agent**: The message to send to the agent when the task runs
 - **How often to run**: One of:
-  - Once (runs only one time, sets `once: true`)
   - Every 5 minutes
   - Every hour
   - Every day
+  - For one-time tasks, simply omit the repeat interval when creating the task
 - **Earliest time of day**: Optional start time (hh:mm, 24-hour clock)
 - **Latest time of day**: Optional end time (hh:mm, 24-hour clock)
 
-**Note:** If "Once" is selected, the task configuration includes `once: true` instead of a `repeat` field.
+- **Note:** For one-time tasks, omit the `repeat` field instead of specifying a recurrence interval.
 
 #### /schedule remove
 
@@ -372,7 +372,7 @@ z.object({
 })
 ```
 
-**Note:** For one-time tasks, use `once: true` instead of `repeat`.
+**Note:** For one-time tasks, omit the `repeat` field entirely.
 
 ## Usage Examples
 
@@ -448,10 +448,12 @@ app.install(scheduler);
 ```javascript
 {
   message: "/chat Run cleanup task",
-  once: true,
   after: "14:00",
   timezone: "America/New_York"
 }
+```
+
+**Note:** For one-time tasks, omit the `repeat` field. The task will run once at the specified time window.
 ```
 
 ## Tools
@@ -476,9 +478,9 @@ Add a new scheduled task to run an agent at specified intervals.
 
 **Note:** The tool combines `description` and `context` into the task message with the format:
 ```
-{description}
+{`{description}`}
 
-ADDITIONAL CONTEXT:{context}
+ADDITIONAL CONTEXT:{`{context}`}
 ```
 
 **Required Context Handlers:** `["available-agents"]`

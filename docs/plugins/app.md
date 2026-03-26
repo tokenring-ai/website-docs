@@ -17,6 +17,7 @@ Base application framework for TokenRing applications, providing service managem
 - **Async State Subscriptions**: Support for async state observation with abort handling
 - **Service Auto-Restart**: Services that exit unexpectedly are automatically restarted after 5 seconds
 - **Session Checkpointing**: Generate and restore app session checkpoints with state persistence
+- **Human ID Generation**: Automatic generation of human-readable session IDs
 
 ## Core Components
 
@@ -35,6 +36,10 @@ Type-safe state management with serialization support.
 ### buildTokenRingAppConfig
 
 Configuration builder that loads from multiple locations with Zod validation. Creates data directory and `.gitignore` file if they don't exist.
+
+### AppLogsState
+
+State slice for managing application logs with timestamp, level, and message.
 
 ## Services
 
@@ -70,18 +75,27 @@ This package does not define chat commands. Chat commands are typically defined 
 ```typescript
 export const TokenRingAppConfigSchema = z.object({
   app: z.object({
-    workingDirectory: z.string(),
     dataDirectory: z.string(),
     configFileName: z.string(),
     configSchema: z.custom<z.ZodTypeAny>(),
-    packageDirectory: z.string(),
-    hostname: z.string(),
+    shutdownMonitorIntervalMs: z.number().default(2000),
+    serviceRestartDelayMs: z.number().default(5000),
   })
 });
 
 export const LooseTokenRingAppConfigSchema = TokenRingAppConfigSchema.loose();
 export type TokenRingAppConfig = z.output<typeof LooseTokenRingAppConfigSchema>;
 ```
+
+**Configuration Options:**
+
+| Property | Type | Default | Description |
+|----------|------|---------|-------------|
+| `dataDirectory` | `string` | - | Directory for application data storage |
+| `configFileName` | `string` | - | Base name for configuration files (without extension) |
+| `configSchema` | `ZodTypeAny` | - | Zod schema for validating application configuration |
+| `shutdownMonitorIntervalMs` | `number` | `2000` | Interval in milliseconds for monitoring shutdown progress |
+| `serviceRestartDelayMs` | `number` | `5000` | Delay in milliseconds before restarting a service that exited unexpectedly |
 
 ### Plugin Configuration Schema
 
@@ -119,7 +133,7 @@ const myPlugin: TokenRingPlugin<typeof MyPluginSchema> = {
 
 Config files are loaded from `~` (home) and `dataDirectory` in that order, with extensions `.ts`, `.mjs`, `.cjs`, `.js`. The config is validated at each step to ensure it is complete and well-formed.
 
-**Additional Behavior**:
+**Additional Behavior:**
 - Creates the data directory if it doesn't exist
 - Creates a `.gitignore` file in the data directory if it doesn't exist (with `*.sqlite*` pattern)
 - Merges configs using `deepMerge` from `@tokenring-ai/utility`
@@ -278,18 +292,17 @@ import { z } from "zod";
 
 const config = {
   app: {
-    workingDirectory: "/path/to/app",
     dataDirectory: "/path/to/data",
     configFileName: "app.config",
     configSchema: z.object({ apiKey: z.string() }),
-    packageDirectory: "/path/to/package",
-    hostname: "localhost"
+    shutdownMonitorIntervalMs: 2000,
+    serviceRestartDelayMs: 5000,
   }
 };
 
 const app = new TokenRingApp(config);
 
-console.log(app.sessionId); // Unique session ID for this instance
+console.log(app.sessionId); // Unique human-readable session ID for this instance
 ```
 
 ### Service Management
@@ -453,12 +466,11 @@ const AppConfigSchema = z.object({
 
 const config = await buildTokenRingAppConfig({
   app: {
-    workingDirectory: "/path/to/app",
     dataDirectory: "/path/to/data",
     configFileName: "app.config",
     configSchema: AppConfigSchema,
-    packageDirectory: "/path/to/package",
-    hostname: "localhost"
+    shutdownMonitorIntervalMs: 2000,
+    serviceRestartDelayMs: 5000,
   },
   apiKey: "",
   model: "gpt-3.5-turbo"
@@ -599,6 +611,29 @@ app.shutdown("User requested shutdown");
 // and automatically exit when all services have stopped
 ```
 
+### AppLogsState Usage
+
+```typescript
+import TokenRingApp from "@tokenring-ai/app";
+import { AppLogsState } from "@tokenring-ai/app/state/AppLogsState";
+
+const app = new TokenRingApp(config);
+
+// Get logs
+const logs = app.logs;
+console.log(logs); // Array of LogEntry
+
+// Access AppLogsState directly
+const logsState = app.stateManager.getState(AppLogsState);
+logsState.addLog("info", "Custom log message");
+logsState.clear();
+
+// Subscribe to log changes
+const unsubscribe = app.stateManager.subscribe(AppLogsState, (state) => {
+  console.log("Logs updated:", state.getLogs());
+});
+```
+
 ## Core Properties
 
 ### TokenRingApp Properties
@@ -607,11 +642,13 @@ app.shutdown("User requested shutdown");
 |----------|------|-------------|
 | `config` | `TokenRingAppConfig` | The application configuration |
 | `logs` | `LogEntry[]` | Array of logged system messages |
-| `sessionId` | `string` | Unique session ID for this instance |
+| `sessionId` | `string` | Unique human-readable session ID for this instance (generated via `generateHumanId`) |
 | `stateManager` | `StateManager<AppStateSlice<any>>` | State manager for app-level state |
 | `runningServices` | `Set<TokenRingService>` | Set of services currently running |
+| `stoppingServices` | `Set<TokenRingService>` | Set of services currently stopping |
 | `backgroundTasks` | `Map<TokenRingService, number>` | Map tracking background task counts per service |
 | `services` | `TypedRegistry<TokenRingService>` | Registry of all registered services |
+| `isShuttingDown` | `boolean` | Whether the app is in shutdown process |
 
 ### PluginManager Properties
 
@@ -626,6 +663,12 @@ app.shutdown("User requested shutdown");
 |----------|------|-------------|
 | `state` | `Map<Function, SpecificStateSliceType>` | Internal state storage keyed by class constructor |
 | `startingState` | `Record<string, unknown>` | Initial state for restoration |
+
+### AppLogsState Properties
+
+| Property | Type | Description |
+|----------|------|-------------|
+| `logs` | `LogEntry[]` | Array of log entries |
 
 ## Core Methods
 
@@ -692,7 +735,7 @@ Get a validated config slice using a Zod schema. Throws if the key doesn't exist
 ```typescript
 generateStateCheckpoint(): AppSessionCheckpoint
 ```
-Generate a session checkpoint containing the current state, session ID, timestamp, hostname, and working directory.
+Generate a session checkpoint containing the current state, session ID, timestamp, hostname, and project directory.
 
 ```typescript
 restoreState(state: Record<string, object>): void
@@ -771,10 +814,7 @@ serialize(): Record<string, object>
 Serialize all state slices to a record keyed by state slice class constructor.
 
 ```typescript
-deserialize(
-  data: Record<string, unknown>,
-  onMissing?: (key: string) => void
-): void
+deserialize(data: Record<string, unknown>, onMissing?: (key: string) => void): void
 ```
 Deserialize state slices. Unknown keys trigger the onMissing callback. Validates data against serialization schema.
 
@@ -837,7 +877,7 @@ Build application configuration by loading from multiple locations with Zod vali
 
 **Config Loading Order**: Config files are loaded from `~` (home) and `dataDirectory` in that order, with extensions `.ts`, `.mjs`, `.cjs`, `.js`. The config is validated at each step to ensure it is complete and well-formed.
 
-**Additional Behavior**:
+**Additional Behavior:**
 - Creates the data directory if it doesn't exist
 - Creates a `.gitignore` file in the data directory if it doesn't exist (with `*.sqlite*` pattern)
 - Merges configs using `deepMerge` from `@tokenring-ai/utility`
@@ -951,7 +991,7 @@ There are two types of plugins:
 }
 ```
 
-**Important Notes**:
+**Important Notes:**
 - `install()` cannot be awaited. Any async operations must be done in `start()`
 - `start()` is called after all plugins are installed
 - `reconfigure()` is called when plugin configuration changes and the plugin supports reconfiguration
@@ -998,7 +1038,7 @@ interface AppSessionCheckpoint {
   sessionId: string;
   createdAt: number;
   hostname: string;
-  workingDirectory: string;
+  projectDirectory: string;
   state: Record<string, object>;
 }
 ```
@@ -1008,7 +1048,7 @@ interface AppSessionCheckpoint {
 | `sessionId` | Unique session ID |
 | `createdAt` | Timestamp when checkpoint was created |
 | `hostname` | Hostname of the machine |
-| `workingDirectory` | Working directory path |
+| `projectDirectory` | Project directory path |
 | `state` | Serialized state |
 
 ### StateStorageInterface
@@ -1034,12 +1074,11 @@ interface StateStorageInterface<SpecificStateSliceType extends SerializableState
 ```typescript
 export const TokenRingAppConfigSchema = z.object({
   app: z.object({
-    workingDirectory: z.string(),
     dataDirectory: z.string(),
     configFileName: z.string(),
     configSchema: z.custom<z.ZodTypeAny>(),
-    packageDirectory: z.string(),
-    hostname: z.string(),
+    shutdownMonitorIntervalMs: z.number().default(2000),
+    serviceRestartDelayMs: z.number().default(5000),
   })
 });
 
@@ -1056,6 +1095,46 @@ type LogEntry = {
   message: string;
 };
 ```
+
+### AppLogsState
+
+State slice for managing application logs.
+
+```typescript
+export class AppLogsState extends AppStateSlice<typeof serializationSchema> {
+  logs: LogEntry[] = [];
+
+  constructor() {
+    super("AppLogsState", serializationSchema);
+  }
+
+  serialize(): z.output<typeof serializationSchema> {
+    return { logs: this.logs };
+  }
+
+  deserialize(data: z.output<typeof serializationSchema>): void {
+    this.logs = data.logs ?? [];
+  }
+
+  addLog(level: "info" | "error", message: string): void {
+    this.logs.push({ timestamp: Date.now(), level, message });
+  }
+
+  clear(): void {
+    this.logs = [];
+  }
+
+  getLogs(): LogEntry[] {
+    return this.logs;
+  }
+}
+```
+
+| Method | Description |
+|--------|-------------|
+| `addLog(level, message)` | Add a log entry with timestamp |
+| `clear()` | Clear all logs |
+| `getLogs()` | Get all log entries |
 
 ## Error Handling
 
@@ -1118,6 +1197,8 @@ pkg/app/
 ├── buildTokenRingAppConfig.ts  # Config builder function
 ├── types.ts               # Type definitions
 ├── index.ts               # Main exports
+├── state/
+│   └── AppLogsState.ts    # Application logs state slice
 ├── test/
 │   ├── TokenRingApp.test.ts
 │   ├── PluginManager.test.ts
@@ -1158,6 +1239,6 @@ pkg/app/
 
 ## License
 
-MIT License - see [LICENSE](./LICENSE) file for details.
+MIT License - see LICENSE file for details.
 
 Copyright (c) 2025 Mark Dierolf

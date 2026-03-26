@@ -192,19 +192,19 @@ const provider = new ChromeWebSearchProvider(chromeService);
 async searchWeb(query: string, options?: WebSearchProviderOptions, agent?: Agent): Promise<WebSearchResult>
 ```
 
-Performs Google web search via Puppeteer browser. Returns organic search results with title, link, and snippet in order of appearance. Supports `countryCode` parameter. Uses `[data-ved] h3` selectors for results and `[data-sncf]` for snippets. Browser launched and disconnected per request. **Requires agent parameter.**
+Performs Google web search via Puppeteer browser. Returns organic search results with title, link, and snippet in order of appearance. Supports `countryCode` parameter. Uses `[data-ved] h3` selectors for results and `[data-sncf]` for snippets. Browser is **disconnected** after each request. **Requires agent parameter.**
 
 ```typescript
 async searchNews(query: string, options?: WebSearchProviderOptions, agent?: Agent): Promise<NewsSearchResult>
 ```
 
-Performs Google News search via Puppeteer browser. Returns array of news articles with metadata. Parses article containers using `[data-news-doc-id]` attribute. Extracts title, snippet, source, and date from page elements using data attributes. Browser launched and disconnected per request. **Requires agent parameter.**
+Performs Google News search via Puppeteer browser. Returns array of news articles with metadata. Parses article containers using `[data-news-doc-id]` attribute. Extracts title, snippet, source, and date from page elements using data attributes. Browser is **disconnected** after each request. **Requires agent parameter.**
 
 ```typescript
 async fetchPage(url: string, options?: WebPageOptions, agent?: Agent): Promise<WebPageResult>
 ```
 
-Scrapes web page content using Puppeteer browser. Converts HTML to Markdown using TurndownService. Supports rendered and non-rendered fetching via `render` option - `true` waits for `networkidle0`, `false` waits for `domcontentloaded`. Browser launched and disconnected per request. **Requires agent parameter.**
+Scrapes web page content using Puppeteer browser. Converts HTML to Markdown using TurndownService. Supports rendered and non-rendered fetching via `render` option - `true` waits for `networkidle0`, `false` waits for `domcontentloaded`. Browser is **disconnected** after each request. **Requires agent parameter.**
 
 ## Services
 
@@ -260,11 +260,10 @@ Web page text scraping tool that converts entire page content to Markdown.
 {
   name: "chrome_scrapePageText",
   displayName: "Chrome/scrapePageText",
-  description: "Scrape text content from a web page using Puppeteer. By default, it prioritizes content from 'article', 'main', or 'body' tags in that order. Returns the extracted text along with the source selector used.",
+  description: "Scrape text content from a web page using Puppeteer. Returns the entire page content converted to Markdown.",
   inputSchema: {
     url: string,
-    timeoutSeconds?: number,
-    selector?: string
+    timeoutSeconds?: number
   }
 }
 ```
@@ -273,7 +272,6 @@ Web page text scraping tool that converts entire page content to Markdown.
 
 - `url` (required): The URL of the web page to scrape text from
 - `timeoutSeconds` (optional): Timeout for the scraping operation (default 30s, min 5s, max 180s)
-- `selector` (optional): Custom CSS selector to target specific content (currently not used in implementation)
 
 **Output:** Returns text content of the page converted to Markdown
 
@@ -290,7 +288,7 @@ await agent.callTool("chrome_scrapePageText", {
 
 - Loads the entire page and converts all content to Markdown using TurndownService
 - Waits for `domcontentloaded` event before extracting content (not `networkidle0`)
-- Browser is disconnected after each operation
+- Browser is **disconnected** (not closed) after each operation
 - Uses ChromeService for browser management
 
 ### chrome_scrapePageMetadata
@@ -334,6 +332,7 @@ await agent.callTool("chrome_scrapePageMetadata", {
 - Returns structured metadata for SEO analysis
 - Browser is **closed** (not disconnected) after operation completion
 - Uses ChromeService for browser management
+- **Note:** The tool uses `browser.close()` instead of `browser.disconnect()`
 
 ### chrome_takeScreenshot
 
@@ -377,6 +376,7 @@ await agent.callTool("chrome_takeScreenshot", {
 - Captures only the visible viewport (not full page)
 - Browser is **closed** (not disconnected) after operation completion
 - Uses ChromeService for browser management
+- **Note:** The tool uses `browser.close()` instead of `browser.disconnect()`
 
 ### chrome_runPuppeteerScript
 
@@ -427,8 +427,9 @@ await agent.callTool("chrome_runPuppeteerScript", {
 - Provides `consoleLog` function for capturing script output
 - Listens to browser console events and captures them in logs
 - Enforces timeout on script execution
-- Browser is closed after operation completion
+- Browser is **closed** (not disconnected) after operation completion
 - **Note:** This tool operates independently of the ChromeService and agent configuration
+- **Note:** The browser is launched with visible UI (`headless: false`) for debugging purposes
 
 ## Usage Examples
 
@@ -684,6 +685,20 @@ State is automatically checkpointed during agent operations to maintain browser 
 
 ## Best Practices
 
+### Browser Lifecycle Management
+
+The chrome package uses different browser lifecycle strategies depending on the tool:
+
+- **ChromeWebSearchProvider methods** (`searchWeb`, `searchNews`, `fetchPage`): Use `browser.disconnect()` - maintains the browser session
+- **chrome_scrapePageText**: Uses `browser.disconnect()` - maintains the browser session
+- **chrome_scrapePageMetadata**: Uses `browser.close()` - terminates the browser session
+- **chrome_takeScreenshot**: Uses `browser.close()` - terminates the browser session
+- **chrome_runPuppeteerScript**: Launches its own browser with `browser.close()` - independent operation
+
+**Important:** Understanding the difference between `disconnect()` and `close()`:
+- `disconnect()` - Closes the connection but keeps the browser running (better for performance)
+- `close()` - Terminates the browser process entirely (cleaner but slower)
+
 ### Performance
 
 1. **Reuse browser connection**: Use `launch: false` in production for better performance
@@ -763,7 +778,7 @@ The package depends on the following core packages:
 - `@tokenring-ai/agent` 0.2.0 - Agent framework for tool execution
 - `@tokenring-ai/websearch` 0.2.0 - Base WebSearchProvider and result types
 - `@tokenring-ai/utility` 0.2.0 - Utility functions for deep merging
-- `puppeteer` ^24.39.1 - Headless Chrome browser automation
+- `puppeteer` ^24.40.0 - Headless Chrome browser automation
 - `turndown` ^7.2.2 - HTML to Markdown conversion
 - `zod` ^4.3.6 - Runtime type validation
 
@@ -873,6 +888,15 @@ The package provides robust error handling for browser operations:
 - Verify URL is accessible
 - Check viewport dimensions are valid
 - Ensure page loads completely before screenshot
+
+### Browser Lifecycle Issues
+
+**Inconsistent browser behavior**
+
+- Different tools use different lifecycle strategies (disconnect vs close)
+- ChromeWebSearchProvider and scrapePageText use disconnect (keeps browser alive)
+- ScrapePageMetadata, takeScreenshot, and runPuppeteerScript use close (terminates browser)
+- For consistent behavior, consider using runPuppeteerScript for custom control
 
 ### Custom Script Execution
 

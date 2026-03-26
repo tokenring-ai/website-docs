@@ -11,7 +11,7 @@ The `@tokenring-ai/docker` package provides AI agents with comprehensive Docker 
 - **TLS/SSL Support**: Secure Docker daemon connections with certificate-based authentication
 - **Multiple Docker Hosts**: Support for local Unix sockets and remote TCP connections
 - **Agent Integration**: Seamless integration with Token Ring's agent and service architecture
-- **Comprehensive Toolset**: 19 Docker tools for managing images, containers, networks, and more
+- **Comprehensive Toolset**: 18 Docker tools for managing images, containers, networks, and more
 - **Shell Safety**: All operations use proper shell escaping and timeout management
 - **Workdir Bind Mount**: Ephemeral containers automatically bind mount the project directory at `/workdir`
 
@@ -28,7 +28,7 @@ bun install @tokenring-ai/docker
 - **TLS/SSL Support**: Secure Docker daemon connections with certificate-based authentication
 - **Multiple Docker Hosts**: Support for local Unix sockets (`unix:///var/run/docker.sock`) and remote TCP connections (`tcp://remote:2375`)
 - **Agent Integration**: Seamless integration with Token Ring's agent and service architecture
-- **19 Docker Tools**: Comprehensive toolset for container, image, network, and registry management
+- **18 Docker Tools**: Comprehensive toolset for container, image, network, and registry management
 - **Shell Safety**: All operations use proper shell escaping via `@tokenring-ai/utility/string/shellEscape`
 - **Workdir Bind Mount**: Ephemeral containers automatically bind mount the project directory at `/workdir`
 
@@ -158,7 +158,7 @@ app.addServices(dockerService);
 
 ## Tools
 
-The package provides 19 Docker tools for comprehensive container and image management. Each tool follows the TokenRing tool pattern with proper input validation, error handling, and agent integration.
+The package provides 18 Docker tools for comprehensive container and image management. Each tool follows the TokenRing tool pattern with proper input validation, error handling, and agent integration.
 
 ### Exported Tools
 
@@ -963,7 +963,6 @@ bun test:coverage
 - **Security**: All commands are executed via shell; ensure proper input validation and sanitization
 - **Resource Management**: Containers and images should be properly cleaned up to avoid resource exhaustion
 - **TLS Configuration**: TLS verification requires proper certificate files to be accessible
-- **Tool Files**: Tools are implemented as TypeScript files but use `.ts` extensions for imports
 - **Force Flag**: The `docker_pruneImages` and `docker_pruneVolumes` tools always use the `-f` flag internally to avoid interactive prompts
 
 ## License

@@ -746,18 +746,17 @@ pkg/wordpress/
 - `@tokenring-ai/blog@0.2.0` - Blog abstraction layer
 - `@tokenring-ai/cdn@0.2.0` - CDN abstraction layer
 - `@tokenring-ai/ai-client@0.2.0` - AI client integration
-- `@tokenring-ai/filesystem@0.2.0` - File system utilities
 - `@tokenring-ai/utility@0.2.0` - Utility functions
 - `wordpress-api-client@^0.4.9` - WordPress REST API client
-- `marked@^17.0.4` - Markdown to HTML converter
+- `marked@^17.0.5` - Markdown to HTML converter
 - `uuid@^13.0.0` - UUID generation
 - `zod@^4.3.6` - Schema validation
 
 ### Development Dependencies
 
-- `vitest@^4.1.0` - Testing framework
-- `@vitest/coverage-v8@^4.1.0` - Coverage reporting
-- `typescript@^5.9.3` - TypeScript compiler
+- `vitest@^4.1.1` - Testing framework
+- `@vitest/coverage-v8@^4.1.1` - Coverage reporting
+- `typescript@^6.0.2` - TypeScript compiler
 
 ## Related Components
 

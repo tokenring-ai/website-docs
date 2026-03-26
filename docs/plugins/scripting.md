@@ -4,14 +4,14 @@ Comprehensive scripting language with variables, functions, and LLM integration 
 
 ## Overview
 
-The TokenRing AI Scripting package provides a powerful scripting language for automating workflows, managing variables, defining functions, and integrating with AI models. It supports script execution, control flow (conditionals, loops), variables, lists, and dynamic function execution with support for static, JavaScript, LLM-powered, and native functions.
+The TokenRing AI Scripting package provides a powerful scripting language for automating workflows, managing variables, defining functions, and integrating with AI models. It supports script execution, control flow (conditionals, loops), variables, lists, and dynamic function execution with support for expression, JavaScript, LLM-powered, and native functions.
 
 ## Key Features
 
 - **Script Management**: Run predefined sequences of chat commands
 - **Scripting Language**: Comprehensive language with variables, functions, and control flow
 - **Variable Interpolation**: Dynamic substitution of variables (`$var`) and lists (`@list`) in text
-- **Function Types**: Static, JavaScript, LLM-powered, and native functions
+- **Function Types**: Expression, JavaScript, LLM-powered, and native functions
 - **Control Flow**: Conditionals (`/if`), loops (`/for`, `/while`), and interactive commands
 - **Interactive Commands**: Prompts, confirmations, and user input
 - **State Management**: Persistent variables, lists, and functions across chat sessions
@@ -45,7 +45,7 @@ Manages and executes scripts, variables, functions, and scripting language featu
 - `listFunctions()` - Lists all global function names (alias for functions.getAllItemNames)
 
 **Function Types:**
-- `static` - Returns fixed text with variable interpolation
+- `expression` - Returns fixed text with variable interpolation
 - `js` - JavaScript functions with access to agent context
 - `llm` - LLM-powered functions with prompts
 - `native` - Native function implementations (e.g., `runAgent`)
@@ -65,7 +65,7 @@ export type ScriptingThis = {
 }
 
 export type ScriptFunction = {
-  type: 'static' | 'llm' | 'js';
+  type: 'expression' | 'llm' | 'js';
   params: string[];
   body: string;
 } | {
@@ -83,7 +83,7 @@ Manages state for scripting including variables (`$name`), lists (`@name`), and 
 - `name: "ScriptingContext"` - State slice identifier
 - `variables: Map<string, string>` - Variable storage
 - `lists: Map<string, string[]>` - List storage
-- `functions: Map<string, Function>` - Local function storage (static, llm, js only)
+- `functions: Map<string, Function>` - Local function storage (expression, llm, js only)
 
 **Methods:**
 - `setVariable(name, value)` - Set a variable value
@@ -107,71 +107,13 @@ const serializationSchema = z.object({
   functions: z.array(z.tuple([
     z.string(),
     z.object({
-      type: z.enum(['static', 'llm', 'js']),
+      type: z.enum(['expression', 'llm', 'js']),
       params: z.array(z.string()),
       body: z.string()
     })
   ]))
 });
 ```
-
-### Chat Commands
-
-#### Script Management
-
-- `/script list` - Lists all available scripts
-- `/script run <scriptName> [input]` - Runs the specified script with optional input
-- `/script info <scriptName>` - Shows information about a script
-
-#### Variable Commands
-
-- `/var $name = value` - Define or update a variable
-- `/var $name = llm("prompt")` - Define variable with LLM response
-- `/var $name = functionName("arg")` - Define variable with function result
-- `/var delete $name` - Delete a variable
-- `/vars [$name]` - List all variables or show specific
-- `/vars clear` - Clear all variables
-
-#### Function Commands
-
-- `/func static name($param1) => "text"` - Define static function
-- `/func llm name($param1) => "prompt"` - Define LLM function
-- `/func js name($param1) { code }` - Define JavaScript function
-- `/func delete name` - Delete a function
-- `/funcs [name]` - List all functions (local and global)
-- `/funcs clear` - Clear all local functions
-
-#### Function Execution
-
-- `/call functionName("arg1", "arg2")` - Call a function with arguments and display output
-
-#### List Commands
-
-- `/list @name = ["item1", "item2"]` - Define a static list
-- `/list @name = [$var1, $var2]` - Define list from variables
-- `/list @name = functionName("arg")` - Define list from function results
-- `/lists [@name]` - List all lists or show specific contents
-
-#### Output and Control
-
-- `/echo <text|$var>` - Display text or variable value without LLM processing
-- `/sleep <seconds|$var>` - Sleep for specified seconds
-- `/prompt $var "message"` - Prompt user for text input
-- `/confirm $var "message"` - Prompt for yes/no confirmation
-
-#### Control Flow
-
-- `/if $condition { commands } [else { commands }]` - Conditional execution
-- `/for $item in @list { commands }` - Iterate over lists
-- `/while $condition { commands }` - Execute while condition is truthy
-
-#### Evaluation
-
-- `/eval <command with $vars>` - Interpolates variables in the command string and then executes it
-
-### Context Handlers
-
-- `available-scripts` - Provides context about available scripts for AI assistance
 
 ## Services
 
@@ -219,6 +161,64 @@ const result = await agent.useTool("script_run", {
 
 **Throws:**
 - `Error` - When script execution fails
+
+## Chat Commands
+
+### Script Management
+
+- `/script list` - Lists all available scripts
+- `/script run <scriptName> [input]` - Runs the specified script with optional input
+- `/script info <scriptName>` - Shows information about a script
+
+### Variable Commands
+
+- `/var set $name = value` - Define or update a variable
+- `/var set $name = llm("prompt")` - Define variable with LLM response
+- `/var set $name = functionName("arg")` - Define variable with function result
+- `/var delete $name` - Delete a variable
+- `/vars [$name]` - List all variables or show specific
+- `/vars clear` - Clear all variables
+
+### Function Commands
+
+- `/func define expr name($param1) => "text"` - Define expression function
+- `/func define llm name($param1) => "prompt"` - Define LLM function
+- `/func define js name($param1) { code }` - Define JavaScript function
+- `/func delete name` - Delete a function
+- `/funcs [name]` - List all functions (local and global)
+- `/funcs clear` - Clear all local functions
+
+### Function Execution
+
+- `/call functionName("arg1", "arg2")` - Call a function with arguments and display output
+
+### List Commands
+
+- `/list @name = ["item1", "item2"]` - Define a static list
+- `/list @name = [$var1, $var2]` - Define list from variables
+- `/list @name = functionName("arg")` - Define list from function results
+- `/lists [@name]` - List all lists or show specific contents
+
+### Output and Control
+
+- `/echo <text|$var>` - Display text or variable value without LLM processing
+- `/sleep <seconds|$var>` - Sleep for specified seconds
+- `/prompt $var "message"` - Prompt user for text input
+- `/confirm $var "message"` - Prompt for yes/no confirmation
+
+### Control Flow
+
+- `/if $condition { commands } [else { commands }]` - Conditional execution
+- `/for $item in @list { commands }` - Iterate over lists
+- `/while $condition { commands }` - Execute while condition is truthy
+
+### Evaluation
+
+- `/eval <command with $vars>` - Interpolates variables in the command string and then executes it
+
+## Context Handlers
+
+- `available-scripts` - Provides context about available scripts for AI assistance
 
 ## RPC Endpoints
 
@@ -350,7 +350,7 @@ chatService.registerContextHandlers({
     if (scriptNames.length > 0) {
       yield {
         role: "user",
-        content: `/* The following scripts are available for use with the script tool */\n` +
+        content: `The following scripts are available for use with the script tool:\n` +
           scriptNames.map(name => `- ${name}`).join("\n")
       };
     }
@@ -368,7 +368,7 @@ The scripting package uses `ScriptingContext` for state persistence:
 interface ScriptingContext {
   variables: Map<string, string>;
   lists: Map<string, string[]>;
-  functions: Map<string, { type: 'static' | 'llm' | 'js', params: string[], body: string }>;
+  functions: Map<string, { type: 'expression' | 'llm' | 'js', params: string[], body: string }>;
 }
 ```
 
@@ -450,17 +450,17 @@ scriptingService.registerFunction("runAgent", {
 
 ```bash
 # Define variables
-/var $name = "Alice"
-/var $topic = "AI safety"
+/var set $name = "Alice"
+/var set $topic = "AI safety"
 
 # Define and use functions
-/func static greet($name) => "Hello, $name!"
-/func llm summary($text) => "Summarize: $text"
-/func js currentDate() { return new Date().toISOString() }
+/func define expr greet($name) => "Hello, $name!"
+/func define llm summary($text) => "Summarize: $text"
+/func define js currentDate() { return new Date().toISOString() }
 
 # Use functions
-/var $greeting = greet($name)
-/var $summary = summary($topic)
+/var set $greeting = greet($name)
+/var set $summary = summary($topic)
 
 # Display results
 /echo $name says: $summary
@@ -511,10 +511,10 @@ scriptingService.registerFunction("runAgent", {
 
 ```bash
 # LLM-powered functions
-/func llm analyze($text) => "Analyze the sentiment of this text: $text"
+/func define llm analyze($text) => "Analyze the sentiment of this text: $text"
 
 # Use LLM functions
-/var $sentiment = analyze("I love this product!")
+/var set $sentiment = analyze("I love this product!")
 
 /echo Analysis: $sentiment
 ```
@@ -523,12 +523,12 @@ scriptingService.registerFunction("runAgent", {
 
 ```bash
 # JavaScript functions
-/func js wordCount($text) { 
+/func define js wordCount($text) { 
   return $text.split(/\s+/).length; 
 }
 
 # Use JavaScript functions
-/var $count = wordCount("Hello world from TokenRing")
+/var set $count = wordCount("Hello world from TokenRing")
 
 /echo Word count: $count
 ```
@@ -554,7 +554,7 @@ scriptingService.registerFunction("runAgent", {
 
 ```bash
 # Execute a subagent using the runAgent function
-/var $result = runAgent("writer", "Generate a summary of the latest AI trends", "Recent breakthroughs in neural networks")
+/var set $result = runAgent("writer", "Generate a summary of the latest AI trends", "Recent breakthroughs in neural networks")
 /echo Sub-agent result: $result
 ```
 
@@ -562,10 +562,10 @@ scriptingService.registerFunction("runAgent", {
 
 ```bash
 # While loop with counter
-/var $count = "0"
+/var set $count = "0"
 /while $count < "5" {
   /echo Count: $count
-  /var $count = $count + 1
+  /var set $count = $count + 1
   /sleep 1
 }
 
@@ -585,7 +585,7 @@ scriptingService.registerFunction("runAgent", {
 
 ```bash
 # Variable interpolation in text
-/var $name = "World"
+/var set $name = "World"
 /echo Hello, $name!
 
 # List interpolation
@@ -593,7 +593,7 @@ scriptingService.registerFunction("runAgent", {
 /echo Fruits: @items
 
 # Mixed interpolation
-/var $prefix = "Items:"
+/var set $prefix = "Items:"
 /echo $prefix @items
 ```
 
@@ -601,13 +601,13 @@ scriptingService.registerFunction("runAgent", {
 
 ```bash
 # Store command in variable
-/var $cmd = echo
+/var set $cmd = echo
 
 # Execute dynamically
 /eval /$cmd "Hello World"
 
 # Dynamic command with variables
-/var $filename = "data.txt"
+/var set $filename = "data.txt"
 /eval /process $filename
 ```
 
@@ -726,7 +726,7 @@ export async function executeBlock(commands: string[], agent: Agent): Promise<vo
 ### Performance
 
 - Avoid unnecessary function calls
-- Use static functions for simple text generation
+- Use expression functions for simple text generation
 - Limit while loop iterations
 - Cache frequently used values in variables
 
@@ -752,22 +752,37 @@ pkg/scripting/
 ├── tools.ts                 # Tool registry
 ├── contextHandlers.ts       # Context handler registry
 ├── commands/              # Chat command implementations
-│   ├── script.ts          # Script management
-│   ├── var.ts             # Variable definition
-│   ├── func.ts            # Function definition
-│   ├── vars.ts            # Variable listing
-│   ├── funcs.ts           # Function listing
-│   ├── call.ts            # Function execution
-│   ├── echo.ts            # Text output
-│   ├── sleep.ts           # Delay execution
-│   ├── prompt.ts          # User input
-│   ├── confirm.ts         # Confirmation
-│   ├── list.ts            # List definition
-│   ├── lists.ts           # List listing
+│   ├── echo.ts            # Echo command
+│   ├── call.ts            # Function call command
+│   ├── eval.ts            # Evaluation command
+│   ├── prompt.ts          # User prompt command
+│   ├── confirm.ts         # Confirmation command
+│   ├── sleep.ts           # Sleep/delay command
 │   ├── if.ts              # Conditional execution
 │   ├── for.ts             # List iteration
 │   ├── while.ts           # Loop execution
-│   └── eval.ts            # Dynamic execution
+│   ├── var/               # Variable commands
+│   │   ├── _shared.ts     # Shared utilities
+│   │   ├── set.ts         # Variable setting
+│   │   └── delete.ts      # Variable deletion
+│   │   ├── list.ts        # Variable listing
+│   │   └── show.ts        # Variable display
+│   │   └── clear.ts       # Variable clearing
+│   ├── func/              # Function commands
+│   │   ├── _shared.ts     # Shared utilities
+│   │   ├── defineJs.ts    # JavaScript function definition
+│   │   ├── defineLLM.ts   # LLM function definition
+│   │   ├── defineExpression.ts # Expression function definition
+│   │   ├── delete.ts      # Function deletion
+│   │   ├── clear.ts       # Function clearing
+│   │   ├── list.ts        # Function listing
+│   │   └── show.ts        # Function display
+│   ├── script/            # Script commands
+│   │   ├── list.ts        # Script listing
+│   │   ├── run.ts         # Script execution
+│   │   └── info.ts        # Script information
+│   ├── list.ts            # List definition
+│   └── lists.ts           # List listing
 ├── tools/                 # Tool implementations
 │   └── runScript.ts       # Script execution tool
 ├── state/                 # State management
@@ -779,17 +794,6 @@ pkg/scripting/
 │   └── blockParser.ts     # Block parsing
 ├── contextHandlers/       # Context handler implementations
 │   └── availableScripts.ts # Available scripts context
-├── design/                # Design documentation
-│   └── PATTERNS.md        # Product design patterns
-├── docs/                  # Package documentation
-│   ├── README.md          # Package README
-│   ├── 01-getting-started.md
-│   ├── 02-variables.md
-│   ├── 03-functions.md
-│   ├── 04-commands.md
-│   ├── 05-examples.md
-│   ├── 06-advanced.md
-│   └── 07-developer-guide.md
 └── test/                  # Test files
     ├── blockParser.test.ts
     ├── context.test.ts
@@ -798,8 +802,7 @@ pkg/scripting/
     ├── utils.test.ts
     ├── commands.test.ts
     ├── flaws.test.ts
-    ├── functions.test.ts
-    └── testHelpers.ts
+    └── functions.test.ts
 ```
 
 ## Dependencies
@@ -814,8 +817,8 @@ pkg/scripting/
 
 ### Development Dependencies
 
-- `vitest` (^4.1.0) - Testing framework
-- `typescript` (^5.9.3) - TypeScript compiler
+- `vitest` (^4.1.1) - Testing framework
+- `typescript` (^6.0.2) - TypeScript compiler
 
 ## Related Components
 

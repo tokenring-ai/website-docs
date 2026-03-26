@@ -40,7 +40,7 @@ const gitService = agent.requireServiceByType(GitService);
 - `name: string = "GitService"` - Service identifier
 - `description: string = "Provides Git functionality"` - Service description
 
-**Note:** GitService provides only metadata and registration. Use tools (`git_commit`, `git_rollback`, `git_branch`) or chat commands for actual Git operations.
+**Note:** GitService provides only metadata and registration. Use tools (`git_commit`, `git_rollback`, `git_branch`) or slash commands for actual Git operations.
 
 ## Services
 
@@ -243,25 +243,21 @@ await agent.executeTool('git_branch', {});
 
 ## Chat Commands
 
-### /git Command
+The git package provides individual slash commands for each Git operation. Each command is registered separately with the AgentCommandService.
 
-The `/git` command provides an interactive interface to Git operations through the agent command system.
+### /git commit
+
+Commits changes in the source directory to git. If no message is provided, an AI-generated commit message will be used.
 
 **Usage:**
 ```
-/git <action> [options]
+/git commit [message]
 ```
-
-**Available Actions:**
-
-#### `/git commit [message]`
-
-Commits changes in the source directory to git. If no message is provided, an AI-generated commit message will be used.
 
 **Examples:**
 ```
 /git commit
-/git commit "Fix authentication bug"
+/git commit Fix authentication bug
 ```
 
 **Functionality:**
@@ -269,47 +265,104 @@ Commits changes in the source directory to git. If no message is provided, an AI
 - Parses remaining arguments as commit message
 - Falls back to AI-generated message if no message provided
 
-#### `/git rollback [steps]`
+### /git rollback
 
 Rolls back to a previous commit state.
+
+**Usage:**
+```
+/git rollback [--steps <number>]
+```
 
 **Examples:**
 ```
 /git rollback
-/git rollback 3
+/git rollback --steps 3
 ```
 
 **Functionality:**
 - Uses the `git_rollback` tool internally
-- Parses optional steps argument (default: 1)
-- Validates positive integer input
+- `--steps` - Number of commits to roll back (default: 1)
+- Validates clean state before rollback
 
-#### `/git branch [action] [branchName]`
+### /git branch list
 
-Manages git branches. If no action is specified, lists all branches (local and remote).
+List all branches (local and remote).
 
-**Actions:**
-- `list` - List all branches (local and remote)
-- `current` - Show current branch
-- `create` - Create and switch to a new branch
-- `switch` - Switch to an existing branch
-- `delete` - Delete a branch
+**Usage:**
+```
+/git branch list
+```
+
+**Functionality:**
+- Uses `git branch -a` to list all branches
+- Shows both local and remote branches
+
+### /git branch create
+
+Create and switch to a new branch.
+
+**Usage:**
+```
+/git branch create <branchName>
+```
 
 **Examples:**
 ```
-/git branch
-/git branch list
-/git branch current
 /git branch create feature-xyz
+```
+
+**Functionality:**
+- Uses `git checkout -b` to create and switch to new branch
+- Branch name is required
+
+### /git branch switch
+
+Switch to an existing branch.
+
+**Usage:**
+```
+/git branch switch <branchName>
+```
+
+**Examples:**
+```
 /git branch switch main
+```
+
+**Functionality:**
+- Uses `git checkout` to switch branches
+- Branch name is required
+
+### /git branch delete
+
+Delete a branch.
+
+**Usage:**
+```
+/git branch delete <branchName>
+```
+
+**Examples:**
+```
 /git branch delete feature-xyz
 ```
 
 **Functionality:**
-- Uses the `git_branch` tool internally
-- Validates action names and branch names
-- Provides helpful error messages for invalid inputs
-- Default action (when no action specified) is `list` which shows all branches (local and remote)
+- Uses `git branch -d` to delete branch
+- Branch name is required
+
+### /git branch current
+
+Show the currently active git branch.
+
+**Usage:**
+```
+/git branch current
+```
+
+**Functionality:**
+- Uses `git branch --show-current` to show current branch
 
 ## Configuration
 
@@ -354,12 +407,13 @@ app.registerPlugin(gitPlugin);
 
 **Plugin Structure:**
 ```typescript
+import {AgentCommandService} from "@tokenring-ai/agent";
 import {TokenRingPlugin} from "@tokenring-ai/app";
-import {AgentCommandService, AgentLifecycleService} from "@tokenring-ai/agent";
 import {ChatService} from "@tokenring-ai/chat";
+import {AgentLifecycleService} from "@tokenring-ai/lifecycle";
 import {z} from "zod";
 import agentCommands from "./commands.ts";
-import GitService from "./GitService";
+import GitService from "./GitService.js";
 import hooks from "./hooks.ts";
 import packageJSON from './package.json' with {type: 'json'};
 import tools from "./tools.ts";
@@ -370,14 +424,13 @@ export default {
   name: packageJSON.name,
   version: packageJSON.version,
   description: packageJSON.description,
-  config: packageConfigSchema,
   install(app, config) {
     // Register chat tools with ChatService
     app.waitForService(ChatService, chatService =>
       chatService.addTools(tools)
     );
 
-    // Register chat commands with AgentCommandService
+    // Register slash commands with AgentCommandService
     app.waitForService(AgentCommandService, agentCommandService =>
       agentCommandService.addAgentCommands(agentCommands)
     );
@@ -389,7 +442,8 @@ export default {
     app.waitForService(AgentLifecycleService, lifecycleService =>
       lifecycleService.addHooks(hooks)
     );
-  }
+  },
+  config: packageConfigSchema
 } satisfies TokenRingPlugin<typeof packageConfigSchema>;
 ```
 
@@ -486,24 +540,43 @@ const callbacks = [
     }
   })
 ];
+
+export default {name, displayName, description, callbacks} satisfies HookSubscription;
 ```
 
 ### Chat Command Integration
 
-The `/git` command provides an interactive interface to Git operations:
+The git package provides individual slash commands for each Git operation. Each command is defined in its own file and exported from `commands.ts`:
 
 ```typescript
-// commands/git.ts
-export default {
-  description: "Git operations. ",
-  execute,
-  help
-} satisfies TokenRingAgentCommand;
+// commands.ts
+import branchCreate from "./commands/git/branch/create.ts";
+import branchCurrent from "./commands/git/branch/current.ts";
+import branchDelete from "./commands/git/branch/delete.ts";
+import branchList from "./commands/git/branch/list.ts";
+import branchSwitch from "./commands/git/branch/switch.ts";
+import commit from "./commands/git/commit.ts";
+import rollback from "./commands/git/rollback.ts";
 
-// Available actions:
-// - /git commit [message]     - Commit with optional message
-// - /git rollback [steps]     - Rollback by number of steps (default: 1)
-// - /git branch [action] [branchName]  - Branch management
+export default [
+  branchCreate,
+  branchCurrent,
+  branchDelete,
+  branchList,
+  branchSwitch,
+  commit,
+  rollback,
+];
+```
+
+**Individual Command Files:**
+- `commands/git/commit.ts` - `/git commit` command
+- `commands/git/rollback.ts` - `/git rollback` command
+- `commands/git/branch/list.ts` - `/git branch list` command
+- `commands/git/branch/create.ts` - `/git branch create` command
+- `commands/git/branch/switch.ts` - `/git branch switch` command
+- `commands/git/branch/delete.ts` - `/git branch delete` command
+- `commands/git/branch/current.ts` - `/git branch current` command
 ```
 
 ## RPC Endpoints
@@ -511,6 +584,8 @@ export default {
 This package does not define any RPC endpoints. Git operations are performed via tools and commands.
 
 ## State Management
+
+This package does not define any state slices. It relies on the FileSystemService for dirty state tracking.
 
 ### GitService (Service Layer)
 
@@ -612,7 +687,7 @@ bun run test:watch
 bun run test:coverage
 ```
 
-### Package Structure
+## Package Structure
 
 ```
 pkg/git/
@@ -620,16 +695,24 @@ pkg/git/
 ├── index.ts                   # Main export (GitService)
 ├── plugin.ts                  # Plugin registration and setup
 ├── tools.ts                   # Tool exports (commitTool, rollbackTool)
-├── commands.ts                # Command exports (git command)
+├── commands.ts                # Command exports (all git commands)
 ├── hooks.ts                   # Hook exports (autoCommit)
 ├── tools/
 │   ├── commit.ts             # git_commit tool implementation
 │   ├── rollback.ts           # git_rollback tool implementation
-│   └── branch.ts             # git_branch tool implementation
+│   └── branch.ts             # git_branch tool implementation (NOT exported from tools.ts)
 ├── hooks/
 │   └── autoCommit.ts         # Auto-commit hook implementation
 ├── commands/
-│   └── git.ts                # /git command implementation
+│   ├── git/
+│   │   ├── commit.ts         # /git commit command
+│   │   ├── rollback.ts       # /git rollback command
+│   │   └── branch/
+│   │       ├── list.ts       # /git branch list command
+│   │       ├── create.ts     # /git branch create command
+│   │       ├── switch.ts     # /git branch switch command
+│   │       ├── delete.ts     # /git branch delete command
+│   │       └── current.ts    # /git branch current command
 ├── package.json
 ├── vitest.config.ts
 └── LICENSE
@@ -702,8 +785,8 @@ expect(filesystem.isDirty(agent)).toBe(false);
 
 | Package | Version |
 |---------|---------|
-| vitest | ^4.0.18 |
-| typescript | 5.9.3 |
+| vitest | ^4.1.1 |
+| typescript | ^6.0.2 |
 
 ## Related Components
 
@@ -737,6 +820,7 @@ expect(filesystem.isDirty(agent)).toBe(false);
 - Branch names with spaces or special characters may cause Git command failures (Git CLI limitation)
 - AI message generation fails if last message lacks response id (caught and falls back to default)
 - No interactive prompt for confirming dangerous operations like rollback
+- The `git_branch` tool is NOT exported from `tools.ts` - must be imported directly from `tools/branch.ts` if needed
 
 ## Contributing
 

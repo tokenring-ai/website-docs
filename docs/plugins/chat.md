@@ -50,7 +50,7 @@ const chatService = new ChatService(app, options);
 | Parameter | Type | Description |
 |-----------|------|-------------|
 | `app` | TokenRingApp | The application instance |
-| `options` | `z.output<typeof ChatServiceConfigSchema>` | Configuration options |
+| `options` | `z.output&lt;typeof ChatServiceConfigSchema&gt;` | Configuration options |
 
 #### Properties
 
@@ -85,7 +85,7 @@ const chatService = new ChatService(app, options);
 | Method | Description |
 |--------|-------------|
 | `getChatConfig(agent: Agent): ParsedChatConfig` | Get current chat configuration |
-| `updateChatConfig(aiConfig: Partial<ParsedChatConfig>, agent: Agent): void` | Update configuration with partial updates |
+| `updateChatConfig(aiConfig: Partial&lt;ParsedChatConfig&gt;, agent: Agent): void` | Update configuration with partial updates |
 
 ##### Message History Management
 
@@ -101,7 +101,7 @@ const chatService = new ChatService(app, options);
 
 | Method | Description |
 |--------|-------------|
-| `addTools(tools: Record<string, TokenRingToolDefinition<any>>)` | Register tools from a package |
+| `addTools(tools: Record&lt;string, TokenRingToolDefinition<any&gt;>)` | Register tools from a package |
 | `getAvailableToolNames(): string[]` | Get all available tool names |
 | `getAvailableToolEntries()` | Get all available tool definitions as entries |
 | `getToolNamesLike(pattern: string): string[]` | Get tool names matching a pattern |
@@ -121,13 +121,13 @@ const chatService = new ChatService(app, options);
 | `getContextHandlerByName(name: string): ContextHandler \| undefined` | Get a context handler by name |
 | `requireContextHandlerByName(name: string): ContextHandler` | Get a context handler or throw an error |
 | `registerContextHandler(name: string, handler: ContextHandler): void` | Register a single context handler |
-| `registerContextHandlers(handlers: Record<string, ContextHandler>): void` | Register multiple context handlers |
+| `registerContextHandlers(handlers: Record&lt;string, ContextHandler&gt;): void` | Register multiple context handlers |
 
 ##### Message Building
 
 | Method | Description |
 |--------|-------------|
-| `buildChatMessages(options: BuildChatMessagesOptions): Promise<ContextItem[]>` | Build chat request messages from context handlers |
+| `buildChatMessages(options: BuildChatMessagesOptions): Promise&lt;ContextItem[]&gt;` | Build chat request messages from context handlers |
 
 ##### Compaction Management
 
@@ -137,8 +137,8 @@ const chatService = new ChatService(app, options);
 | `hasPendingCompaction(agent: Agent): boolean` | Check if there is pending compaction |
 | `isCompactionInProgress(agent: Agent): boolean` | Check if compaction is currently in progress |
 | `applyPendingCompaction(agent: Agent): boolean` | Apply pending compaction to current message |
-| `stageContextCompaction(compactionConfig, agent: Agent): Promise<boolean>` | Stage a compaction for later application |
-| `compactContext(compactionConfig, agent: Agent): Promise<void>` | Perform immediate context compaction |
+| `stageContextCompaction(compactionConfig, agent: Agent): Promise&lt;boolean&gt;` | Stage a compaction for later application |
+| `compactContext(compactionConfig, agent: Agent): Promise&lt;void&gt;` | Perform immediate context compaction |
 
 ### ChatServiceState
 
@@ -223,7 +223,7 @@ The package provides the following chat commands:
 
 ### /chat - Send messages and manage chat AI settings
 
-#### /chat send <message>
+#### /chat send &lt;message&gt;
 
 Send a message to the AI chat service. This is the primary command for communicating with the AI, using your selected model and current context.
 
@@ -255,7 +255,7 @@ Display all context items that would be included in a chat request. Useful for d
 
 **Note:** Context display shows the exact data sent to the AI model.
 
-#### /chat compact [<focus>]
+#### /chat compact [&lt;focus&gt;]
 
 Compress the conversation context by creating intelligent summaries of prior messages.
 
@@ -320,7 +320,7 @@ Show the currently active chat model.
 /model get
 ```
 
-#### /model set <model_name>
+#### /model set &lt;model_name&gt;
 
 Set the chat model to a specific model by name.
 
@@ -359,7 +359,7 @@ Show the currently enabled feature flags and all available settings for the curr
 - Enabled settings/feature flags
 - Available settings for the current model
 
-#### /model settings set <key[=value]>
+#### /model settings set &lt;key[=value]&gt;
 
 Set a single model feature flag.
 
@@ -369,7 +369,7 @@ Set a single model feature flag.
 /model settings set temperature=0.7
 ```
 
-#### /model settings enable <key[=value]> ...
+#### /model settings enable &lt;key[=value]&gt; ...
 
 Enable one or more model feature flags.
 
@@ -379,7 +379,7 @@ Enable one or more model feature flags.
 /model settings enable websearch temperature=0.7
 ```
 
-#### /model settings disable <key> ...
+#### /model settings disable &lt;key&gt; ...
 
 Disable one or more model feature flags.
 
@@ -422,7 +422,7 @@ List all currently enabled tools.
 /tools list
 ```
 
-#### /tools enable <tool1> [tool2...]
+#### /tools enable &lt;tool1&gt; [tool2...]
 
 Enable one or more tools by name. Supports wildcard patterns.
 
@@ -432,7 +432,7 @@ Enable one or more tools by name. Supports wildcard patterns.
 /tools enable web-search calculator
 ```
 
-#### /tools disable <tool1> [tool2...]
+#### /tools disable &lt;tool1&gt; [tool2...]
 
 Disable one or more tools by name. Supports wildcard patterns.
 
@@ -442,7 +442,7 @@ Disable one or more tools by name. Supports wildcard patterns.
 /tools disable web-search calculator
 ```
 
-#### /tools set <tool1> [tool2...]
+#### /tools set &lt;tool1&gt; [tool2...]
 
 Set exactly which tools are enabled, replacing the current selection. Supports wildcard patterns.
 
@@ -460,7 +460,7 @@ Open an interactive tree-based selector to choose which tools to enable. Tools a
 /tools select
 ```
 
-#### /tools hide <tool1> [tool2...]
+#### /tools hide &lt;tool1&gt; [tool2...]
 
 Hide one or more tools by name, requiring the model to search for the tool to activate it before use. Saves context tokens; useful for agents that need access to large numbers of tools.
 
@@ -470,7 +470,7 @@ Hide one or more tools by name, requiring the model to search for the tool to ac
 /tools hide web-search calculator
 ```
 
-### /compact [<focus>]
+### /compact [&lt;focus&gt;]
 
 Alias for `/chat compact` - Compress the conversation context by creating intelligent summaries of prior messages.
 

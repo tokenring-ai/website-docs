@@ -23,8 +23,10 @@ The `@tokenring-ai/tasks` package provides a complete task planning and executio
 This package is part of the TokenRing AI ecosystem. Install it as a dependency:
 
 ```bash
-bun install @tokenring-ai/tasks
+bun add @tokenring-ai/tasks
 ```
+
+For local development in the TokenRing monorepo, the package is available as a workspace dependency.
 
 ## Core Components
 
@@ -73,14 +75,27 @@ interface Task {
 State management for persistence and serialization:
 
 ```typescript
-class TaskState implements AgentStateSlice {
-  readonly name = "TaskState";
-  serializationSchema = serializationSchema;
+const serializationSchema = z.object({
+  tasks: z.array(z.object({
+    id: z.string(),
+    name: z.string(),
+    agentType: z.string(),
+    message: z.string(),
+    context: z.string(),
+    status: z.enum(['pending', 'running', 'completed', 'failed']),
+    result: z.string().optional()
+  })),
+  autoApprove: z.number(),
+  parallelTasks: z.number()
+});
+
+class TaskState extends AgentStateSlice<typeof serializationSchema> {
   readonly tasks: Task[] = [];
-  autoApprove: number;           // Auto-approve timeout in seconds
-  parallelTasks: number;         // Maximum parallel task execution
+  autoApprove: number;
+  parallelTasks: number;
 
   constructor(readonly initialConfig: z.output<typeof TaskServiceConfigSchema>["agentDefaults"]) {
+    super("TaskState", serializationSchema);
     this.autoApprove = initialConfig.autoApprove;
     this.parallelTasks = initialConfig.parallel;
   }
