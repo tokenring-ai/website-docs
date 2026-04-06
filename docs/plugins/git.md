@@ -282,9 +282,10 @@ Rolls back to a previous commit state.
 
 **Functionality:**
 - Uses the `git_rollback` tool internally
-- `--steps` - Number of commits to roll back (default: 1)
-- Validates clean state before rollback
-
+- `--steps` - Number of commits to roll back (default: 1, minimum: 1)
+- Validates clean state before rollback (aborts if uncommitted changes detected)
+- Returns message: `Rolled back {steps} commit(s).`
+```
 ### /git branch list
 
 List all branches (local and remote).

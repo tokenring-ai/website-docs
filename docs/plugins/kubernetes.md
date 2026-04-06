@@ -24,6 +24,36 @@ The package currently provides **read-only resource discovery** capabilities:
 - **Smart Namespace Discovery**: Automatically discovers all namespaces if none is specified
 - **TokenRing Integration**: Seamless integration with TokenRing's service and tool framework
 
+## Package Exports
+
+The package provides the following exports for flexible import patterns:
+
+- `.`: Main entry point - exports `KubernetesService`
+- `./index`: Same as main entry point
+- `./KubernetesService`: Direct import of `KubernetesService` class
+- `./plugin`: TokenRing plugin integration
+- `./tools`: Tool exports
+- `./schema`: Configuration schema
+
+**Import Examples:**
+
+```typescript
+// Main entry point
+import { KubernetesService } from '@tokenring-ai/kubernetes';
+
+// Direct service import
+import KubernetesService from '@tokenring-ai/kubernetes/KubernetesService';
+
+// Plugin import
+import kubernetesPlugin from '@tokenring-ai/kubernetes/plugin';
+
+// Tools import
+import tools from '@tokenring-ai/kubernetes/tools';
+
+// Schema import
+import { KubernetesServiceConfigSchema } from '@tokenring-ai/kubernetes/schema';
+```
+
 ## Core Components
 
 ### KubernetesService
@@ -452,8 +482,8 @@ bun run build
 
 ### Development Dependencies
 
-- `vitest` (^4.0.18): Unit testing framework
-- `typescript` (5.9.3): TypeScript compiler
+- `vitest` (^4.1.1): Unit testing framework
+- `typescript` (^6.0.2): TypeScript compiler
 
 ## Related Components
 
@@ -470,7 +500,6 @@ pkg/kubernetes/
 ├── schema.ts                   # Configuration schema
 ├── package.json                # Package metadata and dependencies
 ├── vitest.config.ts            # Vitest configuration
-├── BRAINSTORM.md               # Future enhancement plans
 └── README.md                   # Package documentation
 ```
 

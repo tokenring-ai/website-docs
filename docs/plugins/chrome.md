@@ -260,10 +260,11 @@ Web page text scraping tool that converts entire page content to Markdown.
 {
   name: "chrome_scrapePageText",
   displayName: "Chrome/scrapePageText",
-  description: "Scrape text content from a web page using Puppeteer. Returns the entire page content converted to Markdown.",
+  description: "Scrape text content from a web page using Puppeteer. By default, it prioritizes content from 'article', 'main', or 'body' tags in that order. Returns the extracted text along with the source selector used.",
   inputSchema: {
     url: string,
-    timeoutSeconds?: number
+    timeoutSeconds?: number,
+    selector?: string
   }
 }
 ```
@@ -272,24 +273,30 @@ Web page text scraping tool that converts entire page content to Markdown.
 
 - `url` (required): The URL of the web page to scrape text from
 - `timeoutSeconds` (optional): Timeout for the scraping operation (default 30s, min 5s, max 180s)
+- `selector` (optional): Custom CSS selector to target specific content. If not provided, will use 'article', 'main', or 'body' in that priority order.
 
-**Output:** Returns text content of the page converted to Markdown
+**Output:** Returns text result with `type: 'text'` containing the page content converted to Markdown
 
 **Usage Example:**
 
 ```typescript
-await agent.callTool("chrome_scrapePageText", {
+const result = await agent.callTool("chrome_scrapePageText", {
   url: "https://example.com/article",
   timeoutSeconds: 30
 });
+
+console.log(result.text); // Markdown content
 ```
 
 **Implementation Notes:**
 
-- Loads the entire page and converts all content to Markdown using TurndownService
+- Uses ChromeService for browser management via `agent.requireServiceByType(ChromeService)`
 - Waits for `domcontentloaded` event before extracting content (not `networkidle0`)
-- Browser is **disconnected** (not closed) after each operation
-- Uses ChromeService for browser management
+- Extracts full page HTML using `page.content()`
+- Converts to Markdown using `TurndownService`
+- Browser is **disconnected** (not closed) after each operation via `browser.disconnect()`
+- Enforces timeout on operation (max 180s, min 5s)
+- Returns `TokenRingToolTextResult` with `type: 'text'` and `text` property
 
 ### chrome_scrapePageMetadata
 
@@ -380,7 +387,7 @@ await agent.callTool("chrome_takeScreenshot", {
 
 ### chrome_runPuppeteerScript
 
-Execute custom Puppeteer scripts with access to page and browser instances.
+Execute custom Puppeteer scripts with access to page and browser instances. This tool launches its own browser independently of ChromeService.
 
 **Tool Definition:**
 
@@ -403,33 +410,52 @@ Execute custom Puppeteer scripts with access to page and browser instances.
 - `navigateTo` (optional): Page URL to navigate to before executing the script
 - `timeoutSeconds` (optional): Timeout for script execution (default 30s, min 5s, max 180s)
 
-**Output:** Returns result object with `result` and `logs` arrays
+**Output:** Returns JSON result with `type: 'json'` containing:
+- `result`: The return value from the executed script
+- `logs`: Array of log strings from `consoleLog` calls and browser console events
 
 **Usage Example:**
 
 ```typescript
-await agent.callTool("chrome_runPuppeteerScript", {
+const result = await agent.callTool("chrome_runPuppeteerScript", {
   script: `(async ({ page, browser, consoleLog }) => {
     consoleLog('Starting Puppeteer script...');
     await page.goto('https://example.com');
     const title = await page.title();
     consoleLog('Page title:', title);
-    return { title, success: true };
+    const links = await page.$$eval('a', links => links.map(l => l.href));
+    consoleLog('Found', links.length, 'links');
+    return { title, linkCount: links.length };
   })`,
   navigateTo: 'https://example.com',
   timeoutSeconds: 30
 });
+
+console.log('Result:', result.data.result);
+console.log('Logs:', result.data.logs);
 ```
+
+**Script Function Signature:**
+
+The script should define or export an async function that accepts:
+- `page`: Puppeteer Page instance for navigation and interaction
+- `browser`: Puppeteer Browser instance for browser-level operations
+- `consoleLog`: Custom logging function that captures output to the `logs` array
 
 **Implementation Details:**
 
-- **Launches its own browser** with `headless: false` by default (visible browser) - does NOT use ChromeService
-- Provides `consoleLog` function for capturing script output
-- Listens to browser console events and captures them in logs
-- Enforces timeout on script execution
-- Browser is **closed** (not disconnected) after operation completion
-- **Note:** This tool operates independently of the ChromeService and agent configuration
-- **Note:** The browser is launched with visible UI (`headless: false`) for debugging purposes
+- **Launches its own browser** with `puppeteer.launch({headless: false})` - does NOT use ChromeService
+- Browser is launched in visible mode (`headless: false`) for debugging purposes
+- Creates new page via `browser.newPage()`
+- Provides `consoleLog` function that captures arguments as space-separated strings
+- Listens to `page.on('console')` events and captures browser console output with `[browser] type: message` format
+- If `navigateTo` is provided, navigates to URL with `waitUntil: 'load'` and 20s timeout
+- Wraps user script in async IIFE and executes with `page`, `browser`, and `consoleLog` context
+- Enforces timeout on script execution (max 180s, min 5s) using `setTimeout`
+- Catches errors and throws with `[chrome_runPuppeteerScript]` prefix
+- Browser is **closed** (not disconnected) after operation completion via `browser.close()`
+- Returns `ExecuteResult` wrapped in `TokenRingToolJSONResult` with `type: 'json'`
+- **Important:** This tool operates independently of ChromeService and agent configuration
 
 ## Usage Examples
 
@@ -502,15 +528,16 @@ const staticContent = await provider.fetchPage('https://example.com', {
 }, agent);
 ```
 
-### Tool Usage
+### Tool Usage - Scrape Page Text
 
 ```typescript
 // Use the scrapePageText tool directly
-const toolResult = await agent.callTool("chrome_scrapePageText", {
-  url: "https://example.com/blog/post"
+const result = await agent.callTool("chrome_scrapePageText", {
+  url: "https://example.com/blog/post",
+  timeoutSeconds: 30
 });
 
-console.log(`Text: ${toolResult.text}`);
+console.log(result.text); // Markdown content
 ```
 
 ### Metadata Extraction
@@ -542,16 +569,19 @@ import fs from 'fs';
 fs.writeFileSync('screenshot.png', screenshot.data, 'base64');
 ```
 
-### Custom Puppeteer Script Execution
+### Tool Usage - Run Custom Puppeteer Script
 
 ```typescript
 const result = await agent.callTool("chrome_runPuppeteerScript", {
   script: `(async ({ page, browser, consoleLog }) => {
+    consoleLog('Starting script...');
     await page.goto('https://example.com');
-    const elements = await page.$$eval('a', links => links.map(link => link.href));
-    consoleLog('Found', elements.length, 'links');
-    return { links: elements };
+    const title = await page.title();
+    const links = await page.$$eval('a', links => links.map(l => l.href));
+    consoleLog('Found', links.length, 'links');
+    return { title, linkCount: links.length };
   })`,
+  navigateTo: 'https://example.com',
   timeoutSeconds: 30
 });
 

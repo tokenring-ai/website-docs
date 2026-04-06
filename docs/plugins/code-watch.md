@@ -584,7 +584,6 @@ export default defineConfig({
 | `@tokenring-ai/agent` | 0.2.0 | Agent management and orchestration |
 | `@tokenring-ai/filesystem` | 0.2.0 | File system abstraction and providers |
 | `@tokenring-ai/utility` | 0.2.0 | Utility functions and helpers |
-| `@tokenring-ai/chat` | 0.2.0 | Chat functionality |
 | `zod` | ^4.3.6 | Schema validation |
 | `async` | ^3.2.6 | Concurrent processing utilities |
 | `ignore` | ^7.0.5 | Ignore pattern matching |

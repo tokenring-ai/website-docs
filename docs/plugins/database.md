@@ -124,7 +124,9 @@ export interface ExecuteSqlResult {
 }
 ```
 
-**Abstract Methods (must be implemented):**
+**Methods:**
+
+The `DatabaseProvider` class provides default implementations that throw errors. Concrete implementations must override both methods:
 
 ```typescript
 async executeSql(_sqlQuery: string): Promise<ExecuteSqlResult>
@@ -134,8 +136,8 @@ async showSchema(): Promise<Record<string, string>>
 
 **Method Descriptions:**
 
-- `executeSql(sqlQuery)`: Executes an SQL query and returns structured results with rows and field names
-- `showSchema()`: Returns table schemas as a key-value map where keys are table names and values are schema definitions
+- `executeSql(sqlQuery)`: Executes an SQL query and returns structured results with rows and field names. Default implementation throws an error.
+- `showSchema()`: Returns table schemas as a key-value map where keys are table names and values are schema definitions. Default implementation throws an error.
 
 **Example Implementation:**
 
@@ -357,7 +359,7 @@ async function* getContextItems({agent}: ContextHandlerOptions): AsyncGenerator<
 
 **Functionality:**
 
-- Retrieves all registered database names via `databaseService.databases.getAllItemNames()`
+- Retrieves all registered database names via `databaseService.getAvailableDatabases()`
 - Yields database names as formatted context items
 - Returns early if no databases are registered
 - Provides formatted list for agent awareness
@@ -376,7 +378,7 @@ async function* getContextItems({agent}: ContextHandlerOptions): AsyncGenerator<
 ```typescript
 export default async function* getContextItems({agent}: ContextHandlerOptions): AsyncGenerator<ContextItem> {
   const databaseService = agent.requireServiceByType(DatabaseService);
-  const available = databaseService['databases'].getAllItemNames();
+  const available = databaseService.getAvailableDatabases();
   if (available.length === 0) return;
 
   yield {
@@ -427,7 +429,41 @@ app.install(databasePlugin, {
 });
 ```
 
-**Note:** The configuration schema accepts a record of provider configurations, but the actual provider instantiation is left to the implementer. The plugin registers the `DatabaseService` and makes it available for tools and context handlers to use.
+**Important:** The plugin does not automatically instantiate database providers from configuration. The configuration object serves two purposes:
+
+1. It signals that the plugin should be activated
+2. It triggers the registration of the `DatabaseService`
+
+Implementers must manually create and register database provider instances with the service after installation. The configuration record keys (`providers`) can be used as a reference for database names, but no actual provider instantiation occurs automatically.
+
+**Configuration Example:**
+
+```typescript
+import TokenRingApp from "@tokenring-ai/app";
+import databasePlugin from "@tokenring-ai/database";
+import { DatabaseService } from "@tokenring-ai/database";
+import { PostgresProvider } from "./postgres-provider";
+
+const app = new TokenRingApp();
+
+// Install plugin with database configuration to activate the service
+app.install(databasePlugin, {
+  database: {
+    providers: {
+      production: {} // Configuration signals activation
+    }
+  }
+});
+
+// Manually register database providers with the service
+app.waitForService(DatabaseService, dbService => {
+  const postgresProvider = new PostgresProvider(
+    process.env.PROD_DB_URL,
+    true // allowWrites
+  );
+  dbService.registerDatabase('production', postgresProvider);
+});
+```
 
 ## Integration
 
@@ -471,6 +507,14 @@ export default {
   config: packageConfigSchema,
 };
 ```
+
+**Important Notes:**
+
+- The `DatabaseService` is registered when the plugin is installed with a `database` configuration
+- The `DatabaseService` is added to the app immediately during plugin installation
+- Tools and context handlers are registered asynchronously after the `ChatService` is available via `waitForService`
+- The plugin does not instantiate database providers - this must be done manually by the implementer
+- Providers must be registered with the `DatabaseService` after the plugin is installed
 
 ### Service Registration
 
@@ -608,10 +652,6 @@ console.log('Available databases:', databases);
 // Get database by name
 const productionDb = dbService.getDatabaseByName('production');
 const cacheDb = dbService.getDatabaseByName('cache');
-
-// Check write permissions
-console.log('Production allows writes:', productionDb.allowWrites);
-console.log('Cache allows writes:', cacheDb.allowWrites);
 ```
 
 ### 4. Using Tools in Agents
@@ -676,8 +716,19 @@ try {
 - **Connection Management**: Always release database connections to avoid resource leaks
 - **Schema Validation**: Validate database names using the context handler before executing queries
 - **Tool Usage**: Use tools (`database_executeSql` and `database_showSchema`) instead of direct service calls
-- **Required Context Handlers**: Always register `available-databases` context handler to provide database names to agents
-- **Provider Abstraction**: Implement custom providers for specific database systems to maintain abstraction layer
+- **Required Context Handlers**: The `available-databases` context handler is required by both tools. It is automatically registered when the plugin is installed with a database configuration and the ChatService is available
+- **Provider Abstraction**: Implement custom providers for specific database systems (PostgreSQL, MySQL, SQLite, etc.) to maintain the abstraction layer
+- **Manual Provider Registration**: The plugin does not automatically instantiate providers from configuration. After installing the plugin, manually create and register provider instances:
+
+  ```typescript
+  app.install(databasePlugin, { database: { providers: { mydb: {} } } });
+  app.waitForService(DatabaseService, dbService => {
+    const provider = new MyCustomProvider(config);
+    dbService.registerDatabase('mydb', provider);
+  });
+  ```
+- **Service Availability**: The `DatabaseService` is available immediately after plugin installation. Tools and context handlers are registered after `ChatService` is available
+- **Tool Execution Flow**: Tools retrieve the database from `DatabaseService`, perform safety checks (approval for writes), then execute the operation and return JSON results
 
 ## Testing
 
@@ -753,6 +804,52 @@ describe('DatabaseService', () => {
     dbService.registerDatabase('db2', new MockProvider());
 
     expect(dbService.getAvailableDatabases()).toEqual(['db1', 'db2']);
+  });
+});
+```
+
+**Testing Tools:**
+
+When testing tools, mock the `Agent` and `DatabaseService`:
+
+```typescript
+import { describe, it, expect } from 'vitest';
+import executeSql from './tools/executeSql';
+import DatabaseService from './DatabaseService';
+import Agent from '@tokenring-ai/agent/Agent';
+
+// Mock agent
+const mockAgent = {
+  requireServiceByType: () => mockDbService,
+  askForApproval: async () => true, // Auto-approve for testing
+} as unknown as Agent;
+
+// Mock database service
+const mockDbService = {
+  getDatabaseByName: () => ({
+    executeSql: async (query: string) => ({ rows: [], fields: [] }),
+  }),
+} as unknown as DatabaseService;
+
+describe('executeSql tool', () => {
+  it('executes SELECT queries without approval', async () => {
+    const result = await executeSql(
+      { databaseName: 'test', sqlQuery: 'SELECT * FROM users' },
+      mockAgent
+    );
+    expect(result.type).toBe('json');
+  });
+
+  it('requests approval for non-SELECT queries', async () => {
+    // Setup mock to return false for approval
+    (mockAgent.askForApproval as any) = async () => false;
+
+    await expect(
+      executeSql(
+        { databaseName: 'test', sqlQuery: 'DELETE FROM users' },
+        mockAgent
+      )
+    ).rejects.toThrow('User did not approve');
   });
 });
 ```

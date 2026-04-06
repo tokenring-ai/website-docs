@@ -204,13 +204,13 @@ This package does not define any RPC endpoints. Memory operations are accessed t
 
 The package provides the following slash-prefixed commands for memory management:
 
-| Command | Description | Example |
-|---------|-------------|---------|
-| `/memory list` | Display all stored memory items | `/memory list` |
-| `/memory add <text>` | Add a new memory item | `/memory add Remember to call client` |
-| `/memory clear` | Clear all memory items | `/memory clear` |
-| `/memory remove <index>` | Remove memory item at specified index (0-based) | `/memory remove 0` |
-| `/memory set <index> <text>` | Update memory item at specified index | `/memory set 1 Updated meeting notes` |
+| Command | Description | Parameters | Example |
+|---------|-------------|------------|---------|
+| `/memory list` | Display all stored memory items | None | `/memory list` |
+| `/memory add` | Add a new memory item | `text` (remainder) | `/memory add Remember to call client` |
+| `/memory clear` | Clear all memory items | None | `/memory clear` |
+| `/memory remove` | Remove memory item at specified index (0-based) | `--index` (number, required) | `/memory remove --index 0` |
+| `/memory set` | Update memory item at specified index | `--index` (number, required), `text` (remainder) | `/memory set --index 1 Updated meeting notes` |
 
 ### Command Details
 
@@ -218,14 +218,8 @@ The package provides the following slash-prefixed commands for memory management
 
 Display all stored memory items.
 
-**Help:**
-```
-# /memory list
-
-Display all stored memory items.
-
-## Example
-
+**Example:**
+```bash
 /memory list
 ```
 
@@ -236,18 +230,18 @@ Memory items:
 [1] Second memory item
 ```
 
-#### `/memory add <text>`
-
-Add a new memory item.
-
-**Help:**
+If no memories are stored:
 ```
-# /memory add
+Memory items:
+No memory items stored
+```
 
-Add a new memory item.
+#### `/memory add`
 
-## Example
+Add a new memory item. The text after the command is captured as a remainder parameter.
 
+**Example:**
+```bash
 /memory add Remember to buy groceries tomorrow
 ```
 
@@ -262,14 +256,8 @@ Memory items:
 
 Remove all memory items.
 
-**Help:**
-```
-# /memory clear
-
-Remove all memory items.
-
-## Example
-
+**Example:**
+```bash
 /memory clear
 ```
 
@@ -278,19 +266,13 @@ Remove all memory items.
 Cleared all memory items
 ```
 
-#### `/memory remove <index>`
+#### `/memory remove`
 
-Remove memory item at specific index.
+Remove memory item at specific index using the `--index` flag.
 
-**Help:**
-```
-# /memory remove
-
-Remove memory item at specific index.
-
-## Example
-
-/memory remove 0
+**Example:**
+```bash
+/memory remove --index 0
 ```
 
 **Output:**
@@ -300,19 +282,13 @@ Memory items:
 [0] Remaining memory item
 ```
 
-#### `/memory set <index> <text>`
+#### `/memory set`
 
-Update memory item at specific index.
+Update memory item at specific index using the `--index` flag. The text after the flags is captured as a remainder parameter.
 
-**Help:**
-```
-# /memory set
-
-Update memory item at specific index.
-
-## Example
-
-/memory set 0 Updated meeting notes
+**Example:**
+```bash
+/memory set --index 0 Updated meeting notes
 ```
 
 **Output:**
@@ -325,7 +301,7 @@ Memory items:
 **Usage Examples**
 
 ```typescript
-// Add memory items
+// Add memory items (text captured as remainder)
 await agent.executeCommand('/memory add Remember to check emails tomorrow');
 await agent.executeCommand('/memory add Meeting notes: Discuss project timeline');
 
@@ -336,15 +312,15 @@ const result = await agent.executeCommand('/memory list');
 // [0] Remember to check emails tomorrow
 // [1] Meeting notes: Discuss project timeline
 
-// Remove memory at index 0
-await agent.executeCommand('/memory remove 0');
+// Remove memory at index 0 (using --index flag)
+await agent.executeCommand('/memory remove --index 0');
 // Output:
 // Removed memory item at index 0
 // Memory items:
 // [0] Meeting notes: Discuss project timeline
 
-// Update memory at index 0
-await agent.executeCommand('/memory set 0 Updated meeting time');
+// Update memory at index 0 (using --index flag, text as remainder)
+await agent.executeCommand('/memory set --index 0 Updated meeting time');
 // Output:
 // Updated memory item at index 0
 // Memory items:
@@ -588,7 +564,7 @@ try {
 }
 ```
 
-**Note:** Command validation errors (missing required parameters, invalid types) are automatically handled by the command service through the input schema validation. The `CommandFailedError` may be thrown by the command service for invalid operations, but the memory commands themselves do not throw this error directly.
+**Note:** Command validation errors (missing required parameters, invalid types) are automatically handled by the command service through the input schema validation.
 
 ## Testing and Development
 

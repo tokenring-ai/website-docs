@@ -441,19 +441,20 @@ Contains loading screen and agent selection screen implementations.
 Displays a loading screen with animated spinner and configurable banner while the application initializes.
 
 **Features:**
-- Animated spinner with progress
-- Responsive banner selection based on terminal width
+- Animated spinner with progress (braille spinner animation)
+- Responsive banner selection based on terminal width (wide/narrow/compact)
 - Random loading messages from a curated list
 - Automatic width detection for banner selection
+- Abort signal support for graceful cancellation
 
 **AgentSelectionScreen:**
 The main screen for selecting, spawning, or connecting to agents.
 
 **Features:**
-- **Spawn Agents**: Create new agent instances from available configurations
-- **Connect to Agents**: Connect to already running agents
-- **Open Web Applications**: Launch web browsers connected to SPA resources
-- **Run Workflows**: Execute predefined workflows
+- **Spawn Agents**: Create new agent instances from available configurations in `AgentManager`
+- **Connect to Agents**: Connect to already running agents from `AgentManager`
+- **Open Web Applications**: Launch web browsers connected to SPA resources from `WebHostService`
+- **Run Workflows**: Execute predefined workflows from `WorkflowService`
 
 **Action Types:**
 
@@ -468,6 +469,22 @@ The main screen for selecting, spawning, or connecting to agents.
 - Shows agent description and enabled tools when hovering over spawn options
 - Displays agent status (idle/running) for connected agents
 - Shows workflow description for workflow options
+- Shows web application URL for SPA resources
+
+**Agent Selection Categories:**
+
+The selection screen organizes options into categories:
+
+1. **Web Application**: SPA resources from `WebHostService`
+2. **Running Agents**: Currently active agents from `AgentManager`
+3. **Agent Types**: Configurable agent types (category defined in agent config)
+4. **Workflows**: Available workflows from `WorkflowService`
+
+**Keyboard Navigation:**
+- Up/Down arrows or j/k: Move selection
+- Enter: Confirm selection
+- Escape/q: Cancel and quit
+- Ctrl+C: Interrupt and quit
 
 ## Services
 
@@ -488,11 +505,27 @@ app.addServices(new AgentCLI(app, {
   loadingBannerWide: 'Loading TokenRing CLI...',
   loadingBannerCompact: 'Loading',
   screenBanner: 'TokenRing CLI',
-  uiFramework: 'opentui',
+  verbose: false,
 }));
 
 await app.start();
 ```
+
+**Service Behavior:**
+
+The `AgentCLI` service manages the complete CLI lifecycle:
+
+1. **Loading Screen**: Displays a loading screen while the application initializes (unless `startAgent` is configured)
+2. **Agent Selection**: Presents an interactive agent selection screen with categories for:
+   - Web Applications (SPAs hosted by `WebHostService`)
+   - Running Agents (existing agents from `AgentManager`)
+   - Agent Types (spawnable agent configurations)
+   - Workflows (executable workflows from `WorkflowService`)
+3. **Agent Spawning**: Creates new agents or connects to existing ones based on selection
+4. **Interaction Loop**: Manages the agent interaction loop via `AgentLoop`
+5. **Signal Handling**: Handles SIGINT for graceful shutdown
+6. **Agent Lifecycle**: After agent completion, returns to agent selection (unless `startAgent.shutdownWhenDone` is true)
+7. **Cleanup**: Properly restores terminal state on exit
 
 ## Configuration
 
@@ -663,7 +696,7 @@ app.install(cliPlugin, {
     loadingBannerWide: 'Loading TokenRing CLI...',
     loadingBannerCompact: 'Loading',
     screenBanner: 'TokenRing CLI',
-    uiFramework: 'opentui',
+    verbose: false,
   },
 });
 ```
@@ -679,7 +712,7 @@ app.addServices(new AgentCLI(app, {
   loadingBannerWide: 'Loading TokenRing CLI...',
   loadingBannerCompact: 'Loading',
   screenBanner: 'TokenRing CLI',
-  uiFramework: 'opentui',
+  verbose: false,
 }));
 ```
 
@@ -732,7 +765,7 @@ const config = {
     loadingBannerWide: 'Loading TokenRing CLI...',
     loadingBannerCompact: 'Loading',
     screenBanner: 'TokenRing CLI',
-    uiFramework: 'opentui',
+    verbose: false,
   },
 };
 
@@ -754,7 +787,7 @@ app.addServices(new AgentCLI(app, {
   loadingBannerWide: 'Loading TokenRing CLI...',
   loadingBannerCompact: 'Loading',
   screenBanner: 'TokenRing CLI',
-  uiFramework: 'opentui',
+  verbose: false,
 }));
 
 await app.start();
@@ -766,7 +799,7 @@ await app.start();
 const config = {
   cli: {
     chatBanner: 'TokenRing CLI',
-    uiFramework: 'opentui',
+    verbose: false,
     startAgent: {
       type: 'coder',
       prompt: 'Help me debug this issue...',
@@ -782,7 +815,6 @@ const config = {
 const config = {
   cli: {
     chatBanner: 'TokenRing CLI',
-    uiFramework: 'opentui',
     verbose: true, // Show reasoning and artifacts
     loadingBannerNarrow: 'Loading...',
     loadingBannerWide: 'Loading TokenRing CLI...',

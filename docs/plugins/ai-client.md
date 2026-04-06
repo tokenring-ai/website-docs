@@ -1,6 +1,6 @@
 # @tokenring-ai/ai-client
 
-Multi-provider AI integration client for the Token Ring ecosystem. Provides unified access to various AI models through a consistent interface, supporting chat, embeddings, image generation, video generation, reranking, speech synthesis, and transcription capabilities.
+Multi-provider AI integration client for the Token Ring ecosystem. Provides unified access to various AI models through a consistent interface, supporting chat, embeddings, image generation, reranking, speech synthesis, and transcription capabilities.
 
 ## Overview
 
@@ -8,14 +8,15 @@ The AI Client package acts as a unified interface to multiple AI providers, abst
 
 ### Key Features
 
-- **15+ AI Providers**: Anthropic, OpenAI, Google, Groq, Cerebras, DeepSeek, ElevenLabs, Fal, xAI, OpenRouter, Perplexity, Azure, Ollama, llama, and more
-- **Seven AI Capabilities**: Chat, Embeddings, Image Generation, Video Generation, Reranking, Speech, and Transcription
-- **Seven Model Registries**: Dedicated service registries for managing model specifications and capabilities
+- **16+ Native AI Providers**: Anthropic, OpenAI, Google, Groq, Cerebras, DeepSeek, ElevenLabs, Fal, xAI, OpenRouter, Perplexity, Azure, Ollama, Llama (via Meta API), NVIDIA NIM, Chutes, Minimax, MiMo, and zAI
+- **Generic Provider Support**: Configure custom providers via OpenAI-compatible, Anthropic-compatible, or Responses-compatible endpoints (supports Qwen/DashScope, llama.cpp, and any other compatible API)
+- **Six AI Capabilities**: Chat, Embeddings, Image Generation, Reranking, Speech, and Transcription
+- **Seven Model Registries**: Dedicated service registries for managing model specifications and capabilities (Chat, Image Generation, Video Generation, Embedding, Speech, Transcription, and Reranking)
 - **Dynamic Model Registration**: Register custom models with availability checks
 - **Model Status Tracking**: Monitor model online, cold, and offline status
 - **Auto-Configuration**: Automatic provider setup from environment variables
 - **JSON-RPC API**: Remote procedure call endpoints for programmatic access via plugin registration
-- **Streaming Support**: Real-time streaming responses with delta handling for text and reasoning
+- **Streaming Support**: Real-time streaming responses with delta handling for text and reasoning output
 - **Agent Integration**: Seamless integration with Token Ring agent system through services
 - **Feature System**: Rich feature specification system supporting boolean, number, string, enum, and array types with validation
 - **Cost Tracking**: Automatic cost calculation and metrics integration
@@ -33,23 +34,55 @@ The package supports the following AI providers through dedicated integrations:
 
 | Provider | SDK/Model Support | Key Features |
 |----------|-------------------|--------------|
-| Anthropic | Claude models | Reasoning, analysis, web search, context caching, image input, file input |
-| OpenAI | GPT models, Whisper, TTS, Image Generation | Reasoning, multimodal, real-time audio, image generation, web search |
-| Google | Gemini, Imagen | Thinking, multimodal, image generation, web search, video input, audio input |
+| Anthropic | Claude models (Opus, Sonnet, Haiku) | Reasoning, analysis, web search, context caching, image input, file input |
+| OpenAI | GPT models (gpt-4.1, gpt-5 series, o1/o3/o4 series), Whisper, TTS, Image Generation (gpt-image-1, gpt-image-1.5) | Reasoning, multimodal, real-time audio, image generation, web search, deep research, audio input/output, computer use |
+| Google | Gemini (2.5, 3, 3.1 series), Imagen (4.0) | Thinking, multimodal, image generation, web search, video input, audio input, long context |
 | Groq | LLaMA-based models | High-speed inference, Llama, Qwen, Kimi models |
-| Cerebras | LLaMA-based models | High performance, Llama, Qwen, GLM models |
+| Cerebras | Cerebras models | High performance inference |
 | DeepSeek | DeepSeek models | Reasoning capabilities, chat and reasoner |
 | ElevenLabs | Speech synthesis and transcription | Multilingual voice generation, speaker diarization |
 | Fal | Image generation | Fast image generation, Flux models |
-| xAI | xAI models | Reasoning and analysis, image generation, video generation |
+| xAI | Grok models | Reasoning and analysis |
 | OpenRouter | Aggregated access | Multiple provider access, dynamic model discovery |
 | Perplexity | Perplexity models | Web search integration, deep research |
 | Azure | Azure OpenAI | Enterprise deployment |
 | Ollama | Self-hosted models | Local inference, chat and embedding models |
-| Llama | Meta Llama models | Local/remote inference via llama.com |
-| OpenAI Compatible | Any OpenAI-compatible API | Flexible provider configuration |
+| Llama | Meta Llama models (via Meta API) | Remote inference via Meta API |
+| NVIDIA NIM | NVIDIA models | Enterprise AI models via NIM |
+| Qwen (DashScope) | Alibaba Cloud models | High context length models |
+| Chutes | Various models | Custom model hosting |
+| Minimax | Minimax models | Chinese language models |
+| MiMo | MiMo models | Custom models |
+| zAI | Z.ai models | Chinese AI models |
+| Generic | OpenAI/Anthropic/Responses-compatible | Custom providers, Qwen/DashScope, llama.cpp, any compatible API with dynamic model discovery |
 
-Additional providers can be configured using the `openaiCompatible` provider for OpenAI-compatible APIs.
+### Provider-Specific Capabilities
+
+**OpenAI Provider:**
+- Chat models: gpt-4.1 series, gpt-5 series (including mini, nano, pro, long-context variants), o1/o3/o4 series (including deep research variants), gpt-4o series, gpt-realtime series, gpt-audio series, computer-use-preview
+- Image models: gpt-image-1 (high/medium/low), gpt-image-1-mini (high/medium/low), gpt-image-1.5 (high/medium/low)
+- Speech models: tts-1, tts-1-hd
+- Transcription models: whisper-1
+- Features: websearch, reasoningEffort, reasoningSummary, serviceTier, textVerbosity, strictJsonSchema, promptCacheRetention
+
+**Anthropic Provider:**
+- Chat models: claude-4.6-opus, claude-4.5-opus, claude-4.5-haiku, claude-4.1-opus, claude-4.6-sonnet, claude-4.5-sonnet (with long-context variants)
+- Features: caching, websearch, maxSearchUses
+
+**Google Provider:**
+- Chat models: gemini-3.1-pro (long-context), gemini-3-pro, gemini-2.5-pro, gemini-2.5-flash, gemini-3-flash, gemini-2.5-flash-lite
+- Image models: gemini-3-pro-image-preview, imagen-4.0-ultra, imagen-4.0, imagen-4.0-fast
+- Features: responseModalities, thinkingBudget, thinkingLevel, includeThoughts, websearch
+
+**Generic Provider:**
+- Supports OpenAI-compatible, Anthropic-compatible, and Responses-compatible endpoints
+- Dynamic model discovery with automatic registration of new models
+- Configurable model list URL and props URL for context length discovery
+- Supports both chat and embedding models (OpenAI-compatible only)
+- Background task for periodic model discovery (checks every 60 seconds)
+- Static model list support for providers without model list endpoint
+
+Additional providers can be configured using the `generic` provider with OpenAI-compatible, Anthropic-compatible, or Responses-compatible endpoints. This supports providers like Qwen (DashScope), llama.cpp instances, and any other compatible API.
 
 ## Core Components
 
@@ -340,9 +373,19 @@ CHUTES_API_KEY=...
 # NVIDIA NIM
 NVIDIA_NIM_API_KEY=...
 
-# llama.cpp
+# Minimax
+MINIMAX_API_KEY=...
+
+# MiMo
+MIMO_API_KEY=...
+
+# llama.cpp (multiple instances supported)
 LLAMA_BASE_URL=http://127.0.0.1:11434/v1
 LLAMA_API_KEY=...
+
+# llama.cpp (other instances can be registered)
+LLAMA_BASE_URL2=http://127.0.0.1:11434/v1
+LLAMA_API_KEY2=...
 
 # Azure
 AZURE_API_ENDPOINT=https://...
@@ -745,6 +788,24 @@ The AI Client exposes JSON-RPC endpoints for programmatic access via the RPC ser
 | `listRerankingModels` | `{}` | `{ models: {...} }` | Get all available reranking models |
 | `listRerankingModelsByProvider` | `{}` | `{ modelsByProvider: {...} }` | Get reranking models grouped by provider |
 
+**Note**: Video generation models are available through the `VideoGenerationModelRegistry` service but are not currently exposed via JSON-RPC endpoints.
+
+### RPC Schema
+
+The RPC endpoints are defined in `rpc/schema.ts` with the following structure:
+
+```typescript
+{
+  name: "AI Client RPC",
+  path: "/rpc/ai-client",
+  methods: {
+    listChatModels: { type: "query", input: z.object({}), result: z.object({ models: z.record(...) }) },
+    listChatModelsByProvider: { type: "query", input: z.object({}), result: z.object({ modelsByProvider: z.record(...) }) },
+    // ... other methods
+  }
+}
+```
+
 **Response Structure:**
 
 ```typescript
@@ -794,18 +855,35 @@ const modelsByProvider = await rpcService.call("listChatModelsByProvider", {
 });
 ```
 
-**Note**: Video generation models are currently not exposed via RPC endpoints. They are available through the `VideoGenerationModelRegistry` service but not through the JSON-RPC interface.
-
-## Model Discovery
+### Model Discovery
 
 The package automatically discovers and registers available models from each provider:
 
 1. **Plugin Installation**: `install()` method runs during plugin installation and registers the seven service registries
 2. **Provider Configuration**: `start()` method runs after services are registered and registers providers based on configuration
-3. **Auto-Configuration**: If `autoConfigure` is true or `providers` is not set, `autoConfig()` is called to detect environment variables
+3. **Auto-Configuration**: If `autoConfigure` is true or `providers` is not set, `addDefaultProviders()` is called to detect environment variables
 4. **Provider Registration**: Each provider's `init()` method is called with its configuration
 5. **Model Registration**: Providers add their available models to the appropriate registries
 6. **Availability Checking**: Background process checks `isAvailable()` to determine model status
+
+### Dynamic Model Discovery (Generic Provider)
+
+The generic provider supports dynamic model discovery for OpenAI-compatible and some other providers:
+
+1. **Initial Model List**: Fetches model list from `modelListUrl` or auto-detected endpoint
+2. **Model Registration**: Registers chat and embedding models (OpenAI-compatible only)
+3. **Periodic Discovery**: Background task checks for new models every 60 seconds
+4. **New Model Registration**: Automatically registers newly discovered models
+5. **Static Model List**: Can use `staticModelList` for providers without model list endpoint
+
+**Configuration Options for Dynamic Discovery:**
+
+- `modelListUrl`: Custom URL for model list endpoint
+- `modelPropsUrl`: Custom URL for model properties endpoint (context length discovery)
+- `staticModelList`: Static model list object (for providers without dynamic endpoint)
+- `generateModelSpec`: Custom function to determine model type and capabilities
+
+**Note**: Dynamic discovery is only available for the generic provider with OpenAI-compatible endpoints.
 
 ### Model Status
 
@@ -895,67 +973,70 @@ Each feature has the following properties:
 Different providers support different features:
 
 **OpenAI:**
-- `websearch`: Enable web search tool
-- `reasoningEffort`: Reasoning effort level (minimal, low, medium, high)
-- `reasoningSummary`: Reasoning summary mode (auto, detailed)
+- `websearch`: Enable web search tool (default: false)
+- `reasoningEffort`: Reasoning effort level (none, minimal, low, medium, high) - for reasoning models (gpt-5.1 adds "none")
+- `reasoningSummary`: Reasoning summary mode (auto, detailed) - for reasoning models
 - `serviceTier`: Service tier (auto, flex, priority, default)
 - `textVerbosity`: Text verbosity (low, medium, high)
-- `strictJsonSchema`: Use strict JSON schema validation
-- `promptCacheRetention`: Prompt cache retention policy (in_memory, 24h)
+- `strictJsonSchema`: Use strict JSON schema validation (default: false)
+- `promptCacheRetention`: Prompt cache retention policy (in_memory, 24h) - for gpt-5.1 models
 
 **Anthropic:**
-- `caching`: Enable context caching
-- `websearch`: Enable web search tool
-- `maxSearchUses`: Maximum number of web searches (0 to disable, max 20)
+- `caching`: Enable context caching (default: true)
+- `websearch`: Enable web search tool (default: false)
+- `maxSearchUses`: Maximum number of web searches (default: 5, max: 20)
 
 **Google:**
-- `responseModalities`: Response modalities (TEXT, IMAGE)
-- `thinkingBudget`: Thinking token budget (for Gemini 2.5)
-- `thinkingLevel`: Thinking depth (for Gemini 3)
-- `includeThoughts`: Include thought summaries
+- `responseModalities`: Response modalities (TEXT, IMAGE) - default: ["TEXT"]
+- `thinkingBudget`: Thinking token budget (for Gemini 2.5, 0 to disable, max: 32768)
+- `thinkingLevel`: Thinking depth (low, high - for Gemini 3)
+- `includeThoughts`: Include thought summaries (default: false)
 
-**Perplexity:**
-- `websearch`: Enable web search (default: true)
-- `searchContextSize`: Search context size (low, medium, high)
-
-**xAI:**
-- `websearch`: Enable web search
-- `webImageUnderstanding`: Enable image understanding in web search
-- `XSearch`: Enable X search
-- `XFromDate`: From date for X search
-- `XToDate`: To date for X search
-- `XAllowedHandles`: Allowed handles for X search
-- `XImageUnderstanding`: Enable image understanding in X search
-- `XVideoUnderstanding`: Enable video understanding in X search
-
-**OpenRouter:**
-- `websearch`: Enable web search plugin
-- `searchEngine`: Search engine (native, exa)
-- `maxResults`: Maximum number of search results
-- `searchContextSize`: Search context size for native search
-- `frequencyPenalty`: Frequency penalty
-- `maxTokens`: Max tokens
-- `minP`: Min P sampling
-- `presencePenalty`: Presence penalty
-- `repetitionPenalty`: Repetition penalty
-- `temperature`: Temperature
-- `topK`: Top K sampling
-- `topP`: Top P sampling
-- `includeReasoning`: Include reasoning
-- `reasoning`: Reasoning mode
-
-**OpenAI Compatible:**
+**Generic Provider (OpenAI-Compatible):**
 - `temperature`: Sampling temperature (0-2)
-- `top_p`: Nucleus sampling (0-1)
+- `top_p`: Nucleus sampling parameter (0-1)
 - `frequency_penalty`: Frequency penalty (-2 to 2)
 - `presence_penalty`: Presence penalty (-2 to 2)
-- `seed`: Random seed for reproducible output
-- `top_k`: Top K sampling (if supported)
-- `min_p`: Min P sampling (if supported)
-- `repetition_penalty`: Repetition penalty (if supported)
-- `length_penalty`: Length penalty (if supported)
-- `min_tokens`: Minimum tokens to generate (if supported)
-- `enable_thinking`: Enable thinking mode (for VLLM)
+- `seed`: Random seed for consistent results
+- `top_k`: Top-k sampling (0-100) - if supported by provider
+- `min_p`: Minimum probability threshold (0-1) - if supported by provider
+- `repetition_penalty`: Repetition penalty (1-2) - if supported by provider
+- `length_penalty`: Length penalty (0-5) - if supported by provider
+- `min_tokens`: Minimum tokens to generate (if supported by provider)
+- `enable_thinking`: Enable thinking mode - for vllm providers
+
+**Generic Provider (Anthropic-Compatible):**
+- `caching`: Enable context caching (default: true)
+- `websearch`: Enable web search tool (default: false)
+- `maxSearchUses`: Maximum number of web searches (default: 5, max: 20)
+
+**Generic Provider (Responses-Compatible):**
+- Same features as OpenAI-compatible endpoint
+
+**xAI:**
+- No specific features currently configured. xAI models are available through the provider integration.
+
+**ElevenLabs (Speech):**
+- `voice`: Voice ID to use for speech synthesis
+- `language_code`: Language code (ISO 639-1) for the voice
+- `stability`: Voice stability (0-1, lower = more variation)
+- `similarity_boost`: Similarity boost (0-1, controls adherence to voice)
+- `style`: Style amplification (0-1)
+- `use_speaker_boost`: Boost similarity to original speaker
+
+**ElevenLabs (Transcription):**
+- `languageCode`: Language code (ISO 639-1 or ISO 639-3)
+- `tagAudioEvents`: Tag audio events like laughter and footsteps
+- `numSpeakers`: Maximum number of speakers (1-32)
+- `timestampsGranularity`: Timestamp granularity (none, word, character)
+- `diarize`: Annotate which speaker is talking
+- `fileFormat`: Input audio format
+
+**Generic Provider (OpenAI-Compatible):**
+- Provider-specific features depend on the underlying model implementation
+- The generic provider supports OpenAI-compatible, Anthropic-compatible, and Responses-compatible endpoints
+- Common parameters like `temperature`, `top_p`, `frequency_penalty`, `presence_penalty` are passed through to the provider
+- For llama.cpp instances, configure via `LLAMA_BASE_URL`, `LLAMA_API_KEY` environment variables
 
 ## Best Practices
 
@@ -1004,22 +1085,25 @@ bun run test:coverage
 - `@ai-sdk/azure`: Azure OpenAI SDK for Azure hosting
 - `@ai-sdk/cerebras`: Cerebras AI SDK for LLaMA models
 - `@ai-sdk/deepseek`: DeepSeek AI SDK for DeepSeek models
-- `@ai-sdk/elevenlabs`: ElevenLabs SDK for speech synthesis
+- `@ai-sdk/elevenlabs`: ElevenLabs SDK for speech synthesis and transcription
 - `@ai-sdk/fal`: Fal AI SDK for image generation
-- `@ai-sdk/google`: Google Generative AI SDK for Gemini models
-- `@ai-sdk/groq`: Groq AI SDK for LLaMA inference
-- `@ai-sdk/openai`: OpenAI AI SDK for GPT, Whisper, TTS models
-- `@ai-sdk/openai-compatible`: OpenAI-compatible API SDK
+- `@ai-sdk/google`: Google Generative AI SDK for Gemini and Imagen models
+- `@ai-sdk/groq`: Groq AI SDK for fast LLaMA inference
+- `@ai-sdk/openai`: OpenAI AI SDK for GPT, Whisper, TTS, and image models
+- `@ai-sdk/openai-compatible`: OpenAI-compatible API SDK for generic providers
+- `@ai-sdk/open-responses`: OpenAI Responses API SDK
+- `@ai-sdk/provider`: AI SDK provider types
 - `@ai-sdk/perplexity`: Perplexity AI SDK for Perplexity models
 - `@ai-sdk/xai`: xAI SDK for Grok models
 - `@openrouter/ai-sdk-provider`: OpenRouter SDK for provider aggregation
 - `ollama-ai-provider-v2`: Ollama SDK for local model hosting
 
-### Development Dependencies
+### Package Version
 
-- `@vitest/coverage-v8`: Code coverage
-- `typescript`: TypeScript compiler
-- `vitest`: Unit testing framework
+- Version: 0.2.0
+- License: MIT
+
+
 
 ## Development
 
@@ -1032,10 +1116,10 @@ The package exports the following from `index.ts`:
 
 - `Tool`: Type from Vercel AI SDK
 - `UserModelMessage`: Type from Vercel AI SDK
-- `chatTool`: Tool creation function from Vercel AI SDK
+- `chatTool`: Tool creation function (`tool`) from Vercel AI SDK
 - `stepCountIs`: Step counting function from Vercel AI SDK
 
-The actual client classes (`AIChatClient`, `AIEmbeddingClient`, etc.) are internal implementation details and are accessed through the model registries.
+The actual client classes (`AIChatClient`, `AIEmbeddingClient`, `AIImageGenerationClient`, `AIVideoGenerationClient`, `AISpeechClient`, `AITranscriptionClient`, `AIRerankingClient`) are internal implementation details and are accessed through the model registries.
 
 ### Utility Functions
 

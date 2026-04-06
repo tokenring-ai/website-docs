@@ -14,6 +14,8 @@ The `@tokenring-ai/utility` package provides a comprehensive collection of gener
 - **Timer Utilities**: Throttle and debounce functions for rate limiting
 - **Buffer Utilities**: Binary data detection in buffers
 - **Environment Utilities**: Environment variable management with file-based secrets support
+- **Number Utilities**: Number clamping utilities (`clamp`)
+- **JSON Utilities**: Safe JSON parsing with fallback (`safeParse`)
 - **Type Safety**: Comprehensive TypeScript definitions
 
 ## Core Components
@@ -130,6 +132,22 @@ Located in `pkg/utility/types.ts`:
 | Type | Definition | Description |
 |------|------------|-------------|
 | `PrimitiveType` | `string \| number \| boolean \| null \| undefined` | Primitive JavaScript types |
+
+### Number Utilities
+
+Located in `pkg/utility/number/`:
+
+| Function | Type | Description |
+|----------|------|-------------|
+| `clamp` | `(value: number, min: number, max: number) => number` | Clamps a number between minimum and maximum values |
+
+### JSON Utilities
+
+Located in `pkg/utility/json/`:
+
+| Function | Type | Description |
+|----------|------|-------------|
+| `safeParse` | `(jsonString: string, defaultValue: T) => T` | Safely parses JSON string, returning default value on failure |
 
 ## Core Methods
 
@@ -695,6 +713,36 @@ if (isProductionEnvironment()) {
 }
 ```
 
+### Number Utilities
+
+```typescript
+import { clamp } from '@tokenring-ai/utility/number/clamp';
+
+// Clamp values to a range
+clamp(5, 0, 10);     // 5
+clamp(-1, 0, 10);    // 0
+clamp(15, 0, 10);    // 10
+clamp(3.5, 1, 5);    // 3.5
+```
+
+### JSON Utilities
+
+```typescript
+import safeParse from '@tokenring-ai/utility/json/safeParse';
+
+// Parse JSON with fallback
+const config = safeParse('{"port": 3000, "host": "localhost"}', { port: 8080 });
+// { port: 3000, host: 'localhost' }
+
+// Handle invalid JSON
+const invalid = safeParse('not valid json', { port: 8080 });
+// { port: 8080 }
+
+// Parse with type safety
+const numbers = safeParse('[1, 2, 3]', [] as number[]);
+// [1, 2, 3]
+```
+
 ## Integration
 
 The utility package is designed to be used as a foundational dependency across the Token Ring ecosystem. It can be integrated into any package or application that requires common utility functions.
@@ -794,6 +842,8 @@ pluginRegistry.waitForItemByName('plugin-a', (plugin) => {
 - Use `workingMessages`, `ridiculousMessages`, and `brailleSpinner` for loading indicators
 - Use `defaultEnv` with `_FILE` support for secrets management
 - Use `intelligentTruncate` for smart truncation that preserves word boundaries
+- Use `clamp` for constraining numeric values to a range
+- Use `safeParse` for safe JSON parsing with fallback values
 
 ## Testing and Development
 
@@ -884,6 +934,8 @@ describe('Timer Utilities', () => {
 - The `wrapPlainText` function handles tabs and newlines correctly
 - The `flattenWrappedLines` function re-wraps text with prefixes for indented output
 - The `intelligentTruncate` function preserves word boundaries when truncating
+- The `clamp` function constrains numeric values to a specified range
+- The `safeParse` function provides safe JSON parsing with fallback values
 
 ## License
 

@@ -227,9 +227,11 @@ Execute a shell command in an ephemeral Docker container that is automatically r
 {
   image: string;          // Docker image name (e.g., ubuntu:latest)
   cmd: string;            // Command to run in the container (e.g., 'ls -l /')
-  timeoutSeconds?: number; // Timeout for the command, in seconds (default: 60)
+  timeoutSeconds?: number; // Timeout for the command, in seconds (default: 60, max: 600)
 }
 ```
+
+**Note**: This tool uses `TerminalService` for command execution and wraps the docker command with `timeout` for safety.
 
 **Example**:
 
@@ -262,7 +264,7 @@ List Docker containers with optional filtering and formatting.
 - `filter` (string, optional): Filter output based on conditions
 - `size` (boolean, optional): Display total file sizes (default: false)
 - `format` (string, optional): Format the output (json or table, default: "json")
-- `timeoutSeconds` (number, optional): Timeout in seconds (default: 30)
+- `timeoutSeconds` (number, optional): Timeout in seconds (default: 30, max: 120)
 
 **Example**:
 ```typescript
@@ -284,7 +286,7 @@ List Docker images with optional filtering and formatting.
 - `digests` (boolean, optional): Whether to show digests (default: false)
 - `filter` (string, optional): Filter output based on conditions
 - `format` (string, optional): Format the output (json or table, default: "json")
-- `timeoutSeconds` (number, optional): Timeout in seconds (default: 30)
+- `timeoutSeconds` (number, optional): Timeout in seconds (default: 30, max: 120)
 
 **Example**:
 ```typescript
@@ -307,7 +309,7 @@ Build a Docker image from a Dockerfile.
 - `buildArgs` (`Record<string, string>`, optional): Build arguments to pass to the build
 - `noCache` (boolean, optional): Whether to NOT use cache when building (default: false)
 - `pull` (boolean, optional): Whether to always pull newer versions of base images (default: false)
-- `timeoutSeconds` (number, optional): Timeout in seconds (default: 300)
+- `timeoutSeconds` (number, optional): Timeout in seconds (default: 300, max: 1800)
 
 **Example**:
 ```typescript
@@ -332,7 +334,7 @@ Start one or more Docker containers.
 - `containers` (string | string[]): Container ID(s) or name(s) to start
 - `attach` (boolean, optional): Whether to attach STDOUT/STDERR (default: false)
 - `interactive` (boolean, optional): Whether to attach container's STDIN (default: false)
-- `timeoutSeconds` (number, optional): Timeout in seconds (default: 30)
+- `timeoutSeconds` (number, optional): Timeout in seconds (default: 30, max: 120)
 
 **Example**:
 ```typescript
@@ -351,7 +353,7 @@ Stop one or more Docker containers.
 **Parameters**:
 - `containers` (string | string[]): Container ID(s) or name(s) to stop
 - `time` (number, optional): Seconds to wait for stop before killing (default: 10)
-- `timeoutSeconds` (number, optional): Timeout in seconds (default: 30)
+- `timeoutSeconds` (number, optional): Timeout in seconds (default: 30, max: 120)
 
 **Example**:
 ```typescript
@@ -372,7 +374,7 @@ Remove one or more Docker containers.
 - `force` (boolean, optional): Whether to force removal of running container (default: false)
 - `volumes` (boolean, optional): Whether to remove anonymous volumes (default: false)
 - `link` (boolean, optional): Whether to remove the specified link (default: false)
-- `timeoutSeconds` (number, optional): Timeout in seconds (default: 30)
+- `timeoutSeconds` (number, optional): Timeout in seconds (default: 30, max: 120)
 
 **Example**:
 ```typescript
@@ -397,7 +399,7 @@ Execute a command in a running Docker container.
 - `env` (`Record<string, string>`, optional): Environment variables to set
 - `privileged` (boolean, optional): Whether to give extended privileges (default: false)
 - `user` (string, optional): Username or UID to execute as
-- `timeoutSeconds` (number, optional): Timeout in seconds (default: 30)
+- `timeoutSeconds` (number, optional): Timeout in seconds (default: 30, max: 300)
 
 **Example**:
 ```typescript
@@ -426,7 +428,7 @@ Get logs from a Docker container.
 - `until` (string, optional): Show logs before timestamp
 - `tail` (number, optional): Number of lines to show (default: 100)
 - `details` (boolean, optional): Whether to show extra details (default: false)
-- `timeoutSeconds` (number, optional): Timeout in seconds (default: 30)
+- `timeoutSeconds` (number, optional): Timeout in seconds (default: 30, max: 300)
 
 **Example**:
 ```typescript
@@ -447,7 +449,7 @@ Get stats from a Docker container.
 - `all` (boolean, optional): Whether to show all containers (default: false)
 - `noStream` (boolean, optional): Whether to disable streaming stats and only pull one stat (default: true)
 - `format` (string, optional): Format the output (json or table, default: "json")
-- `timeoutSeconds` (number, optional): Timeout in seconds (default: 10)
+- `timeoutSeconds` (number, optional): Timeout in seconds (default: 10, max: 60)
 
 **Example**:
 ```typescript
@@ -467,7 +469,7 @@ Remove one or more Docker images.
 - `images` (string[]): Image ID(s) or name(s) to remove
 - `force` (boolean, optional): Whether to force removal (default: false)
 - `noPrune` (boolean, optional): Whether to prevent pruning parent images (default: false)
-- `timeoutSeconds` (number, optional): Timeout in seconds (default: 30)
+- `timeoutSeconds` (number, optional): Timeout in seconds (default: 30, max: 120)
 
 **Example**:
 ```typescript
@@ -486,7 +488,7 @@ Tag a Docker image with a new name and/or tag.
 **Parameters**:
 - `sourceImage` (string): The source image to tag
 - `targetImage` (string): The target image name and tag
-- `timeoutSeconds` (number, optional): Timeout in seconds (default: 30)
+- `timeoutSeconds` (number, optional): Timeout in seconds (default: 30, max: 120)
 
 **Example**:
 ```typescript
@@ -505,7 +507,7 @@ Push a Docker image to a registry.
 **Parameters**:
 - `tag` (string): The image tag to push
 - `allTags` (boolean, optional): Whether to push all tags (default: false)
-- `timeoutSeconds` (number, optional): Timeout in seconds (default: 300)
+- `timeoutSeconds` (number, optional): Timeout in seconds (default: 300, max: 1800)
 
 **Example**:
 ```typescript
@@ -529,7 +531,7 @@ Create a Docker network.
 - `subnet` (string, optional): Subnet in CIDR format
 - `gateway` (string, optional): Gateway for the subnet
 - `ipRange` (string, optional): Allocate container IP from a sub-range
-- `timeoutSeconds` (number, optional): Timeout in seconds (default: 30)
+- `timeoutSeconds` (number, optional): Timeout in seconds (default: 30, max: 120)
 
 **Example**:
 ```typescript
@@ -553,7 +555,12 @@ Launch, update, or remove a Docker stack from the local Docker Swarm.
 - `action` (enum): Action to perform - "deploy", "remove", or "ps"
 - `stackName` (string): Name of the stack
 - `composeFile` (string, optional): Path to docker-compose.yml (required for deploy)
-- `timeoutSeconds` (number, optional): Timeout in seconds (default: 60)
+- `timeoutSeconds` (number, optional): Timeout in seconds (default: 60, max: 600)
+
+**Actions**:
+- `deploy` - Deploy or update a stack (requires `composeFile`)
+- `remove` - Remove a stack
+- `ps` - List services in a stack
 
 **Example**:
 ```typescript
@@ -568,6 +575,15 @@ const result = await dockerStack.execute(
   },
   agent
 );
+
+// Remove a stack
+await dockerStack.execute(
+  {
+    action: "remove",
+    stackName: "my-stack"
+  },
+  agent
+);
 ```
 
 #### docker_authenticateRegistry
@@ -575,12 +591,16 @@ const result = await dockerStack.execute(
 Authenticate against a Docker registry.
 
 **Parameters**:
-- `server` (string): The registry server URL
+- `server` (string): The registry server URL (e.g., `https://index.docker.io/v1/`)
 - `username` (string): Username for the registry
 - `password` (string): Password for the registry
 - `email` (string, optional): Email for the registry account
 - `passwordStdin` (boolean, optional): Take the password from stdin (default: false)
-- `timeoutSeconds` (number, optional): Timeout in seconds (default: 30)
+- `timeoutSeconds` (number, optional): Timeout in seconds (default: 30, max: 120)
+
+**Note**: When `passwordStdin` is true, the password is passed via stdin instead of as a command-line argument for improved security.
+
+**Returns**: Object with `ok`, `exitCode`, `stdout`, `stderr`, `server`, and `username` fields.
 
 **Example**:
 ```typescript
@@ -603,9 +623,12 @@ Prune unused Docker images.
 **Parameters**:
 - `all` (boolean, optional): Remove all unused images, not just dangling (default: false)
 - `filter` (string, optional): Filter images based on conditions
-- `timeoutSeconds` (number, optional): Timeout in seconds (default: 60)
+- `force` (boolean, optional): Whether to force removal (default: false, but `-f` flag is always used internally)
+- `timeoutSeconds` (number, optional): Timeout in seconds (default: 60, max: 300)
 
-**Note**: The `force` flag is always set internally to avoid interactive prompts.
+**Note**: The `-f` flag is always used internally to avoid interactive prompts. The `force` parameter in the schema is not used as the `-f` flag is always applied.
+
+**Returns**: Object with `ok`, `exitCode`, `stdout`, `stderr`, and `spaceReclaimed` fields.
 
 **Example**:
 ```typescript
@@ -615,6 +638,8 @@ const result = await pruneImages.execute(
   { all: true },
   agent
 );
+
+console.log(`Space reclaimed: ${result.data.spaceReclaimed}`);
 ```
 
 #### docker_pruneVolumes
@@ -623,18 +648,24 @@ Prune unused Docker volumes.
 
 **Parameters**:
 - `filter` (string, optional): Filter volumes based on conditions
-- `timeoutSeconds` (number, optional): Timeout in seconds (default: 60)
+- `force` (boolean, optional): Whether to force removal (default: false, but `-f` flag is always used internally)
+- `timeoutSeconds` (number, optional): Timeout in seconds (default: 60, max: 300)
 
-**Note**: The `force` flag is always set internally to avoid interactive prompts.
+**Note**: The `-f` flag is always used internally to avoid interactive prompts.
+
+**Returns**: Object with `ok`, `exitCode`, `stdout`, `stderr`, `spaceReclaimed`, and `volumesDeleted` fields.
 
 **Example**:
 ```typescript
 import pruneVolumes from "@tokenring-ai/docker/tools/pruneVolumes";
 
 const result = await pruneVolumes.execute(
-  {},
+  { filter: "dangling=true" },
   agent
 );
+
+console.log(`Space reclaimed: ${result.data.spaceReclaimed}`);
+console.log(`Volumes deleted: ${result.data.volumesDeleted}`);
 ```
 
 ## Configuration
@@ -705,6 +736,8 @@ await app.install(dockerPlugin, {
   }
 });
 ```
+
+**Note**: The plugin only registers tools and services if `docker` configuration is provided. The `sandbox` configuration is optional and registers the `DockerSandboxProvider` if specified.
 
 ### Service Integration
 
@@ -885,6 +918,7 @@ await stopContainer.execute({ containers: ["my-container"] }, agent);
 2. **Validate Input**: All tools validate inputs using Zod schemas
 3. **Limit Container Privileges**: Use `--privileged` only when necessary
 4. **Secure Credentials**: Never hardcode credentials; use environment variables or secure storage
+5. **Use passwordStdin**: When authenticating to registries, consider using `passwordStdin: true` for improved security
 
 ### Error Handling
 
@@ -951,8 +985,8 @@ bun test:coverage
 
 | Package | Version | Description |
 |---------|---------|-------------|
-| `vitest` | ^4.0.18 | Testing framework |
-| `typescript` | ^5.9.3 | Type checking |
+| `vitest` | ^4.1.1 | Testing framework |
+| `typescript` | ^6.0.2 | Type checking |
 
 ## Limitations and Considerations
 
@@ -963,7 +997,27 @@ bun test:coverage
 - **Security**: All commands are executed via shell; ensure proper input validation and sanitization
 - **Resource Management**: Containers and images should be properly cleaned up to avoid resource exhaustion
 - **TLS Configuration**: TLS verification requires proper certificate files to be accessible
-- **Force Flag**: The `docker_pruneImages` and `docker_pruneVolumes` tools always use the `-f` flag internally to avoid interactive prompts
+- **Force Flags**: The `docker_pruneImages` and `docker_pruneVolumes` tools always use the `-f` flag internally to avoid interactive prompts
+- **Timeout Limits**: Tools have maximum timeout limits to prevent indefinite execution:
+  - `docker_dockerRun`: max 600 seconds
+  - `docker_listContainers`: max 120 seconds
+  - `docker_listImages`: max 120 seconds
+  - `docker_buildImage`: max 1800 seconds
+  - `docker_authenticateRegistry`: max 120 seconds
+  - `docker_dockerStack`: max 600 seconds
+  - `docker_pruneImages`: max 300 seconds
+  - `docker_pruneVolumes`: max 300 seconds
+  - `docker_pushImage`: max 1800 seconds
+  - `docker_startContainer`: max 120 seconds
+  - `docker_stopContainer`: max 120 seconds
+  - `docker_removeContainer`: max 120 seconds
+  - `docker_removeImage`: max 120 seconds
+  - `docker_tagImage`: max 120 seconds
+  - `docker_execInContainer`: max 300 seconds
+  - `docker_getContainerLogs`: max 300 seconds
+  - `docker_getContainerStats`: max 60 seconds
+  - `docker_createNetwork`: max 120 seconds
+- **Shell Escaping**: All user-provided strings are shell-escaped for safety
 
 ## License
 

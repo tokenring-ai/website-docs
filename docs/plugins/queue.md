@@ -188,9 +188,23 @@ agent.mutateState(WorkQueueState, (state) => {
 });
 ```
 
-## Chat Commands
+### Chat Commands
 
-All `/queue` commands are registered with the `AgentCommandService` and are available through the chat interface.
+All `/queue` commands are registered with the `AgentCommandService` and are available through the chat interface. The commands are organized into two categories:
+
+**Queue Management Commands:**
+- `/queue add <prompt>` - Add a prompt to the queue
+- `/queue remove --index <number>` - Remove a prompt at the given index
+- `/queue details --index <number>` - Show details of a queue item
+- `/queue clear` - Remove all prompts from the queue
+- `/queue list` - Display all queued prompts
+
+**Queue Processing Commands:**
+- `/queue start` - Begin queue processing
+- `/queue next` - Load the next queued item
+- `/queue run` - Execute the currently loaded queued prompt
+- `/queue skip` - Skip current item and re-add to end of queue
+- `/queue done` - End queue processing and restore chat state
 
 ### `/queue list`
 
@@ -229,21 +243,30 @@ Added to queue. Queue length: 1
 ```
 
 **Implementation Details:**
-- Captures current agent state as checkpoint
-- Creates `QueueItem` with checkpoint, name, and input
+- Captures current agent state as checkpoint via `agent.generateCheckpoint()`
+- Creates `QueueItem` with checkpoint, name (prompt), and input (prompt)
+- Adds item to queue via `enqueue()`
 - Returns updated queue length
 
+**Input Schema:**
+```typescript
+{
+  args: {},
+  remainder: {name: "prompt", description: "Prompt to add to queue", required: true}
+}
+```
+
 **Validation:**
-- Raises `CommandFailedError` if no prompt provided
+- Requires remainder (prompt) to be provided
 - Usage: `Usage: /queue add <prompt>`
 
-### `/queue remove <index>`
+### `/queue remove --index <number>`
 
 Remove the prompt at the given zero-based index.
 
 **Example:**
 ```bash
-/queue remove 2
+/queue remove --index 2
 ```
 
 **Output:**
@@ -255,18 +278,31 @@ Removed "Fix bug in login" from queue. Remaining: 3
 - Uses `splice()` to remove item at index
 - Returns removed item name and remaining count
 
+**Input Schema:**
+```typescript
+{
+  args: {
+    "--index": {
+      type: "number",
+      description: "Index of queue item",
+      required: true,
+      minimum: 0
+    }
+  }
+}
+```
+
 **Validation:**
 - Index must be >= 0 and < queue size
 - Raises `CommandFailedError` for invalid indices
-- Usage: `Usage: /queue remove <index>  (index starts from 0)`
 
-### `/queue details <index>`
+### `/queue details --index <number>`
 
 Show detailed information about a specific queue item.
 
 **Example:**
 ```bash
-/queue details 0
+/queue details --index 0
 ```
 
 **Output:**
@@ -283,6 +319,20 @@ Queue item details:
 - Uses `JSON.stringify` with 2-space indentation
 - Includes full item structure including checkpoint
 - Shows checkpoint, name, and input
+
+**Input Schema:**
+```typescript
+{
+  args: {
+    "--index": {
+      type: "number",
+      description: "Index of queue item",
+      required: true,
+      minimum: 0
+    }
+  }
+}
+```
 
 **Validation:**
 - Index must be >= 0 and < queue size
@@ -332,7 +382,7 @@ Queue started, use /queue next to start working on the first item in the queue, 
 
 ### `/queue next`
 
-Load the first queued item (does not execute it).
+Load the next queued item (does not execute it).
 
 **Example:**
 ```bash
@@ -346,12 +396,13 @@ Queue Item loaded: Write README for the project Use /queue run to run the queue 
 
 **Process:**
 1. Checks if queue is started (returns error if not)
-2. Dequeues the first item via `dequeue()`
+2. Dequeues the first item from the queue via `dequeue()`
 3. Sets it as the current item via `setCurrentItem()`
-4. Displays the item name
+4. Displays the item name with instructions for next steps
 
 **Error Cases:**
 - Queue not started: "Queue not started. Use /queue start to start the queue."
+- Queue empty (when action is "done"): Restores initial state and returns "Queue complete."
 
 ### `/queue run`
 
