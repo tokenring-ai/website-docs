@@ -18,6 +18,7 @@ TokenRing Coder proved that AI assistance doesn't require sacrificing privacy. N
 ## What is TokenRing Writer?
 
 TokenRing Writer is an AI-powered writing assistant that helps you:
+
 - **Create content** - Blog posts, documentation, articles, and more
 - **Research topics** - Integrated web search and Wikipedia access
 - **Maintain consistency** - Style guides and tone management
@@ -28,21 +29,25 @@ TokenRing Writer is an AI-powered writing assistant that helps you:
 TokenRing Writer leverages the same powerful plugin system as TokenRing Coder:
 
 ### 🌐 Web Research
+
 - **Web Search** - Serper.dev and ScraperAPI integration
 - **Wikipedia** - Direct API access for research
 - **Chrome Automation** - Puppeteer for advanced scraping
 
 ### 📝 Content Management
+
 - **Filesystem** - Local and S3 storage options
 - **Version Control** - Git integration for content versioning
 - **Database** - MySQL and SQLite for content organization
 
 ### 🤖 AI Flexibility
+
 - **Multiple Providers** - OpenAI, Anthropic, Google, and more
 - **Model Switching** - Choose the best model for each task
 - **Cost Control** - Track usage and optimize spending
 
 ### 🔒 Privacy First
+
 - **Local Processing** - Content stays on your machine
 - **No Cloud Lock-in** - Use your own AI API keys
 - **Full Control** - You own your data
@@ -50,18 +55,21 @@ TokenRing Writer leverages the same powerful plugin system as TokenRing Coder:
 ## Use Cases
 
 ### Technical Writing
+
 - API documentation
 - Tutorial creation
 - README files
 - Technical blog posts
 
 ### Content Marketing
+
 - Blog articles
 - Social media content
 - Email newsletters
 - Landing pages
 
 ### Research & Analysis
+
 - Market research reports
 - Competitive analysis
 - Literature reviews
@@ -77,12 +85,14 @@ bun src/tr-writer.ts --initialize
 ```
 
 Configure your AI providers:
+
 ```bash
 export OPENAI_API_KEY="your-key-here"
 export ANTHROPIC_API_KEY="your-key-here"
 ```
 
 Start writing:
+
 ```bash
 bun src/tr-writer.ts
 ```
@@ -99,6 +109,7 @@ With TokenRing Coder and TokenRing Writer, we're building a complete AI-powered 
 ## What's Next?
 
 We're continuing to expand the TokenRing ecosystem with:
+
 - More specialized agents
 - Additional plugin integrations
 - Enhanced collaboration features

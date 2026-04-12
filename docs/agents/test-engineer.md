@@ -1,52 +1,19 @@
 # Test Engineer
 
-**Agent ID:** `testEngineer`  
+**Agent ID:** `test-engineer`  
 **Application:** TokenRing Coder  
-**Category:** Quality & Operations
+**Category:** `Coding - Specialized`
 
 ## Overview
 
-The Test Engineer creates comprehensive test suites including unit tests, integration tests, and end-to-end tests, ensuring code quality and reliability.
+Call this agent to create comprehensive testing strategies and implement test suites. Provide code modules, API endpoints, or UI components to test. The agent will create unit tests, integration tests, E2E tests, implement test automation, set up CI/CD testing pipelines, and ensure code quality through testing. Best used for: test strategy, test implementation, test automation, quality assurance, and testing infrastructure setup.
 
-## Capabilities
+## Source Configuration
 
-- Unit test creation
-- Integration testing
-- End-to-end (E2E) testing
-- Test automation
-- Test coverage analysis
-- Mocking and stubbing
-- Test-driven development (TDD)
+`app/coder/src/config/agents/specialized/test-engineer.yaml`
 
-## Best Use Cases
+## Enabled Tools
 
-- Test suite creation
-- Test coverage improvement
-- E2E test implementation
-- Test automation setup
-- Bug reproduction tests
-- TDD implementation
-
-## Example Usage
-
-```
-> @testEngineer Create unit tests for the authentication service
-> @testEngineer Add E2E tests for the checkout flow
-> @testEngineer Improve test coverage for the payment module
-```
-
-## Technical Expertise
-
-- **Unit Testing:** Jest, Vitest, Mocha, pytest
-- **E2E Testing:** Playwright, Cypress, Selenium
-- **Integration:** Supertest, TestContainers
-- **Tools:** Coverage reports, CI/CD integration
-
-## When to Use
-
-Use the Test Engineer when you need:
-- Comprehensive test coverage
-- Test automation
-- Quality assurance
-- Bug prevention
-- TDD implementation
+- `todo`
+- `file_*`
+- `shell_*`

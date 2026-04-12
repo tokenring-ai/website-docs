@@ -1,53 +1,19 @@
 # DevOps Engineer
 
-**Agent ID:** `devopsEngineer`  
+**Agent ID:** `devops-engineer`  
 **Application:** TokenRing Coder  
-**Category:** Quality & Operations
+**Category:** `Coding - Specialized`
 
 ## Overview
 
-The DevOps Engineer creates CI/CD pipelines, Docker configurations, and infrastructure setup for automated deployment and operations.
+Call this agent to set up deployment pipelines, infrastructure, and development environments. Provide deployment requirements, hosting constraints, or existing infrastructure. The agent will create Docker configurations, set up CI/CD pipelines, configure cloud infrastructure, implement monitoring, and establish deployment strategies. Best used for: deployment automation, infrastructure setup, CI/CD configuration, environment management, and production deployment.
 
-## Capabilities
+## Source Configuration
 
-- CI/CD pipeline creation
-- Docker containerization
-- Kubernetes orchestration
-- Infrastructure as Code (IaC)
-- Deployment automation
-- Monitoring and logging setup
-- Cloud infrastructure management
+`app/coder/src/config/agents/specialized/devops-engineer.yaml`
 
-## Best Use Cases
+## Enabled Tools
 
-- CI/CD pipeline setup
-- Docker configuration
-- Kubernetes deployment
-- Infrastructure automation
-- Deployment strategies
-- Monitoring implementation
-
-## Example Usage
-
-```
-> @devopsEngineer Create a GitHub Actions CI/CD pipeline
-> @devopsEngineer Dockerize the application with multi-stage builds
-> @devopsEngineer Set up Kubernetes deployment with auto-scaling
-```
-
-## Technical Expertise
-
-- **CI/CD:** GitHub Actions, GitLab CI, Jenkins, CircleCI
-- **Containers:** Docker, Docker Compose, container registries
-- **Orchestration:** Kubernetes, Helm, service meshes
-- **IaC:** Terraform, CloudFormation, Ansible
-- **Cloud:** AWS, GCP, Azure
-
-## When to Use
-
-Use the DevOps Engineer when you need:
-- Deployment automation
-- Infrastructure setup
-- Container orchestration
-- CI/CD implementation
-- Cloud infrastructure
+- `todo`
+- `file_*`
+- `shell_*`

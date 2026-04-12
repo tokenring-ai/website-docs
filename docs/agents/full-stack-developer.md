@@ -1,52 +1,19 @@
 # Full Stack Developer
 
-**Agent ID:** `fullStackDeveloper`  
+**Agent ID:** `full-stack-developer`  
 **Application:** TokenRing Coder  
-**Category:** Development Specialists
+**Category:** `Coding - Specialized`
 
 ## Overview
 
-The Full Stack Developer implements complete features across frontend and backend, handling both client-side and server-side development with expertise in modern web technologies.
+Call this agent to implement complete features across frontend and backend. Provide feature specifications, user stories, or component requirements. The agent will implement full-stack features, integrate frontend with backend, handle data flow, create reusable components, and deliver complete working functionality. Best used for: feature implementation, component development, integration work, bug fixes, and end-to-end development tasks.
 
-## Capabilities
+## Source Configuration
 
-- Frontend development (React, Vue, Angular)
-- Backend development (Node.js, Python, Java)
-- API integration
-- Database operations
-- State management
-- Full feature implementation
-- End-to-end testing
+`app/coder/src/config/agents/specialized/full-stack-developer.yaml`
 
-## Best Use Cases
+## Enabled Tools
 
-- Complete feature implementation
-- Full-stack bug fixes
-- API and UI integration
-- CRUD operations
-- User interface with backend logic
-- End-to-end feature development
-
-## Example Usage
-
-```
-> @fullStackDeveloper Implement a user profile page with edit functionality
-> @fullStackDeveloper Create a blog post system with CRUD operations
-> @fullStackDeveloper Build a search feature with filters and pagination
-```
-
-## Technical Expertise
-
-- **Frontend:** React, Vue, TypeScript, HTML/CSS, responsive design
-- **Backend:** REST APIs, GraphQL, authentication, business logic
-- **Database:** SQL, NoSQL, ORMs, migrations
-- **Tools:** Git, testing frameworks, build tools
-
-## When to Use
-
-Use the Full Stack Developer when you need:
-- Complete feature implementation
-- Both frontend and backend work
-- Integrated solutions
-- End-to-end development
-- Full ownership of features
+- `todo`
+- `file_*`
+- `shell_*`

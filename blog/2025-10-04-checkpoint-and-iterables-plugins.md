@@ -16,12 +16,14 @@ New plugins for agent state persistence and iterable data processing.
 Checkpoint service for storing and restoring agent state:
 
 ### Features
+
 - **State Snapshots**: Store complete agent state at any point
 - **Named Checkpoints**: Organize checkpoints with descriptive names
 - **Pluggable Storage**: Works with any storage provider (SQLite, cloud, etc.)
 - **Session Management**: Restore agent state across sessions
 
 ### Usage
+
 ```typescript
 const checkpointService = new AgentCheckpointService({ 
   provider: myStorageProvider 
@@ -44,12 +46,14 @@ const checkpoint = await checkpointService.retrieveCheckpoint('agent-123');
 Utilities for working with iterable data structures:
 
 ### Features
+
 - **Iterable Utilities**: Process and manage iterable collections
 - **Data Stream Processing**: Efficient handling of large datasets
 - **Collection Management**: Tools for working with collections
 - **Provider Interfaces**: Extensible provider system
 
 ### Use Cases
+
 - Process large file lists efficiently
 - Stream data through agent workflows
 - Handle paginated API results
@@ -58,12 +62,14 @@ Utilities for working with iterable data structures:
 ## Benefits
 
 **Checkpoint Plugin**:
+
 - Resume interrupted workflows
 - A/B test different agent configurations
 - Debug by restoring to specific states
 - Implement undo/redo functionality
 
 **Iterables Plugin**:
+
 - Memory-efficient data processing
 - Clean abstraction for collections
 - Consistent iteration patterns

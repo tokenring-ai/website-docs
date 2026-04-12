@@ -213,75 +213,13 @@ interface RawChatUIOptions {
 - Bracketed paste support
 - History navigation with Ctrl+P/N and arrow keys
 
-### commandPrompt Function
+### Internal Utilities
 
-Provides a prompt implementation using a shared Node.js readline interface with history and auto-completion support.
+The CLI package includes internal utilities that support the main functionality. These are not exported from the main package entry point but are available for internal use:
 
-**Interface:**
-```typescript
-interface CommandPromptOptions {
-  rl: readline.Interface;
-  message: string;
-  prefix?: string;
-  history?: string[];
-  autoCompletion?: string[] | ((line: string) => Promise<string[]> | string[]);
-  signal?: AbortSignal;
-}
-
-async function commandPrompt(options: CommandPromptOptions): Promise<string>
-```
-
-**Parameters:**
-- `rl`: Shared readline interface instance
-- `message`: Prompt message to display
-- `prefix`: Optional prefix text (e.g., "user")
-- `history`: Array of previous commands for history navigation
-- `autoCompletion`: Array of completion suggestions or function to generate them
-- `signal`: Optional abort signal for cancellation
-
-**Returns:**
-- The trimmed input string if user submits
-- Throws `PartialInputError` if aborted with non-empty buffer
-
-**Usage:**
-```typescript
-import readline from 'node:readline';
-import { commandPrompt } from '@tokenring-ai/cli';
-
-const rl = readline.createInterface(process.stdin, process.stdout);
-
-const answer = await commandPrompt({
-  rl,
-  message: '>',
-  prefix: chalk.yellowBright('user'),
-  history: ['help', 'status', 'config'],
-  autoCompletion: ['help', 'status', 'config', 'shutdown'],
-});
-
-console.log('User entered:', answer);
-```
-
-### PartialInputError Class
-
-Error class thrown when input is interrupted but contains non-empty buffer.
-
-**Interface:**
-```typescript
-class PartialInputError extends Error {
-  constructor(public buffer: string);
-}
-```
-
-**Usage:**
-```typescript
-try {
-  const input = await commandPrompt({ rl, message: '>', signal });
-} catch (err) {
-  if (err instanceof PartialInputError) {
-    console.log('Input interrupted with buffer:', err.buffer);
-  }
-}
-```
+- **commandPrompt**: Provides a prompt implementation using a shared Node.js readline interface
+- **PartialInputError**: Error class thrown when input is interrupted but contains non-empty buffer
+- **applyMarkdownStyles**: Utility function that applies terminal-friendly styling to markdown text (available via `@tokenring-ai/cli/utility/applyMarkdownStyles`)
 
 ### applyMarkdownStyles Utility
 
@@ -584,6 +522,126 @@ const config = {
   },
 };
 ```
+
+## Keyboard Shortcuts
+
+The CLI provides comprehensive keyboard shortcuts for efficient interaction:
+
+### General Navigation
+
+| Shortcut | Action |
+|----------|--------|
+| `Ctrl+C` | Cancel current activity or shut down idle agent |
+| `Ctrl+L` | Clear and replay the screen (full replay) |
+| `Alt+A` / `F1` | Open agent selection screen |
+| `Escape` | Cancel current activity or close picker |
+
+### Model and Tools
+
+| Shortcut | Action |
+|----------|--------|
+| `Alt+M` / `F3` | Trigger "model select" command (opens model selector) |
+| `Alt+T` / `F2` | Trigger "tools select" command (opens tools selector) |
+| `Alt+V` / `F4` | Toggle verbose mode (show/hide reasoning and artifacts) |
+
+### Questions and Interactions
+
+| Shortcut | Action |
+|----------|--------|
+| `Alt+Q` / `F6` | Toggle optional questions picker |
+
+### Input Editing
+
+| Shortcut | Action |
+|----------|--------|
+| `Tab` | Command completion or insert selected file search match |
+| `Ctrl+O` / `Meta+Enter` / `Shift+Enter` | Insert newline |
+| `Ctrl+P` / `Up` | Browse command history (previous) or move up in completions |
+| `Ctrl+N` / `Down` | Browse command history (next) or move down in completions |
+| `PageUp` / `PageDown` | Page through completions |
+| `Ctrl+A` | Move to start of line |
+| `Ctrl+E` | Move to end of line |
+| `Ctrl+U` | Delete to start of line |
+| `Ctrl+K` | Delete to end of line |
+| `Ctrl+W` | Delete word backward |
+| `Ctrl+D` | Delete forward |
+| `Alt+B` | Move word left |
+| `Alt+F` | Move word right |
+| `Home` | Move to start of line |
+| `End` | Move to end of line |
+| `Backspace` | Delete character before cursor |
+| `Delete` | Delete character after cursor |
+
+### Completion Navigation
+
+When command completion or file search is active:
+
+| Shortcut | Action |
+|----------|--------|
+| `Up/Down` | Navigate through matches |
+| `PageUp/PageDown` | Page through matches (5 at a time) |
+| `Tab` / `Enter` | Insert selected match |
+| `Escape` | Dismiss completion/search |
+
+## Input Handling
+
+The CLI package handles interactive input through the `RawChatUI` class, which supports various agent interaction types.
+
+### Chat Input
+
+The main chat input supports:
+
+- **Multi-line text editing**: Use `Ctrl+O`, `Meta+Enter`, or `Shift+Enter` to insert newlines
+- **Command completion**: Type `/` to trigger command auto-completion
+- **File path completion**: Type `@` to trigger workspace file search
+- **History navigation**: Use `Ctrl+P/N` or arrow keys when at the first/last line
+
+### File Search (`@` syntax)
+
+Type `@` followed by a search query to find files in the workspace:
+
+```
+# Example usage in chat input:
+Write code for @utils/helper.ts
+```
+
+**Features:**
+- Real-time indexing of workspace files via `FileSystemService.glob()`
+- Scoring-based match ranking (exact matches, path depth, character sequences)
+- Navigation with `Up/Down` arrow keys or `Ctrl+P/N`
+- Page navigation with `PageUp/PageDown`
+- Insert selected path with `Tab` or `Enter`
+- Dismiss with `Escape`
+
+### Command Completion (`/` syntax)
+
+Type `/` at the start of a line to trigger command auto-completion:
+
+```
+# Example usage:
+/agen  # Shows: /agent <description>
+```
+
+**Features:**
+- Auto-completion for all registered commands from `AgentCommandService`
+- Navigation with `Up/Down` arrow keys or `Ctrl+P/N`
+- Page navigation with `PageUp/PageDown`
+- Insert selected command with `Tab` or `Enter`
+- Dismiss with `Escape`
+
+### Question Types
+
+The CLI supports the following question types from agents via `ParsedInteractionRequest`:
+
+| Type | Description | Interaction |
+|------|-------------|-------------|
+| **Text Input** | Multi-line text input with cursor navigation | Enter to submit, Alt+Enter for newline, Esc to cancel |
+| **Tree Select** | Hierarchical tree selection for structured choices | Arrows to navigate, Space to toggle, Enter to submit, Right/Left to expand/collapse |
+| **File Select** | File system browser for file/directory selection | Arrows to navigate, Space to expand/select directories, Enter to submit, Right/Left to expand/collapse |
+| **Form** | Multi-section forms combining multiple field types | Navigate through fields with Enter, Esc to cancel current section |
+| **Followup** | Simple follow-up prompts for additional input | Enter to submit, Alt+Enter/Shift+Enter for newline |
+
+All question handling is done inline in the terminal with responsive layout adaptation. Optional questions can be accessed via `Alt+Q` / `F6`.
 
 ## Theme Configuration
 
@@ -944,6 +1002,28 @@ The file search will:
 - Allow navigation with arrow keys
 - Insert the selected path with Tab or Enter
 
+### Terminal Requirements
+
+The CLI requires a TTY terminal with minimum dimensions:
+
+- **Minimum width**: 40 columns
+- **Minimum height**: 10 rows
+
+If the terminal is too small, the CLI will display a warning message and request resizing.
+
+**Terminal Features Required:**
+- TTY mode support
+- Raw mode for keyboard input
+- Bracketed paste mode
+- ANSI escape code support
+- SIGWINCH signal handling for resize detection
+
+**Resize Handling:**
+- The UI automatically detects terminal resize events
+- Full screen replay is triggered on resize
+- Content is reflowed to fit the new dimensions
+- A throttle mechanism prevents excessive re-rendering during rapid resize
+
 ## Testing and Development
 
 ### Running Tests
@@ -984,24 +1064,25 @@ The package uses TypeScript with ES modules:
 **Directory Structure:**
 ```
 pkg/cli/
-├── raw/                    # Raw terminal UI components
-│   ├── CommandCompletions.ts
-│   ├── FileSearch.ts
-│   ├── InlineQuestions.ts
-│   ├── InputEditor.ts
-│   ├── NativeScreens.ts
-│   ├── RawChatUI.ts
-│   └── *.test.ts          # Test files
+├── raw/                    # Raw terminal UI components (internal)
+│   ├── CommandCompletions.ts      # Command completion logic and context extraction
+│   ├── FileSearch.ts              # File search scoring, matching, and @-token handling
+│   ├── InlineQuestions.ts         # Inline question session handling (text, tree, file, form)
+│   ├── InputEditor.ts             # Multi-line text editor with cursor navigation
+│   ├── NativeScreens.ts           # Loading screen and agent selection screen implementations
+│   ├── RawChatUI.ts               # Main chat UI implementation with incremental rendering
+│   └── *.test.ts                  # Test files for raw components
 ├── utility/               # Utility functions
-│   └── applyMarkdownStyles.ts
-├── AgentCLI.ts            # Main CLI service
-├── AgentLoop.ts           # Agent interaction loop
-├── AgentSelection.ts      # Agent selection parsing
-├── commandPrompt.ts       # Command prompt implementation
-├── index.ts               # Package exports
-├── plugin.ts              # Plugin definition
-├── schema.ts              # Configuration schema
-├── theme.ts               # Theme configuration
+│   └── applyMarkdownStyles.ts     # Markdown styling utility for terminal output
+├── AgentCLI.ts            # Main CLI service implementing TokenRingService
+├── AgentLoop.ts           # Agent interaction loop handler with event subscription
+├── AgentSelection.ts      # Agent selection result types and parsing utilities
+├── commandPrompt.ts       # Internal command prompt implementation (not exported)
+├── index.ts               # Package exports (AgentCLI, CLIConfigSchema)
+├── plugin.ts              # Plugin definition for app.install() integration
+├── schema.ts              # Configuration schema definition (CLIConfigSchema)
+├── theme.ts               # Color theme definitions for all UI elements
+├── vitest.config.ts       # Vitest test configuration
 └── package.json           # Package metadata
 ```
 

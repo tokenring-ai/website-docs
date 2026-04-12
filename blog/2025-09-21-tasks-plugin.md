@@ -14,15 +14,19 @@ The Tasks plugin enables AI agents to plan and execute complex multi-step workfl
 ## Key Features
 
 ### 📋 Task Planning
+
 Create comprehensive task plans with multiple tasks, each assigned to specialized agents.
 
 ### ✅ User Approval
+
 Present task plans to users for approval via interactive interface before execution.
 
 ### 🤖 Automatic Execution
+
 Upon approval, tasks are automatically dispatched to appropriate specialist agents.
 
 ### 📊 Status Tracking
+
 Track task status (pending, running, completed, failed) throughout execution.
 
 ## Workflow

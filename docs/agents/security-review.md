@@ -1,53 +1,19 @@
-# Security Review
+# Security Reviewer
 
-**Agent ID:** `securityReview`  
+**Agent ID:** `security-review`  
 **Application:** TokenRing Coder  
-**Category:** Quality & Operations
+**Category:** `Coding - Specialized`
 
 ## Overview
 
-The Security Review agent performs security assessments, identifies vulnerabilities, and ensures OWASP compliance with remediation recommendations.
+Call this agent to perform security assessments and implement secure coding practices. Provide code files, system designs, or security requirements. The agent will identify vulnerabilities, implement security controls, create secure configurations, and build defense-in-depth solutions following OWASP guidelines. Best used for: security audits, vulnerability remediation, secure code implementation, compliance assessments, and penetration testing preparation.
 
-## Capabilities
+## Source Configuration
 
-- Security vulnerability assessment
-- OWASP Top 10 compliance
-- Code security review
-- Penetration testing guidance
-- Security best practices
-- Vulnerability remediation
-- Secure coding recommendations
+`app/coder/src/config/agents/specialized/security-review.yaml`
 
-## Best Use Cases
+## Enabled Tools
 
-- Security audits
-- Vulnerability assessment
-- Code security review
-- Compliance checking
-- Security hardening
-- Threat modeling
-
-## Example Usage
-
-```
-> @securityReview Audit the authentication system for vulnerabilities
-> @securityReview Check this API for security issues
-> @securityReview Review the payment processing code for PCI compliance
-```
-
-## Security Focus Areas
-
-- **Authentication:** OAuth, JWT, session management
-- **Authorization:** RBAC, permissions, access control
-- **Data Protection:** Encryption, PII handling, secure storage
-- **Input Validation:** SQL injection, XSS, CSRF prevention
-- **API Security:** Rate limiting, authentication, CORS
-
-## When to Use
-
-Use the Security Review agent when you need:
-- Security assessments
-- Vulnerability identification
-- Compliance verification
-- Security best practices
-- Threat analysis
+- `todo`
+- `file_*`
+- `shell_*`

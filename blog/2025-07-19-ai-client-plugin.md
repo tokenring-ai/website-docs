@@ -14,10 +14,13 @@ The AI Client plugin brings unified multi-provider AI integration to TokenRing C
 ## Key Features
 
 ### 🔄 Model Registry
+
 Automatically selects and routes requests to appropriate models based on requirements like context length, cost, and capabilities. No more manual model selection.
 
 ### 🌐 Multi-Provider Support
+
 Pre-configured specs for major AI providers:
+
 - OpenAI (GPT-3.5, GPT-4, GPT-4o series)
 - Anthropic (Claude 3 series)
 - Google (Gemini models)
@@ -25,9 +28,11 @@ Pre-configured specs for major AI providers:
 - Azure OpenAI, Perplexity, XAI, OpenRouter, Ollama, Qwen
 
 ### 💬 Chat Management
+
 Handles conversation history, streaming responses, and cost/timing calculations. Track token usage and optimize spending.
 
 ### 🛠️ Request Building
+
 Constructs chat requests with system prompts, prior messages, tools, and memories. Seamless integration with the agent framework.
 
 ## Usage

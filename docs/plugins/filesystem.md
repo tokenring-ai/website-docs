@@ -11,7 +11,7 @@ The package integrates deeply with the agent system, providing both tools for AI
 - **Provider-based architecture**: Support for multiple filesystem implementations (local, virtual, remote)
 - **Agent state management**: Tracks selected files, read history, working directory, and filesystem modifications
 - **Chat integration**: Context handlers for file contents and intelligent file search
-- **Tool suite**: file_modify, file_read, file_write, and file_search tools for AI operations
+- **Tool suite**: file_edit, file_read, file_write, file_glob, and file_grep tools for AI operations
 - **Chat commands**: /file command for managing files in chat sessions
 - **RPC endpoints**: Full filesystem access via JSON-RPC
 - **Scripting functions**: createFile, deleteFile, globFiles, searchFiles for programmatic access
@@ -443,29 +443,29 @@ Manage files in the chat session with various actions to add, remove, list, or c
 
 Tools are exported from `tools.ts` and registered with `ChatService` during plugin installation.
 
-Currently, four tools are actively exported: `file_modify`, `file_write`, `file_read`, and `file_search`. The `append` tool is defined but commented out in the exports.
+Currently, five tools are actively exported: `file_edit`, `file_write`, `file_read`, `file_glob`, and `file_grep`. The `append` tool is defined but commented out in the exports.
 
-### file_modify
+### file_edit
 
 Modifies an existing file by finding and replacing contiguous blocks of lines.
 
-**File:** `pkg/filesystem/tools/modify.ts`
+**File:** `pkg/filesystem/tools/edit.ts`
 
 **Tool Definition:**
 
 ```typescript
 import {TokenRingToolDefinition} from "@tokenring-ai/chat/schema";
-import modify from "@tokenring-ai/filesystem/tools/modify";
+import edit from "@tokenring-ai/filesystem/tools/edit";
 
-const name = "file_modify";
-const displayName = "Filesystem/file_modify";
+const name = "file_edit";
+const displayName = "Filesystem/edit";
 ```
 
 **Parameters:**
 
 | Parameter | Type | Description |
 |-----------|------|-------------|
-| `path` | `string` | Relative path of the file to modify (required). Relative to the project root directory. |
+| `path` | `string` | Relative path of the file to edit (required). Relative to the project root directory. |
 | `findLines` | `string` | Up to 5 contiguous lines to match in the file (required). Each line must be complete, and all matched lines must be contiguous. |
 | `replaceLines` | `string` | The complete lines that will replace the matched block (required). Provide an empty string to delete the matched lines. |
 
@@ -479,8 +479,9 @@ const displayName = "Filesystem/file_modify";
 - Automatically writes the updated file if content changes
 - Returns diff if file existed before (up to `maxReturnedDiffSize` limit)
 - Sets filesystem as dirty on success
-- Marks file as read in state with modification time
+- Resets consecutive failure count on success
 - Runs file validator if configured (`validateWrittenFiles`)
+- Tool can be automatically disabled after `disableAfterConsecutiveFailures` consecutive failures
 
 **Matching Rules:**
 
@@ -496,26 +497,37 @@ const displayName = "Filesystem/file_modify";
 - Returns error if fuzzy match is not unique enough
 - Returns error if no match found
 - Returns error if file cannot be read
+- Returns error if file edit is disabled for the session
 
 **Agent State:**
 
 - Sets `state.dirty = true`
-- Updates `state.readFiles` Map with modification time
+- Updates `state.fileEdit.consecutiveFailureCount` (resets on success, increments on failure)
+- May disable `state.fileEdit.enabled` after consecutive failures
 
 **Required Context Handlers:** `["selected-files"]`
+
+**Adjust Activation:**
+
+The tool supports dynamic activation based on `state.fileEdit.enabled`:
+```typescript
+function adjustActivation(enabled: boolean, agent: Agent): boolean {
+  return enabled && agent.getState(FileSystemState).fileEdit.enabled;
+}
+```
 
 **Example:**
 
 ```typescript
 // Modify an existing file
-const result = await modify({
+const result = await edit({
   path: 'src/main.ts',
   findLines: 'const x = 1;\nconst y = 2;',
   replaceLines: 'const x = 10;\nconst y = 20;'
 }, agent);
 
 // Delete lines
-const result = await modify({
+const result = await edit({
   path: 'src/main.ts',
   findLines: '// Old comment\nconst old = true;',
   replaceLines: ''
@@ -647,28 +659,91 @@ const result = await read({
 }, agent);
 ```
 
-### file_search
+### file_glob
 
-Searches for text patterns within files.
+Lists files matching glob patterns relative to the project root folder.
 
-**File:** `pkg/filesystem/tools/search.ts`
+**File:** `pkg/filesystem/tools/glob.ts`
 
 **Tool Definition:**
 
 ```typescript
 import {TokenRingToolDefinition} from "@tokenring-ai/chat/schema";
-import search from "@tokenring-ai/filesystem/tools/search";
+import glob from "@tokenring-ai/filesystem/tools/glob";
 
-const name = "file_search";
-const displayName = "Filesystem/search";
+const name = "file_glob";
+const displayName = "Filesystem/glob";
 ```
 
 **Parameters:**
 
 | Parameter | Type | Default | Description |
 |-----------|------|---------|-------------|
-| `filePaths` | `string[]` | `["**/*"]` | List of file paths or glob patterns to search within |
-| `searchTerms` | `string[]` | - | List of search terms to search for. Can be plain strings (fuzzy substring match) or regex (enclosed in `/`) |
+| `filePaths` | `string[]` | `["**/*"]` | List of glob patterns to match files. Examples: `'**/*.ts'`, `'path/to/file.txt'` |
+
+**Behavior:**
+
+- Resolves glob patterns to specific files
+- Returns matched files as a directory listing
+- Handles multiple patterns (OR-based)
+- Paths are relative to the project root folder
+- Uses Unix-style '/' separators
+
+**Output Format:**
+
+```
+BEGIN DIRECTORY LISTING
+- file1.ts
+- file2.ts
+- path/to/file3.ts
+END DIRECTORY LISTING
+```
+
+**Error Cases:**
+
+- Returns "No files were found that matched the glob patterns" if no files match
+
+**Example:**
+
+```typescript
+// Get all TypeScript files
+const result = await glob({
+  filePaths: ['**/*.ts']
+}, agent);
+
+// Get files in specific directory
+const result = await glob({
+  filePaths: ['src/**/*.js']
+}, agent);
+
+// Multiple patterns
+const result = await glob({
+  filePaths: ['**/*.ts', '**/*.tsx']
+}, agent);
+```
+
+### file_grep
+
+Searches for text patterns within files. Supports plain string and regex patterns.
+
+**File:** `pkg/filesystem/tools/grep.ts`
+
+**Tool Definition:**
+
+```typescript
+import {TokenRingToolDefinition} from "@tokenring-ai/chat/schema";
+import grep from "@tokenring-ai/filesystem/tools/grep";
+
+const name = "file_grep";
+const displayName = "Filesystem/grep";
+```
+
+**Parameters:**
+
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `filePaths` | `string[]` | `["**/*"]` | List of file paths or glob patterns to search within. Examples: `'**/*.ts'`, `'path/to/file.txt'` |
+| `searchTerms` | `string[]` | - | List of search terms. Plain strings use fuzzy substring match; wrap in `'/'` for regex. Examples: `"searchTerm"`, `"/searchTerm.*/"` |
 
 **Behavior:**
 
@@ -677,6 +752,7 @@ const displayName = "Filesystem/search";
 - Automatically decides whether to return full file contents, snippets, or file names based on match count
 - Marks read files in state with modification time
 - Searches are OR-based across multiple patterns (any match counts)
+- Tool activation depends on filesystem provider supporting grep
 
 **Search Patterns:**
 
@@ -700,29 +776,39 @@ const displayName = "Filesystem/search";
 
 **Required Context Handlers:** `["selected-files"]`
 
+**Adjust Activation:**
+
+The tool supports dynamic activation based on filesystem provider support:
+```typescript
+function adjustActivation(enabled: boolean, agent: Agent): boolean {
+  const supportsGrep = agent.requireServiceByType(FileSystemService).supportsGrep(agent);
+  return enabled && supportsGrep;
+}
+```
+
 **Examples:**
 
 ```typescript
 // Search for a function across all files
-const result = await search({
+const result = await grep({
   filePaths: ['src/**/*.ts'],
   searchTerms: ['function execute']
 }, agent);
 
 // Regex search for pattern
-const result = await search({
+const result = await grep({
   filePaths: ['pkg/agent/**/*.ts'],
   searchTerms: ['/class \w+Service/']
 }, agent);
 
 // Search with specific files
-const result = await search({
+const result = await grep({
   filePaths: ['src/**/*.ts', 'pkg/**/*.ts'],
   searchTerms: ['TODO', 'FIXME']
 }, agent);
 
 // Search across all files (default)
-const result = await search({
+const result = await grep({
   searchTerms: ['import']
 }, agent);
 ```
@@ -750,11 +836,16 @@ const FileSystemConfigSchema = z.object({
       maxFileReadCount: z.number().default(10),
       maxFileSize: z.number().default(128 * 1024), // 128KB default
     }).prefault({}),
-    fileSearch: z.object({
+    fileGrep: z.object({
       maxSnippetCount: z.number().default(10),
       maxSnippetSizePercent: z.number().default(0.3),
       snippetLinesBefore: z.number().default(5),
       snippetLinesAfter: z.number().default(5),
+    }).prefault({}),
+    fileEdit: z.object({
+      enabled: z.boolean().default(true),
+      consecutiveFailureCount: z.number().default(0),
+      disableAfterConsecutiveFailures: z.number().default(2),
     }).prefault({}),
   }),
   providers: z.record(z.string(), z.any()),
@@ -779,11 +870,15 @@ const FileSystemAgentConfigSchema = z.object({
     maxFileReadCount: z.number().optional(),
     maxFileSize: z.number().optional()
   }).optional(),
-  fileSearch: z.object({
+  fileGrep: z.object({
     maxSnippetCount: z.number().optional(),
     maxSnippetSizePercent: z.number().optional(),
     snippetLinesBefore: z.number().optional(),
     snippetLinesAfter: z.number().optional(),
+  }).optional(),
+  fileEdit: z.object({
+    enabled: z.boolean().optional(),
+    disableAfterConsecutiveFailures: z.number().optional(),
   }).optional(),
 }).strict().default({});
 ```
@@ -809,11 +904,15 @@ const config = {
         maxFileReadCount: 20,
         maxFileSize: 256 * 1024, // 256KB
       },
-      fileSearch: {
+      fileGrep: {
         maxSnippetCount: 50,
         maxSnippetSizePercent: 0.5,
         snippetLinesBefore: 3,
         snippetLinesAfter: 3,
+      },
+      fileEdit: {
+        enabled: true,
+        disableAfterConsecutiveFailures: 2,
       },
     },
     providers: {
@@ -942,7 +1041,7 @@ Provides contents of selected files as chat context.
 - For directories, yields directory listings
 - Marks files as read in `state.readFiles`
 - Output format:
-  - Files: `BEGIN FILE ATTACHMENT: {path}\n{content}\nEND FILE ATTACHMENT: {path}`
+  - Files: `BEGIN FILE ATTACHMENT: {path}\n{content}\nEND FILE ATTACHMENT`
   - Directories: `BEGIN DIRECTORY LISTING:\n{path}\n- {file}\n...\nEND DIRECTORY LISTING`
 
 **Implementation:**
@@ -1114,7 +1213,8 @@ Tracks filesystem-related state for agents.
 | `readFiles` | `Map<string, number>` | Files that have been read with modification times (path -> timestamp in ms) |
 | `fileWrite` | `FileWriteConfig` | Write configuration |
 | `fileRead` | `FileReadConfig` | Read configuration |
-| `fileSearch` | `FileSearchConfig` | Search configuration |
+| `fileGrep` | `FileGrepConfig` | Grep/search configuration |
+| `fileEdit` | `FileEditConfig` | Edit configuration |
 | `initialConfig` | `object` | Initial selected files from config |
 
 **State Methods:**
@@ -1365,7 +1465,7 @@ await tsResource.addFilesToSet(fileSet, agent);
 ### Performance
 
 1. **Use async generators** - For directory traversal, use async generators to avoid loading all files into memory
-2. **Grep optimization** - Use specific file patterns in `file_search` tool to limit search scope
+2. **Grep optimization** - Use specific file patterns in `file_grep` tool to limit search scope
 3. **Caching** - Consider caching filesystem operations for repeated access
 4. **Streaming** - Use streaming for large file operations when possible
 
@@ -1422,7 +1522,8 @@ describe('FileSystemService', () => {
         selectedFiles: [],
         fileWrite: { requireReadBeforeWrite: false, validateWrittenFiles: false },
         fileRead: { maxFileReadCount: 100, maxFileSize: 1024 * 1024 },
-        fileSearch: { maxSnippetCount: 100 }
+        fileGrep: { maxSnippetCount: 100, snippetLinesBefore: 5, snippetLinesAfter: 5 },
+        fileEdit: { enabled: true, disableAfterConsecutiveFailures: 2 }
       },
       providers: {
         mock: new MockFileSystemProvider()
@@ -1438,7 +1539,8 @@ describe('FileSystemService', () => {
         readFiles: new Set(),
         fileWrite: { requireReadBeforeWrite: false, validateWrittenFiles: false },
         fileRead: { maxFileReadCount: 100, maxFileSize: 1024 * 1024 },
-        fileSearch: { maxSnippetCount: 100 }
+        fileGrep: { maxSnippetCount: 100, snippetLinesBefore: 5, snippetLinesAfter: 5 },
+        fileEdit: { enabled: true, consecutiveFailureCount: 0, disableAfterConsecutiveFailures: 2 }
       }),
       mutateState: (stateClass, mutator) => {
         // Simplified mutation for testing
@@ -1480,7 +1582,8 @@ describe('FileSystemService Integration', () => {
         selectedFiles: [],
         fileWrite: { requireReadBeforeWrite: false, validateWrittenFiles: false },
         fileRead: { maxFileReadCount: 100, maxFileSize: 1024 * 1024 },
-        fileSearch: { maxSnippetCount: 100 }
+        fileGrep: { maxSnippetCount: 100, snippetLinesBefore: 5, snippetLinesAfter: 5 },
+        fileEdit: { enabled: true, disableAfterConsecutiveFailures: 2 }
       },
       providers: {
         local: {
@@ -1498,7 +1601,8 @@ describe('FileSystemService Integration', () => {
         readFiles: new Set(),
         fileWrite: { requireReadBeforeWrite: false, validateWrittenFiles: false },
         fileRead: { maxFileReadCount: 100, maxFileSize: 1024 * 1024 },
-        fileSearch: { maxSnippetCount: 100 }
+        fileGrep: { maxSnippetCount: 100, snippetLinesBefore: 5, snippetLinesAfter: 5 },
+        fileEdit: { enabled: true, consecutiveFailureCount: 0, disableAfterConsecutiveFailures: 2 }
       }),
       mutateState: (stateClass, mutator) => {}
     };
@@ -1573,7 +1677,7 @@ describe('FileSystemService Integration', () => {
 - **State Management** - Use `FileSystemState` for tracking file operations
 - **Context Handlers** - Register `selected-files` and `search-files` handlers
 - **Chat Commands** - Use `/file` command for manual file management
-- **Tools** - Register `file_modify`, `file_read`, `file_write`, and `file_search` tools
+- **Tools** - Register `file_edit`, `file_read`, `file_write`, `file_glob`, and `file_grep` tools
 - **RPC Endpoints** - Expose filesystem operations via JSON-RPC
 - **Scripting** - Register `createFile`, `deleteFile`, `globFiles`, `searchFiles` functions
 - **Hooks** - Register `clearReadFiles` hook for automatic cleanup
@@ -1592,11 +1696,14 @@ pkg/filesystem/
 ├── FileValidator.ts                 # File validator interface
 ├── tools.ts                         # Tool exports
 ├── tools/
-│   ├── modify.ts                    # file_modify tool
-│   ├── modify.test.ts               # Tests for modify tool
+│   ├── edit.ts                      # file_edit tool
+│   ├── edit.test.ts                 # Tests for edit tool
 │   ├── write.ts                     # file_write tool
 │   ├── read.ts                      # file_read tool
-│   └── search.ts                    # file_search tool
+│   ├── search.ts                    # file_search tool (not exported)
+│   ├── glob.ts                      # file_glob tool
+│   ├── grep.ts                      # file_grep tool
+│   └── append.ts                    # file_append tool (commented out)
 ├── commands.ts                      # Command exports
 ├── commands/
 │   └── file/
@@ -1616,8 +1723,9 @@ pkg/filesystem/
 │   ├── createIgnoreFilter.ts        # Ignore filter creation
 │   ├── runFileValidator.ts          # File validator runner
 │   ├── createFileWriteResult.ts     # File write result creation
-│   └── findContiguousLineMatch.ts   # Line matching utility
+│   ├── findContiguousLineMatch.ts   # Line matching utility
 │   ├── findContiguousLineMatch.test.ts  # Tests for line matching
+│   ├── fallbackGlob.ts              # Fallback glob implementation
 │   └── hooks/
 │       └── autoCommit.ts            # Auto-commit hook utility
 ├── rpc/
@@ -1635,7 +1743,7 @@ pkg/filesystem/
 The package uses `vitest` for testing. Test files follow the `*.test.ts` naming convention.
 
 **Available Test Files:**
-- `tools/modify.test.ts` - Tests for the modify tool
+- `tools/edit.test.ts` - Tests for the edit tool
 - `util/findContiguousLineMatch.test.ts` - Tests for line matching utility
 
 ```bash

@@ -14,6 +14,7 @@ Today, I'm excited to announce **TokenRing Coder** - an AI-powered coding assist
 ## Why TokenRing Coder?
 
 As developers, we want AI assistance that:
+
 - **Respects our privacy** - Your code stays on your machine
 - **Works with any AI provider** - OpenAI, Anthropic, Google, Groq, and more
 - **Integrates seamlessly** - Git, testing, Docker, cloud services
@@ -22,16 +23,21 @@ As developers, we want AI assistance that:
 ## Key Features
 
 ### 🤖 Multiple AI Providers
+
 Switch between OpenAI, Anthropic, Google, Groq, Cerebras, DeepSeek, and more with a unified API. No vendor lock-in.
 
 ### 🔧 Code Operations
+
 Edit, refactor, test, and commit code changes with AI assistance. Integrated git operations and automated testing.
 
 ### 🔒 Local & Secure
+
 Your code never leaves your machine. Run locally with full control over your data and development environment.
 
 ### 🧩 Extensible Plugin System
+
 37+ plugins covering:
+
 - Filesystem operations (local, S3)
 - Databases (MySQL, SQLite)
 - Cloud services (AWS, Docker, Kubernetes)
@@ -40,7 +46,9 @@ Your code never leaves your machine. Run locally with full control over your dat
 - And much more
 
 ### 🎯 Specialized Agents
+
 Different AI agents for specific tasks:
+
 - Team Leader for project coordination
 - Frontend/Backend specialists
 - Test Engineer for comprehensive testing
@@ -56,12 +64,14 @@ bun src/tr-coder.ts --source ./your-project --initialize
 ```
 
 Set up your API keys:
+
 ```bash
 export OPENAI_API_KEY="your-key-here"
 export ANTHROPIC_API_KEY="your-key-here"
 ```
 
 Start coding with AI:
+
 ```bash
 bun src/tr-coder.ts --source ./your-project
 ```

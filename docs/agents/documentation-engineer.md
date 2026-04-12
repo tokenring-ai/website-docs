@@ -1,52 +1,19 @@
 # Documentation Engineer
 
-**Agent ID:** `documentationEngineer`  
+**Agent ID:** `documentation-engineer`  
 **Application:** TokenRing Coder  
-**Category:** Design & Documentation
+**Category:** `Coding - Specialized`
 
 ## Overview
 
-The Documentation Engineer creates comprehensive technical documentation, API docs, and user guides that make codebases accessible and maintainable.
+Specialized agent for creating, maintaining, and improving technical documentation. Analyzes codebases, APIs, and systems to generate comprehensive documentation including README files, API docs, code comments, user guides, and technical specifications. Excels at: code documentation, API reference generation, tutorial creation, documentation architecture, style guide enforcement, and maintaining documentation consistency across projects.
 
-## Capabilities
+## Source Configuration
 
-- Technical documentation writing
-- API documentation
-- User guides and tutorials
-- Code comments and inline docs
-- README creation
-- Architecture documentation
-- Changelog maintenance
+`app/coder/src/config/agents/specialized/documentation-engineer.yaml`
 
-## Best Use Cases
+## Enabled Tools
 
-- API documentation
-- Technical guides
-- README files
-- Code documentation
-- User manuals
-- Architecture docs
-
-## Example Usage
-
-```
-> @documentationEngineer Create API documentation for our REST endpoints
-> @documentationEngineer Write a comprehensive README for this project
-> @documentationEngineer Document the authentication flow with diagrams
-```
-
-## Documentation Types
-
-- **API Docs:** OpenAPI, JSDoc, TypeDoc, Sphinx
-- **User Guides:** Tutorials, how-tos, getting started
-- **Technical Docs:** Architecture, design decisions, ADRs
-- **Code Docs:** Inline comments, function documentation
-
-## When to Use
-
-Use the Documentation Engineer when you need:
-- Clear technical documentation
-- API reference docs
-- User-facing guides
-- Code documentation
-- Project documentation
+- `todo`
+- `file_*`
+- `shell_*`

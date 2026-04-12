@@ -16,12 +16,14 @@ New plugins for database integration, web search abstraction, and Wikipedia acce
 Full MySQL database integration with connection pooling:
 
 ### Features
+
 - **Connection Pooling**: Efficient, reusable connections using mysql2
 - **SQL Execution**: Asynchronous query execution with result handling
 - **Schema Inspection**: Retrieve table schemas via SHOW TABLES and SHOW CREATE TABLE
 - **Read/Write Control**: Optional write permission enforcement
 
 ### Usage
+
 ```typescript
 const mysqlResource = new MySQLResource({
   host: 'localhost',
@@ -39,6 +41,7 @@ const result = await mysqlResource.executeSql('SELECT * FROM users');
 Abstract web search interface with pluggable providers:
 
 ### Features
+
 - **Pluggable Architecture**: Support for multiple search engines
 - **Web & News Search**: General web and news-specific search
 - **Page Fetching**: Retrieve web page content
@@ -51,12 +54,14 @@ Provides the foundation for Serper and ScraperAPI integrations.
 Wikipedia API integration for knowledge retrieval:
 
 ### Features
+
 - **Article Search**: Search Wikipedia articles with limit and offset options
 - **Page Content**: Fetch raw wiki markup content by title
 - **Retry Logic**: Built-in retry for API requests
 - **Multi-Language**: Support for different language Wikipedias
 
 ### Usage
+
 ```typescript
 const wiki = new WikipediaService(WikipediaConfigSchema.parse({}));
 const results = await wiki.search('Token Ring', { limit: 5 });

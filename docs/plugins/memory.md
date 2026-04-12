@@ -104,7 +104,7 @@ class MemoryState implements AgentStateSlice<typeof serializationSchema> {
   transferStateFromParent(parent: Agent): void;
   serialize(): z.output<typeof serializationSchema>;
   deserialize(data: z.output<typeof serializationSchema>): void;
-  show(): string[];
+  show(): string;
 }
 
 const serializationSchema = z.object({
@@ -152,16 +152,11 @@ const serializationSchema = z.object({
   state.deserialize({ memories: ['memory1', 'memory2'] });
   ```
 
-- `show(): string[]` — Returns a formatted string representation of memories with 1-based indexing.
+- `show(): string` — Returns a formatted string representation of memories with 1-based indexing.
 
   ```typescript
   const display = state.show();
-  // Returns:
-  // [
-  //   'Memories: 2',
-  //   '  [1] memory1',
-  //   '  [2] memory2'
-  // ]
+  // Returns: "Memories: 2\n  [1] memory1\n  [2] memory2"
   ```
 
 ## Services
@@ -282,6 +277,13 @@ Memory items:
 [0] Remaining memory item
 ```
 
+If no memories exist:
+```
+Removed memory item at index 0
+Memory items:
+No memory items stored
+```
+
 #### `/memory set`
 
 Update memory item at specific index using the `--index` flag. The text after the flags is captured as a remainder parameter.
@@ -296,6 +298,13 @@ Update memory item at specific index using the `--index` flag. The text after th
 Updated memory item at index 0
 Memory items:
 [0] Updated meeting notes
+```
+
+If no memories exist after update:
+```
+Updated memory item at index 0
+Memory items:
+No memory items stored
 ```
 
 **Usage Examples**
@@ -414,12 +423,7 @@ memoryService.addMemory('Meeting at 3 PM tomorrow', agent);
 // Check memory state
 const state = agent.getState(MemoryState);
 console.log(state.show());
-// Output:
-// [
-//   'Memories: 2',
-//   '  [1] User prefers dark mode',
-//   '  [2] Meeting at 3 PM tomorrow'
-// ]
+// Output: "Memories: 2\n  [1] User prefers dark mode\n  [2] Meeting at 3 PM tomorrow"
 ```
 
 ### Memory Manipulation
@@ -478,12 +482,7 @@ subState.transferStateFromParent(parentAgent);
 
 // Sub-agent now has access to parent's memories
 console.log(subState.show());
-// Output:
-// [
-//   'Memories: 2',
-//   '  [1] Parent memory 1',
-//   '  [2] Parent memory 2'
-// ]
+// Output: "Memories: 2\n  [1] Parent memory 1\n  [2] Parent memory 2"
 ```
 
 ### Tool Usage

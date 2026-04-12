@@ -354,7 +354,7 @@ Automatically provides agents with information about available databases.
 **Context Handler Function:**
 
 ```typescript
-async function* getContextItems({agent}: ContextHandlerOptions): AsyncGenerator<ContextItem>
+function* getContextItems({agent}: ContextHandlerOptions): Generator<ContextItem>
 ```
 
 **Functionality:**
@@ -376,7 +376,7 @@ async function* getContextItems({agent}: ContextHandlerOptions): AsyncGenerator<
 **Implementation:**
 
 ```typescript
-export default async function* getContextItems({agent}: ContextHandlerOptions): AsyncGenerator<ContextItem> {
+export default function* getContextItems({agent}: ContextHandlerOptions): Generator<ContextItem> {
   const databaseService = agent.requireServiceByType(DatabaseService);
   const available = databaseService.getAvailableDatabases();
   if (available.length === 0) return;
@@ -405,38 +405,12 @@ const packageConfigSchema = z.object({
   database: DatabaseConfigSchema.optional(),
 });
 
-export const DatabaseConfigSchema = z.object({
-  providers: z.record(z.string(), z.any())
-}).optional();
+export const DatabaseConfigSchema = z.object({}).optional();
 ```
+
+**Note:** The `DatabaseConfigSchema` is an empty optional object schema. The configuration serves only to signal that the plugin should be activated and the `DatabaseService` should be registered. Actual database provider instantiation and configuration must be done manually by the implementer.
 
 ### Configuration Example
-
-```typescript
-app.install(databasePlugin, {
-  database: {
-    providers: {
-      production: {
-        connectionString: process.env.PROD_DB_URL,
-        allowWrites: true
-      },
-      analytics: {
-        connectionString: process.env.ANALYTICS_DB_URL,
-        allowWrites: false
-      }
-    }
-  }
-});
-```
-
-**Important:** The plugin does not automatically instantiate database providers from configuration. The configuration object serves two purposes:
-
-1. It signals that the plugin should be activated
-2. It triggers the registration of the `DatabaseService`
-
-Implementers must manually create and register database provider instances with the service after installation. The configuration record keys (`providers`) can be used as a reference for database names, but no actual provider instantiation occurs automatically.
-
-**Configuration Example:**
 
 ```typescript
 import TokenRingApp from "@tokenring-ai/app";
@@ -448,11 +422,7 @@ const app = new TokenRingApp();
 
 // Install plugin with database configuration to activate the service
 app.install(databasePlugin, {
-  database: {
-    providers: {
-      production: {} // Configuration signals activation
-    }
-  }
+  database: {} // Empty config signals activation
 });
 
 // Manually register database providers with the service
@@ -465,7 +435,12 @@ app.waitForService(DatabaseService, dbService => {
 });
 ```
 
-## Integration
+**Important:** The plugin does not automatically instantiate database providers from configuration. The configuration object serves two purposes:
+
+1. It signals that the plugin should be activated
+2. It triggers the registration of the `DatabaseService`
+
+Implementers must manually create and register database provider instances with the service after installation.
 
 ### Plugin Registration
 
@@ -478,9 +453,7 @@ import databasePlugin from "@tokenring-ai/database";
 const app = new TokenRingApp();
 
 app.install(databasePlugin, {
-  database: {
-    providers: {}
-  }
+  database: {}
 });
 ```
 
@@ -711,17 +684,18 @@ try {
 
 - **Singleton Pattern**: Always handle database connections in a singleton pattern to prevent multiple connections to the same database
 - **Parameterized Queries**: Use parameterized queries to prevent SQL injection attacks
-- **Write Protection**: Use the `allowWrites` flag to restrict write operations, and always require human confirmation for non-SELECT queries
-- **Error Handling**: Ensure proper error handling when executing database operations
-- **Connection Management**: Always release database connections to avoid resource leaks
-- **Schema Validation**: Validate database names using the context handler before executing queries
-- **Tool Usage**: Use tools (`database_executeSql` and `database_showSchema`) instead of direct service calls
+- **Write Protection**: Use the `allowWrites` flag to restrict write operations. Non-SELECT queries automatically require human confirmation via `agent.askForApproval()`
+- **Error Handling**: Ensure proper error handling when executing database operations. Tool errors include descriptive messages for database not found and approval denial
+- **Connection Management**: Always release database connections to avoid resource leaks. Use try/finally patterns or connection pooling
+- **Schema Validation**: The `available-databases` context handler provides database names to agents. Tools validate database existence before execution
+- **Tool Usage**: Prefer using tools (`database_executeSql` and `database_showSchema`) for agent interactions. They include built-in safety checks and context handling
 - **Required Context Handlers**: The `available-databases` context handler is required by both tools. It is automatically registered when the plugin is installed with a database configuration and the ChatService is available
+- **Case-Sensitive SELECT Check**: The write protection check is case-sensitive. Only queries starting with uppercase "SELECT" bypass the approval requirement
 - **Provider Abstraction**: Implement custom providers for specific database systems (PostgreSQL, MySQL, SQLite, etc.) to maintain the abstraction layer
 - **Manual Provider Registration**: The plugin does not automatically instantiate providers from configuration. After installing the plugin, manually create and register provider instances:
 
   ```typescript
-  app.install(databasePlugin, { database: { providers: { mydb: {} } } });
+  app.install(databasePlugin, { database: {} });
   app.waitForService(DatabaseService, dbService => {
     const provider = new MyCustomProvider(config);
     dbService.registerDatabase('mydb', provider);
@@ -883,3 +857,4 @@ describe('executeSql tool', () => {
 ## License
 
 MIT License - see LICENSE file for details.
+```

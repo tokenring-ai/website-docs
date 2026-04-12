@@ -16,12 +16,14 @@ TokenRing Coder now supports web search capabilities through Serper.dev and Scra
 Google search integration via Serper.dev API:
 
 ### Features
+
 - **Web Search**: Organic results, knowledge graphs, related searches
 - **News Search**: Structured news articles with sources and dates
 - **Geotargeting**: Country codes, language, and location-based search
 - **Pagination**: Navigate through multiple pages of results
 
 ### Usage
+
 ```typescript
 const provider = new SerperWebSearchProvider({
   apiKey: process.env.SERPER_API_KEY,
@@ -36,12 +38,14 @@ const results = await provider.searchWeb('Token Ring AI');
 Web scraping and SERP integration:
 
 ### Features
+
 - **HTML Fetching**: Retrieve page content with optional JavaScript rendering
 - **Google SERP**: Structured JSON results including organic results and knowledge graphs
 - **Google News**: Articles with sources, thumbnails, and dates
 - **Geotargeting**: Country codes, TLDs, and UULE for location-specific results
 
 ### Usage
+
 ```typescript
 const provider = new ScraperAPIWebSearchProvider({
   apiKey: process.env.SCRAPERAPI_KEY,

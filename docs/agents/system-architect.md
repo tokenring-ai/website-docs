@@ -1,55 +1,19 @@
 # System Architect
 
-**Agent ID:** `systemArchitect`  
+**Agent ID:** `system-architect`  
 **Application:** TokenRing Coder  
-**Category:** Planning & Management
+**Category:** `Coding - Specialized`
 
 ## Overview
 
-The System Architect designs system architectures, selects appropriate technology stacks, and creates technical blueprints for scalable, maintainable applications.
+Call this agent to design system architectures and select optimal technology stacks. Provide requirements, constraints, or architectural challenges. The agent will design scalable architectures, select appropriate technologies, create system blueprints, evaluate frameworks, and establish technical foundations. Best used for: system design, technology selection, architecture planning, framework evaluation, infrastructure design, and technical strategy.
 
-## Capabilities
+## Source Configuration
 
-- System architecture design
-- Technology stack selection
-- Scalability planning
-- Integration architecture
-- Performance optimization strategies
-- Security architecture
-- Infrastructure design
+`app/coder/src/config/agents/specialized/system-architect.yaml`
 
-## Best Use Cases
+## Enabled Tools
 
-- New system design
-- Architecture reviews
-- Technology selection
-- Scalability planning
-- System modernization
-- Microservices architecture
-
-## Example Usage
-
-```
-> @systemArchitect Design a microservices architecture for our e-commerce platform
-> @systemArchitect Recommend a tech stack for a real-time chat application
-> @systemArchitect Create a scalable architecture for handling 1M daily users
-```
-
-## Deliverables
-
-The System Architect provides:
-- Architecture diagrams and documentation
-- Technology recommendations with rationale
-- Scalability and performance strategies
-- Security considerations
-- Integration patterns
-- Infrastructure requirements
-
-## When to Use
-
-Use the System Architect when you need:
-- High-level system design
-- Technology stack decisions
-- Architecture planning
-- Scalability strategies
-- Technical direction
+- `todo`
+- `file_*`
+- `shell_*`

@@ -96,47 +96,52 @@ bun src/tr-coder.ts --source ./your-project
 ### Specialized Agents
 
 ```
-> @teamLeader Create a new user dashboard feature
-> @testEngineer Add comprehensive tests for the API
-> @securityReview Check this code for vulnerabilities
+> @leader Create a new user dashboard feature
+> @test-engineer Add comprehensive tests for the API
+> @security-review Check this code for vulnerabilities
 ```
 
 ## Available Agents
 
 TokenRing Coder includes specialized AI agents for different development tasks:
 
-### Interactive Agent
-- **interactiveCodeAgent** - Interactive code assistant for direct development tasks
+### Core Agents
+- **code** - General code assistant for direct development tasks
+- **leader** - Orchestrates full-stack projects and coordinates other agents
+- **plan** - Generates implementation plans without executing them
+- **swarm** - Breaks work into parallel tasks and runs them across multiple agents
+- **research** - Produces verified research reports with web search
 
 ### Planning & Management
-- **teamLeader** - Orchestrates full-stack projects, coordinates specialists, manages workflow
-- **productManager** - Creates PRDs, defines user stories, plans feature roadmaps
-- **productDesignEngineer** - Product enhancement and comprehensive PRD creation
-- **systemArchitect** - Designs system architectures and selects technology stacks
+- **product-manager** - Creates PRDs, defines user stories, and plans feature roadmaps
+- **product-design-engineer** - Product enhancement and comprehensive PRD creation
+- **system-architect** - Designs system architectures and selects technology stacks
 
 ### Development Specialists
-- **fullStackDeveloper** - Implements complete features across frontend and backend
-- **frontendDesign** - Creates React/Vue components, responsive layouts, state management
-- **backendDesign** - Implements server-side logic, business rules, data processing
-- **apiDesigner** - Designs REST/GraphQL APIs, creates OpenAPI specifications
-- **databaseDesign** - Designs schemas, implements migrations, optimizes queries
+- **full-stack-developer** - Implements complete features across frontend and backend
+- **frontend-design** - Creates React/Vue components, responsive layouts, and state management
+- **backend-design** - Implements server-side logic, business rules, and data processing
+- **api-designer** - Designs REST/GraphQL APIs and creates OpenAPI specifications
+- **database-design** - Designs schemas, implements migrations, and optimizes queries
 
 ### Engineering Specialists
-- **businessLogicEngineer** - Implements workflows, rules engines, automation systems
-- **dataEngineer** - Creates ETL pipelines, data migrations, processing workflows
-- **integrationEngineer** - Implements third-party integrations, APIs, webhooks
-- **authDesign** - Designs authentication/authorization systems, OAuth/OIDC
+- **business-logic-engineer** - Implements workflows, rules engines, and automation systems
+- **data-engineer** - Creates ETL pipelines, data migrations, and processing workflows
+- **integration-engineer** - Implements third-party integrations, APIs, and webhooks
+- **auth-design** - Designs authentication and authorization systems, including OAuth/OIDC
 
 ### Quality & Operations
-- **testEngineer** - Creates unit/integration/E2E tests, test automation
-- **codeQualityEngineer** - Code reviews, refactoring, standards enforcement
-- **securityReview** - Security assessments, vulnerability remediation, OWASP compliance
-- **performanceEngineer** - Performance optimization, caching, monitoring, scalability
-- **devopsEngineer** - CI/CD pipelines, Docker configs, infrastructure setup
+- **test-engineer** - Creates unit, integration, and E2E tests plus test automation
+- **code-quality-engineer** - Handles code reviews, refactoring, and standards enforcement
+- **security-review** - Performs security assessments and vulnerability remediation
+- **performance-engineer** - Focuses on performance optimization, caching, and scalability
+- **devops-engineer** - Sets up CI/CD pipelines, Docker configs, and infrastructure
 
 ### Design & Documentation
-- **uiUxDesigner** - Creates wireframes, design systems, user flows
-- **documentationEngineer** - Technical documentation, API docs, user guides
+- **ui-ux-designer** - Creates wireframes, design systems, and user flows
+- **accessibility-engineer** - Audits and improves accessibility and usability compliance
+- **seo-engineer** - Optimizes metadata, crawlability, and search visibility
+- **documentation-engineer** - Produces technical documentation, API docs, and user guides
 
 ## Architecture
 
@@ -156,7 +161,7 @@ Configuration is stored in `.tokenring/coder-config.mjs` in your project:
 ```javascript
 export default {
   defaults: {
-    agent: "teamLeader",
+    agent: "leader",
     model: "gpt-4o"
   },
   models: {

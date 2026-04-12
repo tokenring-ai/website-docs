@@ -1,52 +1,19 @@
 # API Designer
 
-**Agent ID:** `apiDesigner`  
+**Agent ID:** `api-designer`  
 **Application:** TokenRing Coder  
-**Category:** Development Specialists
+**Category:** `Coding - Specialized`
 
 ## Overview
 
-The API Designer specializes in designing REST and GraphQL APIs, creating OpenAPI specifications, and implementing well-structured, documented API endpoints.
+Call this agent to design and implement REST/GraphQL APIs and service contracts. Provide data requirements, frontend needs, or existing API specs. The agent will design API endpoints, create OpenAPI specifications, implement request/response schemas, handle validation, and build complete API layers. Best used for: API specification, endpoint design, service contracts, API documentation, and backend service implementation.
 
-## Capabilities
+## Source Configuration
 
-- REST API design and implementation
-- GraphQL schema design
-- OpenAPI/Swagger specification
-- API documentation
-- Versioning strategies
-- Rate limiting and throttling
-- API security best practices
+`app/coder/src/config/agents/specialized/api-designer.yaml`
 
-## Best Use Cases
+## Enabled Tools
 
-- API design and architecture
-- OpenAPI specification creation
-- GraphQL schema development
-- API documentation
-- Endpoint implementation
-- API versioning
-
-## Example Usage
-
-```
-> @apiDesigner Design a REST API for a blog platform
-> @apiDesigner Create an OpenAPI specification for our user service
-> @apiDesigner Implement a GraphQL API for product catalog
-```
-
-## Technical Expertise
-
-- **REST:** RESTful principles, HTTP methods, status codes
-- **GraphQL:** Schema design, resolvers, mutations, subscriptions
-- **Documentation:** OpenAPI, Swagger, API Blueprint
-- **Security:** OAuth, JWT, API keys, CORS
-
-## When to Use
-
-Use the API Designer when you need:
-- API architecture and design
-- API specifications
-- Well-documented endpoints
-- API best practices
-- Integration interfaces
+- `todo`
+- `file_*`
+- `shell_*`

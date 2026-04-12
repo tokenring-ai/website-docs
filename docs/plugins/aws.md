@@ -204,22 +204,21 @@ Lists all S3 buckets in the configured AWS account and region.
   displayName: "Aws/listS3BucketsTool",
   description: "Lists all S3 buckets in the configured AWS account and region.",
   inputSchema: z.object({}),
-  execute: async (_args: z.input<typeof inputSchema>, agent: Agent) => Promise<{
-    type: 'json';
-    data: { buckets: Array<{ Name: string; CreationDate: Date }> }
-  }>
+  execute: async (_args: z.output<typeof inputSchema>, agent: Agent) => Promise<TokenRingToolResult>
 }
 ```
 
 **Input Schema:** Empty object (no parameters required)
 
-**Returns:** JSON object containing:
-```typescript
+**Returns:** Stringified JSON containing:
+```json
 {
-  buckets: Array<{
-    Name: string;
-    CreationDate: Date;
-  }>
+  "buckets": [
+    {
+      "Name": "bucket-name",
+      "CreationDate": "2024-01-01T00:00:00.000Z"
+    }
+  ]
 }
 ```
 
@@ -246,21 +245,21 @@ async function execute(_args: {}, agent: Agent) {
   const awsService = agent.requireServiceByType(AWSService);
 
   if (!awsService.isAuthenticated()) {
-    throw new Error(`[aws_listS3Buckets] AWS credentials not configured in AWSService.`);
+    throw new Error(`[${name}] AWS credentials not configured in AWSService.`);
   }
 
   try {
     const s3Client = awsService.getS3Client();
     const command = new ListBucketsCommand({});
     const response: any = await s3Client.send(command);
-    const buckets = (response.Buckets || []).map((bucket: any) => ({
+    const buckets = (response.Buckets ?? []).map((bucket: any) => ({
       Name: bucket.Name,
       CreationDate: bucket.CreationDate,
     }));
-    return { type: 'json' as const, data: { buckets } };
+    return JSON.stringify({buckets});
   } catch (error: any) {
     const message = error instanceof Error ? error.message : String(error);
-    throw new Error(`[aws_listS3Buckets] Error listing S3 buckets: ${message}`);
+    throw new Error(`[${name}] Failed to list S3 buckets: ${message}`);
   }
 }
 ```
@@ -983,14 +982,6 @@ pkg/aws/
 - **plugin.ts**: Plugin registration via install method
 - **index.ts**: Public API exports (AWSService)
 - **schema.ts**: Zod schema definitions for configuration
-
-## Additional Resources
-
-- [AWS SDK v3 Documentation](https://docs.aws.amazon.com/sdk-for-javascript/v3/)
-- [STS GetCallerIdentity API](https://docs.aws.amazon.com/STS/latest/APIReference/API_GetCallerIdentity.html)
-- [S3 Bucket Operations](https://docs.aws.amazon.com/AmazonS3/latest/userguide/bucketnamingrules.html)
-- [Token Ring Documentation](https://github.com/tokenring-ai/tokenring)
-- [IAM Permissions Best Practices](https://docs.aws.amazon.com/IAM/latest/UserGuide/best-practices.html)
 
 ## License
 

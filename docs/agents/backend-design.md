@@ -1,52 +1,19 @@
-# Backend Design
+# Backend Developer
 
-**Agent ID:** `backendDesign`  
+**Agent ID:** `backend-design`  
 **Application:** TokenRing Coder  
-**Category:** Development Specialists
+**Category:** `Coding - Specialized`
 
 ## Overview
 
-The Backend Design agent implements server-side logic, business rules, and data processing with expertise in various backend technologies and frameworks.
+Call this agent to implement server-side logic, business rules, and data processing. Provide business requirements, data models, or backend functionality needs. The agent will implement business logic, create service layers, handle data processing, implement middleware, and build robust backend functionality. Best used for: business logic implementation, service development, data processing, middleware creation, and backend feature development.
 
-## Capabilities
+## Source Configuration
 
-- Server-side application development
-- Business logic implementation
-- Data processing and validation
-- API endpoint creation
-- Database integration
-- Authentication and authorization
-- Background job processing
+`app/coder/src/config/agents/specialized/backend-design.yaml`
 
-## Best Use Cases
+## Enabled Tools
 
-- Server-side logic implementation
-- Business rule enforcement
-- Data processing pipelines
-- API development
-- Database operations
-- Background tasks
-
-## Example Usage
-
-```
-> @backendDesign Implement order processing logic with inventory checks
-> @backendDesign Create a background job for email notifications
-> @backendDesign Build a data validation layer for user inputs
-```
-
-## Technical Expertise
-
-- **Languages:** Node.js, Python, Java, Go
-- **Frameworks:** Express, FastAPI, Spring Boot, Gin
-- **Databases:** PostgreSQL, MongoDB, Redis
-- **Tools:** Docker, message queues, caching
-
-## When to Use
-
-Use the Backend Design agent when you need:
-- Server-side implementations
-- Business logic development
-- Data processing
-- Backend-specific features
-- API logic and validation
+- `todo`
+- `file_*`
+- `shell_*`

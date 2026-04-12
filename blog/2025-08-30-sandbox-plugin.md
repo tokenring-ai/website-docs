@@ -14,10 +14,13 @@ The Sandbox plugin provides secure, isolated environments for running untrusted 
 ## Key Features
 
 ### 🔒 Abstract Provider Interface
+
 Extensible for multiple sandbox backends including Docker, Kubernetes, and other container runtimes.
 
 ### 🐳 Container Lifecycle
+
 Complete container management:
+
 - **Create**: Spin up new containers with custom images
 - **Execute**: Run commands in isolated environments
 - **Stop**: Gracefully stop containers
@@ -25,6 +28,7 @@ Complete container management:
 - **Logs**: Access container output
 
 ### 🛠️ Agent Integration
+
 Tools and chat commands for interactive control:
 
 ```bash

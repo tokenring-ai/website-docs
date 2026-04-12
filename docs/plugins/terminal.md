@@ -842,7 +842,7 @@ class TerminalState implements AgentStateSlice {
 
 ## Tools
 
-### terminal_bash
+### shell_bash
 
 Tool for executing shell commands through the agent interface.
 
@@ -1200,7 +1200,7 @@ await agent.execute({
 
 ## Best Practices
 
-1. **Use persistent sessions for long-running processes**: Always use `terminal_start` and `terminal_continue` for development servers or interactive shells instead of `terminal_bash`.
+1. **Use persistent sessions for long-running processes**: Always use `terminal_start` and `terminal_continue` for development servers or interactive shells instead of `shell_bash`.
 
 2. **Always clean up sessions**: Use `terminal_stop` to terminate sessions when done to prevent orphaned processes.
 

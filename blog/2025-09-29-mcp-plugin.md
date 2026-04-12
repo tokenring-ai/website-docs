@@ -18,9 +18,11 @@ Model Context Protocol is a standardized way for AI applications to connect with
 ## Key Features
 
 ### 🔌 Multiple Transport Types
+
 Support for stdio, SSE, and HTTP transports:
 
 **Stdio Transport** (Process-based):
+
 ```typescript
 {
   type: 'stdio',
@@ -30,6 +32,7 @@ Support for stdio, SSE, and HTTP transports:
 ```
 
 **SSE Transport** (Server-Sent Events):
+
 ```typescript
 {
   type: 'sse',
@@ -38,6 +41,7 @@ Support for stdio, SSE, and HTTP transports:
 ```
 
 **HTTP Transport**:
+
 ```typescript
 {
   type: 'http',
@@ -46,9 +50,11 @@ Support for stdio, SSE, and HTTP transports:
 ```
 
 ### 🛠️ Automatic Tool Registration
+
 MCP server tools are automatically registered with TokenRing agents. No manual configuration needed.
 
 ### 🔄 Seamless Integration
+
 Works with existing TokenRing agent architecture. MCP tools appear alongside native tools.
 
 ## Usage

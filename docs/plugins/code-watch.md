@@ -1,10 +1,10 @@
 # @tokenring-ai/code-watch
 
+## Overview
+
 The `@tokenring-ai/code-watch` package provides a file monitoring service for the Token Ring AI ecosystem. It watches configured filesystems for file changes, detects special AI comment patterns (like `# AI!` or `// AI!`), and automatically spawns agents to execute code modifications based on those instructions.
 
 This service uses polling-based file system watching with configurable intervals and stability thresholds to debounce rapid file changes. When an AI comment with the `AI!` marker is detected, the service spawns a configured agent type in headless mode to execute the requested code modifications.
-
-## Overview
 
 Code Watch provides real-time file system monitoring for detecting code changes and processing AI instructions embedded in comments. It integrates seamlessly with the Token Ring agent framework, providing background service functionality that operates without chat commands or tools.
 
@@ -18,6 +18,11 @@ Code Watch provides real-time file system monitoring for detecting code changes 
 - **Error Handling**: Comprehensive error logging and graceful failure handling
 - **Ignore Filtering**: Respects ignore patterns from filesystem providers
 - **Background Service**: Runs as a background service without chat commands or tools
+
+### Plugin Display Name
+
+- **Name**: `@tokenring-ai/code-watch`
+- **Display Name**: Code Watcher
 
 ## Core Components
 
@@ -161,7 +166,7 @@ Checks a comment line for AI triggers and initiates action.
 **AI Trigger Patterns**:
 
 - Lines starting with `# AI` or `// AI`
-- Lines ending with `AI!`
+- Lines containing `AI!` anywhere
 
 If either pattern matches, calls `handleAIComment()`.
 
@@ -479,7 +484,7 @@ The service detects AI comments using these patterns:
 
 1. **Lines starting with `# AI`** (Python/shell style)
 2. **Lines starting with `// AI`** (C-style)
-3. **Lines ending with `AI!`** (any style)
+3. **Lines containing `AI!` anywhere** (any style)
 
 **Important**: Only comments containing `AI!` will trigger code modification. Comments that match the prefix patterns but don't contain `AI!` will be detected but won't trigger action.
 
@@ -584,6 +589,7 @@ export default defineConfig({
 | `@tokenring-ai/agent` | 0.2.0 | Agent management and orchestration |
 | `@tokenring-ai/filesystem` | 0.2.0 | File system abstraction and providers |
 | `@tokenring-ai/utility` | 0.2.0 | Utility functions and helpers |
+| `@tokenring-ai/chat` | 0.2.0 | Chat integration and context management |
 | `zod` | ^4.3.6 | Schema validation |
 | `async` | ^3.2.6 | Concurrent processing utilities |
 | `ignore` | ^7.0.5 | Ignore pattern matching |

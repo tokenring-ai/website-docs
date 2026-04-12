@@ -1,61 +1,248 @@
 # @tokenring-ai/codebase
 
-The Codebase plugin provides codebase context to AI agents by managing multiple types of resources that deliver file structures, symbol information, and complete file contents. It allows selective inclusion of project files and directories, enabling AI agents to reason about and interact with the codebase effectively.
+## User Guide
 
-The plugin serves as a context provider that injects relevant codebase information into chat sessions through a context handler. It supports three resource types: file trees (directory structure), repo maps (symbol information), and whole files (complete file contents). Users can manage which resources are enabled through interactive commands or programmatic configuration.
+### Overview and Purpose
 
-## Key Features
+The `@tokenring-ai/codebase` package provides a service for managing codebase
+resources in TokenRing AI agents. Its primary purpose is to selectively include
+project files, directory structures, and repository maps into the agent's
+context through context handlers.
 
-- **Multiple Resource Types**: Supports file trees, repo maps, and whole files
-- **Interactive Resource Selection**: Tree-based interactive selection via `/codebase select`
-- **Wildcard Pattern Support**: Enable resources using wildcard patterns (e.g., `src/*`)
-- **Agent-Specific Configuration**: Each agent can have different enabled resources
-- **State Persistence**: Enabled resources persist across agent sessions
-- **Repository Map Generation**: Automatically generates symbol-based code maps using `code-chopper`
-- **Context Injection**: Automatically injects codebase context into chat sessions
-- **Multi-language Support**: Supports TypeScript, JavaScript, Python, C, C++, Rust, Go, Java, Ruby, and Bash
+This enables AI agents to reason about and interact with the codebase by
+providing file trees, full file contents, and symbol information as needed.
 
-## Core Components
+### Key Features
 
-### CodeBaseService
+- **Multiple Resource Types**: File trees, repository maps, and whole files
+- **Interactive Management**: Agent commands for resource selection
+- **State Management**: Persistent resource enablement across sessions
+- **Wildcard Support**: Pattern matching for resource selection
+- **Multi-language Repository Mapping**: Symbol extraction for 10 languages
+- **Context Injection**: Automatic codebase context in chat sessions
+- **Symbol-Level Mapping**: Uses code-chopper for symbol extraction
 
-The main service class that implements `TokenRingService`. It manages a registry of `FileMatchResource` instances and provides methods for resource management and repository map generation.
+### Chat Commands
+
+The package provides a comprehensive set of agent commands for managing
+codebase resources. These commands are available in the agent chat interface.
+
+| Command | Description |
+| :------ | :---------- |
+| `/codebase select` | Interactive resource selection via tree view |
+| `/codebase enable` | Enable specific resources (adds to selection) |
+| `/codebase disable` | Disable specific resources (removes from selection) |
+| `/codebase set` | Set resources (replaces current selection) |
+| `/codebase reset` | Reset to initial configuration |
+| `/codebase list` | List currently enabled resources |
+| `/codebase show repo` | Display repository map and structure |
+
+#### Command Usage Examples
+
+```text
+# Browse and select resources interactively via tree view
+/codebase select
+
+# Set specific codebase resources by name (replaces selection)
+/codebase set src docs
+
+# Enable all resources matching wildcard pattern
+/codebase enable src/*
+
+# Enable specific resources by name (adds to selection)
+/codebase enable api docs
+
+# Disable specific resources matching wildcard pattern
+/codebase disable src/*
+
+# Show currently enabled resources
+/codebase list
+
+# Reset to initial configuration
+/codebase reset
+
+# View repository structure and symbols
+/codebase show repo
+```
+
+### Configuration
+
+The plugin provides configuration through the `codebase` section of your app
+configuration.
+
+#### Configuration Schema
+
+```typescript
+import { z } from "zod";
+
+export const CodeBaseAgentConfigSchema = z
+  .object({
+    enabledResources: z.array(z.string()).optional(),
+  })
+  .default({});
+
+export const CodeBaseServiceConfigSchema = z.object({
+  resources: z.record(z.string(), z.any()),
+  agentDefaults: z
+    .object({
+      enabledResources: z.array(z.string()).default([]),
+    })
+    .default({ enabledResources: [] }),
+});
+```
+
+#### Configuration Example
+
+```yaml
+codebase:
+  resources:
+    src:
+      type: fileTree
+    docs:
+      type: repoMap
+    config:
+      type: wholeFile
+  agentDefaults:
+    enabledResources: []
+```
+
+#### Plugin Registration
+
+```typescript
+import codeBasePlugin from "@tokenring-ai/codebase";
+import TokenRingApp from "@tokenring-ai/app";
+
+const app = new TokenRingApp({
+  config: {
+    codebase: {
+      resources: {
+        src: { type: "fileTree" },
+        docs: { type: "repoMap" },
+        config: { type: "wholeFile" },
+      },
+      agentDefaults: {
+        enabledResources: [],
+      },
+    },
+  },
+});
+
+app.install(codeBasePlugin, {
+  codebase: {
+    resources: {
+      src: { type: "fileTree" },
+      docs: { type: "repoMap" },
+      config: { type: "wholeFile" },
+    },
+    agentDefaults: {
+      enabledResources: [],
+    },
+  },
+});
+```
+
+#### Environment Variables
+
+This package does not define any environment variables. Configuration is
+provided through the plugin configuration object.
+
+### Integration
+
+The codebase package integrates with the following components:
+
+- **ChatService**: Registers context handlers for automatic context injection
+- **AgentCommandService**: Registers agent commands for resource management
+- **FileSystemService**: Provides file reading capabilities for repository
+  map generation
+- **Agent**: Manages agent-specific state and configuration
+
+### Best Practices
+
+#### Resource Selection Strategies
+
+- Use `/codebase select` for interactive exploration when unsure of exact
+  resource names
+- Start with file trees for large codebases to provide directory structure
+- Add repo maps for specific areas of interest (e.g., `api`, `components`)
+- Use whole files only for small, critical files (e.g., `config`, `README`)
+- Enable resources incrementally and test the context quality
+
+#### Performance Considerations
+
+- Large codebases: Use file trees and repo maps instead of whole files to
+  reduce context size
+- Multiple agents: Configure different `enabledResources` for different agent
+  types
+- Wildcard patterns: Use wildcards (`src/*`) for enabling multiple resources
+  efficiently
+- Lazy evaluation: Resources are only loaded when needed during context
+  generation
+
+#### State Management
+
+- Resources persist across agent sessions through state serialization
+- Use `transferStateFromParent` to inherit resources from parent agents
+- Reset resources when needed using the `/codebase reset` command
+
+---
+
+## Developer Reference
+
+### Core Components
+
+The package consists of the following core components:
+
+- **CodeBaseService**: Main service implementing `TokenRingService`
+- **FileTreeResource**: Provides directory structure context
+- **RepoMapResource**: Provides symbol-level repository mapping
+- **WholeFileResource**: Provides complete file contents
+- **CodeBaseState**: Manages agent state for enabled resources
+
+### Services
+
+#### CodeBaseService
+
+The main service class implementing `TokenRingService`. It manages a registry
+of `FileMatchResource` instances and provides methods for resource management
+and repository map generation.
 
 **Service Properties:**
 
-- `name`: Service identifier (`"CodeBaseService"`)
-- `description`: Service description
-- `resourceRegistry`: `KeyedRegistry<FileMatchResource>` - Registry managing all resource instances
-- `options`: Service configuration options
+| Property | Type | Description |
+| :------- | :--- | :---------- |
+| `name` | `"CodeBaseService"` | Service identifier |
+| `description` | `string` | Service description |
+| `resourceRegistry` | `KeyedRegistry<FileMatchResource>` | Registry managing resources |
+| `options` | `CodeBaseServiceConfigSchema` | Service configuration options |
 
 **Resource Management Methods:**
 
 ```typescript
-registerResource(
-  name: string,
-  resource: FileMatchResource
-): void
+// Registers a new resource with the service's internal KeyedRegistry
+registerResource(name: string, resource: FileMatchResource): void
 
+// Returns all registered resource names as a sorted array
 getAvailableResources(): string[]
 
-getEnabledResources(
-  agent: Agent
-): FileMatchResource[]
+// Returns the names of currently enabled resources from agent state
+getEnabledResourceNames(agent: Agent): Set<string>
 
-getEnabledResourceNames(
-  agent: Agent
-): Set<string>
+// Returns the currently enabled FileMatchResource instances
+getEnabledResources(agent: Agent): FileMatchResource[]
 
+// Sets enabled resources (replaces current selection); handles wildcards
 setEnabledResources(
   resourceNames: string[],
   agent: Agent
 ): Set<string>
 
+// Enables specific resources (adds to current selection); handles wildcards
 enableResources(
   resourceNames: string[],
   agent: Agent
 ): Set<string>
 
+// Disables specific resources (removes from current selection)
 disableResources(
   resourceNames: string[],
   agent: Agent
@@ -65,43 +252,50 @@ disableResources(
 **Repository Mapping Methods:**
 
 ```typescript
+// Generates repository map from files using code-chopper
 async generateRepoMap(
   files: Set<string>,
   fileSystem: FileSystemService,
   agent: Agent
 ): Promise<string | null>
 
-getLanguageFromExtension(
-  ext: string
-): LanguageEnum | null
+// Maps file extension to language type for code-chopper
+getLanguageFromExtension(ext: string): LanguageEnum | null
 
+// Formats repository map output from code chunks
 formatFileOutput(
   filePath: string,
   chunks: any[]
 ): string | null
 ```
 
-**Method Descriptions:**
+**Supported Languages:**
 
-- `registerResource(name, resource)`: Registers a new resource with the service, making it available for use
-- `getAvailableResources()`: Returns all registered resource names as an array of strings
-- `getEnabledResources(agent)`: Returns an array of enabled `FileMatchResource` instances for the specified agent
-- `getEnabledResourceNames(agent)`: Returns a `Set` of enabled resource names
-- `setEnabledResources(resourceNames, agent)`: Sets the enabled resources to the provided list, replacing any existing resources
-- `enableResources(resourceNames, agent)`: Adds the specified resources to the enabled set
-- `disableResources(resourceNames, agent)`: Removes the specified resources from the enabled set
-- `generateRepoMap(files, fileSystem, agent)`: Generates a repository map showing symbol snippets from the specified files
-- `getLanguageFromExtension(ext)`: Maps file extensions to language types (typescript, javascript, python, c, cpp, rust, go, java, ruby, bash)
-- `formatFileOutput(filePath, chunks)`: Formats file output for repository maps, showing the first line of each symbol
+| Extension | Language |
+| :-------- | :------- |
+| `.js`, `.jsx` | javascript |
+| `.ts`, `.tsx` | typescript |
+| `.py` | python |
+| `.h`, `.c` | c |
+| `.hxx`, `.cxx`, `.hpp`, `.cpp` | cpp |
+| `.rs` | rust |
+| `.go` | go |
+| `.java` | java |
+| `.rb` | ruby |
+| `.sh`, `.bash` | bash |
 
-### FileTreeResource
+### Provider Documentation
 
-Represents directory structure of the codebase. Extends `FileMatchResource` from `@tokenring-ai/filesystem`. Provides file trees showing the directory hierarchy of the codebase without including file contents.
+The package includes three resource types that extend `FileMatchResource` from
+`@tokenring-ai/filesystem`.
 
-**Class Definition:**
+#### FileTreeResource
+
+Extends `FileMatchResource`. Provides directory structure and file tree context
+for enabled resources.
 
 ```typescript
-import {FileMatchResource} from "@tokenring-ai/filesystem";
+import { FileMatchResource } from "@tokenring-ai/filesystem";
 
 export default class FileTreeResource extends FileMatchResource {
   readonly name = "FileTreeService";
@@ -112,19 +306,21 @@ export default class FileTreeResource extends FileMatchResource {
 **Usage:**
 
 ```typescript
-codebaseService.registerResource("src", new FileTreeResource({
-  // FileMatchResource configuration options
-}));
+codebaseService.registerResource("src", new FileTreeResource({}));
 ```
 
-### RepoMapResource
+**Methods:**
 
-Generates symbol-based repository maps showing function and class signatures. Uses `code-chopper` to parse code and extract symbols, providing the AI with a high-level view of the codebase structure.
+- `addFilesToSet(files: Set<string>, agent: Agent): Promise<void>` - Inherited
+  from `FileMatchResource`
 
-**Class Definition:**
+#### RepoMapResource
+
+Extends `FileMatchResource`. Provides symbol-level repository mapping using
+code-chopper.
 
 ```typescript
-import {FileMatchResource} from "@tokenring-ai/filesystem";
+import { FileMatchResource } from "@tokenring-ai/filesystem";
 
 export default class RepoMapResource extends FileMatchResource {
   readonly name = "RepoMapResource";
@@ -135,19 +331,20 @@ export default class RepoMapResource extends FileMatchResource {
 **Usage:**
 
 ```typescript
-codebaseService.registerResource("api", new RepoMapResource({
-  // FileMatchResource configuration options
-}));
+codebaseService.registerResource("api", new RepoMapResource({}));
 ```
 
-### WholeFileResource
+**Methods:**
 
-Includes the full contents of specified files. Useful for configuration files, small utilities, or files that need complete context.
+- `addFilesToSet(files: Set<string>, agent: Agent): Promise<void>` - Inherited
+  from `FileMatchResource`
 
-**Class Definition:**
+#### WholeFileResource
+
+Extends `FileMatchResource`. Provides complete file contents to agent context.
 
 ```typescript
-import {FileMatchResource} from "@tokenring-ai/filesystem";
+import { FileMatchResource } from "@tokenring-ai/filesystem";
 
 export default class WholeFileResource extends FileMatchResource {
   readonly name = "WholeFileResource";
@@ -158,82 +355,129 @@ export default class WholeFileResource extends FileMatchResource {
 **Usage:**
 
 ```typescript
-codebaseService.registerResource("config", new WholeFileResource({
-  // FileMatchResource configuration options
-}));
+codebaseService.registerResource("config", new WholeFileResource({}));
 ```
 
-## Services
+**Methods:**
 
-### CodeBaseService
+- `addFilesToSet(files: Set<string>, agent: Agent): Promise<void>` - Inherited
+  from `FileMatchResource`
 
-The main service that implements `TokenRingService` and manages codebase resources.
+### Usage Examples
 
-**Service Interface:**
+#### Basic Setup
 
 ```typescript
-interface TokenRingService {
-  name: string;
-  description: string;
-  readonly options: z.output<typeof CodeBaseServiceConfigSchema>;
+import TokenRingApp from "@tokenring-ai/app";
+import codeBasePlugin from "@tokenring-ai/codebase";
 
-  attach(agent: Agent): void;
-}
+const app = new TokenRingApp({
+  config: {
+    codebase: {
+      resources: {
+        src: { type: "fileTree" },
+        api: { type: "repoMap" },
+        config: { type: "wholeFile" },
+      },
+      agentDefaults: {
+        enabledResources: [],
+      },
+    },
+  },
+});
+
+app.install(codeBasePlugin, {
+  codebase: {
+    resources: {
+      src: { type: "fileTree" },
+      api: { type: "repoMap" },
+      config: { type: "wholeFile" },
+    },
+    agentDefaults: {
+      enabledResources: [],
+    },
+  },
+});
 ```
 
-**Service Registration:**
-
-The service is automatically registered during plugin installation:
+#### Manual Service Usage
 
 ```typescript
-const codebaseService = new CodeBaseService(config.codebase);
-app.addServices(codebaseService);
+import { CodeBaseService } from "@tokenring-ai/codebase";
+import { FileSystemService } from "@tokenring-ai/filesystem";
+import { Agent } from "@tokenring-ai/agent";
+
+// Create and configure service
+const codebaseService = new CodeBaseService({
+  resources: {
+    src: { type: "fileTree" },
+    api: { type: "repoMap" },
+  },
+  agentDefaults: {
+    enabledResources: [],
+  },
+});
+
+// Register resources
+codebaseService.registerResource("src", new FileTreeResource({}));
+codebaseService.registerResource("api", new RepoMapResource({}));
+
+// Generate repository map
+const agent = new Agent(/* config */);
+const fileSystem = new FileSystemService();
+const files = new Set(["src/main.ts", "src/utils.ts"]);
+const repoMap = await codebaseService.generateRepoMap(
+  files, fileSystem, agent
+);
 ```
 
-**Attach Method:**
-
-When an agent attaches to the service, it initializes state with merged configuration:
+#### Managing Resources
 
 ```typescript
-attach(agent: Agent): void {
-  const { enabledResources } = deepMerge(
-    this.options.agentDefaults,
-    agent.getAgentConfigSlice('codebase', CodeBaseAgentConfigSchema)
-  );
-  
-  agent.initializeState(CodeBaseState, {
-    enabledResources: enabledResources.map(resourceName => 
-      this.resourceRegistry.ensureItemNamesLike(resourceName)
-    ).flat()
-  });
-}
+// Get enabled resource names (returns Set<string>)
+const names = codebaseService.getEnabledResourceNames(agent);
+
+// Get enabled resource instances (returns FileMatchResource[])
+const resources = codebaseService.getEnabledResources(agent);
+
+// Set enabled resources (mutates state, replaces current selection)
+const updated = codebaseService.setEnabledResources(["src", "api"], agent);
+
+// Enable resources (mutates state, adds to current selection)
+const added = codebaseService.enableResources(["doc"], agent);
+
+// Disable resources (mutates state, removes from current selection)
+const removed = codebaseService.disableResources(["src"], agent);
+
+// Handle wildcard patterns (e.g., "src/*" matches all resources under src/)
+const wildcardMatched = codebaseService.enableResources(["src/*"], agent);
 ```
 
-## Providers
-
-This package does not use provider registration patterns. Resources are registered directly with the CodeBaseService using the `registerResource` method.
-
-## RPC Endpoints
-
-This package does not define any RPC endpoints.
-
-## Utility Functions
-
-### buildResourceTree
-
-Organizes resource names into a hierarchical tree structure for interactive selection. Resources are grouped by their path prefix (everything before the last slash).
-
-**Function Signature:**
+#### Using Commands
 
 ```typescript
-import type {TreeLeaf} from "@tokenring-ai/agent/question";
+// Select resources interactively
+await agent.executeChatCommand("codebase select");
 
-export function buildResourceTree(resourceNames: string[]): TreeLeaf[]
+// Enable specific resources
+await agent.executeChatCommand("codebase enable src docs");
+
+// List currently enabled resources
+await agent.executeChatCommand("codebase list");
+
+// Reset to initial configuration
+await agent.executeChatCommand("codebase reset");
+
+// Show repository map
+await agent.executeChatCommand("codebase show repo");
 ```
 
-**Example:**
+#### Interactive Resource Selection
 
 ```typescript
+import { buildResourceTree } from
+  "@tokenring-ai/codebase/commands/codebase/buildResourceTree";
+
 const resources = ["src/utils", "src/types", "api/handlers", "docs/readme"];
 const tree = buildResourceTree(resources);
 
@@ -260,885 +504,32 @@ const tree = buildResourceTree(resources);
 //   }
 // ]
 
-// Resources without a path prefix are grouped under "Unknown"
+// Resources without a path prefix (no slash) are grouped under "Unknown"
 const resources2 = ["utils", "types", "api/handlers"];
 const tree2 = buildResourceTree(resources2);
-// Result includes "Unknown" category for "utils" and "types"
 ```
 
-**Behavior:**
+### Testing
 
-- Splits resource names by the last slash (`/`)
-- Groups resources by their parent directory
-- Resources without a slash are grouped under "Unknown"
-- Categories are sorted alphabetically
-- Each category contains children with `name` (display name) and `value` (full resource name)
-
-## Chat Commands
-
-The plugin registers the following agent commands through `AgentCommandService`. Commands are exported via the `commands.ts` barrel file:
-
-```typescript
-import agentCommands from "./commands.ts";
-// Exports: [select, enable, disable, set, reset, list, showRepo]
-```
-
-### Available Commands
-
-| Command | Description |
-|---------|-------------|
-| `/codebase select` | Interactive resource selection via tree view |
-| `/codebase enable` | Enable specific codebase resources by name |
-| `/codebase disable` | Disable specific codebase resources |
-| `/codebase set` | Set specific codebase resources (replaces current) |
-| `/codebase reset` | Reset enabled resources to initial configuration |
-| `/codebase list` | List all currently enabled codebase resources |
-| `/codebase show repo` | Display the repository map and structure |
-
----
-
-## Individual Command Documentation
-
-### `/codebase select`
-
-Interactive tree-based resource selection. Opens a tree view allowing users to browse and select codebase resources. Recommended when unsure of exact resource names.
-
-**Command Definition:**
-
-```typescript
-import {buildResourceTree} from "./buildResourceTree.ts";
-
-const inputSchema = {} as const satisfies AgentCommandInputSchema;
-
-async function execute({agent}: AgentCommandInputType<typeof inputSchema>): Promise<string> {
-  const codebaseService = agent.requireServiceByType(CodeBaseService);
-  const sortedResources = codebaseService.getAvailableResources().sort((a, b) => a.localeCompare(b));
-
-  const selection = await agent.askQuestion({
-    message: `Select resources to include in your chat context`,
-    question: {
-      type: 'treeSelect',
-      label: "Codebase Resource Selection",
-      key: "result",
-      defaultValue: Array.from(codebaseService.getEnabledResourceNames(agent)),
-      minimumSelections: 0,
-      tree: buildResourceTree(sortedResources),
-    }
-  });
-
-  if (selection) {
-    const enabled = codebaseService.setEnabledResources(selection, agent);
-    return `Currently enabled codebase resources: ${Array.from(enabled).join(", ")}`;
-  }
-  return "Resource selection cancelled.";
-}
-
-export default {
-  name: "codebase select",
-  description: "Interactive resource selection",
-  inputSchema,
-  execute,
-  help: `Open an interactive tree view to browse and select codebase resources. Recommended when unsure of exact resource names.
-
-## Example
-
-/codebase select`,
-} satisfies TokenRingAgentCommand<typeof inputSchema>;
-```
-
-### `/codebase enable`
-
-Enable one or more codebase resources by name. Supports wildcard patterns.
-
-**Command Definition:**
-
-```typescript
-const inputSchema = {
-  args: {},
-  remainder: {
-    name: "resources",
-    description: "Space-separated resource names to enable",
-    required: true,
-  }
-} as const satisfies AgentCommandInputSchema;
-
-async function execute({remainder, agent}: AgentCommandInputType<typeof inputSchema>): Promise<string> {
-  const resourceList = remainder.split(/\\s+/);
-  const enabled = agent.requireServiceByType(CodeBaseService).enableResources(resourceList, agent);
-  return `Currently enabled codebase resources: ${Array.from(enabled).join(", ")}`;
-}
-
-export default {
-  name: "codebase enable",
-  description: "Enable codebase resources",
-  inputSchema,
-  execute,
-  help: `Enable one or more codebase resources by name.
-
-## Example
-
-/codebase enable src/utils
-/codebase enable api docs`,
-} satisfies TokenRingAgentCommand<typeof inputSchema>;
-```
-
-### `/codebase disable`
-
-Disable one or more codebase resources by name.
-
-**Command Definition:**
-
-```typescript
-const inputSchema = {
-  args: {},
-  remainder: {
-    name: "resources",
-    description: "Space-separated resource names to disable",
-    required: true,
-  }
-} as const satisfies AgentCommandInputSchema;
-
-async function execute({remainder, agent}: AgentCommandInputType<typeof inputSchema>): Promise<string> {
-  const resourceList = remainder.split(/\\s+/);
-  const enabled = agent.requireServiceByType(CodeBaseService).disableResources(resourceList, agent);
-  return `Currently enabled codebase resources: ${Array.from(enabled).join(", ")}`;
-}
-
-export default {
-  name: "codebase disable",
-  description: "Disable codebase resources",
-  inputSchema,
-  execute,
-  help: `Disable one or more codebase resources by name.
-
-## Example
-
-/codebase disable src/utils
-/codebase disable src/utils src/types`,
-} satisfies TokenRingAgentCommand<typeof inputSchema>;
-```
-
-### `/codebase set`
-
-Set the enabled codebase resources, replacing the current selection.
-
-**Command Definition:**
-
-```typescript
-const inputSchema = {
-  args: {},
-  remainder: {
-    name: "resources",
-    description: "Space-separated resource names to set as enabled",
-    required: true,
-  }
-} as const satisfies AgentCommandInputSchema;
-
-async function execute({remainder, agent}: AgentCommandInputType<typeof inputSchema>): Promise<string> {
-  const resourceList = remainder.split(/\\s+/);
-  const enabled = agent.requireServiceByType(CodeBaseService).setEnabledResources(resourceList, agent);
-  return `Currently enabled codebase resources: ${Array.from(enabled).join(", ")}`;
-}
-
-export default {
-  name: "codebase set",
-  description: "Set enabled codebase resources",
-  inputSchema,
-  execute,
-  help: `Set the enabled codebase resources, replacing the current selection.
-
-## Example
-
-/codebase set src/utils
-/codebase set src/utils src/types`,
-} satisfies TokenRingAgentCommand<typeof inputSchema>;
-```
-
-### `/codebase reset`
-
-Reset the enabled codebase resources to the initial configuration defined in `agentDefaults`.
-
-**Command Definition:**
-
-```typescript
-import {CodeBaseState} from "../../state/codeBaseState.ts";
-
-const inputSchema = {} as const satisfies AgentCommandInputSchema;
-
-async function execute({agent}: AgentCommandInputType<typeof inputSchema>): Promise<string> {
-  const enabled = agent.mutateState(CodeBaseState, state => {
-    state.reset();
-    return state.enabledResources;
-  });
-  return `Currently enabled codebase resources: ${Array.from(enabled).join(", ")}`;
-}
-
-export default {
-  name: "codebase reset",
-  description: "Reset enabled codebase resources",
-  inputSchema,
-  execute,
-  help: `Reset the enabled codebase resources to the initial configuration.
-
-## Example
-
-/codebase reset`,
-} satisfies TokenRingAgentCommand<typeof inputSchema>;
-```
-
-### `/codebase list`
-
-List all currently enabled codebase resources.
-
-**Command Definition:**
-
-```typescript
-import numberedList from "@tokenring-ai/utility/string/numberedList";
-
-const inputSchema = {} as const satisfies AgentCommandInputSchema;
-
-async function execute({agent}: AgentCommandInputType<typeof inputSchema>): Promise<string> {
-  const active = Array.from(agent.requireServiceByType(CodeBaseService).getEnabledResourceNames(agent));
-  if (active.length === 0) return "No codebase resources are currently enabled.";
-  return `Enabled codebase resources:\n${numberedList(active)}`;
-}
-
-export default {
-  name: "codebase list",
-  description: "List enabled codebase resources",
-  inputSchema,
-  execute,
-  help: `List all currently enabled codebase resources.
-
-## Example
-
-/codebase list`,
-} satisfies TokenRingAgentCommand<typeof inputSchema>;
-```
-
-### `/codebase show repo`
-
-Display the currently enabled repository map and structure. Requires RepoMap resources to be enabled first.
-
-**Command Definition:**
-
-```typescript
-import RepoMapResource from "../../RepoMapResource.ts";
-
-const inputSchema = {} as const satisfies AgentCommandInputSchema;
-
-async function execute({agent}: AgentCommandInputType<typeof inputSchema>): Promise<string> {
-  const codebaseService = agent.requireServiceByType(CodeBaseService);
-  const repoMaps = Object.values(codebaseService.getEnabledResources(agent))
-    .filter(r => r instanceof RepoMapResource);
-
-  if (repoMaps.length === 0) return "No RepoMap resources are currently enabled. Enable a RepoMap resource first.";
-
-  const repoMapFiles = new Set<string>();
-  for (const resource of repoMaps) {
-    await resource.addFilesToSet(repoMapFiles, agent);
-  }
-
-  if (repoMapFiles.size > 0) {
-    const repoMap = await codebaseService.generateRepoMap(repoMapFiles, agent.requireServiceByType(FileSystemService), agent);
-    if (repoMap) return `Repository map:\n${repoMap}`;
-  }
-
-  return "No repository map found. Ensure RepoMap resources are configured and enabled.";
-}
-
-export default {
-  name: "codebase show repo",
-  description: "Display the repository map",
-  inputSchema,
-  execute,
-  help: `Display the currently enabled repository map and structure. Requires RepoMap resources to be enabled first.
-
-## Example
-
-/codebase show repo`,
-} satisfies TokenRingAgentCommand<typeof inputSchema>;
-```
-
-## Configuration
-
-The plugin is configured through the `codebase` section in the plugin configuration. It accepts a `CodeBaseServiceConfigSchema` which defines available resources and default agent settings.
-
-### Configuration Schema
-
-```typescript
-import { z } from "zod";
-
-const CodeBaseServiceConfigSchema = z.object({
-  resources: z.record(z.string(), z.any()),
-  agentDefaults: z.object({
-    enabledResources: z.array(z.string()).default([])
-  }).default({ enabledResources: [] })
-});
-
-const CodeBaseAgentConfigSchema = z
-  .object({
-    enabledResources: z.array(z.string()).optional()
-  }).default({});
-```
-
-### Configuration Example
-
-```typescript
-const pluginConfig = {
-  codebase: {
-    resources: {
-      "src": {
-        type: "fileTree"
-      },
-      "api": {
-        type: "repoMap"
-      },
-      "config": {
-        type: "wholeFile"
-      },
-      "docs": {
-        type: "fileTree"
-      }
-    },
-    agentDefaults: {
-      enabledResources: []
-    }
-  }
-};
-```
-
-### Plugin Registration
-
-```typescript
-import codeBasePlugin from "@tokenring-ai/codebase";
-import TokenRingApp from "@tokenring-ai/app";
-
-const app = new TokenRingApp();
-
-app.install(codeBasePlugin, {
-  codebase: {
-    resources: {
-      "src": {
-        type: "fileTree"
-      },
-      "api": {
-        type: "repoMap"
-      },
-      "config": {
-        type: "wholeFile"
-      }
-    },
-    agentDefaults: {
-      enabledResources: []
-    }
-  }
-});
-```
-
-## Agent Configuration
-
-The CodeBaseService provides agent-level configuration through the `attach` method, which merges service defaults with agent-specific settings. This allows different agents to have different resource enablement preferences while maintaining consistent resource availability.
-
-### Agent Configuration Schema
-
-```typescript
-import { z } from "zod";
-
-const CodeBaseAgentConfigSchema = z.object({
-  enabledResources: z.array(z.string()).optional()
-}).default({});
-```
-
-### Agent Configuration Example
-
-```typescript
-import { Agent } from "@tokenring-ai/agent";
-
-const agent = new Agent({
-  config: {
-    codebase: {
-      enabledResources: ["src/components", "src/utils"]
-    }
-  }
-});
-
-// CodeBaseService.attach() merges service defaults with agent config
-// resulting in the union of both enabled resource sets
-```
-
-### Configuration Merging
-
-When an agent attaches to the CodeBaseService:
-
-1. Service defaults from `agentDefaults` are merged with
-2. Agent-specific configuration from `agent.getAgentConfigSlice('codebase')`
-3. The result determines which resources are enabled for that agent
-
-During configuration merging, the service uses `ensureItemNamesLike` to handle wildcard patterns in resource names, mapping them to actual tool names.
-
-## State Management
-
-### CodeBaseState
-
-The `CodeBaseState` class implements `AgentStateSlice` and manages the enabled resources state for agents.
-
-**State Interface:**
-
-```typescript
-interface AgentStateSlice {
-  name: string;
-  enabledResources: Set<string>;
-
-  transferStateFromParent(parent: Agent): void;
-  reset(): void;
-  serialize(): object;
-  deserialize(data: any): void;
-  show(): string[];
-}
-```
-
-**State Properties:**
-
-- `name`: State slice identifier (`"CodeBaseState"`)
-- `enabledResources`: A `Set<string>` containing the names of currently enabled resources
-- `serializationSchema`: Zod schema for serialization
-
-**State Methods:**
-
-```typescript
-constructor(
-  initialConfig: z.output<typeof CodeBaseServiceConfigSchema>["agentDefaults"]
-)
-
-transferStateFromParent(parent: Agent): void
-
-reset(): void
-
-serialize(): z.output<typeof serializationSchema>
-
-deserialize(data: z.output<typeof serializationSchema>): void
-
-show(): string[]
-```
-
-**State Behavior:**
-
-- `constructor(initialConfig)`: Initializes state with enabledResources from initialConfig, converting array to Set
-- `transferStateFromParent`: Copies enabled resources from parent agent state
-- `reset`: Resets enabled resources to the initial configuration from `agentDefaults`
-- `serialize`: Returns an object with `enabledResources` as an array (converts Set to Array)
-- `deserialize`: Restores enabled resources from serialized data (converts Array to Set)
-- `show`: Returns a formatted string showing enabled resources
-
-**State Persistence:**
-
-Enabled resources persist across agent sessions through the state serialization/deserialization mechanism. When an agent is created, it inherits the enabled resources from its parent agent via the `transferStateFromParent` method.
-
-**Important:** The `enabledResources` is stored internally as a `Set<string>` but serialized as an array. During agent attachment, resource names can include wildcards which are mapped to actual resource names via `ensureItemNamesLike()` from the resource registry.
-
-**Serialization Schema:**
-
-```typescript
-const serializationSchema = z.object({
-  enabledResources: z.array(z.string()).default([])
-}).prefault({});
-```
-
-## Context Handlers
-
-The plugin provides a context handler that injects relevant codebase information into chat sessions when files are being processed or when the agent needs code context.
-
-### codebase-context Handler
-
-The context handler generates three types of context items in the following order:
-
-1. **File Tree Context**: Directory structure of the codebase for files that are not whole files or repo maps
-2. **Repo Map Context**: Symbol information showing function and class signatures from repo map resources
-3. **Whole File Context**: Complete contents of files from whole file resources
-
-**Context Handler Function:**
-
-```typescript
-async function* getContextItems({agent}: ContextHandlerOptions): AsyncGenerator<ContextItem>
-```
-
-**Context Generation Flow:**
-
-```typescript
-// 1. Generate file tree context for non-whole-file and non-repo-map resources
-const fileTreeFiles = new Set<string>();
-for (const name in resources) {
-  const resource = resources[name];
-  if (
-    !(resource instanceof WholeFileResource) &&
-    !(resource instanceof RepoMapResource)
-  ) {
-    await resource.addFilesToSet(fileTreeFiles, agent);
-  }
-}
-
-if (fileTreeFiles.size > 0) {
-  yield {
-    role: "user",
-    content: `// Directory Tree of project files:\n${Array.from(fileTreeFiles)
-      .sort()
-      .join("\n")}`
-  };
-}
-
-// 2. Generate repo map context for repo map resources
-const repoMapFiles = new Set<string>();
-for (const name in resources) {
-  const resource = resources[name];
-  if (resource instanceof RepoMapResource) {
-    await resource.addFilesToSet(repoMapFiles, agent);
-  }
-}
-
-if (repoMapFiles.size > 0) {
-  const repoMap = await codebaseService.generateRepoMap(
-    repoMapFiles,
-    fileSystem,
-    agent
-  );
-  if (repoMap) {
-    yield {
-      role: "user",
-      content: repoMap
-    };
-  }
-}
-
-// 3. Generate whole file context for whole file resources
-const wholeFiles = new Set<string>();
-for (const name in resources) {
-  const resource = resources[name];
-  if (resource instanceof WholeFileResource) {
-    await resource.addFilesToSet(wholeFiles, agent);
-  }
-}
-
-for await (const file of wholeFiles) {
-  const content = await fileSystem.readTextFile(file, agent);
-  yield {
-    role: "user",
-    content: `// Complete contents of file: ${file}\n${content}`
-  };
-}
-```
-
-**Context Handler Registration:**
-
-The context handler is automatically registered during plugin installation:
-
-```typescript
-app.waitForService(ChatService, chatService => {
-  chatService.registerContextHandlers(contextHandlers);
-});
-```
-
-## Integration
-
-### FileSystemService
-
-The CodeBaseService uses `FileSystemService` to retrieve file contents for generating repository maps and providing whole file context.
-
-```typescript
-import { FileSystemService } from "@tokenring-ai/filesystem";
-
-const fileSystem = agent.requireServiceByType(FileSystemService);
-
-// Read file content
-const content = await fileSystem.readTextFile(filePath, agent);
-
-// Get file metadata
-const metadata = await fileSystem.getFileMetadata(filePath, agent);
-```
-
-### Agent
-
-The plugin integrates with the agent system through several mechanisms:
-
-**Chat Commands:**
-
-Commands are registered through the plugin's install method:
-
-```typescript
-app.waitForService(AgentCommandService, agentCommandService =>
-  agentCommandService.addAgentCommands(agentCommands)
-);
-```
-
-**Context Handlers:**
-
-Context handlers are registered through the plugin's install method:
-
-```typescript
-app.waitForService(ChatService, chatService => {
-  chatService.registerContextHandlers(contextHandlers);
-});
-```
-
-**State Initialization:**
-
-State is initialized when the agent attaches to the service:
-
-```typescript
-attach(agent: Agent): void {
-  const { enabledResources } = deepMerge(
-    this.options.agentDefaults,
-    agent.getAgentConfigSlice('codebase', CodeBaseAgentConfigSchema)
-  );
-  
-  agent.initializeState(CodeBaseState, {
-    enabledResources: enabledResources.map(resourceName => 
-      this.resourceRegistry.ensureItemNamesLike(resourceName)
-    ).flat()
-  });
-}
-```
-
-### Plugin Installation
-
-The plugin is installed during application initialization:
-
-```typescript
-import codeBasePlugin from "@tokenring-ai/codebase";
-import TokenRingApp from "@tokenring-ai/app";
-
-const app = new TokenRingApp();
-
-app.install(codeBasePlugin, {
-  codebase: {
-    resources: {
-      "src": {
-        type: "fileTree"
-      },
-      "api": {
-        type: "repoMap"
-      },
-      "config": {
-        type: "wholeFile"
-      }
-    },
-    agentDefaults: {
-      enabledResources: []
-    }
-  }
-});
-```
-
-## Usage Examples
-
-### Basic Setup
-
-```typescript
-import codeBasePlugin from "@tokenring-ai/codebase";
-import TokenRingApp from "@tokenring-ai/app";
-
-const app = new TokenRingApp();
-
-app.install(codeBasePlugin, {
-  codebase: {
-    resources: {
-      "src": {
-        type: "fileTree"
-      },
-      "api": {
-        type: "repoMap"
-      },
-      "config": {
-        type: "wholeFile"
-      }
-    },
-    agentDefaults: {
-      enabledResources: []
-    }
-  }
-});
-```
-
-### Interactive Resource Selection
+#### Running Tests
 
 ```bash
-# Start a chat session
-/codebase select
-
-# The agent will display an interactive tree view of available resources
-# Use arrow keys to navigate, space to select, and enter to confirm
-
-# After selection, the enabled resources are updated automatically
-# The agent will receive the selected resources in subsequent context
+bun run test
 ```
 
-### Programmatic Resource Management
-
-```typescript
-import { Agent } from "@tokenring-ai/agent";
-import { CodeBaseService } from "@tokenring-ai/codebase";
-
-// Create an agent with codebase configuration
-const agent = new Agent({
-  config: {
-    codebase: {
-      enabledResources: ["src/components", "src/utils"]
-    }
-  }
-});
-
-// Get the CodeBaseService
-const codebaseService = agent.requireServiceByType(CodeBaseService);
-
-// Enable additional resources
-codebaseService.enableResources(["src/types"], agent);
-
-// List all enabled resources
-const enabled = codebaseService.getEnabledResourceNames(agent);
-console.log("Enabled resources:", Array.from(enabled));
-
-// Disable specific resources
-codebaseService.disableResources(["test/*"], agent);
-
-// Set specific resources (replaces existing)
-codebaseService.setEnabledResources(["src/api"], agent);
-
-// Reset to initial configuration
-codebaseService.mutateState(CodeBaseState, state => {
-  state.reset();
-});
-```
-
-### Generating Repository Map
-
-```typescript
-import { Agent } from "@tokenring-ai/agent";
-import { CodeBaseService } from "@tokenring-ai/codebase";
-import { FileSystemService } from "@tokenring-ai/filesystem";
-
-const agent = new Agent();
-const codebaseService = agent.requireServiceByType(CodeBaseService);
-const fileSystem = agent.requireServiceByType(FileSystemService);
-
-// Get repo map resources
-const repoMapResources = codebaseService.getEnabledResources(agent)
-  .filter(resource => resource instanceof RepoMapResource);
-
-// Collect files from all repo map resources
-const repoMapFiles = new Set<string>();
-for (const resource of repoMapResources) {
-  await resource.addFilesToSet(repoMapFiles, agent);
-}
-
-// Generate repository map
-const repoMap = await codebaseService.generateRepoMap(
-  repoMapFiles,
-  fileSystem,
-  agent
-);
-
-if (repoMap) {
-  console.log("Repository map:");
-  console.log(repoMap);
-}
-```
-
-### Multi-language Repository Mapping
-
-The service automatically detects file types and generates appropriate repository maps:
-
-```typescript
-// Language mappings supported by getLanguageFromExtension
-const languageMap = {
-  ".js": "javascript",
-  ".jsx": "javascript",
-  ".ts": "typescript",
-  ".tsx": "typescript",
-  ".py": "python",
-  ".h": "c",
-  ".c": "c",
-  ".hxx": "cpp",
-  ".cxx": "cpp",
-  ".hpp": "cpp",
-  ".cpp": "cpp",
-  ".rs": "rust",
-  ".go": "go",
-  ".java": "java",
-  ".rb": "ruby",
-  ".sh": "bash",
-  ".bash": "bash"
-};
-
-// Unsupported extensions return null and are skipped during repo map generation
-```
-
-### Context Injection in Chat
-
-The context handler automatically injects codebase information when the agent needs it:
-
-```typescript
-// When the agent starts a chat session, the context handler generates:
-// 1. File tree for non-whole-file, non-repo-map resources
-// 2. Repo map for repo map resources
-// 3. Whole file contents for whole file resources
-
-// These context items are added to the chat as user messages:
-// - Directory structure of project files
-// - Symbol snippets from code files
-// - Complete contents of specific files
-```
-
-## Best Practices
-
-### Resource Selection Strategies
-
-- **Use `/codebase select`** for interactive exploration when unsure of exact resource names
-- **Start with file trees** for large codebases to provide directory structure
-- **Add repo maps** for specific areas of interest (e.g., `api`, `components`)
-- **Use whole files** only for small, critical files (e.g., `config`, `README`)
-- **Enable resources incrementally** and test the context quality
-
-### Performance Considerations
-
-- **Large codebases**: Use file trees and repo maps instead of whole files to reduce context size
-- **Multiple agents**: Configure different `enabledResources` for different agent types
-- **Wildcard patterns**: Use wildcards (`src/*`) for enabling multiple resources efficiently
-- **Lazy evaluation**: Resources are only loaded when needed during context generation
-
-### Wildcard Pattern Matching
-
-- Wildcard patterns in resource names are resolved using `ensureItemNamesLike`
-- Patterns like `src/*` match all resources under `src/` directory
-- Partial matches work (e.g., `src` matches `src/components`, `src/utils`)
-- Multiple patterns on a single line are supported (e.g., `/codebase enable src/* utils/*`)
-
-### State Management
-
-- Resources persist across agent sessions through state serialization
-- Use `transferStateFromParent` to inherit resources from parent agents
-- Reset resources when needed using the `/codebase reset` command
-
-### Error Handling
-
-- Errors during file processing are logged but don't stop context generation
-- Unsupported file types are skipped during repo map generation
-- Empty resource sets are handled gracefully
-
-### Agent Configuration
-
-- Service defaults provide a baseline for all agents
-- Agent-specific overrides allow customization per agent
-- Use `getAgentConfigSlice('codebase')` to retrieve agent-specific configuration
-
-## Testing and Development
-
-### Running Tests
+#### Test Watch Mode
 
 ```bash
-bun test
+bun run test:watch
 ```
 
-### Test Configuration
+#### Test Coverage
+
+```bash
+bun run test:coverage
+```
+
+#### Test Configuration
 
 ```typescript
 // vitest.config.ts
@@ -1150,81 +541,126 @@ export default defineConfig({
     environment: "node",
     globals: true,
     isolate: true,
-    coverage: {
-      provider: "v8",
-      reporter: ["text", "json", "html"]
-    }
   },
 });
 ```
 
-### Test Coverage
+### Dependencies
 
-```bash
-bun test --coverage
-```
+#### Runtime Dependencies
+
+| Package | Version | Description |
+| :------ | :------ | :---------- |
+| `@tokenring-ai/agent` | 0.2.0 | Central orchestration system for agent management |
+| `@tokenring-ai/app` | 0.2.0 | Base application framework with plugin architecture |
+| `@tokenring-ai/chat` | 0.2.0 | Chat service and context handlers |
+| `@tokenring-ai/filesystem` | 0.2.0 | File system operations and `FileMatchResource` base class |
+| `@tokenring-ai/utility` | 0.2.0 | Shared utilities including `KeyedRegistry`, `deepMerge`, and `numberedList` |
+| `code-chopper` | ^0.1.8 | Code parsing and symbol extraction library |
+| `zod` | ^4.3.6 | Schema validation and type inference |
+
+#### Dev Dependencies
+
+| Package | Version | Description |
+| :------ | :------ | :---------- |
+| `vitest` | ^4.1.1 | Testing framework |
+| `typescript` | ^6.0.2 | TypeScript compiler |
+
+### Related Components
+
+- **FileMatchResource**: Base class for all file-based resources from
+  `@tokenring-ai/filesystem`
+- **Chat Commands**: `/codebase select`, `/codebase enable`, `/codebase
+  disable`, `/codebase set`, `/codebase reset`, `/codebase list`, `/codebase
+  show repo`
+- **Context Handlers**: `codebase-context` - Automatic codebase context
+  injection
+- **Agent State**: `CodeBaseState` - Resource enablement state management
+- **KeyedRegistry**: Resource registry pattern from `@tokenring-ai/utility`
 
 ### Package Structure
 
-```
+```text
 pkg/codebase/
 ├── commands/
 │   └── codebase/
-│       ├── buildResourceTree.ts  # Tree building for interactive selection
-│       ├── disable.ts            # /codebase disable command
-│       ├── enable.ts             # /codebase enable command
-│       ├── list.ts               # /codebase list command
-│       ├── reset.ts              # /codebase reset command
-│       ├── select.ts             # /codebase select command
-│       ├── set.ts                # /codebase set command
-│       └── showRepo.ts           # /codebase show repo command
+│       ├── buildResourceTree.ts   # Tree building for interactive selection
+│       ├── disable.ts             # codebase disable command
+│       ├── enable.ts              # codebase enable command
+│       ├── list.ts                # codebase list command
+│       ├── reset.ts               # codebase reset command
+│       ├── select.ts              # codebase select command
+│       ├── set.ts                 # codebase set command
+│       └── showRepo.ts            # codebase show repo command
 ├── contextHandlers/
-│   └── codebaseContext.ts       # Context handler for chat integration
+│   └── codebaseContext.ts        # Context handler for chat integration
 ├── state/
-│   └── codeBaseState.ts         # Agent state management
-├── CodeBaseService.ts           # Main service implementation
-├── FileTreeResource.ts          # File tree resource provider
-├── RepoMapResource.ts           # Repository map resource provider
-├── WholeFileResource.ts         # Whole file resource provider
-├── commands.ts                  # Chat command exports (barrel)
-├── contextHandlers.ts           # Context handler exports (barrel)
-├── plugin.ts                    # Plugin registration and installation
-├── index.ts                     # Public API exports
-├── package.json                 # Package metadata
-├── schema.ts                    # Configuration schemas
-├── vitest.config.ts            # Test configuration
-├── LICENSE                      # License file
-└── README.md                    # Package README
+│   └── codeBaseState.ts          # Agent state management
+├── CodeBaseService.ts            # Main service implementation
+├── FileTreeResource.ts           # File tree resource provider
+├── RepoMapResource.ts            # Repository map resource provider
+├── WholeFileResource.ts          # Whole file resource provider
+├── commands.ts                   # Command exports (barrel file)
+├── contextHandlers.ts            # Context handler exports (barrel file)
+├── index.ts                      # Public API exports
+├── plugin.ts                     # Plugin registration and installation
+├── schema.ts                     # Configuration schemas
+├── package.json                  # Package metadata
+├── vitest.config.ts             # Test configuration
+├── LICENSE                       # License file
+└── README.md                     # Package README
 ```
 
-### Build Instructions
+### Public API Exports
 
-```bash
-bun run build
+The package uses the following export pattern in `package.json`:
+
+```json
+{
+  "exports": {
+    ".": "./index.ts",
+    "./*": "./*.ts"
+  }
+}
 ```
 
-### Dependencies
+#### Main Entry Point (`@tokenring-ai/codebase`)
 
-- `@tokenring-ai/agent` - Central orchestration system (0.2.0)
-- `@tokenring-ai/app` - Base application framework and plugin system (0.2.0)
-- `@tokenring-ai/chat` - Chat service and context handling (0.2.0)
-- `@tokenring-ai/filesystem` - File system operations and resources (0.2.0)
-- `@tokenring-ai/utility` - Shared utilities including deepMerge and KeyedRegistry (0.2.0)
-- `code-chopper` - Code parsing and symbol extraction (^0.1.8)
-- `zod` - Runtime type validation and schema definition (^4.3.6)
+```typescript
+// Resource types
+export { default as FileTreeResource } from "./FileTreeResource.ts";
+export { default as RepoMapResource } from "./RepoMapResource.ts";
+export { default as WholeFileResource } from "./WholeFileResource.ts";
 
-### Dev Dependencies
+// Main service
+export { default as CodeBaseService } from "./CodeBaseService.ts";
+```
 
-- `vitest` - Testing framework (^4.1.1)
-- `typescript` - TypeScript compiler (^6.0.2)
+#### Direct File Imports
 
-## Related Components
+```typescript
+// Plugin
+import codeBasePlugin from "@tokenring-ai/codebase/plugin";
 
-- **FileMatchResource**: Base class for all file-based resources from `@tokenring-ai/filesystem`
-- **Chat Commands**: `/codebase select`, `/codebase enable`, `/codebase disable`, `/codebase set`, `/codebase reset`, `/codebase list`, `/codebase show repo`
-- **Context Handlers**: `codebase-context` - Automatic codebase context injection
-- **Agent State**: `CodeBaseState` - Resource enablement state management
-- **KeyedRegistry**: Resource registry pattern from `@tokenring-ai/utility`
+// Configuration schemas
+import {
+  CodeBaseServiceConfigSchema,
+  CodeBaseAgentConfigSchema
+} from "@tokenring-ai/codebase/schema";
+
+// Context handlers
+import contextHandlers from "@tokenring-ai/codebase/contextHandlers";
+
+// Commands
+import agentCommands from "@tokenring-ai/codebase/commands";
+
+// State management
+import { CodeBaseState } from "@tokenring-ai/codebase/state/codeBaseState";
+
+// Utility functions
+import { buildResourceTree } from
+  "@tokenring-ai/codebase/commands/codebase/buildResourceTree";
+```
 
 ## License
 

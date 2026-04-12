@@ -14,7 +14,9 @@ The Scripting plugin brings powerful workflow automation with variables, functio
 ## Key Features
 
 ### 📝 Variables
+
 Store and manipulate data:
+
 ```bash
 /var $name = "Alice"
 /var $topic = "AI safety"
@@ -22,7 +24,9 @@ Store and manipulate data:
 ```
 
 ### 🔧 Functions
+
 Define reusable functions:
+
 ```bash
 # Static functions
 /func static greet($name) => "Hello, $name!"
@@ -35,14 +39,18 @@ Define reusable functions:
 ```
 
 ### 📋 Lists and Iteration
+
 Work with collections:
+
 ```bash
 /list @files = ["file1.txt", "file2.txt", "file3.txt"]
 /for $file in @files { /echo Processing $file }
 ```
 
 ### 🔀 Control Flow
+
 Conditionals and loops:
+
 ```bash
 /prompt $username "Enter your name:"
 /confirm $proceed "Continue?"
@@ -51,7 +59,9 @@ Conditionals and loops:
 ```
 
 ### 🎯 Predefined Scripts
+
 Run command sequences by name:
+
 ```javascript
 export async function setupProject(projectName) {
   return [
@@ -66,6 +76,7 @@ export async function setupProject(projectName) {
 ## Global Functions
 
 Packages can register global functions:
+
 ```typescript
 scriptingService.registerFunction({
   name: "readFile",

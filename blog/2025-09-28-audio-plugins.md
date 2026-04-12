@@ -16,6 +16,7 @@ TokenRing Coder now supports voice interaction with audio recording, playback, t
 Abstract audio framework defining core capabilities:
 
 ### Features
+
 - **Recording**: Capture audio from microphone
 - **Playback**: Play audio files through system audio
 - **Transcription**: Convert audio to text using AI services
@@ -23,6 +24,7 @@ Abstract audio framework defining core capabilities:
 - **Provider Architecture**: Abstract interface for platform-specific implementations
 
 ### Chat Commands
+
 ```bash
 /voice record    # Record audio
 /voice transcribe audio.wav  # Convert to text
@@ -35,12 +37,14 @@ Abstract audio framework defining core capabilities:
 Linux-specific implementation using naudiodon2:
 
 ### Features
+
 - **Native Performance**: Uses naudiodon2 for efficient audio I/O
 - **OpenAI Integration**: Whisper for transcription, TTS for speech
 - **Format Support**: WAV for recording/playback, MP3 for TTS
 - **ALSA Support**: Works with Linux audio system
 
 ### Usage
+
 ```typescript
 const provider = new LinuxAudioProvider({
   sampleRate: 48000,

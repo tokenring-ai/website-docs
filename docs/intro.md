@@ -29,6 +29,7 @@ All TokenRing applications are built on:
 TokenRing Coder works directly with your codebase to help you write, refactor, test, and debug code.
 
 **Key Features:**
+
 - 🤖 Interactive chat interface for code discussions
 - 🔧 Code operations: editing, refactoring, testing
 - 🔄 Git integration with auto-commit and branch management
@@ -45,6 +46,7 @@ TokenRing Coder works directly with your codebase to help you write, refactor, t
 TokenRing Writer helps you research, write, and publish articles and blog posts with AI assistance.
 
 **Key Features:**
+
 - 📝 Specialized agents for writing, editing, research, and publishing
 - 🔍 Built-in web search and Wikipedia integration
 - 📰 NewsRPM integration for news article management
@@ -60,12 +62,14 @@ TokenRing Writer helps you research, write, and publish articles and blog posts 
 Both applications leverage the same powerful plugin system, with 40+ plugins organized into categories:
 
 ### 🎯 Core Plugins
+
 - Agent orchestration and team management
 - Multi-provider AI client (OpenAI, Anthropic, Google, etc.)
 - Memory and conversation history
 - Command-line interface
 
 ### 🔧 Development Tools
+
 - Git integration with auto-commit
 - Testing framework with auto-repair
 - JavaScript/TypeScript tooling
@@ -73,11 +77,13 @@ Both applications leverage the same powerful plugin system, with 40+ plugins org
 - Template system for reusable prompts
 
 ### ☁️ Cloud & Infrastructure
+
 - AWS, Docker, Kubernetes integration
 - S3 filesystem and CDN
 - Sandbox environments for isolated execution
 
 ### 🌐 Web & Research
+
 - Web search (Serper, ScraperAPI)
 - Wikipedia integration
 - Reddit content retrieval
@@ -85,18 +91,21 @@ Both applications leverage the same powerful plugin system, with 40+ plugins org
 - AI-powered research with web search
 
 ### 📝 Content & Publishing
+
 - Abstract blog interface
 - WordPress and Ghost.io integration
 - NewsRPM article management
 - CDN for media uploads
 
 ### 💾 Storage & Data
+
 - Database support (MySQL, SQLite)
 - Checkpoint system for agent state
 - Secure vault for secrets management
 - File indexing with semantic search
 
 ### 💰 Financial & Market Data
+
 - CloudQuote for stock quotes and market data
 
 [Explore all plugins →](/docs/plugins/overview)

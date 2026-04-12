@@ -2,13 +2,32 @@
 
 ## ⚠️ Deprecated
 
-The `cli-ink` package has been deprecated and merged into the main `@tokenring-ai/cli` package.
+The `cli-ink` package has been deprecated. The `@tokenring-ai/cli` package now uses a **raw terminal UI** implementation with direct ANSI escape code rendering, which provides maximum compatibility and does not require external UI frameworks like Ink or OpenTUI.
+
+## Current Implementation
+
+The current `@tokenring-ai/cli` package implements a raw terminal UI that:
+
+- Uses direct ANSI escape codes for terminal control
+- Leverages Node.js readline for input handling
+- Provides incremental screen rendering with full replay on resize
+- Supports bracketed paste mode for efficient text input
+- Applies hex color theming via Chalk for consistent styling
+
+### Why Raw Terminal UI?
+
+The raw terminal UI approach was chosen for:
+
+1. **Maximum Compatibility**: Works across all terminal emulators without framework dependencies
+2. **Lightweight**: No external UI framework overhead
+3. **Full Control**: Complete control over rendering behavior and performance
+4. **Simplified Dependencies**: Reduces package size and complexity
 
 ## Migration Guide
 
-If you were using `@tokenring-ai/cli-ink`, please migrate to `@tokenring-ai/cli` with the `uiFramework` configuration option set to `"ink"`.
+If you were using `@tokenring-ai/cli-ink`, migrate to the current `@tokenring-ai/cli` package:
 
-### Before (Deprecated)
+### Before (Deprecated - cli-ink)
 
 ```typescript
 import cliInkPlugin from '@tokenring-ai/cli-ink';
@@ -18,7 +37,7 @@ app.install(cliInkPlugin);
 await app.start();
 ```
 
-### After (Current)
+### After (Current - raw terminal UI)
 
 ```typescript
 import cliPlugin from '@tokenring-ai/cli';
@@ -26,57 +45,62 @@ import cliPlugin from '@tokenring-ai/cli';
 const app = new TokenRingApp();
 app.install(cliPlugin, {
   cli: {
-    uiFramework: 'ink',
     chatBanner: 'TokenRing CLI',
     loadingBannerNarrow: 'Loading...',
     loadingBannerWide: 'Loading TokenRing CLI...',
     loadingBannerCompact: 'Loading',
     screenBanner: 'TokenRing CLI',
-  }
+    verbose: false,
+  },
 });
 await app.start();
 ```
 
-## Current Implementation
+## Configuration
 
-The Ink framework support is now included in the main `@tokenring-ai/cli` package. See the [CLI Plugin Documentation](./cli.md) for complete information.
+The current CLI uses the `CLIConfigSchema` from `@tokenring-ai/cli/schema`:
 
-### Key Features (Now in @tokenring-ai/cli)
+```typescript
+import { CLIConfigSchema } from '@tokenring-ai/cli';
 
-- **Ink Framework Support**: React-based terminal rendering
-- **Dual Framework**: Choose between OpenTUI or Ink at runtime
-- **Same API**: Identical functionality across both frameworks
-- **Unified Configuration**: Single configuration schema for both frameworks
-
-### Package Structure
-
-The Ink-specific implementations are located in `pkg/cli/ink/`:
-
+// Configuration options:
+const config = {
+  cli: {
+    chatBanner: string,           // Banner during chat sessions
+    loadingBannerNarrow: string,  // Banner for narrow terminals
+    loadingBannerWide: string,    // Banner for wide terminals
+    loadingBannerCompact: string, // Banner for compact layouts
+    screenBanner: string,         // Banner on all interactive screens
+    uiFramework: 'ink' | 'opentui', // Reserved for future use
+    verbose: boolean,             // Show reasoning/artifacts
+    startAgent?: {
+      type: string,               // Agent type to spawn
+      prompt?: string,            // Initial prompt
+      shutdownWhenDone?: boolean, // Shutdown after completion
+    },
+  },
+};
 ```
-pkg/cli/
-├── ink/                           # Ink-specific implementations
-│   ├── components/                # Ink UI components
-│   │   └── inputs/                # Ink input components
-│   │       ├── FileSelect.tsx
-│   │       ├── FormInput.tsx
-│   │       ├── TextInput.tsx
-│   │       ├── TreeSelect.tsx
-│   │       └── types.ts
-│   ├── hooks/                     # Ink React hooks
-│   │   └── useResponsiveLayout.ts # Ink responsive layout
-│   ├── screens/                   # Ink screen components
-│   │   ├── AgentSelectionScreen.tsx
-│   │   ├── QuestionInputScreen.tsx
-│   │   └── LoadingScreen.tsx
-│   └── renderScreen.tsx           # Ink screen rendering
-```
+
+## Key Features
+
+The current `@tokenring-ai/cli` provides:
+
+- **Interactive Agent Selection**: Choose from available agents, workflows, or web apps
+- **Real-time Streaming**: Incremental rendering of agent output
+- **Command Completion**: Tab completion for slash commands
+- **File Path Completion**: `@` syntax for workspace file search
+- **Human Interface Handling**: Questions, follow-ups, and forms
+- **Keyboard Shortcuts**: Full navigation and control
+- **Customizable Theme**: Hex color theming via `theme.ts`
+- **Graceful Shutdown**: Proper signal handling and cleanup
 
 ## Migration Checklist
 
 - [ ] Replace `@tokenring-ai/cli-ink` import with `@tokenring-ai/cli`
-- [ ] Add `cli` configuration object with `uiFramework: 'ink'`
-- [ ] Add required banner configuration options
-- [ ] Update any custom theme configurations
+- [ ] Add `cli` configuration object with required banner options
+- [ ] Remove any Ink-specific dependencies
+- [ ] Update any custom theme configurations to use hex colors
 - [ ] Test the migrated configuration
 
 ## Related Documentation

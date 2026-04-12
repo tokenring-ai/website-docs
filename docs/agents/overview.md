@@ -1,40 +1,56 @@
 # Agents Overview
 
-TokenRing provides specialized AI agents designed for different tasks across its applications. Each agent is optimized with specific prompts, tools, and capabilities to excel at particular types of work.
-
-## Agent Types
-
-### Coding Agents
-Used in **TokenRing Coder** for software development tasks including planning, implementation, testing, and operations.
-
-### Content Agents
-Used in **TokenRing Writer** for content creation, writing, editing, and publishing tasks.
-
-## How Agents Work
-
-Agents are specialized AI assistants that:
-- Have domain-specific knowledge and expertise
-- Use tailored prompts for their specific role
-- Access relevant tools and capabilities
-- Coordinate with other agents when needed
+TokenRing currently exposes 27 configured agents across `TokenRing Coder` and `TokenRing Writer`.
 
 ## Using Agents
 
-Reference an agent in your conversation using the `@` symbol:
+Reference an agent by its configured ID with `@agent-id`:
 
+```text
+> @leader Build a complete authentication flow
+> @plan Break this feature into implementation steps
+> @writer Draft a blog post about the release
 ```
-> @teamLeader Create a new user authentication feature
-> @testEngineer Add comprehensive test coverage
-> @contentWriter Write a blog post about our new feature
-```
 
-## Available Agent Categories
+## Writing
 
-- **Planning & Management** - Project coordination, product management, architecture
-- **Development** - Full-stack, frontend, backend, API, database development
-- **Engineering** - Business logic, data, integration, authentication
-- **Quality & Operations** - Testing, code quality, security, performance, DevOps
-- **Design & Documentation** - UI/UX design, technical documentation
-- **Content Creation** - Writing, editing, SEO, social media
+- `manager` - Managing Editor
+- `writer` - Content Writer
 
-Browse the agent pages to learn about each agent's capabilities and use cases.
+## Coding
+
+- `code` - Coding Agent
+- `leader` - Team Leader
+- `plan` - Planning Agent
+- `swarm` - Swarm Agent
+
+## Research
+
+- `research` - Web Research
+
+## Coding - Specialized
+
+- `accessibility-engineer` - Accessibility Engineer
+- `api-designer` - API Designer
+- `auth-design` - Auth System Designer
+- `backend-design` - Backend Developer
+- `business-logic-engineer` - Business Logic Engineer
+- `code-explorer` - Code Explorer
+- `code-quality-engineer` - Code Quality Engineer
+- `data-engineer` - Data Engineer
+- `database-design` - Database Designer
+- `devops-engineer` - DevOps Engineer
+- `documentation-engineer` - Documentation Engineer
+- `frontend-design` - Frontend Engineer
+- `full-stack-developer` - Full Stack Developer
+- `integration-engineer` - Integration Engineer
+- `performance-engineer` - Performance Engineer
+- `product-design-engineer` - Product Design Engineer
+- `product-manager` - Product Manager
+- `security-review` - Security Reviewer
+- `seo-engineer` - SEO Engineer
+- `system-architect` - System Architect
+- `test-engineer` - Test Engineer
+- `ui-ux-designer` - UI/UX Designer
+
+Each agent page in this section mirrors the live metadata in the corresponding config under `app/coder/src/config/agents` or `app/writer/src/config/agents`.

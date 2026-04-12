@@ -163,10 +163,17 @@ deserialize(data: z.output<typeof serializationSchema>): void
 Restores state from serialized data.
 
 ```typescript
-show(): string[]
+show()
+:
+string
 ```
 
-Returns a formatted string representation of the state (launch, headless, browserWSEndpoint, executablePath).
+Returns a formatted string representation of the state:
+
+- `"Launch: true/false"`
+- `"Headless: true/false"`
+- `"Browser WS Endpoint: endpoint or N/A"`
+- `"Executable Path: path or N/A"`
 
 ```typescript
 reset(): void
@@ -271,11 +278,20 @@ Web page text scraping tool that converts entire page content to Markdown.
 
 **Parameters:**
 
-- `url` (required): The URL of the web page to scrape text from
-- `timeoutSeconds` (optional): Timeout for the scraping operation (default 30s, min 5s, max 180s)
-- `selector` (optional): Custom CSS selector to target specific content. If not provided, will use 'article', 'main', or 'body' in that priority order.
+| Parameter      | Type   | Required | Description                                                                                                                   |
+|----------------|--------|----------|-------------------------------------------------------------------------------------------------------------------------------|
+| url            | string | Yes      | The URL of the web page to scrape text from                                                                                   |
+| timeoutSeconds | number | No       | Timeout for the scraping operation (default 30s, min 5s, max 180s)                                                            |
+| selector       | string | No       | Custom CSS selector to target specific content. If not provided, will use 'article', 'main', or 'body' in that priority order |
 
-**Output:** Returns text result with `type: 'text'` containing the page content converted to Markdown
+**Output:** Returns a `TokenRingToolResult` with:
+
+- `result`: A message describing the extraction
+- `attachments`: Array containing one attachment with:
+ - `name`: "extracted_text.md"
+ - `mimeType`: "text/markdown"
+ - `encoding`: "text"
+ - `body`: The extracted markdown content
 
 **Usage Example:**
 
@@ -285,18 +301,21 @@ const result = await agent.callTool("chrome_scrapePageText", {
   timeoutSeconds: 30
 });
 
-console.log(result.text); // Markdown content
+console.log(result.result); // Message describing extraction
+console.log(result.attachments[0].body); // Markdown content
 ```
 
 **Implementation Notes:**
 
 - Uses ChromeService for browser management via `agent.requireServiceByType(ChromeService)`
-- Waits for `domcontentloaded` event before extracting content (not `networkidle0`)
-- Extracts full page HTML using `page.content()`
+- Waits for `domcontentloaded` event before extracting content
+- If `selector` is provided, extracts only that element's outerHTML
+- If no `selector`, tries 'article', then 'main', then 'body' in priority order
+- Falls back to full page content if no element found
 - Converts to Markdown using `TurndownService`
 - Browser is **disconnected** (not closed) after each operation via `browser.disconnect()`
-- Enforces timeout on operation (max 180s, min 5s)
-- Returns `TokenRingToolTextResult` with `type: 'text'` and `text` property
+- Enforces timeout on operation via `page.goto` timeout parameter
+- Returns `TokenRingToolResult` with `result` message and `attachments` array
 
 ### chrome_scrapePageMetadata
 
@@ -318,28 +337,42 @@ Extracts metadata from web pages including HTML head and JSON-LD structured data
 
 **Parameters:**
 
-- `url` (required): The URL of the web page to scrape metadata from
-- `timeoutSeconds` (optional): Timeout for the operation (default 30s, min 5s, max 180s)
+| Parameter      | Type   | Required | Description                                               |
+|----------------|--------|----------|-----------------------------------------------------------|
+| url            | string | Yes      | The URL of the web page to scrape metadata from           |
+| timeoutSeconds | number | No       | Timeout for the operation (default 30s, min 5s, max 180s) |
 
-**Output:** Returns JSON with `headHtml`, `jsonLd`, and `url`
+**Output:** Returns a JSON string containing:
+
+- `headHtml`: Cleaned HTML of the `<head>` element (with script/style content removed)
+- `jsonLd`: Array of parsed JSON-LD objects (or error objects for invalid JSON)
+- `url`: The URL that was scraped
 
 **Usage Example:**
 
 ```typescript
-await agent.callTool("chrome_scrapePageMetadata", {
+const result = await agent.callTool("chrome_scrapePageMetadata", {
   url: "https://example.com/article",
   timeoutSeconds: 30
 });
+
+const data = JSON.parse(result);
+console.log('Head HTML:', data.headHtml);
+console.log('JSON-LD:', data.jsonLd);
+console.log('URL:', data.url);
 ```
 
 **Implementation Details:**
 
-- Clones the `<head>` element and removes content from `<style>` and `<script>` tags (except JSON-LD)
-- Extracts all JSON-LD blocks and parses them as JSON
-- Returns structured metadata for SEO analysis
-- Browser is **closed** (not disconnected) after operation completion
-- Uses ChromeService for browser management
-- **Note:** The tool uses `browser.close()` instead of `browser.disconnect()`
+- Uses ChromeService for browser management via `agent.requireServiceByType(ChromeService)`
+- Waits for `domcontentloaded` event before extracting metadata
+- Clones the `<head>` element to avoid modifying the live page
+- Removes content from `<style>` and `<script>` tags (except JSON-LD) to reduce size
+- Extracts all `<script type="application/ld+json">` blocks and parses them as JSON
+- Handles parsing errors gracefully, returning error objects for invalid JSON
+- Enforces timeout on operation via setTimeout (max 180s, min 5s)
+- Browser is **closed** (not disconnected) after operation completion via `browser.close()`
+- Returns a JSON string (not wrapped in TokenRingToolJSONResult)
 
 ### chrome_takeScreenshot
 
@@ -361,29 +394,48 @@ Captures visual screenshots of web pages with configurable viewport dimensions.
 
 **Parameters:**
 
-- `url` (required): The URL of the web page to screenshot
-- `screenWidth` (optional): The width of the browser viewport in pixels (min 300, max 1024, default 1024)
+| Parameter   | Type   | Required | Description                                      |
+|-------------|--------|----------|--------------------------------------------------|
+| url         | string | Yes      | The URL of the web page to screenshot            |
+| screenWidth | number | No       | Viewport width (default 1024, min 300, max 1024) |
 
-**Output:** Returns base64 encoded PNG image
+**Output:** Returns a `TokenRingToolResult` with:
+
+- `result`: A message describing the screenshot
+- `attachments`: Array containing one attachment with:
+ - `name`: "screenshot.png"
+ - `mimeType`: "image/png"
+ - `encoding`: "base64"
+ - `body`: Base64-encoded PNG image data
 
 **Usage Example:**
 
 ```typescript
-await agent.callTool("chrome_takeScreenshot", {
+const result = await agent.callTool("chrome_takeScreenshot", {
   url: "https://example.com",
   screenWidth: 1024
 });
+
+console.log(result.result); // Message describing screenshot
+console.log(result.attachments[0].body); // Base64 PNG data
+
+// Save to file
+import fs from 'fs';
+
+fs.writeFileSync('screenshot.png', result.attachments[0].body, 'base64');
 ```
 
 **Implementation Details:**
 
-- Calculates viewport height based on `screenshot.maxPixels` configuration: `height = maxPixels / screenWidth`
-- Sets viewport with `deviceScaleFactor: 1`
-- Waits for `networkidle2` before capturing screenshot (not `networkidle0`)
-- Captures only the visible viewport (not full page)
-- Browser is **closed** (not disconnected) after operation completion
-- Uses ChromeService for browser management
-- **Note:** The tool uses `browser.close()` instead of `browser.disconnect()`
+- Uses ChromeService for browser management via `agent.requireServiceByType(ChromeService)`
+- Reads `screenshot.maxPixels` from agent state (`ChromeState`) to calculate viewport height
+- Calculates viewport height as: `height = Math.floor(config.screenshot.maxPixels / screenWidth)`
+- Sets viewport with `deviceScaleFactor: 1` for 1:1 pixel ratio
+- Waits for `networkidle2` before capturing screenshot (network activity has mostly stopped)
+- Captures only the visible viewport (not full page) with `fullPage: false`
+- Returns screenshot as base64-encoded PNG in attachments
+- Browser is **closed** (not disconnected) after operation completion via `browser.close()`
+- Returns `TokenRingToolResult` with `result` message and `attachments` array
 
 ### chrome_runPuppeteerScript
 
@@ -406,11 +458,13 @@ Execute custom Puppeteer scripts with access to page and browser instances. This
 
 **Parameters:**
 
-- `script` (required): JavaScript code string to run. It should export or define an async function to be called with `({ page, browser, consoleLog })` as arguments. The return value will be returned as output.
-- `navigateTo` (optional): Page URL to navigate to before executing the script
-- `timeoutSeconds` (optional): Timeout for script execution (default 30s, min 5s, max 180s)
+| Parameter      | Type   | Required | Description                                       |
+|----------------|--------|----------|---------------------------------------------------|
+| script         | string | Yes      | JavaScript code string defining an async function |
+| navigateTo     | string | No       | Page URL to navigate before executing the script  |
+| timeoutSeconds | number | No       | Timeout (default 30, min 5, max 180)              |
 
-**Output:** Returns JSON result with `type: 'json'` containing:
+**Output:** Returns a JSON string containing:
 - `result`: The return value from the executed script
 - `logs`: Array of log strings from `consoleLog` calls and browser console events
 
@@ -431,13 +485,15 @@ const result = await agent.callTool("chrome_runPuppeteerScript", {
   timeoutSeconds: 30
 });
 
-console.log('Result:', result.data.result);
-console.log('Logs:', result.data.logs);
+const data = JSON.parse(result);
+console.log('Result:', data.result);
+console.log('Logs:', data.logs);
 ```
 
 **Script Function Signature:**
 
 The script should define or export an async function that accepts:
+
 - `page`: Puppeteer Page instance for navigation and interaction
 - `browser`: Puppeteer Browser instance for browser-level operations
 - `consoleLog`: Custom logging function that captures output to the `logs` array
@@ -448,13 +504,13 @@ The script should define or export an async function that accepts:
 - Browser is launched in visible mode (`headless: false`) for debugging purposes
 - Creates new page via `browser.newPage()`
 - Provides `consoleLog` function that captures arguments as space-separated strings
-- Listens to `page.on('console')` events and captures browser console output with `[browser] type: message` format
+- Listens to `page.on('console')` events and captures browser console output
 - If `navigateTo` is provided, navigates to URL with `waitUntil: 'load'` and 20s timeout
 - Wraps user script in async IIFE and executes with `page`, `browser`, and `consoleLog` context
 - Enforces timeout on script execution (max 180s, min 5s) using `setTimeout`
 - Catches errors and throws with `[chrome_runPuppeteerScript]` prefix
 - Browser is **closed** (not disconnected) after operation completion via `browser.close()`
-- Returns `ExecuteResult` wrapped in `TokenRingToolJSONResult` with `type: 'json'`
+- Returns a JSON string (not wrapped in TokenRingToolResult)
 - **Important:** This tool operates independently of ChromeService and agent configuration
 
 ## Usage Examples
@@ -537,20 +593,22 @@ const result = await agent.callTool("chrome_scrapePageText", {
   timeoutSeconds: 30
 });
 
-console.log(result.text); // Markdown content
+console.log(result.result); // Message describing extraction
+console.log(result.attachments[0].body); // Markdown content
 ```
 
 ### Metadata Extraction
 
 ```typescript
-const metadata = await agent.callTool("chrome_scrapePageMetadata", {
+const result = await agent.callTool("chrome_scrapePageMetadata", {
   url: "https://example.com/article"
 });
 
-console.log('Head HTML:', metadata.data.headHtml.substring(0, 200) + '...');
-console.log('JSON-LD blocks:', metadata.data.jsonLd.length);
+const data = JSON.parse(result);
+console.log('Head HTML:', data.headHtml.substring(0, 200) + '...');
+console.log('JSON-LD blocks:', data.jsonLd.length);
 
-metadata.data.jsonLd.forEach((item, i) => {
+data.jsonLd.forEach((item, i) => {
   console.log(`\nJSON-LD block ${i + 1}:`, item);
 });
 ```
@@ -558,15 +616,15 @@ metadata.data.jsonLd.forEach((item, i) => {
 ### Screenshot Capture
 
 ```typescript
-const screenshot = await agent.callTool("chrome_takeScreenshot", {
+const result = await agent.callTool("chrome_takeScreenshot", {
   url: "https://example.com",
   screenWidth: 1024
 });
 
-// The screenshot is returned as base64 encoded PNG
-// You can save it to a file or display it
+// The screenshot is returned in attachments
 import fs from 'fs';
-fs.writeFileSync('screenshot.png', screenshot.data, 'base64');
+
+fs.writeFileSync('screenshot.png', result.attachments[0].body, 'base64');
 ```
 
 ### Tool Usage - Run Custom Puppeteer Script
@@ -585,8 +643,9 @@ const result = await agent.callTool("chrome_runPuppeteerScript", {
   timeoutSeconds: 30
 });
 
-console.log('Result:', result.data.result);
-console.log('Logs:', result.data.logs);
+const data = JSON.parse(result);
+console.log('Result:', data.result);
+console.log('Logs:', data.logs);
 ```
 
 ## Integration
@@ -602,13 +661,13 @@ The Chrome plugin integrates with the following Token Ring services:
 The package is registered as a service and tool provider in the TokenRing plugin system:
 
 ```typescript
-import {TokenRingPlugin} from "@tokenring-ai/app";
+import type {TokenRingPlugin} from "@tokenring-ai/app";
 import {ChatService} from "@tokenring-ai/chat";
 import {WebSearchService} from "@tokenring-ai/websearch";
 import {z} from "zod";
-import ChromeWebSearchProvider from "./ChromeWebSearchProvider.js";
-import ChromeService from "./ChromeService.js";
-import packageJSON from './package.json' with {type: 'json'};
+import ChromeService from "./ChromeService.ts";
+import ChromeWebSearchProvider from "./ChromeWebSearchProvider.ts";
+import packageJSON from "./package.json" with {type: "json"};
 import {ChromeConfigSchema} from "./schema.ts";
 import tools from "./tools.ts";
 
@@ -618,24 +677,24 @@ const packageConfigSchema = z.object({
 
 export default {
   name: packageJSON.name,
+  displayName: "Chrome Automation",
   version: packageJSON.version,
   description: packageJSON.description,
   install(app, config) {
-    app.waitForService(ChatService, chatService =>
-      chatService.addTools(tools)
+    app.waitForService(ChatService, (chatService) =>
+      chatService.addTools(tools),
     );
-    
     const chromeService = new ChromeService(config.chrome);
     app.addServices(chromeService);
 
-    app.waitForService(WebSearchService, websearchService => {
+    app.waitForService(WebSearchService, (websearchService) => {
       websearchService.registerProvider(
-        'chrome',
-        new ChromeWebSearchProvider(chromeService)
+        "chrome",
+        new ChromeWebSearchProvider(chromeService),
       );
     });
   },
-  config: packageConfigSchema
+  config: packageConfigSchema,
 } satisfies TokenRingPlugin<typeof packageConfigSchema>;
 ```
 

@@ -305,7 +305,7 @@ Create and switch to a new branch.
 
 **Usage:**
 ```
-/git branch create <branchName>
+/git branch create &lt;branchName&gt;
 ```
 
 **Examples:**
@@ -323,7 +323,7 @@ Switch to an existing branch.
 
 **Usage:**
 ```
-/git branch switch <branchName>
+/git branch switch &lt;branchName&gt;
 ```
 
 **Examples:**
@@ -341,7 +341,7 @@ Delete a branch.
 
 **Usage:**
 ```
-/git branch delete <branchName>
+/git branch delete &lt;branchName&gt;
 ```
 
 **Examples:**
