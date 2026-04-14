@@ -517,9 +517,8 @@ bun run test:coverage
 | `@tokenring-ai/rpc` | 0.2.0 | RPC service |
 | `@tokenring-ai/utility` | 0.2.0 | Shared utilities |
 | `@tokenring-ai/metrics` | 0.2.0 | Metrics service |
-| `ai` | ^6.0.138 | Vercel AI SDK |
+| `ai` | ^6.0.149 | Vercel AI SDK |
 | `zod` | ^4.3.6 | Schema validation |
-| `axios` | ^1.13.6 | HTTP client |
 
 #### AI SDK Dependencies
 
