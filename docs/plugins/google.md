@@ -516,11 +516,11 @@ This package does not currently register its own slash commands. User-facing com
 ```ts
 {
   google: {
+    clientId: process.env.GOOGLE_CLIENT_ID!,
+    clientSecret: process.env.GOOGLE_CLIENT_SECRET!,
     defaultAccount: "primary",
     accounts: {
       primary: {
-        clientId: process.env.GOOGLE_CLIENT_ID!,
-        clientSecret: process.env.GOOGLE_CLIENT_SECRET!,
         redirectUri: "http://localhost:3000/oauth/google/callback",
         userEmail: "me@example.com",
         refreshToken: process.env.GOOGLE_REFRESH_TOKEN,
@@ -544,8 +544,6 @@ This package does not currently register its own slash commands. User-facing com
 
 ```ts
 {
-  clientId: string,
-  clientSecret: string,
   redirectUri: string,
   userEmail: string (email format),
   refreshToken?: string,
@@ -559,6 +557,8 @@ This package does not currently register its own slash commands. User-facing com
 
 ```ts
 {
+  clientId: string,
+  clientSecret: string,
   accounts: Record<string, GoogleAccount>,
   defaultAccount?: string
 }
@@ -569,11 +569,11 @@ This package does not currently register its own slash commands. User-facing com
 ```ts
 {
   google: {
+    clientId: process.env.GOOGLE_CLIENT_ID!,
+    clientSecret: process.env.GOOGLE_CLIENT_SECRET!,
     defaultAccount: "primary",
     accounts: {
       primary: {
-        clientId: process.env.GOOGLE_CLIENT_ID!,
-        clientSecret: process.env.GOOGLE_CLIENT_SECRET!,
         redirectUri: "http://localhost:3000/oauth/google/callback",
         userEmail: "me@example.com",
         refreshToken: process.env.GOOGLE_REFRESH_TOKEN,
@@ -633,11 +633,11 @@ import GooglePlugin from "@tokenring-ai/google/plugin";
 const app = new TokenRingApp();
 app.usePlugin(GooglePlugin, {
   google: {
+    clientId: process.env.GOOGLE_CLIENT_ID!,
+    clientSecret: process.env.GOOGLE_CLIENT_SECRET!,
     defaultAccount: "primary",
     accounts: {
       primary: {
-        clientId: process.env.GOOGLE_CLIENT_ID!,
-        clientSecret: process.env.GOOGLE_CLIENT_SECRET!,
         redirectUri: "http://localhost:3000/oauth/google/callback",
         userEmail: "me@example.com",
         refreshToken: process.env.GOOGLE_REFRESH_TOKEN!,
