@@ -9,7 +9,7 @@ tags: [tokenring, ai, writing, content-creation, announcement]
 
 Two months after launching TokenRing Coder, I'm thrilled to announce **TokenRing Writer** - an AI-powered writing assistant built on the same secure, local-first architecture.
 
-<!-- truncate -->
+{/* truncate */}
 
 ## From Code to Content
 

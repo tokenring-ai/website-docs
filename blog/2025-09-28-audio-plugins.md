@@ -9,7 +9,7 @@ tags: [tokenring, plugins, audio, voice, announcement]
 
 TokenRing Coder now supports voice interaction with audio recording, playback, transcription, and text-to-speech.
 
-<!-- truncate -->
+{/* truncate */}
 
 ## Audio Plugin
 

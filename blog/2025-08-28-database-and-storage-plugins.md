@@ -9,7 +9,7 @@ tags: [tokenring, plugins, database, announcement]
 
 New plugins for database integration, web search abstraction, and Wikipedia access.
 
-<!-- truncate -->
+{/* truncate */}
 
 ## MySQL Plugin
 

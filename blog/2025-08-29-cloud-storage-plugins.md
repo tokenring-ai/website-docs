@@ -9,7 +9,7 @@ tags: [tokenring, plugins, cloud, storage, announcement]
 
 TokenRing Coder now supports cloud storage with S3 filesystem and CDN integrations.
 
-<!-- truncate -->
+{/* truncate */}
 
 ## S3 Plugin
 

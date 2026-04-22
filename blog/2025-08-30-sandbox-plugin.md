@@ -9,7 +9,7 @@ tags: [tokenring, plugins, sandbox, security, announcement]
 
 The Sandbox plugin provides secure, isolated environments for running untrusted code and commands.
 
-<!-- truncate -->
+{/* truncate */}
 
 ## Key Features
 

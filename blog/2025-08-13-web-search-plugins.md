@@ -9,7 +9,7 @@ tags: [tokenring, plugins, web-search, announcement]
 
 TokenRing Coder now supports web search capabilities through Serper.dev and ScraperAPI integrations.
 
-<!-- truncate -->
+{/* truncate */}
 
 ## Serper Plugin
 

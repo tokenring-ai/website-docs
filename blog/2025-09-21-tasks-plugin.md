@@ -9,7 +9,7 @@ tags: [tokenring, plugins, tasks, workflow, announcement]
 
 The Tasks plugin enables AI agents to plan and execute complex multi-step workflows with user approval.
 
-<!-- truncate -->
+{/* truncate */}
 
 ## Key Features
 

@@ -9,7 +9,7 @@ tags: [tokenring, plugins, announcement]
 
 Today marks a major milestone - the launch of TokenRing Coder's core plugin system with 20+ essential plugins for AI-powered development.
 
-<!-- truncate -->
+{/* truncate */}
 
 ## Core Foundation
 

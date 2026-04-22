@@ -9,7 +9,7 @@ tags: [tokenring, plugins, scripting, automation, announcement]
 
 The Scripting plugin brings powerful workflow automation with variables, functions, and LLM integration.
 
-<!-- truncate -->
+{/* truncate */}
 
 ## Key Features
 

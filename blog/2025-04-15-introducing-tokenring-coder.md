@@ -9,7 +9,7 @@ tags: [tokenring, ai, coding-assistant, announcement]
 
 Today, I'm excited to announce **TokenRing Coder** - an AI-powered coding assistant that works with your codebase locally, keeping your code secure while providing powerful development capabilities.
 
-<!-- truncate -->
+{/* truncate */}
 
 ## Why TokenRing Coder?
 

@@ -9,7 +9,7 @@ tags: [tokenring, plugins, state, checkpoint, announcement]
 
 New plugins for agent state persistence and iterable data processing.
 
-<!-- truncate -->
+{/* truncate */}
 
 ## Checkpoint Plugin
 

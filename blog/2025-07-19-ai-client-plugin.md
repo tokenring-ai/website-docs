@@ -9,7 +9,7 @@ tags: [tokenring, plugins, ai, announcement]
 
 The AI Client plugin brings unified multi-provider AI integration to TokenRing Coder, supporting OpenAI, Anthropic, Google, Groq, and more.
 
-<!-- truncate -->
+{/* truncate */}
 
 ## Key Features
 

@@ -9,7 +9,7 @@ tags: [tokenring, plugins, mcp, integration, announcement]
 
 TokenRing Coder now supports the Model Context Protocol (MCP) for standardized AI tool integration.
 
-<!-- truncate -->
+{/* truncate */}
 
 ## What is MCP?
 
