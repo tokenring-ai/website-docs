@@ -4,7 +4,7 @@ The `@tokenring-ai/web-host` package provides a high-performance Bun web server 
 
 ## Overview
 
-The web-host package provides a complete web server solution using Bun's native HTTP and WebSocket capabilities. It features a flexible resource registration system that allows both configuration-based and programmatic resource registration. The package integrates seamlessly with the Token Ring agent framework, automatically registering RPC endpoints and providing a `/webhost` command for monitoring.
+The web-host package provides a complete web server solution using Bun's native HTTP and WebSocket capabilities. It features a flexible resource registration system that allows both configuration-based and programmatic resource registration. The package integrates seamlessly with the Token Ring agent framework, automatically registering RPC endpoints and providing chat commands for monitoring and management.
 
 ## Key Features
 
@@ -16,9 +16,149 @@ The web-host package provides a complete web server solution using Bun's native 
 - **Configurable Port**: Flexible port configuration with automatic port assignment (port 0)
 - **JSON-RPC API**: Built-in JSON-RPC 2.0 support with streaming via Server-Sent Events
 - **WebSocket RPC**: WebSocket-based RPC with real-time streaming support
-- **Command Integration**: `/webhost` command for monitoring and management
+- **Command Integration**: Chat commands for monitoring and management
 - **Automatic Endpoint Registration**: Automatic registration of RPC endpoints during startup
 - **Type-Safe Configuration**: Full TypeScript support with Zod schema validation
+
+## Chat Commands
+
+### /webhost show
+
+Displays the current web host URL and lists all registered resources.
+
+**Usage:**
+
+```bash
+/webhost show
+```
+
+**Output:**
+
+```text
+Web host running at: http://localhost:3000
+Registered resources:
+  - static-files
+  - spa
+  - calculator
+```
+
+### /webhost start
+
+Starts the web host server.
+
+**Usage:**
+
+```bash
+/webhost start
+```
+
+**Output:**
+
+```text
+Web host started at: http://localhost:3000
+```
+
+### /webhost stop
+
+Stops the web host server.
+
+**Usage:**
+
+```bash
+/webhost stop
+```
+
+**Output:**
+
+```text
+Web host stopped
+```
+
+## Configuration
+
+### WebHostConfigSchema
+
+The main configuration schema for the web host service:
+
+```typescript
+import { z } from "zod";
+import { WebHostConfigSchema, WebHostAuthConfigSchema } from "@tokenring-ai/web-host";
+
+type ParsedWebHostConfig = z.output<typeof WebHostConfigSchema>;
+type ParsedWebHostAuthConfig = z.output<typeof WebHostAuthConfigSchema>;
+```
+
+**Configuration Options:**
+
+| Option | Type | Required | Default | Description |
+|--------|------|----------|---------|-------------|
+| `autoStart` | boolean | No | `false` | Whether to automatically start the server when plugin starts |
+| `host` | string | No | `"127.0.0.1"` | Host address to bind to |
+| `port` | number | No | `0` | Port number. If 0 or not specified, an available port is automatically assigned |
+| `auth` | AuthConfig | No | - | Authentication configuration |
+
+### AuthConfigSchema
+
+Authentication configuration schema supporting both Basic and Bearer token authentication:
+
+```typescript
+export const WebHostAuthConfigSchema = z.object({
+  users: z.record(z.string(), z.object({
+    password: z.string().optional(),
+    bearerToken: z.string().optional(),
+  }))
+});
+```
+
+**Authentication Options:**
+
+| Option | Type | Description |
+|--------|------|-------------|
+| `users` | Record | Map of usernames to credentials |
+| `password` | string | Optional password for Basic authentication |
+| `bearerToken` | string | Optional bearer token for Bearer authentication |
+
+**Note:** Each user can have either a password, a bearer token, or both. Users without either credential cannot authenticate.
+
+### Static Resource Configuration
+
+```typescript
+export const staticResourceConfigSchema = z.object({
+  type: z.literal("static"),
+  root: z.string(),
+  description: z.string(),
+  indexFile: z.string(),
+  notFoundFile: z.string().optional(),
+  prefix: z.string()
+});
+```
+
+| Option | Type | Description |
+|--------|------|-------------|
+| `type` | `"static"` | Discriminator for static resource type |
+| `root` | string | Directory path for static files |
+| `description` | string | Human-readable description |
+| `indexFile` | string | Default index file name |
+| `notFoundFile` | string | Optional custom 404 page (note: not currently used by Bun) |
+| `prefix` | string | URL prefix for this resource |
+
+### SPA Resource Configuration
+
+```typescript
+export const spaResourceConfigSchema = z.object({
+  type: z.literal("spa"),
+  file: z.string(),
+  description: z.string(),
+  prefix: z.string()
+});
+```
+
+| Option | Type | Description |
+|--------|------|-------------|
+| `type` | `"spa"` | Discriminator for SPA resource type |
+| `file` | string | Path to the index.html file |
+| `description` | string | Human-readable description |
+| `prefix` | string | URL prefix for SPA routing |
 
 ## Core Components
 
@@ -37,8 +177,10 @@ class WebHostService implements TokenRingService {
 
   constructor(app: TokenRingApp, config: ParsedWebHostConfig);
 
-  async start(signal: AbortSignal): Promise<void>;
+  get listening: boolean;
+  async listen(): Promise<void>;
   async stop(): Promise<void>;
+  async reconfigure(config: ParsedWebHostConfig): Promise<void>;
   getURL(): URL;
 }
 ```
@@ -52,18 +194,20 @@ class WebHostService implements TokenRingService {
 | `resources` | `KeyedRegistry<WebResource>` | Registry of registered resources |
 | `registerResource` | `(name: string, resource: WebResource) => void` | Method to register resources |
 | `getResourceEntries` | `() => Iterable<[string, WebResource]>` | Method to get all resources |
+| `listening` | `boolean` | Whether the server is currently listening |
 
 **Methods:**
 
 | Method | Signature | Description |
 |--------|-----------|-------------|
-| `start` | `(signal: AbortSignal) => Promise<void>` | Start the Bun server and register all resources |
+| `listen` | `() => Promise<void>` | Start the Bun server and register all resources |
 | `stop` | `() => Promise<void>` | Stop the server and close all connections |
+| `reconfigure` | `(config: ParsedWebHostConfig) => Promise<void>` | Reconfigure and restart the server |
 | `getURL` | `() => URL` | Get the current server URL |
 
 **Server Lifecycle:**
 
-1. **Start Phase:**
+1. **Listen Phase:**
    - Registers authentication if configured
    - Registers all web resources
    - Binds to configured host and port using Bun.serve
@@ -71,6 +215,11 @@ class WebHostService implements TokenRingService {
 
 2. **Stop Phase:**
    - Closes the server and all active connections
+
+3. **Reconfigure Phase:**
+   - Stops the server if running
+   - Updates configuration
+   - Restarts the server if it was listening or autoStart is enabled
 
 ### WebResource Interface
 
@@ -199,7 +348,7 @@ class SPAResource implements WebResource {
 
 **Example Routing:**
 
-```
+```text
 /app/           → index.html
 /app/dashboard  → index.html (client-side routing)
 /app/main.js    → main.js (static file)
@@ -273,7 +422,7 @@ class WsRpcResource implements WebResource {
 
 ## Services
 
-### WebHostService
+### WebHostService Usage
 
 The primary service provided by this package. It implements the `TokenRingService` interface and manages the Bun web server lifecycle.
 
@@ -331,10 +480,10 @@ import KeyedRegistry from "@tokenring-ai/utility/registry/KeyedRegistry";
 resources = new KeyedRegistry<WebResource>();
 
 // Register a resource
-registerResource = this.resources.register;
+registerResource = this.resources.set;
 
 // Get all resources
-getResourceEntries = this.resources.entries;
+getResourceEntries = this.resources.entriesArray;
 ```
 
 ## RPC Endpoints
@@ -418,140 +567,6 @@ const calculatorImplementation = {
 const endpoint = createRPCEndpoint(calculatorSchema, calculatorImplementation);
 ```
 
-## Chat Commands
-
-### `/webhost` Command
-
-The web-host package provides a `/webhost` command for monitoring:
-
-```bash
-/webhost
-
-# Output:
-# Web host running at: http://localhost:3000
-# Registered resources:
-#   - static-files
-#   - spa
-#   - calculator
-#   - customAPI
-```
-
-**Command Description:** Displays the current web host URL and lists all registered resources.
-
-**Help Text:**
-
-```markdown
-# /webhost
-
-## Description
-Displays the current web host URL and lists all registered resources.
-
-## Usage
-/webhost
-
-## Output
-- Web host URL with port
-- List of registered resources and their names
-
-## Example
-/webhost
-# Output:
-# Web host running at: http://localhost:3000
-# Registered resources:
-#   - trpcBackend
-#   - defaultFrontend
-```
-
-## Configuration
-
-### WebHostConfigSchema
-
-The main configuration schema for the web host service:
-
-```typescript
-export const WebHostConfigSchema = z.object({
-  host: z.string().default("127.0.0.1"),
-  port: z.number().default(0),
-  auth: AuthConfigSchema.optional(),
-  resources: z.record(z.string(), z.discriminatedUnion("type", [
-    staticResourceConfigSchema,
-    spaResourceConfigSchema
-  ])).optional(),
-})
-```
-
-**Configuration Options:**
-
-| Option | Type | Required | Default | Description |
-|--------|------|----------|---------|-------------|
-| `host` | string | No | `"127.0.0.1"` | Host address to bind to |
-| `port` | number | No | `0` | Port number. If 0 or not specified, an available port is automatically assigned |
-| `auth` | AuthConfig | No | - | Authentication configuration |
-| `resources` | Record | No | - | Web resources to register at startup |
-
-### AuthConfigSchema
-
-Authentication configuration schema supporting both Basic and Bearer token authentication:
-
-```typescript
-export const AuthConfigSchema = z.object({
-  users: z.record(z.string(), z.object({
-    password: z.string().optional(),
-    bearerToken: z.string().optional(),
-  }))
-})
-```
-
-**Authentication Options:**
-
-| Option | Type | Description |
-|--------|------|-------------|
-| `users` | Record | Map of usernames to credentials |
-| `password` | string | Optional password for Basic authentication |
-| `bearerToken` | string | Optional bearer token for Bearer authentication |
-
-**Note:** Each user can have either a password, a bearer token, or both. Users without either credential cannot authenticate.
-
-### Static Resource Configuration
-
-```typescript
-export const staticResourceConfigSchema = z.object({
-  type: z.literal("static"),
-  root: z.string(),
-  description: z.string(),
-  indexFile: z.string(),
-  notFoundFile: z.string().optional(),
-  prefix: z.string()
-})
-```
-
-| Option | Type | Description |
-|--------|------|-------------|
-| `type` | `"static"` | Discriminator for static resource type |
-| `root` | string | Directory path for static files |
-| `description` | string | Human-readable description |
-| `indexFile` | string | Default index file name |
-| `notFoundFile` | string | Optional custom 404 page (note: not currently used by Bun) |
-| `prefix` | string | URL prefix for this resource |
-
-### SPA Resource Configuration
-
-```typescript
-export const spaResourceConfigSchema = z.object({
-  type: z.literal("spa"),
-  file: z.string(),
-  description: z.string(),
-  prefix: z.string()
-})
-```
-
-| Option | Type | Description |
-|--------|------|-------------|
-| `type` | `"spa"` | Discriminator for SPA resource type |
-| `file` | string | Path to the index.html file |
-| `description` | string | Human-readable description |
-| `prefix` | string | URL prefix for SPA routing |
-
 ## Integration
 
 ### Plugin Registration
@@ -562,13 +577,14 @@ The web-host package integrates as a plugin with two phases:
 
 1. Creates `WebHostService` with provided configuration
 2. Registers resources from configuration (StaticResource, SPAResource)
-3. Registers `/webhost` command with AgentCommandService
+3. Registers chat commands with AgentCommandService
 
 **Start Phase:**
 
-1. Starts the Bun server
-2. Automatically creates `JsonRpcResource` and `WsRpcResource` for each RPC endpoint registered with `RpcService`
+1. Gets all RPC endpoints from RpcService
+2. Automatically creates `JsonRpcResource` and `WsRpcResource` for each RPC endpoint
 3. Logs registered endpoint paths
+4. Starts the Bun server if `autoStart` is enabled
 
 ### Plugin Installation
 
@@ -599,6 +615,7 @@ import webHostPackage from "@tokenring-ai/web-host";
 
 const app = new TokenRingApp({
   webHost: {
+    autoStart: true,
     port: 3000,
     host: "0.0.0.0",
     auth: {
@@ -657,6 +674,7 @@ await app.start();
 ```typescript
 const app = new TokenRingApp({
   webHost: {
+    autoStart: true,
     port: 3000,
     host: "0.0.0.0",
     auth: {
@@ -870,24 +888,29 @@ bun test:coverage
 
 ## Package Structure
 
-```
+```text
 pkg/web-host/
 ├── index.ts                     # Main entry point and exports
 ├── plugin.ts                    # Plugin definition for TokenRing integration
 ├── package.json                 # Package manifest
+├── LICENSE                      # MIT License
+├── README.md                    # Package README
 ├── WebHostService.ts            # Main service implementation
 ├── StaticResource.ts            # Static file resource
-├── SPAResource.ts              # SPA resource implementation
-├── JsonRpcResource.ts          # JSON-RPC resource implementation
-├── WsRpcResource.ts            # WebSocket RPC resource implementation
-├── auth.ts                     # Authentication utilities
-├── types.ts                    # Type definitions
-├── schema.ts                   # Configuration schemas
-├── createJsonRPCClient.ts      # HTTP JSON-RPC client
-├── createWsRPCClient.ts        # WebSocket RPC client
+├── SPAResource.ts               # SPA resource implementation
+├── JsonRpcResource.ts           # JSON-RPC resource implementation
+├── WsRpcResource.ts             # WebSocket RPC resource implementation
+├── auth.ts                      # Authentication utilities
+├── types.ts                     # Type definitions
+├── schema.ts                    # Configuration schemas
+├── createJsonRPCClient.ts       # HTTP JSON-RPC client
+├── createWsRPCClient.ts         # WebSocket RPC client
+├── commands.ts                  # Command exports
 ├── commands/
-│   └── webhost.ts              # /webhost command
-└── vitest.config.ts            # Vitest configuration
+│   ├── webhost-show.ts          # /webhost show command
+│   ├── webhost-start.ts         # /webhost start command
+│   └── webhost-stop.ts          # /webhost stop command
+└── vitest.config.ts             # Vitest configuration
 ```
 
 ## API Reference
@@ -895,34 +918,33 @@ pkg/web-host/
 ### Exports from `index.ts`
 
 ```typescript
-export { default as WebHostService } from "./WebHostService.js";
-export { default as StaticResource } from "./StaticResource.js";
-export { default as JsonRpcResource } from "./JsonRpcResource.js";
-export { default as WsRpcResource } from "./WsRpcResource.js";
-export { default as SPAResource } from "./SPAResource.js";
-export { default as createJsonRPCClient } from "./createJsonRPCClient.js";
-export { default as createWsRPCClient } from "./createWsRPCClient.js";
-export type { WebResource } from "./types.js";
-export { AuthConfigSchema, WebHostConfigSchema } from "./schema.js";
-export type { ParsedAuthConfig, ParsedWebHostConfig } from "./schema.js";
-export { spaResourceConfigSchema } from "./SPAResource.js";
-export { staticResourceConfigSchema } from "./StaticResource.js";
+export { default as WebHostService } from "./WebHostService";
+export { default as StaticResource } from "./StaticResource";
+export { default as JsonRpcResource } from "./JsonRpcResource";
+export { default as WsRpcResource } from "./WsRpcResource";
+export { default as SPAResource } from "./SPAResource";
+export { default as createJsonRPCClient } from "./createJsonRPCClient";
+export { default as createWsRPCClient } from "./createWsRPCClient";
+export type { WebResource } from "./types";
+export { WebHostAuthConfigSchema, WebHostConfigSchema } from "./schema";
+export type { ParsedWebHostAuthConfig, ParsedWebHostConfig } from "./schema";
+export { spaResourceConfigSchema } from "./SPAResource";
+export { staticResourceConfigSchema } from "./StaticResource";
 ```
 
 ### Exports from `schema.ts`
 
 ```typescript
-export const AuthConfigSchema: ZodSchema<ParsedAuthConfig>;
+export const WebHostAuthConfigSchema: ZodSchema<ParsedWebHostAuthConfig>;
 export const WebHostConfigSchema: ZodSchema<ParsedWebHostConfig>;
-export type ParsedAuthConfig: z.output<typeof AuthConfigSchema>;
+export type ParsedWebHostAuthConfig: z.output<typeof WebHostAuthConfigSchema>;
 export type ParsedWebHostConfig: z.output<typeof WebHostConfigSchema>;
 ```
 
 ### Exports from `auth.ts`
 
 ```typescript
-export function registerAuth(router: BunRouter, config: ParsedAuthConfig): void;
-export function checkAuth(request: BunRequest, config: ParsedAuthConfig): string | null;
+export function checkAuth(request: BunRequest, config: ParsedWebHostAuthConfig): string | null;
 export function unauthorizedResponse(response: BunResponse): Response;
 ```
 
@@ -945,7 +967,6 @@ export interface StaticOptions;
 
 - `@tokenring-ai/app` (0.2.0) - Base application framework with service management and plugin architecture
 - `@tokenring-ai/agent` (0.2.0) - Agent system with state management
-- `@tokenring-ai/chat` (0.2.0) - Chat service for human interaction
 - `@tokenring-ai/utility` (0.2.0) - Shared utilities and helpers
 - `@tokenring-ai/rpc` (0.2.0) - RPC endpoint registration and execution
 - `zod` (^4.3.6) - Schema validation
@@ -980,7 +1001,7 @@ router.get("/api/whoami", async (request: BunRequest, response: BunResponse) => 
 });
 ```
 
-**Note:** The `user` property is added to the request object by the authentication hook.
+**Note:** The authentication system validates credentials but does not attach user information to the request object by default. Implement custom header-based authentication if you need to pass user information to handlers.
 
 ## Error Handling
 

@@ -1,34 +1,29 @@
-# @tokenring-ai/ai-client
+# AI Client
 
 ## User Guide
 
 Multi-provider AI integration client for the Token Ring ecosystem. Provides unified access to various AI models through a consistent interface, supporting chat, embeddings, image generation, reranking, speech synthesis, and transcription capabilities.
 
-### Overview
+### Overview and Purpose
 
-The AI Client package acts as a unified interface to multiple AI providers, abstracting away provider-specific differences while maintaining full access to provider capabilities. It integrates with the Token Ring agent system through seven model registry services that manage model specifications and provide client instances. Models are automatically discovered and registered from each provider, with background processes checking availability and updating status.
+The AI Client package (`@tokenring-ai/ai-client`) provides a unified interface to multiple AI providers, abstracting away provider-specific differences while maintaining full access to provider capabilities. It integrates with the Token Ring agent system through seven model registry classes that manage model specifications and provide client instances.
+
+The package supports 16 native AI providers and a generic provider for custom endpoints, offering access to chat, embeddings, image generation, video generation, reranking, speech synthesis, and transcription capabilities through a consistent API built on the Vercel AI SDK.
 
 ### Key Features
 
-- **15 Native AI Providers**: Anthropic, OpenAI, Google, Groq, Cerebras, DeepSeek, ElevenLabs, Fal, xAI, OpenRouter, Perplexity, Azure, Ollama, Llama (via Meta API), plus generic providers for OpenAI/Anthropic/Responses-compatible APIs
-- **Generic Provider Support**: Configure custom providers via OpenAI-compatible, Anthropic-compatible, or Responses-compatible endpoints with dynamic model discovery
+- **16 Native AI Providers**: Anthropic, OpenAI, Google, Groq, Cerebras, DeepSeek, ElevenLabs, Fal, xAI, OpenRouter, Perplexity, Azure, Ollama, Llama (via Meta API), Minimax, plus generic providers for OpenAI/Anthropic/Responses-compatible APIs
 - **Seven AI Capabilities**: Chat, Embeddings, Image Generation, Video Generation, Reranking, Speech, and Transcription
-- **Seven Model Registry Classes**: Dedicated registries for managing model specifications and capabilities
+- **Seven Model Registry Classes**: Dedicated registries for managing model specifications and capabilities (ChatModelRegistry, ImageGenerationModelRegistry, VideoGenerationModelRegistry, EmbeddingModelRegistry, SpeechModelRegistry, TranscriptionModelRegistry, and RerankingModelRegistry)
 - **Dynamic Model Registration**: Register custom models with availability checks and background discovery
 - **Model Status Tracking**: Monitor model online, cold, and offline status with automatic availability checking
-- **Auto-Configuration**: Automatic provider setup from environment variables with fallback to manual configuration
-- **JSON-RPC API**: Remote procedure call endpoints for programmatic access via plugin registration
+- **Auto-Configuration**: Automatic provider setup from environment variables with fallback to manual configuration (defaults to `autoConfigure: true`)
+- **JSON-RPC API**: Remote procedure call endpoints for programmatic access via plugin registration at `/rpc/ai-client`
 - **Streaming Support**: Real-time streaming responses with delta handling for text and reasoning output
-- **Agent Integration**: Seamless integration with Token Ring agent system through services with cost tracking
+- **Agent Integration**: Seamless integration with Token Ring agent system through services with automatic cost tracking
 - **Feature System**: Rich feature specification system supporting boolean, number, string, enum, and array types with validation
 - **Cost Tracking**: Automatic cost calculation and metrics integration with detailed cost breakdowns
-- **Model Querying**: Query models by name pattern with optional feature settings and wildcard support
-
-### Installation
-
-```bash
-bun add @tokenring-ai/ai-client
-```
+- **Model Querying**: Query models by name pattern with optional feature settings and wildcard support (e.g., `openai:*` for all OpenAI models)
 
 ### Chat Commands
 
@@ -36,11 +31,9 @@ This package does not define any chat commands. It provides AI model access thro
 
 ### Tools
 
-This package does not define any tools directly. It provides AI model clients that can be used by other packages to implement tools.
+The AI Client package does not define any tools directly. Tools are typically defined in other packages that use the AI Client to interact with models.
 
 ### Configuration
-
-The AI Client can be configured through environment variables or explicit provider configuration.
 
 #### Auto-Configuration
 
@@ -112,33 +105,32 @@ app.addPlugin(aiClientPlugin, {
 
 #### Configuration Schema
 
-```yaml
-ai:
-  autoConfigure: true  # Default: true
-  providers:
-    OpenAI:
-      provider: "openai"
-      apiKey: "sk-..."
-    Anthropic:
-      provider: "anthropic"
-      apiKey: "sk-ant-..."
+The plugin configuration schema is:
+
+```typescript
+{
+  ai: {
+    autoConfigure?: boolean;  // Default: true
+    providers?: Record<string, AIProviderConfig>;
+  }
+}
 ```
 
-**Note**: The `provider` field in `AIProviderConfig` is a discriminator that matches provider names like "anthropic", "openai", "google", and so on (lowercase).
+**Note**: The `provider` field in `AIProviderConfig` is a discriminator that matches provider names like "anthropic", "openai", "google", etc. (lowercase). The top-level keys (like "OpenAI", "Anthropic", "xAi") are display names that can be customized.
 
 ### Integration
 
 The AI Client integrates with the Token Ring ecosystem through:
 
-1. **Service Registry**: Seven model registry services are registered during plugin installation
-2. **RPC Endpoint**: JSON-RPC endpoint at `/rpc/ai-client` for programmatic access
-3. **Agent Integration**: Clients work with Token Ring agents for cost tracking and streaming output
-4. **Metrics Service**: Automatic cost tracking through the MetricsService
+1. **Service Registration**: Seven model registry services are registered during plugin installation
+2. **RPC Endpoint**: JSON-RPC endpoint registered at `/rpc/ai-client` for programmatic access
+3. **Agent Integration**: Seamless integration with Token Ring agent system through services with automatic cost tracking
+4. **Metrics Integration**: Automatic cost tracking and metrics collection
 
 ### Best Practices
 
-1. **Auto-Configure**: Use `autoConfigure: true` for convenience and automatic environment variable detection
-2. **Check Availability**: Always verify models are available using `getAllModelsWithOnlineStatus()` or `getClient()`
+1. **Use Auto-Configuration**: Enable `autoConfigure: true` for convenience and automatic environment variable detection
+2. **Check Availability**: Always verify models are available using `getAllModelsWithOnlineStatus()` before use
 3. **Use Feature Queries**: Leverage query parameters for flexible model selection without creating multiple clients
 4. **Monitor Status**: Check model status before expensive operations to avoid failed requests
 5. **Reuse Clients**: Create client instances once and reuse for multiple requests for better performance
@@ -154,21 +146,23 @@ The AI Client integrates with the Token Ring ecosystem through:
 
 ### Core Components
 
+The package provides seven model registry services and multiple client classes:
+
 #### Model Registries
 
-The package provides seven model registry services, each implementing the `TokenRingService` interface:
-
-- **ChatModelRegistry**: Manages chat model specifications
+- **ChatModelRegistry**: Manages chat model specifications and provides chat completion capabilities
 - **ImageGenerationModelRegistry**: Manages image generation model specifications
 - **VideoGenerationModelRegistry**: Manages video generation model specifications
-- **EmbeddingModelRegistry**: Manages embedding model specifications
+- **EmbeddingModelRegistry**: Manages embedding model specifications for text vectorization
 - **SpeechModelRegistry**: Manages speech synthesis model specifications
 - **TranscriptionModelRegistry**: Manages speech-to-text transcription model specifications
 - **RerankingModelRegistry**: Manages document reranking model specifications
 
 #### Client Classes
 
-- **AIChatClient**: Chat completion and structured output generation
+Accessed through model registries via `getClient()`:
+
+- **AIChatClient**: Chat completion and structured output generation with streaming support
 - **AIEmbeddingClient**: Text vectorization and embeddings
 - **AIImageGenerationClient**: Image generation from text prompts
 - **AIVideoGenerationClient**: Video generation from text or images
@@ -176,12 +170,9 @@ The package provides seven model registry services, each implementing the `Token
 - **AITranscriptionClient**: Audio-to-text transcription
 - **AIRerankingClient**: Document relevance ranking
 
-#### Utilities
-
-- **modelSettings**: Parses and serializes model names with feature settings
-- **resequenceMessages**: Resequences chat messages to maintain proper alternation
-
 ### Services
+
+Each registry implements the `TokenRingService` interface and provides methods for managing model specifications and retrieving clients.
 
 #### ChatModelRegistry
 
@@ -189,14 +180,16 @@ Manages chat model specifications and provides access to chat completion capabil
 
 **Methods:**
 
-| Method | Description |
-|--------|-------------|
-| `registerAllModelSpecs(specs)` | Register multiple chat model specifications |
-| `getModelSpecsByRequirements(nameLike)` | Get models matching a name pattern (e.g., `"openai:gpt-5"` or `"openai:*"`) |
-| `getModelsByProvider()` | Get all registered models grouped by provider |
-| `getAllModelsWithOnlineStatus()` | Get all models with their online status |
-| `getClient(name)` | Get a client instance matching the model name (supports query parameters for features) |
-| `getCheapestModelByRequirements(nameLike, estimatedContextLength)` | Find the cheapest model matching a name pattern |
+- `registerAllModelSpecs(specs)`: Register multiple chat model specifications
+- `getModelSpecsByRequirements(nameLike)`: Get models matching a name pattern (e.g., `"openai:gpt-5"` or `"openai:*"`)
+- `getModelsByProvider()`: Get all registered models grouped by provider (async)
+- `getAllModelsWithOnlineStatus()`: Get all models with their online status (async)
+- `getClient(name)`: Get a client instance matching the model name (supports query parameters for features)
+- `getCheapestModelByRequirements(nameLike, estimatedContextLength)`: Find the cheapest model matching a name pattern
+
+**Note**: The `getModelSpecsByRequirements` method accepts a name pattern string (e.g., `"openai:gpt-5"` or `"openai:*"`) to filter models by name.
+The method returns all models matching the pattern that also support the features specified in the query string
+(e.g., `"openai:gpt-5?websearch=1"`).
 
 **Model Specification:**
 
@@ -204,7 +197,7 @@ Manages chat model specifications and provides access to chat completion capabil
 {
   modelId: string;
   providerDisplayName: string;
-  impl: LanguageModel;
+  impl: ModelImplementation;
   costPerMillionInputTokens: number;
   costPerMillionOutputTokens: number;
   costPerMillionCachedInputTokens?: number;
@@ -212,9 +205,9 @@ Manages chat model specifications and provides access to chat completion capabil
   maxContextLength: number;
   isAvailable(): Promise<boolean>;
   isHot(): Promise<boolean>;
-  mangleRequest?(req: ChatRequest, settings: ChatModelSettings): void;
-  settings?: ChatModelSettings;
-  inputCapabilities?: Partial<ChatModelInputCapabilities>;
+  mangleRequest?(request: unknown): unknown;
+  settings?: FeatureSpecification;
+  inputCapabilities?: InputCapability;
 }
 ```
 
@@ -224,13 +217,11 @@ Manages image generation model specifications.
 
 **Methods:**
 
-| Method | Description |
-|--------|-------------|
-| `registerAllModelSpecs(specs)` | Register image generation model specifications |
-| `getModelSpecsByRequirements(nameLike)` | Get models matching a name pattern |
-| `getModelsByProvider()` | Get all registered models grouped by provider |
-| `getAllModelsWithOnlineStatus()` | Get all models with their online status |
-| `getClient(name)` | Get a client instance matching the model name |
+- `registerAllModelSpecs(specs)`: Register image generation model specifications
+- `getModelSpecsByRequirements(nameLike)`: Get models matching a name pattern
+- `getModelsByProvider()`: Get all registered models grouped by provider
+- `getAllModelsWithOnlineStatus()`: Get all models with their online status
+- `getClient(name)`: Get a client instance matching the model name
 
 #### VideoGenerationModelRegistry
 
@@ -238,13 +229,11 @@ Manages video generation model specifications.
 
 **Methods:**
 
-| Method | Description |
-|--------|-------------|
-| `registerAllModelSpecs(specs)` | Register video generation model specifications |
-| `getModelSpecsByRequirements(nameLike)` | Get models matching a name pattern |
-| `getModelsByProvider()` | Get all registered models grouped by provider |
-| `getAllModelsWithOnlineStatus()` | Get all models with their online status |
-| `getClient(name)` | Get a client instance matching the model name |
+- `registerAllModelSpecs(specs)`: Register video generation model specifications
+- `getModelSpecsByRequirements(nameLike)`: Get models matching a name pattern
+- `getModelsByProvider()`: Get all registered models grouped by provider
+- `getAllModelsWithOnlineStatus()`: Get all models with their online status
+- `getClient(name)`: Get a client instance matching the model name
 
 #### EmbeddingModelRegistry
 
@@ -252,13 +241,11 @@ Manages embedding model specifications for text vectorization.
 
 **Methods:**
 
-| Method | Description |
-|--------|-------------|
-| `registerAllModelSpecs(specs)` | Register embedding model specifications |
-| `getModelSpecsByRequirements(nameLike)` | Get models matching a name pattern |
-| `getModelsByProvider()` | Get all registered models grouped by provider |
-| `getAllModelsWithOnlineStatus()` | Get all models with their online status |
-| `getClient(name)` | Get a client instance matching the model name |
+- `registerAllModelSpecs(specs)`: Register embedding model specifications
+- `getModelSpecsByRequirements(nameLike)`: Get models matching a name pattern
+- `getModelsByProvider()`: Get all registered models grouped by provider
+- `getAllModelsWithOnlineStatus()`: Get all models with their online status
+- `getClient(name)`: Get a client instance matching the model name
 
 #### SpeechModelRegistry
 
@@ -266,13 +253,11 @@ Manages speech synthesis model specifications.
 
 **Methods:**
 
-| Method | Description |
-|--------|-------------|
-| `registerAllModelSpecs(specs)` | Register speech model specifications |
-| `getModelSpecsByRequirements(nameLike)` | Get models matching a name pattern |
-| `getModelsByProvider()` | Get all registered models grouped by provider |
-| `getAllModelsWithOnlineStatus()` | Get all models with their online status |
-| `getClient(name)` | Get a client instance matching the model name |
+- `registerAllModelSpecs(specs)`: Register speech model specifications
+- `getModelSpecsByRequirements(nameLike)`: Get models matching a name pattern
+- `getModelsByProvider()`: Get all registered models grouped by provider
+- `getAllModelsWithOnlineStatus()`: Get all models with their online status
+- `getClient(name)`: Get a client instance matching the model name
 
 #### TranscriptionModelRegistry
 
@@ -280,13 +265,11 @@ Manages speech-to-text transcription model specifications.
 
 **Methods:**
 
-| Method | Description |
-|--------|-------------|
-| `registerAllModelSpecs(specs)` | Register transcription model specifications |
-| `getModelSpecsByRequirements(nameLike)` | Get models matching a name pattern |
-| `getModelsByProvider()` | Get all registered models grouped by provider |
-| `getAllModelsWithOnlineStatus()` | Get all models with their online status |
-| `getClient(name)` | Get a client instance matching the model name |
+- `registerAllModelSpecs(specs)`: Register transcription model specifications
+- `getModelSpecsByRequirements(nameLike)`: Get models matching a name pattern
+- `getModelsByProvider()`: Get all registered models grouped by provider
+- `getAllModelsWithOnlineStatus()`: Get all models with their online status
+- `getClient(name)`: Get a client instance matching the model name
 
 #### RerankingModelRegistry
 
@@ -294,17 +277,15 @@ Manages document reranking model specifications.
 
 **Methods:**
 
-| Method | Description |
-|--------|-------------|
-| `registerAllModelSpecs(specs)` | Register reranking model specifications |
-| `getModelSpecsByRequirements(nameLike)` | Get models matching a name pattern |
-| `getModelsByProvider()` | Get all registered models grouped by provider |
-| `getAllModelsWithOnlineStatus()` | Get all models with their online status |
-| `getClient(name)` | Get a client instance matching the model name |
+- `registerAllModelSpecs(specs)`: Register reranking model specifications
+- `getModelSpecsByRequirements(nameLike)`: Get models matching a name pattern
+- `getModelsByProvider()`: Get all registered models grouped by provider
+- `getAllModelsWithOnlineStatus()`: Get all models with their online status
+- `getClient(name)`: Get a client instance matching the model name
 
 ### Provider Documentation
 
-The package supports the following AI providers:
+The package supports the following AI providers through dedicated integrations. For detailed model information, see the package README.
 
 | Provider | SDK/Model Support | Key Features |
 |----------|-------------------|--------------|
@@ -322,49 +303,61 @@ The package supports the following AI providers:
 | Azure | Azure OpenAI | Enterprise deployment |
 | Ollama | Self-hosted models | Local inference, chat and embedding models |
 | Llama | Meta Llama models (via Meta API) | Remote inference via Meta API |
+| Minimax | Minimax models | Chat and reasoning models |
 | Generic | OpenAI/Anthropic/Responses-compatible | Custom providers, llama.cpp, any compatible API |
 
 ### RPC Endpoints
 
 The AI Client exposes JSON-RPC endpoints for programmatic access via the RPC service. The endpoint is registered under the path `/rpc/ai-client`.
 
-#### Available Endpoints
+#### Available Methods
 
-| Method | Request Params | Response Params | Purpose |
-|--------|----------------|-----------------|---------|
-| `listChatModels` | `{}` | `{ models: {...} }` | Get all available chat models with their status |
-| `listChatModelsByProvider` | `{}` | `{ modelsByProvider: {...} }` | Get chat models grouped by provider |
-| `listEmbeddingModels` | `{}` | `{ models: {...} }` | Get all available embedding models |
-| `listEmbeddingModelsByProvider` | `{}` | `{ modelsByProvider: {...} }` | Get embedding models grouped by provider |
-| `listImageGenerationModels` | `{}` | `{ models: {...} }` | Get all available image generation models |
-| `listImageGenerationModelsByProvider` | `{}` | `{ modelsByProvider: {...} }` | Get image generation models grouped by provider |
-| `listVideoGenerationModels` | `{}` | `{ models: {...} }` | Get all available video generation models |
-| `listVideoGenerationModelsByProvider` | `{}` | `{ modelsByProvider: {...} }` | Get video generation models grouped by provider |
-| `listSpeechModels` | `{}` | `{ models: {...} }` | Get all available speech models |
-| `listSpeechModelsByProvider` | `{}` | `{ modelsByProvider: {...} }` | Get speech models grouped by provider |
-| `listTranscriptionModels` | `{}` | `{ models: {...} }` | Get all available transcription models |
-| `listTranscriptionModelsByProvider` | `{}` | `{ modelsByProvider: {...} }` | Get transcription models grouped by provider |
-| `listRerankingModels` | `{}` | `{ models: {...} }` | Get all available reranking models |
-| `listRerankingModelsByProvider` | `{}` | `{ modelsByProvider: {...} }` | Get reranking models grouped by provider |
+| Method | Input | Output | Description |
+|--------|-------|--------|-------------|
+| `listChatModels` | `{}` | `{ models: Record<string, ModelStatus> }` | Get all available chat models with their status |
+| `listChatModelsByProvider` | `{}` | `{ modelsByProvider: Record<string, Record<string, ModelStatus>> }` | Get chat models grouped by provider |
+| `listEmbeddingModels` | `{}` | `{ models: Record<string, ModelStatus> }` | Get all available embedding models |
+| `listEmbeddingModelsByProvider` | `{}` | `{ modelsByProvider: Record<string, Record<string, ModelStatus>> }` | Get embedding models grouped by provider |
+| `listImageGenerationModels` | `{}` | `{ models: Record<string, ModelStatus> }` | Get all available image generation models |
+| `listImageGenerationModelsByProvider` | `{}` | `{ modelsByProvider: Record<string, Record<string, ModelStatus>> }` | Get image generation models grouped by provider |
+| `listVideoGenerationModels` | `{}` | `{ models: Record<string, ModelStatus> }` | Get all available video generation models |
+| `listVideoGenerationModelsByProvider` | `{}` | `{ modelsByProvider: Record<string, Record<string, ModelStatus>> }` | Get video generation models grouped by provider |
+| `listSpeechModels` | `{}` | `{ models: Record<string, ModelStatus> }` | Get all available speech models |
+| `listSpeechModelsByProvider` | `{}` | `{ modelsByProvider: Record<string, Record<string, ModelStatus>> }` | Get speech models grouped by provider |
+| `listTranscriptionModels` | `{}` | `{ models: Record<string, ModelStatus> }` | Get all available transcription models |
+| `listTranscriptionModelsByProvider` | `{}` | `{ modelsByProvider: Record<string, Record<string, ModelStatus>> }` | Get transcription models grouped by provider |
+| `listRerankingModels` | `{}` | `{ models: Record<string, ModelStatus> }` | Get all available reranking models |
+| `listRerankingModelsByProvider` | `{}` | `{ modelsByProvider: Record<string, Record<string, ModelStatus>> }` | Get reranking models grouped by provider |
 
-**Response Structure:**
+#### Model Status Structure
 
 ```typescript
 {
-  models: {
-    "provider:model": {
-      status: "online" | "cold" | "offline",
-      available: boolean,
-      hot: boolean,
-      modelSpec: ModelSpec
-    }
-  }
+  status: "online" | "cold" | "offline";
+  available: boolean;
+  hot: boolean;
+  modelSpec: ModelSpec;
 }
 ```
 
 ### Usage Examples
 
-#### Direct Client Creation
+#### Basic Plugin Configuration
+
+```typescript
+import TokenRingApp from "@tokenring-ai/app";
+import aiClientPlugin from "@tokenring-ai/ai-client";
+
+const app = new TokenRingApp();
+
+app.addPlugin(aiClientPlugin, {
+  ai: {
+    autoConfigure: true
+  }
+});
+```
+
+#### Using Model Registries
 
 ```typescript
 import TokenRingApp from "@tokenring-ai/app";
@@ -378,56 +371,36 @@ app.addPlugin(aiClientPlugin, {
   }
 });
 
-// Wait for services to be registered
-await app.waitForService('ChatModelRegistry', chatRegistry => {
+// Chat models
+await app.waitForService('ChatModelRegistry', async chatRegistry => {
   // Get models matching requirements
-  const models = chatRegistry.getModelSpecsByRequirements({
-    nameLike: "gpt-5"
-  });
-
-  // Get all models with online status
-  const allModels = await chatRegistry.getAllModelsWithOnlineStatus();
-
-  // Get models by provider
-  const byProvider = await chatRegistry.getModelsByProvider();
+  const models = chatRegistry.getModelSpecsByRequirements("gpt-5");
 
   // Get a client
-  const client = await chatRegistry.getClient("openai:gpt-5");
+  const client = chatRegistry.getClient("openai:gpt-5");
 
   // Use the client
   const [text, response] = await client.textChat(
     {
       messages: [
         { role: "user", content: "Hello" }
-      ]
+      ],
+      tools: {}
     },
     agent
   );
 
-  console.log(text); // "Hi there!"
-});
-```
-
-#### Using Model Registries
-
-```typescript
-// Chat models
-await app.waitForService('ChatModelRegistry', chatRegistry => {
-  const client = chatRegistry.getClient("openai:gpt-5");
-  const [text, response] = await client.textChat(
-    { messages: [{ role: "user", content: "Hello" }] },
-    agent
-  );
+  console.log(text);
 });
 
 // Embedding models
-await app.waitForService('EmbeddingModelRegistry', embeddingRegistry => {
+await app.waitForService('EmbeddingModelRegistry', async embeddingRegistry => {
   const client = embeddingRegistry.getClient("openai:text-embedding-3-small");
-  const embeddings = await client.getEmbeddings(["your text here"]);
+  const embeddings = await client.getEmbeddings({ input: ["your text here"] });
 });
 
 // Image generation
-await app.waitForService('ImageGenerationModelRegistry', imageRegistry => {
+await app.waitForService('ImageGenerationModelRegistry', async imageRegistry => {
   const client = imageRegistry.getClient("openai:gpt-image-1-high");
   const [image, result] = await client.generateImage({
     prompt: "A beautiful sunset over the ocean",
@@ -436,8 +409,18 @@ await app.waitForService('ImageGenerationModelRegistry', imageRegistry => {
   }, agent);
 });
 
+// Video generation
+await app.waitForService('VideoGenerationModelRegistry', async videoRegistry => {
+  const client = videoRegistry.getClient("xai:grok-imagine-video");
+  const [video, result] = await client.generateVideo({
+    prompt: "A beautiful sunset over the ocean",
+    aspectRatio: "16:9",
+    duration: 5
+  }, agent);
+});
+
 // Speech synthesis
-await app.waitForService('SpeechModelRegistry', speechRegistry => {
+await app.waitForService('SpeechModelRegistry', async speechRegistry => {
   const client = speechRegistry.getClient("openai:tts-1");
   const [audio, result] = await client.generateSpeech({
     text: "Hello, world!",
@@ -447,7 +430,7 @@ await app.waitForService('SpeechModelRegistry', speechRegistry => {
 });
 
 // Transcription
-await app.waitForService('TranscriptionModelRegistry', transcriptionRegistry => {
+await app.waitForService('TranscriptionModelRegistry', async transcriptionRegistry => {
   const client = transcriptionRegistry.getClient("openai:whisper-1");
   const [text, result] = await client.transcribe({
     audio: audioFile
@@ -474,23 +457,43 @@ chatRegistry.registerAllModelSpecs([
     }
   }
 ]);
+
+// Get a client for the custom model
+const client = chatRegistry.getClient("CustomProvider:custom-model");
 ```
 
 #### Using Feature Queries
 
 ```typescript
 // Get model with specific configuration
-const client = await chatRegistry.getClient("openai:gpt-5?websearch=1");
+const client = chatRegistry.getClient("openai:gpt-5?websearch=1");
 
 // Use the client
 const [result, response] = await client.textChat(
   {
     messages: [
       { role: "user", content: "Search the web for the latest AI news" }
-    ]
+    ],
+    tools: {}
   },
   agent
 );
+```
+
+#### Using Feature System
+
+```typescript
+// Get model with multiple features
+const client = chatRegistry.getClient("openai:gpt-5?websearch=1&reasoningEffort=high");
+
+// Set features on client instance
+client.setSettings(new Map([
+  ["websearch", true],
+  ["reasoningEffort", "high"]
+]));
+
+// Get current features
+const features = client.getSettings();
 ```
 
 ### Testing
@@ -510,48 +513,60 @@ bun run test:coverage
 
 #### Runtime Dependencies
 
-| Package | Version | Purpose |
-|---------|---------|---------|
-| `@tokenring-ai/app` | 0.2.0 | Base application framework |
-| `@tokenring-ai/agent` | 0.2.0 | Agent framework |
-| `@tokenring-ai/rpc` | 0.2.0 | RPC service |
-| `@tokenring-ai/utility` | 0.2.0 | Shared utilities |
-| `@tokenring-ai/metrics` | 0.2.0 | Metrics service |
-| `ai` | ^6.0.149 | Vercel AI SDK |
-| `zod` | ^4.3.6 | Schema validation |
+- `@tokenring-ai/app`: 0.2.0
+- `@tokenring-ai/agent`: 0.2.0
+- `@tokenring-ai/rpc`: 0.2.0
+- `@tokenring-ai/utility`: 0.2.0
+- `@tokenring-ai/metrics`: 0.2.0
+- `ai`: ^6.0.149
+- `zod`: ^4.3.6
+- `@ai-sdk/anthropic`: ^3.0.67
+- `@ai-sdk/azure`: ^3.0.52
+- `@ai-sdk/cerebras`: ^2.0.44
+- `@ai-sdk/deepseek`: ^2.0.28
+- `@ai-sdk/elevenlabs`: ^2.0.28
+- `@ai-sdk/fal`: ^2.0.29
+- `@ai-sdk/google`: ^3.0.59
+- `@ai-sdk/groq`: ^3.0.34
+- `@ai-sdk/openai`: ^3.0.51
+- `@ai-sdk/openai-compatible`: ^2.0.40
+- `@ai-sdk/open-responses`: ^1.0.10
+- `@ai-sdk/provider`: ^3.0.8
+- `@ai-sdk/perplexity`: ^3.0.28
+- `@ai-sdk/xai`: ^3.0.79
+- `@openrouter/ai-sdk-provider`: ^2.4.3
+- `ollama-ai-provider-v2`: ^3.5.0
 
-#### AI SDK Dependencies
+#### Development Dependencies
 
-| Package | Purpose |
-|---------|---------|
-| `@ai-sdk/anthropic` | Anthropic Claude models |
-| `@ai-sdk/azure` | Azure OpenAI |
-| `@ai-sdk/cerebras` | Cerebras models |
-| `@ai-sdk/deepseek` | DeepSeek models |
-| `@ai-sdk/elevenlabs` | ElevenLabs speech/transcription |
-| `@ai-sdk/fal` | Fal image generation |
-| `@ai-sdk/google` | Google Gemini/Imagen |
-| `@ai-sdk/groq` | Groq inference |
-| `@ai-sdk/openai` | OpenAI GPT/Whisper/TTS |
-| `@ai-sdk/openai-compatible` | OpenAI-compatible APIs |
-| `@ai-sdk/open-responses` | OpenAI Responses API |
-| `@ai-sdk/perplexity` | Perplexity models |
-| `@ai-sdk/xai` | xAI Grok models |
-| `@openrouter/ai-sdk-provider` | OpenRouter aggregation |
-| `ollama-ai-provider-v2` | Ollama local models |
+- `typescript`: ^6.0.2
+- `vitest`: ^4.1.1
 
-#### Package Information
+### RPC Usage Example
 
-- **Version**: 0.2.0
-- **License**: MIT
+```typescript
+import { RpcService } from "@tokenring-ai/rpc";
+
+const rpcService = app.requireService(RpcService);
+
+// List all chat models
+const chatModels = await rpcService.call("listChatModels", {});
+
+// Get models by provider
+const modelsByProvider = await rpcService.call("listChatModelsByProvider", {});
+
+// List video generation models
+const videoModels = await rpcService.call("listVideoGenerationModels", {});
+
+// List embedding models
+const embeddingModels = await rpcService.call("listEmbeddingModels", {});
+```
 
 ### Related Components
 
-- **@tokenring-ai/app**: Base application framework with service and plugin system
-- **@tokenring-ai/agent**: Agent framework for tool execution
-- **@tokenring-ai/rpc**: RPC service for programmatic access
-- **@tokenring-ai/utility**: Shared utilities and registry functionality
-- **@tokenring-ai/metrics**: Metrics service for cost tracking
+- **@tokenring-ai/agent**: Agent system that integrates with AI Client services
+- **@tokenring-ai/rpc**: RPC service for remote procedure calls
+- **@tokenring-ai/app**: Core Token Ring application framework
 
 ## License
 

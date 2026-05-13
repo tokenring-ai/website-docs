@@ -50,7 +50,7 @@ const chatService = new ChatService(app, options);
 | Parameter | Type | Description |
 |-----------|------|-------------|
 | `app` | TokenRingApp | The application instance |
-| `options` | `z.output&lt;typeof ChatServiceConfigSchema&gt;` | Configuration options |
+| `options` | `z.output<typeof ChatServiceConfigSchema>` | Configuration options |
 
 #### Properties
 
@@ -85,7 +85,7 @@ const chatService = new ChatService(app, options);
 | Method | Description |
 |--------|-------------|
 | `getChatConfig(agent: Agent): ParsedChatConfig` | Get current chat configuration |
-| `updateChatConfig(aiConfig: Partial&lt;ParsedChatConfig&gt;, agent: Agent): void` | Update configuration with partial updates |
+| `updateChatConfig(aiConfig: Partial<ParsedChatConfig>, agent: Agent): void` | Update configuration with partial updates |
 
 ##### Message History Management
 
@@ -94,14 +94,14 @@ const chatService = new ChatService(app, options);
 | `getChatMessages(agent: Agent): StoredChatMessage[]` | Get all chat messages |
 | `getLastMessage(agent: Agent): StoredChatMessage \| null` | Get the last message or null |
 | `pushChatMessage(message: StoredChatMessage, agent: Agent): void` | Add a message to history |
-| `clearChatMessages(agent: Agent): void` | Clear all messages |
+| `clearChatMessages(agent: Agent): Promise<void>` | Clear all messages |
 | `popMessage(agent: Agent): void` | Remove the last message (undo) |
 
 ##### Tool Management
 
 | Method | Description |
 |--------|-------------|
-| `addTools(tools: Record&lt;string, TokenRingToolDefinition<any&gt;>)` | Register tools from a package |
+| `addTools(...tools: TokenRingToolDefinition<any>[])` | Register one or more tools |
 | `getAvailableToolNames(): string[]` | Get all available tool names |
 | `getAvailableToolEntries()` | Get all available tool definitions as entries |
 | `getToolNamesLike(pattern: string): string[]` | Get tool names matching a pattern |
@@ -121,13 +121,13 @@ const chatService = new ChatService(app, options);
 | `getContextHandlerByName(name: string): ContextHandler \| undefined` | Get a context handler by name |
 | `requireContextHandlerByName(name: string): ContextHandler` | Get a context handler or throw an error |
 | `registerContextHandler(name: string, handler: ContextHandler): void` | Register a single context handler |
-| `registerContextHandlers(handlers: Record&lt;string, ContextHandler&gt;): void` | Register multiple context handlers |
+| `registerContextHandlers(handlers: Record<string, ContextHandler>): void` | Register multiple context handlers |
 
 ##### Message Building
 
 | Method | Description |
 |--------|-------------|
-| `buildChatMessages(options: BuildChatMessagesOptions): Promise&lt;ContextItem[]&gt;` | Build chat request messages from context handlers |
+| `buildChatMessages(options: BuildChatMessagesOptions): Promise<ContextItem[]>` | Build chat request messages from context handlers |
 
 ##### Compaction Management
 
@@ -137,8 +137,8 @@ const chatService = new ChatService(app, options);
 | `hasPendingCompaction(agent: Agent): boolean` | Check if there is pending compaction |
 | `isCompactionInProgress(agent: Agent): boolean` | Check if compaction is currently in progress |
 | `applyPendingCompaction(agent: Agent): boolean` | Apply pending compaction to current message |
-| `stageContextCompaction(compactionConfig, agent: Agent): Promise&lt;boolean&gt;` | Stage a compaction for later application |
-| `compactContext(compactionConfig, agent: Agent): Promise&lt;void&gt;` | Perform immediate context compaction |
+| `stageContextCompaction(compactionConfig, agent: Agent): Promise<boolean>` | Stage a compaction for later application |
+| `compactContext(compactionConfig, agent: Agent): Promise<void>` | Perform immediate context compaction |
 
 ### ChatServiceState
 
@@ -149,7 +149,6 @@ The state management class that tracks chat state for each agent:
 - `messages`: Array of chat messages with timestamps
 - `parallelTools`: Boolean flag for parallel/sequential tool execution mode
 - `toolQueue`: Async queue for sequential tool execution
-- `initialConfig`: Initial configuration for reset operations
 - `pendingCompaction`: Staged compaction waiting to be applied
 - `compactionInProgress`: Flag indicating if compaction is currently running
 
@@ -197,7 +196,6 @@ const response = await runChat({
 - Message history management
 - Integration with agent lifecycle hooks
 - Hook execution via `AfterChatCompletion` event
-- Auto-activation of tools with `autoActivate` flag
 
 ## Context Handlers
 
@@ -223,7 +221,7 @@ The package provides the following chat commands:
 
 ### /chat - Send messages and manage chat AI settings
 
-#### /chat send &lt;message&gt;
+#### /chat send <message>
 
 Send a message to the AI chat service. This is the primary command for communicating with the AI, using your selected model and current context.
 
@@ -255,7 +253,7 @@ Display all context items that would be included in a chat request. Useful for d
 
 **Note:** Context display shows the exact data sent to the AI model.
 
-#### /chat compact [&lt;focus&gt;]
+#### /chat compact [<focus>]
 
 Compress the conversation context by creating intelligent summaries of prior messages.
 
@@ -320,7 +318,7 @@ Show the currently active chat model.
 /model get
 ```
 
-#### /model set &lt;model_name&gt;
+#### /model set <model_name>
 
 Set the chat model to a specific model by name.
 
@@ -359,7 +357,7 @@ Show the currently enabled feature flags and all available settings for the curr
 - Enabled settings/feature flags
 - Available settings for the current model
 
-#### /model settings set &lt;key[=value]&gt;
+#### /model settings set <key[=value]>
 
 Set a single model feature flag.
 
@@ -369,7 +367,7 @@ Set a single model feature flag.
 /model settings set temperature=0.7
 ```
 
-#### /model settings enable &lt;key[=value]&gt; ...
+#### /model settings enable <key[=value]> ...
 
 Enable one or more model feature flags.
 
@@ -379,7 +377,7 @@ Enable one or more model feature flags.
 /model settings enable websearch temperature=0.7
 ```
 
-#### /model settings disable &lt;key&gt; ...
+#### /model settings disable <key> ...
 
 Disable one or more model feature flags.
 
@@ -422,7 +420,7 @@ List all currently enabled tools.
 /tools list
 ```
 
-#### /tools enable &lt;tool1&gt; [tool2...]
+#### /tools enable <tool1> [tool2...]
 
 Enable one or more tools by name. Supports wildcard patterns.
 
@@ -432,7 +430,7 @@ Enable one or more tools by name. Supports wildcard patterns.
 /tools enable web-search calculator
 ```
 
-#### /tools disable &lt;tool1&gt; [tool2...]
+#### /tools disable <tool1> [tool2...]
 
 Disable one or more tools by name. Supports wildcard patterns.
 
@@ -442,7 +440,7 @@ Disable one or more tools by name. Supports wildcard patterns.
 /tools disable web-search calculator
 ```
 
-#### /tools set &lt;tool1&gt; [tool2...]
+#### /tools set <tool1> [tool2...]
 
 Set exactly which tools are enabled, replacing the current selection. Supports wildcard patterns.
 
@@ -460,7 +458,7 @@ Open an interactive tree-based selector to choose which tools to enable. Tools a
 /tools select
 ```
 
-#### /tools hide &lt;tool1&gt; [tool2...]
+#### /tools hide <tool1> [tool2...]
 
 Hide one or more tools by name, requiring the model to search for the tool to activate it before use. Saves context tokens; useful for agents that need access to large numbers of tools.
 
@@ -470,7 +468,7 @@ Hide one or more tools by name, requiring the model to search for the tool to ac
 /tools hide web-search calculator
 ```
 
-### /compact [&lt;focus&gt;]
+### /compact [<focus>]
 
 Alias for `/chat compact` - Compress the conversation context by creating intelligent summaries of prior messages.
 
@@ -538,14 +536,14 @@ The chat package provides RPC endpoints for remote chat management:
 | Endpoint | Type | Request | Response |
 |----------|------|---------|----------|
 | `getAvailableTools` | Query | `{}` | `{ tools: { [toolName]: { displayName: string } } }` |
-| `getModel` | Query | `{ agentId: string }` | `{ model: string \| null }` |
-| `setModel` | Mutation | `{ agentId: string, model: string }` | `{ success: boolean }` |
-| `getEnabledTools` | Query | `{ agentId: string }` | `{ tools: string[] }` |
-| `setEnabledTools` | Mutation | `{ agentId: string, tools: string[] }` | `{ tools: string[] }` |
-| `enableTools` | Mutation | `{ agentId: string, tools: string[] }` | `{ tools: string[] }` |
-| `disableTools` | Mutation | `{ agentId: string, tools: string[] }` | `{ tools: string[] }` |
-| `getChatMessages` | Query | `{ agentId: string }` | `{ messages: StoredChatMessage[] }` |
-| `clearChatMessages` | Mutation | `{ agentId: string }` | `{ success: boolean }` |
+| `getModel` | Query | `{ agentId: string }` | `{ status: "success", model: string \| null }` \| `{ status: "agentNotFound" }` |
+| `setModel` | Mutation | `{ agentId: string, model: string }` | `{ status: "success", success: boolean }` \| `{ status: "agentNotFound" }` |
+| `getEnabledTools` | Query | `{ agentId: string }` | `{ status: "success", tools: string[] }` \| `{ status: "agentNotFound" }` |
+| `setEnabledTools` | Mutation | `{ agentId: string, tools: string[] }` | `{ status: "success", tools: string[] }` \| `{ status: "agentNotFound" }` |
+| `enableTools` | Mutation | `{ agentId: string, tools: string[] }` | `{ status: "success", tools: string[] }` \| `{ status: "agentNotFound" }` |
+| `disableTools` | Mutation | `{ agentId: string, tools: string[] }` | `{ status: "success", tools: string[] }` \| `{ status: "agentNotFound" }` |
+| `getChatMessages` | Query | `{ agentId: string }` | `{ status: "success", messages: StoredChatMessage[] }` \| `{ status: "agentNotFound" }` |
+| `clearChatMessages` | Mutation | `{ agentId: string }` | `{ status: "success", success: boolean }` \| `{ status: "agentNotFound" }` |
 
 ## Configuration
 
@@ -685,8 +683,6 @@ The chat service maintains state including:
 - **Hidden tools**: List of hidden tools (available but not visible to model)
 - **Tool execution queue**: Sequential tool execution with async queue
 - **Parallel tools mode**: Optional parallel tool execution
-- **Message stack**: Stack of messages for undo operations
-- **Initial configuration**: For reset operations
 - **Pending compaction**: Staged compaction waiting to be applied
 - **Compaction in progress flag**: Indicates if compaction is currently running
 
@@ -717,7 +713,6 @@ State is automatically managed and preserved across sessions through the `ChatSe
   messages: StoredChatMessage[],
   parallelTools: boolean,
   toolQueue: async.queue,
-  initialConfig: ParsedChatConfig,
   pendingCompaction: StoredChatCompaction \| null,
   compactionInProgress: boolean
 }
@@ -918,18 +913,17 @@ import {z} from "zod";
 
 const chatService = agent.requireServiceByType(ChatService);
 
+// Register tools from a package
 chatService.addTools({
-  "my-tool": {
-    name: "my-tool",
-    displayName: "My Tool",
-    description: "Does something useful",
-    inputSchema: z.object({
-      param: z.string()
-    }),
-    async execute(input, agent) {
-      // Tool implementation
-      return "result";
-    }
+  name: "my-tool",
+  displayName: "My Tool",
+  description: "Does something useful",
+  inputSchema: z.object({
+    param: z.string()
+  }),
+  async execute(input, agent) {
+    // Tool implementation
+    return "result";
   }
 });
 ```
@@ -1035,7 +1029,7 @@ const allMessages = chatService.getChatMessages(agent);
 const lastMessage = chatService.getLastMessage(agent);
 
 // Clear all messages
-chatService.clearChatMessages(agent);
+await chatService.clearChatMessages(agent);
 
 // Undo last message (remove from history)
 chatService.popMessage(agent);
@@ -1116,16 +1110,14 @@ const chatService = agent.requireServiceByType(ChatService);
 
 // Register tools from a package
 chatService.addTools({
-  "my-tool": {
-    name: "my-tool",
-    displayName: "My Tool",
-    description: "Does something useful",
-    inputSchema: z.object({
-      param: z.string()
-    }),
-    async execute(input, agent) {
-      return `Processed: ${input.param}`;
-    }
+  name: "my-tool",
+  displayName: "My Tool",
+  description: "Does something useful",
+  inputSchema: z.object({
+    param: z.string()
+  }),
+  async execute(input, agent) {
+    return `Processed: ${input.param}`;
   }
 });
 ```
@@ -1419,9 +1411,8 @@ pkg/chat/
 
 ### Development Dependencies
 
-- `@vitest/coverage-v8` (^4.1.0) - Test coverage
-- `typescript` (^5.9.3) - TypeScript compiler
-- `vitest` (^4.1.0) - Testing framework
+- `typescript` (^6.0.2) - TypeScript compiler
+- `vitest` (^4.1.1) - Testing framework
 
 ## Related Components
 

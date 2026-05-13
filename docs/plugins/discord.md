@@ -19,190 +19,6 @@ The discord package integrates seamlessly with the Token Ring agent framework, p
 - **Authorization controls**: Per-channel and per-user access restrictions
 - **Join announcements**: Optional welcome messages when bots join channels
 
-## Core Components
-
-### DiscordService
-
-The main service that manages multiple Discord bot instances.
-
-**Class**: `DiscordService implements TokenRingService`
-
-**Properties**:
-- `name: string` - Service name ("DiscordService")
-- `description: string` - Service description ("Manages multiple Discord bots for interacting with TokenRing agents.")
-
-**Methods**:
-- `getAvailableBots(): string[]` - Returns array of registered bot names
-- `getBot(botName: string): DiscordBot | undefined` - Returns a specific bot instance
-- `run(signal: AbortSignal): Promise<void>` - Starts all configured bots and handles shutdown
-
-**Constructor**:
-```typescript
-constructor(app: TokenRingApp, options: ParsedDiscordServiceConfig)
-```
-
-**Internal Implementation**:
-- Uses `KeyedRegistry` to manage multiple `DiscordBot` instances
-- Starts all configured bots on initialization
-- Handles graceful shutdown by stopping all bots and cleaning up resources
-
-### DiscordBot
-
-Handles individual bot operations including message processing, agent management, and communication.
-
-**Class**: `DiscordBot`
-
-**Methods**:
-- `start(): Promise<void>` - Initializes and starts the Discord bot
-- `stop(): Promise<void>` - Stops the bot and cleans up resources
-- `getBotUserId(): string | undefined` - Returns the Discord user ID of the bot
-- `createCommunicationChannelWithChannel(channelName: string): CommunicationChannel` - Creates a communication channel for escalation
-- `createCommunicationChannelWithUser(userId: string): CommunicationChannel` - Creates a DM communication channel
-
-**Internal Methods**:
-- `handleMessage(message: Message): Promise<void>` - Processes incoming Discord messages
-- `handleDirectMessage(message: Message, userId: string, channelId: string, text: string): Promise<void>` - Handles DM messages
-- `extractAllAttachments(message: Message): Promise<InputAttachment[]>` - Downloads and processes file attachments
-- `ensureAgentForChannel(channelId: string, agentType: string): Promise<Agent>` - Ensures an agent exists for a channel
-- `flushBuffer(channelId: string): Promise<void>` - Sends buffered messages to Discord
-- `sendMessage(channelId: string, text: string): Promise<string>` - Sends a message to a channel
-- `updateMessageWithFallback(channelId: string, messageId: string, text: string): Promise<string>` - Updates a message with fallback to new message
-- `agentEventLoop(channelId: string, agent: Agent, signal: AbortSignal): Promise<void>` - Processes agent events for a channel
-
-**Key Features**:
-- **Message buffering**: Accumulates agent output and sends in chunks
-- **Rate limiting**: 250ms delay between messages to respect Discord limits
-- **Message editing**: Attempts to update existing messages before creating new ones
-- **Reply tracking**: Tracks user replies to enable escalation workflows
-- **Attachment processing**: Downloads and converts attachments to base64 for agent processing
-
-### DiscordEscalationProvider
-
-Integration with the escalation system for admin communications via Discord.
-
-**Class**: `DiscordEscalationProvider implements EscalationProvider`
-
-**Constructor**:
-```typescript
-constructor(config: ParsedDiscordEscalationProviderConfig)
-```
-
-**Methods**:
-- `createCommunicationChannelWithUser(channelName: string, agent: Agent): Promise<CommunicationChannel>` - Creates a communication channel for escalation
-
-**Implementation**:
-- Retrieves the configured bot from `DiscordService`
-- Creates a communication channel for the specified channel configuration
-- Enables escalation workflows through Discord
-
-### splitIntoChunks
-
-Utility function for splitting long messages into Discord-compatible chunks.
-
-**Function**: `splitIntoChunks(text: string | null): string[]`
-
-**Parameters**:
-- `text: string | null` - The text to split
-
-**Returns**: Array of message chunks (max 1990 characters each)
-
-**Behavior**:
-- Splits text at markdown headers (`#`) when possible for better formatting
-- Falls back to character-based splitting at 1990 character limit
-- Returns working messages for null input (e.g., "Working...", "Processing...")
-
-### Types
-
-#### MessageCapableChannel
-
-Type definition for Discord text channels that support message operations.
-
-```typescript
-type MessageCapableChannel = TextBasedChannel & {
-  send: (content: string) => Promise<Message>;
-  messages: {
-    fetch: (id: string) => Promise<Message>;
-  };
-};
-```
-
-#### ChatResponse
-
-Type for tracking chat response state per channel.
-
-```typescript
-type ChatResponse = {
-  text: string | null;
-  messageIds: (string | undefined)[];
-  sentTexts: string[];
-  isComplete?: boolean;
-};
-```
-
-#### UserChannel
-
-Type for tracking user communication channels for escalation.
-
-```typescript
-type UserChannel = {
-  destinationId: string;
-  trackedMessageIds: Set<string>;
-  queue: string[];
-  resolve?: (value: IteratorResult<string>) => void;
-  closed: boolean;
-};
-```
-
-## Services
-
-### DiscordService
-
-The primary service that manages Discord bot operations.
-
-**Service Type**: `TokenRingService`
-
-**Registration**: Automatically registered when the plugin is installed with Discord configuration.
-
-**Lifecycle**:
-1. **Initialization**: Creates `DiscordBot` instances for each configured bot
-2. **Startup**: Logs in all bots and begins message processing
-3. **Runtime**: Handles messages, manages agents, processes events
-4. **Shutdown**: Flushes buffers, cleans up agents, disconnects bots
-
-**State Management**:
-- Maintains `KeyedRegistry` of bot instances
-- Each bot manages its own channel agents, chat responses, and user channels
-
-## Provider Documentation
-
-### DiscordEscalationProvider
-
-The package provides a built-in escalation provider for Discord-based admin communications.
-
-**Provider Interface**: `EscalationProvider`
-
-**Configuration Schema**:
-```typescript
-export const DiscordEscalationProviderConfigSchema = z.object({
-  type: z.literal('discord'),
-  bot: z.string(),
-  channel: z.string(),
-});
-```
-
-**Provider Registration**:
-- Registered automatically when escalation configuration includes providers with `type: "discord"`
-- Can also be registered programmatically with `EscalationService.registerProvider()`
-
-**Usage**:
-- Creates communication channels for escalation workflows
-- Routes escalation messages to specified Discord channels
-- Supports both guild channels and direct messages
-
-## RPC Endpoints
-
-This package does not expose RPC endpoints. Communication is handled through Discord's native messaging system and the escalation service's communication channel interface.
-
 ## Chat Commands
 
 The Discord plugin does not define traditional slash commands. Instead, it processes messages through Discord's native messaging:
@@ -210,33 +26,58 @@ The Discord plugin does not define traditional slash commands. Instead, it proce
 ### Message Processing
 
 **Guild Channel Messages**:
+
 - Bot must be mentioned to trigger processing (e.g., `@BotName what is the weather?`)
 - Mention is stripped from the message content
 - Message is sent to the channel's agent
 
 **Direct Messages**:
+
 - Any message to the bot is processed (if DMs are enabled)
 - No mention required
 
 **Reply Messages**:
+
 - Replies to bot messages are tracked for escalation workflows
 - Reply content is sent back to the agent as user input
 
 ### Authorization
 
 **Channel Authorization**:
+
 - `allowedUsers: string[]` - Empty array allows all users
 - Non-empty array restricts to specified user IDs
 - Unauthorized users receive "Sorry, you are not authorized."
 
 **DM Authorization**:
+
 - `dmAllowedUsers: string[]` - Empty array allows all users (if `dmAgentType` is set)
 - Non-empty array restricts to specified user IDs
 - Unauthorized users receive "Sorry, you are not authorized to DM this bot."
 
+## Tools
+
+The Discord package does not define MCP tools. Communication is handled through Discord's native messaging system.
+
 ## Configuration
 
 ### Configuration Schemas
+
+#### DiscordEscalationBotConfigSchema
+
+Configuration for escalation settings within a bot.
+
+```typescript
+export const DiscordEscalationBotConfigSchema = z.object({
+  channel: z.string(),
+});
+```
+
+**Properties**:
+
+| Property  | Type     | Required | Description                        |
+|-----------|----------|----------|------------------------------------|
+| `channel` | string   | Yes      | Name of the channel for escalation |
 
 #### DiscordBotConfigSchema
 
@@ -246,29 +87,31 @@ Configuration for a single Discord bot instance.
 export const DiscordBotConfigSchema = z.object({
   name: z.string(),
   botToken: z.string().min(1, "Bot token is required"),
-  joinMessage: z.string().optional(),
+  joinMessage: z.string().exactOptional(),
   maxFileSize: z.number().default(20_971_520),
   channels: z.record(z.string(), z.object({
     channelId: z.string(),
     allowedUsers: z.array(z.string()).default([]),
     agentType: z.string(),
   })),
-  dmAgentType: z.string().optional(),
+  dmAgentType: z.string().exactOptional(),
   dmAllowedUsers: z.array(z.string()).default([]),
+  escalation: DiscordEscalationBotConfigSchema.exactOptional(),
 });
 ```
 
 **Properties**:
 
-| Property | Type | Required | Default | Description |
-|----------|------|----------|---------|-------------|
-| `name` | string | Yes | - | Display name for the bot |
-| `botToken` | string | Yes | - | Discord bot token |
-| `joinMessage` | string | No | - | Message sent when bot joins a channel |
-| `maxFileSize` | number | No | 20971520 (20MB) | Maximum attachment size in bytes |
-| `channels` | Record | Yes | - | Channel configurations |
-| `dmAgentType` | string | No | - | Agent type for DM interactions |
-| `dmAllowedUsers` | string[] | No | [] | Authorized user IDs for DMs |
+| Property         | Type     | Required | Default         | Description                           |
+|------------------|----------|----------|-----------------|---------------------------------------|
+| `name`           | string   | Yes      | -               | Display name for the bot              |
+| `botToken`       | string   | Yes      | -               | Discord bot token                     |
+| `joinMessage`    | string   | No       | -               | Message sent when bot joins a channel |
+| `maxFileSize`    | number   | No       | 20971520 (20MB) | Maximum attachment size in bytes      |
+| `channels`       | Record   | Yes      | -               | Channel configurations                |
+| `dmAgentType`    | string   | No       | -               | Agent type for DM interactions        |
+| `dmAllowedUsers` | string[] | No       | []              | Authorized user IDs for DMs           |
+| `escalation`     | Object   | No       | -               | Escalation configuration              |
 
 #### Channel Configuration
 
@@ -284,11 +127,11 @@ Each channel in the `channels` record:
 
 **Properties**:
 
-| Property | Type | Required | Default | Description |
-|----------|------|----------|---------|-------------|
-| `channelId` | string | Yes | - | Discord channel ID |
-| `allowedUsers` | string[] | No | [] | Authorized user IDs (empty = all users) |
-| `agentType` | string | Yes | - | Type of agent to use for this channel |
+| Property       | Type     | Required | Default | Description                             |
+|----------------|----------|----------|---------|-----------------------------------------|
+| `channelId`    | string   | Yes      | -       | Discord channel ID                      |
+| `allowedUsers` | string[] | No       | []      | Authorized user IDs (empty = all users) |
+| `agentType`    | string   | Yes      | -       | Type of agent to use for this channel   |
 
 #### DiscordServiceConfigSchema
 
@@ -296,15 +139,15 @@ Configuration for the Discord service.
 
 ```typescript
 export const DiscordServiceConfigSchema = z.object({
-  bots: z.record(z.string(), DiscordBotConfigSchema)
+  bots: z.record(z.string(), DiscordBotConfigSchema).default({}),
 });
 ```
 
 **Properties**:
 
-| Property | Type | Required | Description |
-|----------|------|----------|-------------|
-| `bots` | `Record<string, DiscordBotConfig>` | Yes | Map of bot names to configurations |
+| Property | Type                             | Required | Description                        |
+|----------|----------------------------------|----------|------------------------------------|
+| `bots`   | Record<string, DiscordBotConfig> | No       | Map of bot names to configurations |
 
 #### DiscordEscalationProviderConfigSchema
 
@@ -312,7 +155,7 @@ Configuration for the Discord escalation provider.
 
 ```typescript
 export const DiscordEscalationProviderConfigSchema = z.object({
-  type: z.literal('discord'),
+  type: z.literal("discord"),
   bot: z.string(),
   channel: z.string(),
 });
@@ -320,11 +163,11 @@ export const DiscordEscalationProviderConfigSchema = z.object({
 
 **Properties**:
 
-| Property | Type | Required | Description |
-|----------|------|----------|-------------|
-| `type` | "discord" | Yes | Provider type identifier |
-| `bot` | string | Yes | Name of the bot to use |
-| `channel` | string | Yes | Name of the channel configuration |
+| Property  | Type      | Required | Description                       |
+|-----------|-----------|----------|-----------------------------------|
+| `type`    | "discord" | Yes      | Provider type identifier          |
+| `bot`     | string    | Yes      | Name of the bot to use            |
+| `channel` | string    | Yes      | Name of the channel configuration |
 
 ### Full Configuration Example
 
@@ -350,21 +193,41 @@ const config = {
           }
         },
         dmAgentType: "personalAgent",
-        dmAllowedUsers: ["111111111111111111"]
-      }
-    }
-  },
-  escalation: {
-    providers: {
-      discordAdmins: {
-        type: "discord",
-        bot: "primary",
-        channel: "engineering"
+        dmAllowedUsers: ["111111111111111111"],
+        escalation: {
+          channel: "engineering"
+        }
       }
     }
   }
 };
 ```
+
+### Environment Variable Configuration
+
+The plugin supports automatic bot creation from environment variables:
+
+```bash
+# Single bot
+DISCORD_BOT_TOKEN=your-bot-token
+DISCORD_BOT_NAME=My Bot
+DISCORD_ESCALATION_CHANNEL=admin-channel
+
+# Multiple bots (numbered)
+DISCORD_BOT_TOKEN1=token-for-bot-1
+DISCORD_BOT_NAME1=Bot One
+DISCORD_ESCALATION_CHANNEL1=channel-1
+
+DISCORD_BOT_TOKEN2=token-for-bot-2
+DISCORD_BOT_NAME2=Bot Two
+DISCORD_ESCALATION_CHANNEL2=channel-2
+```
+
+When using environment variables:
+
+- `DISCORD_BOT_TOKEN` or `DISCORD_BOT_TOKEN{n}`: Required bot token
+- `DISCORD_BOT_NAME` or `DISCORD_BOT_NAME{n}`: Optional bot name (defaults to "Discord Bot{n}")
+- `DISCORD_ESCALATION_CHANNEL` or `DISCORD_ESCALATION_CHANNEL{n}`: Optional escalation channel name
 
 ## Integration
 
@@ -398,8 +261,9 @@ await app.installPlugin(discordPlugin, {
 ### Service Registration
 
 The plugin automatically registers:
+
 - **DiscordService**: Manages bot instances
-- **DiscordEscalationProvider**: Registered with EscalationService for providers with `type: "discord"`
+- **DiscordEscalationProvider**: Registered with EscalationService for bots with `escalation` configuration
 
 ### Programmatic Registration
 
@@ -446,6 +310,7 @@ app.waitForService(EscalationService, (escalationService) => {
 ### Agent Integration
 
 Each Discord channel maintains its own agent instance:
+
 - Agents are spawned on first message to a channel
 - Agent context persists for the channel's lifetime
 - Background event loops process agent outputs
@@ -454,6 +319,7 @@ Each Discord channel maintains its own agent instance:
 ### Event Handling
 
 The package handles Discord events:
+
 - `messageCreate`: Processes incoming messages
 - Bot mentions trigger agent interactions in guild channels
 - Direct messages are handled separately
@@ -462,6 +328,7 @@ The package handles Discord events:
 ### Gateway Intents
 
 The Discord client uses the following Gateway Intents:
+
 - `GatewayIntentBits.Guilds`: Server/guild operations
 - `GatewayIntentBits.GuildMessages`: Guild message events
 - `GatewayIntentBits.MessageContent`: Message content access
@@ -556,16 +423,10 @@ const config = {
             allowedUsers: ["111111111111111111"],
             agentType: "adminAgent"
           }
+        },
+        escalation: {
+          channel: "adminChannel"
         }
-      }
-    }
-  },
-  escalation: {
-    providers: {
-      discordAdmins: {
-        type: "discord",
-        bot: "adminBot",
-        channel: "adminChannel"
       }
     }
   }
@@ -717,27 +578,24 @@ The package includes a test file at `test/configuration.test.ts` for testing con
 | Package | Version | Description |
 |---------|---------|-------------|
 | `@tokenring-ai/app` | 0.2.0 | Base application framework |
-| `@tokenring-ai/chat` | 0.2.0 | Chat service for agent interactions |
 | `@tokenring-ai/agent` | 0.2.0 | Agent management and event handling |
 | `@tokenring-ai/utility` | 0.2.0 | Shared utilities and helpers |
 | `@tokenring-ai/escalation` | 0.2.0 | Escalation service and provider interface |
-| `discord.js` | ^14.25.1 | Discord API client library |
-| `axios` | ^1.13.6 | HTTP client for attachment downloads |
+| `discord.js` | ^14.26.2 | Discord API client library |
 | `zod` | ^4.3.6 | Schema validation |
 
 ### Dev Dependencies
 
 | Package | Version | Description |
 |---------|---------|-------------|
-| `vitest` | ^4.1.0 | Testing framework |
-| `typescript` | ^5.9.3 | TypeScript compiler |
+| `vitest` | ^4.1.1 | Testing framework |
+| `typescript` | ^6.0.2 | TypeScript compiler |
 
 ## Related Components
 
 - `@tokenring-ai/escalation`: Escalation service and provider interface
 - `@tokenring-ai/agent`: Agent management and event handling
 - `@tokenring-ai/app`: Base application framework
-- `@tokenring-ai/chat`: Chat service for agent interactions
 - `@tokenring-ai/utility`: Shared utilities and helpers
 - `discord.js`: Discord API client library
 

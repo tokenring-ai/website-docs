@@ -28,15 +28,14 @@ bun add @tokenring-ai/aws
 - `@tokenring-ai/agent`: 0.2.0
 - `@tokenring-ai/app`: 0.2.0
 - `@tokenring-ai/chat`: 0.2.0
-- `@aws-sdk/client-s3`: ^3.1017.0
-- `@aws-sdk/client-sts`: ^3.1017.0
-- `@tokenring-ai/filesystem`: 0.2.0
+- `@aws-sdk/client-s3`: ^3.1025.0
+- `@aws-sdk/client-sts`: ^3.1025.0
 - `@tokenring-ai/utility`: 0.2.0
 - `zod`: ^4.3.6
 
 ## Core Components
 
-### AWSService
+### AWSService Class
 
 The main service class that provides AWS integration functionality. Implements the `TokenRingService` interface.
 
@@ -104,6 +103,7 @@ class AWSService implements TokenRingService {
 Creates and returns a new AWS SDK client instance using the configured credentials.
 
 **Parameters:**
+
 - `ClientClass`: The AWS SDK client constructor (e.g., `STSClient`, `S3Client`, `DynamoDBClient`)
 - `clientConfig`: Optional additional configuration to merge with credentials
 
@@ -140,6 +140,7 @@ Checks if AWS credentials and region are configured.
 Retrieves AWS account information by calling STS GetCallerIdentity.
 
 **Returns:** Object containing:
+
 - `Arn`: The ARN of the caller
 - `Account`: The AWS account ID
 - `UserId`: The unique user ID
@@ -151,9 +152,11 @@ Retrieves AWS account information by calling STS GetCallerIdentity.
 Reports the current status of the AWSService.
 
 **Parameters:**
+
 - `agent`: Agent instance (used for service access if needed)
 
 **Returns:** Status object with:
+
 - `active`: Whether the service is active
 - `service`: Service name ("AWSService")
 - `authenticated`: Whether authentication is successful
@@ -211,6 +214,7 @@ Lists all S3 buckets in the configured AWS account and region.
 **Input Schema:** Empty object (no parameters required)
 
 **Returns:** Stringified JSON containing:
+
 ```json
 {
   "buckets": [
@@ -303,7 +307,7 @@ await agent.sendMessage("aws status");
 
 **Command Help Text:**
 
-```
+```text
 /aws status - View current AWS authentication status
 
 View current AWS authentication status and account information including account ID, ARN, user ID, and configured region.
@@ -321,7 +325,7 @@ Ensure AWS credentials are properly configured in the AWSService with:
 - **sessionToken**: Optional AWS Session Token (if using temporary credentials)
 ```
 
-## Configuration
+## Plugin Configuration
 
 ### Plugin Configuration Schema
 
@@ -333,7 +337,7 @@ import {z} from "zod";
 export const AWSConfigSchema = z.object({
   accessKeyId: z.string(),
   secretAccessKey: z.string(),
-  sessionToken: z.string().optional(),
+  sessionToken: z.string().exactOptional(),
   region: z.string(),
 }).strict();
 
@@ -403,6 +407,17 @@ app.install(awsPlugin, {
 | Parameter | Type | Description |
 |-----------|------|-------------|
 | `sessionToken` | string | AWS session token for temporary credentials or assume-role scenarios |
+
+### Configuration Example (YAML)
+
+```yaml
+plugins:
+  aws:
+    accessKeyId: AKIAIOSFODNN7EXAMPLE
+    secretAccessKey: wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY
+    region: us-east-1
+    # sessionToken: IQoJb3JpZ2luI... # Optional for temporary credentials
+```
 
 ## Integration
 
@@ -792,7 +807,7 @@ const ecs = awsService.initializeAWSClient(EC2Client, {
 - Consider using environment variables for credential storage
 - Store session tokens securely for temporary credentials
 
-## Error Handling
+## Error Handling Strategies
 
 ### Service-Level Errors
 
@@ -823,7 +838,7 @@ async execute(_args: {}, agent: Agent) {
     // ... operation
   } catch (error: any) {
     const message = error instanceof Error ? error.message : String(error);
-    throw new Error(`[aws_listS3Buckets] Error listing S3 buckets: ${message}`);
+    throw new Error(`[aws_listS3Buckets] Failed to list S3 buckets: ${message}`);
   }
 }
 ```
@@ -861,7 +876,7 @@ async execute(remainder: string, agent: Agent) {
 | `AWS credentials are not configured` | Missing accessKeyId, secretAccessKey, or region in constructor | Ensure credentials are provided to AWSService constructor |
 | `Failed to get AWS caller identity` | Authentication failure or insufficient STS permissions | Check IAM permissions for sts:GetCallerIdentity |
 | `[aws_listS3Buckets] AWS credentials not configured` | Tool cannot access authenticated AWSService | Ensure plugin is installed with credentials configuration |
-| `[aws_listS3Buckets] Error listing S3 buckets` | S3 operation failure | Check IAM permissions for s3:ListAllMyBuckets and network connectivity |
+| `[aws_listS3Buckets] Failed to list S3 buckets` | S3 operation failure | Check IAM permissions for s3:ListAllMyBuckets and network connectivity |
 
 ### Error Handling Pattern
 
@@ -922,16 +937,15 @@ The package uses vitest for unit testing with node environment.
 - Client initialization patterns
 - Error handling and edge cases
 
-## Dependencies
+## Package Dependencies
 
 ```json
 {
   "@tokenring-ai/app": "0.2.0",
   "@tokenring-ai/agent": "0.2.0",
   "@tokenring-ai/chat": "0.2.0",
-  "@aws-sdk/client-s3": "^3.1017.0",
-  "@aws-sdk/client-sts": "^3.1017.0",
-  "@tokenring-ai/filesystem": "0.2.0",
+  "@aws-sdk/client-s3": "^3.1025.0",
+  "@aws-sdk/client-sts": "^3.1025.0",
   "@tokenring-ai/utility": "0.2.0",
   "zod": "^4.3.6"
 }
@@ -942,7 +956,6 @@ The package uses vitest for unit testing with node environment.
 - **@tokenring-ai/app**: Application framework for plugin registration and service management
 - **@tokenring-ai/agent**: Agent framework for tool execution and service access
 - **@tokenring-ai/chat**: Chat service for tool and command registration
-- **@tokenring-ai/filesystem**: Filesystem utilities
 - **@tokenring-ai/utility**: Utility functions like string indentation
 - **@aws-sdk/client-s3**: S3 service client for bucket listing operations
 - **@aws-sdk/client-sts**: STS service client for caller identity verification
@@ -950,7 +963,7 @@ The package uses vitest for unit testing with node environment.
 
 ## Package Structure
 
-```
+```text
 pkg/aws/
 ├── index.ts                                  # Main exports (AWSService)
 ├── AWSService.ts                             # Core service class implementing TokenRingService

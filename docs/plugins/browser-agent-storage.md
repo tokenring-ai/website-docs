@@ -34,12 +34,14 @@ The main storage class that implements the `AgentCheckpointStorage` interface fo
 
 **Public Methods:**
 
-- `storeAgentCheckpoint(checkpoint)`: Stores a new checkpoint and returns its UUID v4 ID
-- `retrieveAgentCheckpoint(checkpointId)`: Retrieves a checkpoint by ID, returns null if not found
-- `listAgentCheckpoints()`: Lists all checkpoints ordered by creation time (newest first)
-- `deleteCheckpoint(checkpointId)`: Deletes a specific checkpoint, returns boolean
-- `clearAllCheckpoints()`: Clears all checkpoints from storage (browser-specific extension)
-- `close()`: No-op method for resource cleanup (localStorage doesn't require closing)
+| Method | Parameters | Returns | Description |
+|--------|------------|---------|-------------|
+| `storeAgentCheckpoint(checkpoint)` | `NamedAgentCheckpoint` | `string` | Stores a new checkpoint and returns its UUID v4 ID |
+| `retrieveAgentCheckpoint(checkpointId)` | `string` | `StoredAgentCheckpoint \| null` | Retrieves a checkpoint by ID, returns null if not found |
+| `listAgentCheckpoints()` | - | `AgentCheckpointListItem[]` | Lists all checkpoints ordered by creation time (newest first) |
+| `deleteCheckpoint(checkpointId)` | `string` | `boolean` | Deletes a specific checkpoint, returns true if deleted |
+| `clearAllCheckpoints()` | - | `void` | Clears all checkpoints from storage (browser-specific extension) |
+| `close()` | - | `void` | No-op method for resource cleanup (localStorage doesn't require closing) |
 
 **Private Methods:**
 
@@ -94,11 +96,11 @@ The `BrowserStorageService` class implements the `AgentCheckpointStorage` interf
 ```typescript
 interface AgentCheckpointStorage {
   name: string;
-  storeAgentCheckpoint(checkpoint: NamedAgentCheckpoint): Promise<string>;
-  retrieveAgentCheckpoint(checkpointId: string): Promise<StoredAgentCheckpoint | null>;
-  listAgentCheckpoints(): Promise<AgentCheckpointListItem[]>;
-  deleteCheckpoint(checkpointId: string): Promise<boolean>;
-  clearAllCheckpoints(): Promise<void>;
+  storeAgentCheckpoint(checkpoint: NamedAgentCheckpoint): string;
+  retrieveAgentCheckpoint(checkpointId: string): StoredAgentCheckpoint | null;
+  listAgentCheckpoints(): AgentCheckpointListItem[];
+  deleteCheckpoint(checkpointId: string): boolean;
+  clearAllCheckpoints(): void;
   close(): void;
 }
 ```
@@ -134,11 +136,11 @@ All checkpoint storage providers must implement the `AgentCheckpointStorage` int
 
 | Method | Description | Returns |
 |--------|-------------|---------|
-| `storeAgentCheckpoint(checkpoint)` | Store a new checkpoint and return its ID | `Promise<string>` (UUID v4) |
-| `retrieveAgentCheckpoint(checkpointId)` | Retrieve a checkpoint by its ID | `Promise<StoredAgentCheckpoint \| null>` |
-| `listAgentCheckpoints()` | List all checkpoints ordered by creation time (newest first) | `Promise<AgentCheckpointListItem[]>` |
-| `deleteCheckpoint(checkpointId)` | Delete a specific checkpoint | `Promise<boolean>` |
-| `clearAllCheckpoints()` | Clear all checkpoints from storage | `Promise<void>` |
+| `storeAgentCheckpoint(checkpoint)` | Store a new checkpoint and return its ID | `string` (UUID v4) |
+| `retrieveAgentCheckpoint(checkpointId)` | Retrieve a checkpoint by its ID | `StoredAgentCheckpoint \| null` |
+| `listAgentCheckpoints()` | List all checkpoints ordered by creation time (newest first) | `AgentCheckpointListItem[]` |
+| `deleteCheckpoint(checkpointId)` | Delete a specific checkpoint | `boolean` |
+| `clearAllCheckpoints()` | Clear all checkpoints from storage | `void` |
 | `close()` | Close any resources used by the provider | `void` (no-op for browser) |
 
 ### Browser-specific Extensions
@@ -147,7 +149,7 @@ The `BrowserStorageService` class extends the base interface with additional met
 
 | Method | Description | Returns |
 |--------|-------------|---------|
-| `clearAllCheckpoints()` | Clear all checkpoints from storage | `Promise<void>` |
+| `clearAllCheckpoints()` | Clear all checkpoints from storage | `void` |
 
 ### Provider Configuration
 
@@ -164,6 +166,10 @@ This package does not define any RPC endpoints.
 ## Chat Commands
 
 This package does not define any chat commands.
+
+## Tools
+
+This package does not define any tools.
 
 ## Configuration
 
@@ -252,19 +258,19 @@ const checkpoint = {
   createdAt: Date.now(),
 };
 
-const checkpointId = await storage.storeAgentCheckpoint(checkpoint);
+const checkpointId = storage.storeAgentCheckpoint(checkpoint);
 console.log('Stored checkpoint:', checkpointId);
 
 // Retrieve a checkpoint
-const retrieved = await storage.retrieveAgentCheckpoint(checkpointId);
+const retrieved = storage.retrieveAgentCheckpoint(checkpointId);
 console.log('Retrieved checkpoint:', retrieved);
 
 // List all checkpoints (newest first)
-const allCheckpoints = await storage.listAgentCheckpoints();
+const allCheckpoints = storage.listAgentCheckpoints();
 console.log('All checkpoints:', allCheckpoints);
 
 // Delete a specific checkpoint
-const deleted = await storage.deleteCheckpoint(checkpointId);
+const deleted = storage.deleteCheckpoint(checkpointId);
 console.log('Deleted:', deleted);
 ```
 
@@ -314,16 +320,16 @@ const contentCheckpoint = {
   createdAt: Date.now(),
 };
 
-const devId = await devStorage.storeAgentCheckpoint(devCheckpoint);
-const contentId = await contentStorage.storeAgentCheckpoint(contentCheckpoint);
+const devId = devStorage.storeAgentCheckpoint(devCheckpoint);
+const contentId = contentStorage.storeAgentCheckpoint(contentCheckpoint);
 
 // Verify isolation - each storage only sees its own checkpoints
-const devCheckpoints = await devStorage.listAgentCheckpoints(); // 1 checkpoint
-const contentCheckpoints = await contentStorage.listAgentCheckpoints(); // 1 checkpoint
+const devCheckpoints = devStorage.listAgentCheckpoints(); // 1 checkpoint
+const contentCheckpoints = contentStorage.listAgentCheckpoints(); // 1 checkpoint
 
 // Cross-storage retrieval returns null
-const devInContent = await contentStorage.retrieveAgentCheckpoint(devId); // null
-const contentInDev = await devStorage.retrieveAgentCheckpoint(contentId); // null
+const devInContent = contentStorage.retrieveAgentCheckpoint(devId); // null
+const contentInDev = devStorage.retrieveAgentCheckpoint(contentId); // null
 ```
 
 ### Integration with TokenRing
@@ -388,22 +394,22 @@ const testingCheckpoint = {
 };
 
 // Store checkpoints
-const initialId = await storage.storeAgentCheckpoint(initialCheckpoint);
-const featureId = await storage.storeAgentCheckpoint(featureCheckpoint);
-const testingId = await storage.storeAgentCheckpoint(testingCheckpoint);
+const initialId = storage.storeAgentCheckpoint(initialCheckpoint);
+const featureId = storage.storeAgentCheckpoint(featureCheckpoint);
+const testingId = storage.storeAgentCheckpoint(testingCheckpoint);
 
 // List checkpoints (newest first)
-const checkpoints = await storage.listAgentCheckpoints();
+const checkpoints = storage.listAgentCheckpoints();
 // Order: testing-phase, feature-implementation, initial-development
 
 // Retrieve specific checkpoint
-const current = await storage.retrieveAgentCheckpoint(testingId);
+const current = storage.retrieveAgentCheckpoint(testingId);
 
 // Remove outdated checkpoint
-await storage.deleteCheckpoint(initialId);
+storage.deleteCheckpoint(initialId);
 
 // Clear all checkpoints
-await storage.clearAllCheckpoints();
+storage.clearAllCheckpoints();
 ```
 
 ### Error Handling Example
@@ -422,7 +428,7 @@ try {
     createdAt: Date.now(),
   };
 
-  const id = await storage.storeAgentCheckpoint(checkpoint);
+  const id = storage.storeAgentCheckpoint(checkpoint);
   console.log('Checkpoint stored:', id);
 } catch (error) {
   console.error('Failed to store checkpoint:', error);
@@ -431,7 +437,7 @@ try {
 }
 
 // Retrieving non-existent checkpoint returns null
-const nonExistent = await storage.retrieveAgentCheckpoint('non-existent-id');
+const nonExistent = storage.retrieveAgentCheckpoint('non-existent-id');
 console.log(nonExistent); // null
 ```
 
@@ -467,7 +473,7 @@ Handle potential storage errors gracefully:
 
 ```typescript
 try {
-  await storage.storeAgentCheckpoint(checkpoint);
+  storage.storeAgentCheckpoint(checkpoint);
 } catch (error) {
   console.error('Failed to store checkpoint:', error);
   // Fallback strategy
@@ -479,11 +485,11 @@ try {
 Regularly clean up old checkpoints to manage storage limits:
 
 ```typescript
-const checkpoints = await storage.listAgentCheckpoints();
+const checkpoints = storage.listAgentCheckpoints();
 // Keep only the last 10 checkpoints
 const toDelete = checkpoints.slice(0, -10);
 for (const checkpoint of toDelete) {
-  await storage.deleteCheckpoint(checkpoint.id);
+  storage.deleteCheckpoint(checkpoint.id);
 }
 ```
 
@@ -492,14 +498,14 @@ for (const checkpoint of toDelete) {
 Be aware of localStorage limits and implement monitoring:
 
 ```typescript
-async function getStorageUsage(storage: BrowserStorageService): Promise<number> {
-  const checkpoints = await storage.listAgentCheckpoints();
+function getStorageUsage(storage: BrowserStorageService): number {
+  const checkpoints = storage.listAgentCheckpoints();
   const data = JSON.stringify(checkpoints);
   return data.length; // Size in bytes
 }
 
 // Check if approaching limit (5MB = 5 * 1024 * 1024 bytes)
-const usage = await getStorageUsage(storage);
+const usage = getStorageUsage(storage);
 if (usage > 4 * 1024 * 1024) {
   console.warn('Approaching localStorage limit, consider cleanup');
 }
@@ -582,7 +588,7 @@ bun run test:coverage
 
 ## Package Structure
 
-```
+```text
 pkg/browser-storage/
 ├── index.ts                         # Main exports
 ├── plugin.ts                        # Plugin definition for TokenRing integration
@@ -604,7 +610,7 @@ pkg/browser-storage/
 - **Single Storage Entry**: All checkpoints stored in a single localStorage entry
 - **No Transaction Support**: Operations are not atomic
 
-## Error Handling
+## Error Handling and Recovery
 
 The implementation includes robust error handling for common scenarios:
 
@@ -618,19 +624,6 @@ The implementation includes robust error handling for common scenarios:
 All errors are logged to the console but do not throw exceptions, allowing the application to continue operating gracefully.
 
 ## Development
-
-### Testing
-
-```bash
-# Run tests
-bun run test
-
-# Run tests with coverage
-bun run test:coverage
-
-# Run tests in watch mode
-bun run test:watch
-```
 
 ### Building
 

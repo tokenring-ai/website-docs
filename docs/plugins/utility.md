@@ -7,18 +7,33 @@ The `@tokenring-ai/utility` package provides a comprehensive collection of gener
 ## Key Features
 
 - **Object Utilities**: Safe object manipulation with type safety (`pick`, `omit`, `transform`, `deepMerge`, `deepEquals`, `deepClone`, `isEmpty`, `parametricObjectFilter`, `pickValue`, `requireFields`, `isPlainObject`)
-- **String Utilities**: Comprehensive string processing and formatting (`convertBoolean`, `trimMiddle`, `shellEscape`, `joinDefault`, `formatLogMessages`, `createAsciiTable`, `wrapText`, `wrapPlainText`, `flattenWrappedLines`, `visibleLength`, `truncateVisible`, `indent`, `markdownList`, `numberedList`, `codeBlock`, `errorToString`, `markdownTable`, `dedupe`, `like`, `oneOf`, `generateHumanId`, `getRandomItem`, `intelligentTruncate`, `workingMessages`, `ridiculousMessages`, `brailleSpinner`)
-- **HTTP Utilities**: Robust HTTP client with automatic retry logic (`HttpService`, `doFetchWithRetry`, `cachedDataRetriever`)
-- **Promise Utilities**: Advanced promise handling and management (`abandon`, `waitForAbort`, `backoff`)
+- **String Utilities**: Comprehensive string processing and formatting (`convertBoolean`, `trimMiddle`, `shellEscape`, `joinDefault`, `formatLogMessages`, `createAsciiTable`, `wrapText`, `wrapPlainText`, `flattenWrappedLines`, `visibleLength`, `truncateVisible`, `indent`, `markdownList`, `numberedList`, `codeBlock`, `errorAsString`, `markdownTable`, `dedupe`, `like`, `oneOf`, `generateHumanId`, `getRandomItem`, `intelligentTruncate`, `workingMessages`, `ridiculousMessages`, `brailleSpinner`)
+- **HTTP Utilities**: Robust HTTP client with automatic retry logic (`HTTPRetriever`, `doFetchWithRetry`, `cachedDataRetriever`)
+- **Promise Utilities**: Advanced promise handling and management (`waitForAbort`, `backoff`)
 - **Registry Utilities**: Flexible registry patterns for service management (`KeyedRegistry`, `TypedRegistry`)
 - **Timer Utilities**: Throttle and debounce functions for rate limiting
 - **Buffer Utilities**: Binary data detection in buffers
 - **Environment Utilities**: Environment variable management with file-based secrets support
+- **Array Utilities**: Arrayable type utilities (`Arrayable`, `arrayableToArray`, `firstOfArrayable`, `lastOfArrayable`, `joinArrayable`, `splitArrayable`)
+- **Date Utilities**: Date and time formatting (`formatDate`, `formatTime`, `formatTimeAgo`)
 - **Number Utilities**: Number clamping utilities (`clamp`)
-- **JSON Utilities**: Safe JSON parsing with fallback (`safeParse`)
+- **JSON Utilities**: Safe JSON parsing with fallback (`safeParse`, `JSONValueSchema`)
 - **Type Safety**: Comprehensive TypeScript definitions
 
 ## Core Components
+
+### Array Utilities
+
+Located in `pkg/utility/array/`:
+
+| Function | Type | Description |
+|----------|------|-------------|
+| `Arrayable<T>` | `T \| T[]` | Type that represents either a single value or an array of values |
+| `arrayableToArray` | `(value: Arrayable<T>) => T[]` | Converts an Arrayable value to an array |
+| `firstOfArrayable` | `(value: Arrayable<T>) => T \| undefined` | Gets the first element from an Arrayable |
+| `lastOfArrayable` | `(value: Arrayable<T>) => T \| undefined` | Gets the last element from an Arrayable |
+| `joinArrayable` | `(value: Arrayable<string>, separator: string) => string` | Joins an Arrayable with a separator |
+| `splitArrayable` | `(value: Arrayable<string>, separator: string) => string[]` | Splits a string by separator, or returns array as-is |
 
 ### Object Utilities
 
@@ -35,6 +50,7 @@ Located in `pkg/utility/object/`:
 | `parametricObjectFilter` | `(requirements) => (obj) => boolean` | Creates a filter function for object arrays with numeric/string comparisons |
 | `isEmpty` | `(obj: Object \| Array \| Map \| Set \| null \| undefined) => boolean` | Checks if object is empty |
 | `deepEquals` | `(a: unknown, b: unknown) => boolean` | Deeply compares two values for equality |
+| `deepClone` | `(value: T) => T` | Creates a deep copy of a value, handling primitives, Arrays, Dates, and Plain Objects |
 | `isPlainObject` | `(value: unknown) => value is Record<string, any>` | Checks if value is a plain object (not array, Date, etc.) |
 
 ### String Utilities
@@ -58,7 +74,8 @@ Located in `pkg/utility/string/`:
 | `markdownList` | `(items: string[], indentLevel?) => string` | Creates markdown list |
 | `numberedList` | `(items: string[], indentLevel?) => string` | Creates numbered list |
 | `codeBlock` | `(code: string, language?) => string` | Wraps code in markdown code block |
-| `errorToString` | `(error: any) => string` | Converts error to string representation |
+| `errorAsString` | `(error: unknown) => string` | Converts error to string representation |
+| `unknownAsError` | `(error: unknown) => Error` | Converts unknown value to Error instance |
 | `markdownTable` | `(columns: string[], rows: string[][]) => string` | Generates Markdown table |
 | `dedupe` | `(items: string[]) => string[]` | Removes duplicates from string array |
 | `like` | `(likeName: string, thing: string) => boolean` | Pattern matching for strings (prefix or exact) |
@@ -68,6 +85,17 @@ Located in `pkg/utility/string/`:
 | `intelligentTruncate` | `(str: string, options: TruncateOptions) => string` | Truncates string at word boundaries with options for maxLength, suffix, and maxLines |
 | `workingMessages` | `string[]` | Array of working/status messages for loading indicators |
 | `ridiculousMessages` | `string[]` | Array of humorous messages for loading indicators |
+| `brailleSpinner` | `string[]` | Array of braille characters for spinner animations |
+
+### Date Utilities
+
+Located in `pkg/utility/date/`:
+
+| Function | Type | Description |
+|----------|------|-------------|
+| `formatDate` | `(timestampOrDate: number \| Date) => string` | Formats date as "Today", "Yesterday", or date string |
+| `formatTime` | `(timestamp: number) => string` | Formats time as HH:MM:SS |
+| `formatTimeAgo` | `(timestamp: number) => string` | Formats time as "Xm ago", "Xh ago", "Xd ago" |
 
 ### HTTP Utilities
 
@@ -75,7 +103,7 @@ Located in `pkg/utility/http/`:
 
 | Component | Type | Description |
 |-----------|------|-------------|
-| `HttpService` | `abstract class` | Base class for HTTP services with JSON parsing and retry logic |
+| `HTTPRetriever` | `class` | HTTP client with retry logic, timeout support, and JSON validation |
 | `doFetchWithRetry` | `(url: string, init?) => Promise<Response>` | Fetch with automatic retry logic for 429 and 5xx errors |
 | `cachedDataRetriever` | `(baseURL: string, options: RetrieverOptions) => () => Promise<T \| null>` | Creates cached data fetcher with TTL and deduplication |
 
@@ -85,7 +113,6 @@ Located in `pkg/utility/promise/`:
 
 | Function | Type | Description |
 |----------|------|-------------|
-| `abandon` | `(promise: Promise<T>) => void` | Prevents unhandled rejection warnings |
 | `waitForAbort` | `(signal: AbortSignal, callback) => Promise<T>` | Waits for abort signal and resolves with callback result |
 | `backoff` | `(options: BackoffOptions, fn) => Promise<T>` | Retries with exponential backoff |
 
@@ -148,30 +175,36 @@ Located in `pkg/utility/json/`:
 | Function | Type | Description |
 |----------|------|-------------|
 | `safeParse` | `(jsonString: string, defaultValue: T) => T` | Safely parses JSON string, returning default value on failure |
+| `JSONValueSchema` | `ZodSchema<JSONValue>` | Zod schema for validating JSON values |
+| `JSONValue` | `JSONPrimitive \| JSONObject \| JSONArray` | Type representing valid JSON values |
 
 ## Core Methods
 
 ### KeyedRegistry Methods
 
 ```typescript
-register(name: string, resource: T): void
+set(name: string, resource: T): void
 unregister(name: string): void
-waitForItemByName(name: string, callback: (item: T) => void): void
-getItemByName(name: string): T | undefined
-requireItemByName(name: string): T
+waitFor(name: string, callback: (item: T) => void): void
+get(name: string): T | undefined
+require(name: string): T
 ensureItems(names: string[]): void
-getAllItemNames(): string[]
-getAllItemValues(): T[]
-getItemNamesLike(likeName: string | string[]): string[]
-ensureItemNamesLike(likeName: string | string[]): string[]
-getItemEntriesLike(likeName: string | string[]): [string, T][]
+keys(): Iterator<string>
+keysArray(): string[]
+values(): Iterator<T>
+valuesArray(): T[]
+keysLike(likeName: string | string[]): string[]
+requireKeysLike(likeName: string | string[]): string[]
+entriesLike(likeName: string | string[]): [string, T][]
 forEach(callback: (key: string, item: T) => void): void
-entries(): [string, T][]
-registerAll(items: Record<string, T> | Map<string, T>): void
+entries(): Iterator<[string, T]>
+entriesArray(): [string, T][]
 getLongestPrefixMatch(input: string): { key: string; item: T; remainder: string } | undefined
+setAll(items: Record<string, T> | Map<string, T>): void
 ```
 
 **Pattern Matching**: The `likeName` parameter supports:
+
 - Prefix matching: `'db*'` matches `'database'`, `'dbconnection'`, etc.
 - Exact matching: `'db'` matches `'db'` exactly
 - Case-insensitive matching
@@ -188,14 +221,34 @@ getItemByType<R>(type: abstract new (...args: any[]) => R): R | undefined
 requireItemByType<R>(type: abstract new (...args: any[]) => R): R
 ```
 
-### HttpService Methods
+### HTTPRetriever Methods
 
 ```typescript
-protected abstract baseUrl: string
-protected abstract defaultHeaders: Record<string, string>
+constructor(opts: HTTPRetrieverOpts)
 
-async parseJsonOrThrow(res: Response, context: string): Promise<any>
-protected async fetchJson(path: string, opts?: RequestInit, context: string): Promise<any>
+async fetchJson(opts: FetchJSONOpts): Promise<JSONValue>
+async fetchValidatedJson<T extends ZodType>(opts: FetchJSONOpts & { schema: T }): Promise<z.output<T>>
+```
+
+**HTTPRetrieverOpts**:
+
+```typescript
+{
+  baseUrl: string;
+  headers?: Record<string, string>;
+  timeout: number;
+}
+```
+
+**FetchJSONOpts**:
+
+```typescript
+{
+  url: string | URL;
+  context: string;
+  opts?: Omit<RequestInit, "headers"> & { headers?: Record<string, string> };
+  timeout?: number;
+}
 ```
 
 ### Error Types
@@ -246,6 +299,16 @@ interface RetrieverOptions {
 type ParametricObjectRequirements = Record<string, number | string | null | undefined>;
 ```
 
+### TruncateOptions for `intelligentTruncate`
+
+```typescript
+interface TruncateOptions {
+  maxLength: number;          // Maximum length of the string
+  suffix?: string;            // Suffix to add when truncated (default: "...")
+  maxLines?: number;          // Maximum number of lines to display
+}
+```
+
 ## RPC Endpoints
 
 The utility package does not define RPC endpoints.
@@ -254,9 +317,44 @@ The utility package does not define RPC endpoints.
 
 The utility package does not define chat commands.
 
+## Tools
+
+The utility package does not define tools.
+
 ## Usage Examples
 
-### Object Manipulation
+### Array Utilities Examples
+
+```typescript
+import type { Arrayable } from '@tokenring-ai/utility/array/arrayable';
+import { arrayableToArray, firstOfArrayable, lastOfArrayable, joinArrayable, splitArrayable } from '@tokenring-ai/utility/array/arrayable';
+
+// Type usage
+const single: Arrayable<string> = 'hello';
+const multiple: Arrayable<string> = ['hello', 'world'];
+
+// Convert to array
+arrayableToArray('hello');        // ['hello']
+arrayableToArray(['hello']);      // ['hello']
+
+// Get first element
+firstOfArrayable('hello');        // 'hello'
+firstOfArrayable(['hello']);      // 'hello'
+
+// Get last element
+lastOfArrayable('hello');         // 'hello'
+lastOfArrayable(['a', 'b']);      // 'b'
+
+// Join with separator
+joinArrayable('hello', ', ');     // 'hello'
+joinArrayable(['a', 'b'], ', ');  // 'a, b'
+
+// Split string
+splitArrayable('a,b,c', ',');     // ['a', 'b', 'c']
+splitArrayable(['a'], ',');       // ['a']
+```
+
+### Object Manipulation Examples
 
 ```typescript
 import pick from '@tokenring-ai/utility/object/pick';
@@ -268,6 +366,7 @@ import deepEquals from '@tokenring-ai/utility/object/deepEquals';
 import isEmpty from '@tokenring-ai/utility/object/isEmpty';
 import parametricObjectFilter from '@tokenring-ai/utility/object/parametricObjectFilter';
 import requireFields from '@tokenring-ai/utility/object/requireFields';
+import deepClone from '@tokenring-ai/utility/object/deepClone';
 
 const user = {
   id: 1,
@@ -306,6 +405,11 @@ const merged = deepMerge(configA, configB);
 // Deep equals
 deepEquals({ a: 1 }, { a: 1 }); // true
 
+// Deep clone
+const clone = deepClone(user);
+clone.name = 'Bob';
+// user.name remains 'Alice'
+
 // Parametric filtering
 const filter = parametricObjectFilter({
   age: '>20',
@@ -319,7 +423,7 @@ const users = [
 ];
 
 const filtered = users.filter(filter);
-// [{ name: 'Alice', age: 25 }, { name: 'Charlie', age: 30 }];
+// [{ name: 'Alice', age: 25 }, { name: 'Charlie', age: 30 }]
 
 // Require fields
 try {
@@ -331,7 +435,7 @@ try {
 }
 ```
 
-### String Formatting
+### String Formatting Examples
 
 ```typescript
 import convertBoolean from '@tokenring-ai/utility/string/convertBoolean';
@@ -349,7 +453,8 @@ import indent from '@tokenring-ai/utility/string/indent';
 import markdownList from '@tokenring-ai/utility/string/markdownList';
 import numberedList from '@tokenring-ai/utility/string/numberedList';
 import codeBlock from '@tokenring-ai/utility/string/codeBlock';
-import errorToString from '@tokenring-ai/utility/string/errorToString';
+import errorAsString from '@tokenring-ai/utility/string/errorAsString';
+import unknownAsError from '@tokenring-ai/utility/string/unknownAsError';
 import markdownTable from '@tokenring-ai/utility/string/markdownTable';
 import { dedupe } from '@tokenring-ai/utility/string/dedupe';
 import { like } from '@tokenring-ai/utility/string/like';
@@ -359,6 +464,7 @@ import getRandomItem from '@tokenring-ai/utility/string/getRandomItem';
 import intelligentTruncate from '@tokenring-ai/utility/string/intelligentTruncate';
 import workingMessages from '@tokenring-ai/utility/string/workingMessages';
 import ridiculousMessages from '@tokenring-ai/utility/string/ridiculousMessages';
+import { brailleSpinner } from '@tokenring-ai/utility/string/brailleSpinner';
 
 // Boolean conversion
 convertBoolean('true');   // true
@@ -415,8 +521,11 @@ const code = codeBlock('console.log("hello")', 'typescript');
 // '```typescript\nconsole.log("hello")\n```'
 
 // Error to string
-const errorStr = errorToString(new Error('Something went wrong'));
+const errorStr = errorAsString(new Error('Something went wrong'));
 // 'Error: Something went wrong\n    at...'
+
+// Unknown to error
+const err = unknownAsError(someUnknownValue);
 
 // Markdown table
 const mdTable = markdownTable(
@@ -454,7 +563,7 @@ const sameColor = getRandomItem(colors, 42);
 
 // Intelligent truncation
 const truncated = intelligentTruncate('This is a long sentence', { maxLength: 15 });
-// 'This is...' 
+// 'This is...'
 
 // Wrap plain text
 const wrapped = wrapPlainText('This is plain text that needs wrapping', 20);
@@ -478,9 +587,33 @@ const status = workingMessages[0];
 // Ridiculous messages
 const funStatus = ridiculousMessages[0];
 // 'Reticulating splines'
+
+// Braille spinner
+const spinner = brailleSpinner[0];
+// '⠋'
 ```
 
-### Registry Pattern
+### Date Utilities Examples
+
+```typescript
+import { formatDate, formatTime, formatTimeAgo } from '@tokenring-ai/utility/date';
+
+// Format date
+formatDate(new Date());           // "Today"
+formatDate(Date.now() - 86400000); // "Yesterday"
+formatDate(Date.now() - 172800000); // "Oct 15" or "Oct 15, 2023"
+
+// Format time
+formatTime(Date.now());           // "14:30:45"
+
+// Format time ago
+formatTimeAgo(Date.now());        // "just now"
+formatTimeAgo(Date.now() - 120000); // "2m ago"
+formatTimeAgo(Date.now() - 7200000); // "2h ago"
+formatTimeAgo(Date.now() - 172800000); // "2d ago"
+```
+
+### Registry Pattern Examples
 
 ```typescript
 import KeyedRegistry from '@tokenring-ai/utility/registry/KeyedRegistry';
@@ -490,23 +623,23 @@ import TypedRegistry from '@tokenring-ai/utility/registry/TypedRegistry';
 const dbRegistry = new KeyedRegistry<string>();
 
 // Register different database connections
-dbRegistry.register('postgres', 'postgresql://localhost:5432');
-dbRegistry.register('mysql', 'mysql://localhost:3306');
+dbRegistry.set('postgres', 'postgresql://localhost:5432');
+dbRegistry.set('mysql', 'mysql://localhost:3306');
 
 // Get all registered items
-const allItems = dbRegistry.getAllItemValues();
+const allItems = dbRegistry.valuesArray();
 // ['postgresql://localhost:5432', 'mysql://localhost:3306']
 
 // Get item by name
-const postgresUrl = dbRegistry.getItemByName('postgres');
+const postgresUrl = dbRegistry.get('postgres');
 // 'postgresql://localhost:5432'
 
 // Pattern matching
-const matchingItems = dbRegistry.getItemNamesLike('my*');
+const matchingItems = dbRegistry.keysLike('my*');
 // ['mysql']
 
 // With callback (waits for registration if needed)
-dbRegistry.waitForItemByName('postgres', (item) => {
+dbRegistry.waitFor('postgres', (item) => {
   console.log('Postgres registered:', item);
 });
 
@@ -514,7 +647,7 @@ dbRegistry.waitForItemByName('postgres', (item) => {
 dbRegistry.ensureItems(['postgres', 'mysql']);
 
 // Get longest prefix match (useful for command routing)
-dbRegistry.register('db connect', 'connection-string');
+dbRegistry.set('db connect', 'connection-string');
 const match = dbRegistry.getLongestPrefixMatch('db connect server1');
 // { key: 'db connect', item: 'connection-string', remainder: 'server1' }
 
@@ -535,10 +668,10 @@ const typedRegistry = new TypedRegistry<Database>();
 typedRegistry.register(new PostgresDatabase(), new MySqlDatabase());
 
 const db = typedRegistry.getItemByType(PostgresDatabase);
-db.connect();
+db?.connect();
 ```
 
-### Timer Utilities
+### Timer Utilities Examples
 
 ```typescript
 import throttle from '@tokenring-ai/utility/timer/throttle';
@@ -568,32 +701,35 @@ debouncedSearch('react components'); // Cancels previous call
 // Output after 300ms: 'Performing search for: react components'
 ```
 
-### HTTP Service Integration
+### HTTP Retriever Examples
 
 ```typescript
-import { HttpService } from '@tokenring-ai/utility/http/HttpService';
+import { HTTPRetriever } from '@tokenring-ai/utility/http/HTTPRetriever';
+import { z } from 'zod';
 
-class GitHubApi extends HttpService {
-  protected baseUrl = 'https://api.github.com';
-  protected defaultHeaders = {
-    'Accept': 'application/vnd.github.v3+json',
-    'User-Agent': 'TokenRing-App'
-  };
+const retriever = new HTTPRetriever({
+  baseUrl: 'https://api.example.com',
+  headers: { 'Authorization': 'Bearer token' },
+  timeout: 5000
+});
 
-  async getRepository(owner: string, repo: string) {
-    return this.fetchJson(`/repos/${owner}/${repo}`, {}, 'getRepository');
-  }
+// Fetch JSON with automatic retry and timeout
+const data = await retriever.fetchJson({
+  url: '/users/123',
+  context: 'getUser',
+  timeout: 3000
+});
 
-  async getUser(username: string) {
-    return this.fetchJson(`/users/${username}`, {}, 'getUser');
-  }
-}
-
-const github = new GitHubApi();
-const repo = await github.getRepository('tokenring-ai', 'token-ring');
+// Fetch and validate JSON
+const UserSchema = z.object({ id: z.number(), name: z.string() });
+const user = await retriever.fetchValidatedJson({
+  url: '/users/123',
+  context: 'getUser',
+  schema: UserSchema
+});
 ```
 
-### Cached Data Retriever
+### Cached Data Retriever Examples
 
 ```typescript
 import cachedDataRetriever from '@tokenring-ai/utility/http/cachedDataRetriever';
@@ -614,16 +750,11 @@ const data2 = await getApiData(); // Returns cached data
 // After cacheTime expires, fetches fresh data
 ```
 
-### Promise Utilities
+### Promise Utilities Examples
 
 ```typescript
-import { abandon } from '@tokenring-ai/utility/promise/abandon';
 import waitForAbort from '@tokenring-ai/utility/promise/waitForAbort';
 import { backoff } from '@tokenring-ai/utility/promise/backoff';
-
-// Abandon promise to prevent unhandled rejection warning
-const fetchPromise = fetch('https://api.example.com/data');
-abandon(fetchPromise);
 
 // Wait for abort signal
 const controller = new AbortController();
@@ -646,11 +777,11 @@ await backoff(
 );
 ```
 
-### Buffer Detection
+### Buffer Detection Examples
 
 ```typescript
 import { isBinaryData } from '@tokenring-ai/utility/buffer/isBinaryData';
-import fs from 'fs';
+import fs from 'node:fs';
 
 // Check if a file is binary
 const buffer = fs.readFileSync('image.png');
@@ -662,7 +793,7 @@ const isText = isBinaryData(textBuffer);
 console.log('Is text:', isText);
 ```
 
-### Parametric Object Filter
+### Parametric Object Filter Examples
 
 ```typescript
 import parametricObjectFilter from '@tokenring-ai/utility/object/parametricObjectFilter';
@@ -688,7 +819,7 @@ const filtered = users.filter(filter);
 // String: '' or '=' only for 'name' field
 ```
 
-### Environment Utilities
+### Environment Utilities Examples
 
 ```typescript
 import { defaultEnv, isProductionEnvironment, isDevelopmentEnvironment } from '@tokenring-ai/utility/env';
@@ -713,7 +844,7 @@ if (isProductionEnvironment()) {
 }
 ```
 
-### Number Utilities
+### Number Utilities Examples
 
 ```typescript
 import { clamp } from '@tokenring-ai/utility/number/clamp';
@@ -725,10 +856,11 @@ clamp(15, 0, 10);    // 10
 clamp(3.5, 1, 5);    // 3.5
 ```
 
-### JSON Utilities
+### JSON Utilities Examples
 
 ```typescript
 import safeParse from '@tokenring-ai/utility/json/safeParse';
+import { JSONValueSchema } from '@tokenring-ai/utility/json/schema';
 
 // Parse JSON with fallback
 const config = safeParse('{"port": 3000, "host": "localhost"}', { port: 8080 });
@@ -741,61 +873,50 @@ const invalid = safeParse('not valid json', { port: 8080 });
 // Parse with type safety
 const numbers = safeParse('[1, 2, 3]', [] as number[]);
 // [1, 2, 3]
+
+// Validate JSON with Zod schema
+JSONValueSchema.parse({ key: 'value' });  // Valid
+JSONValueSchema.parse('string');          // Valid
+JSONValueSchema.parse(123);               // Valid
 ```
 
 ## Integration
 
 The utility package is designed to be used as a foundational dependency across the Token Ring ecosystem. It can be integrated into any package or application that requires common utility functions.
 
-### Service Integration
+### HTTP Retriever Integration Examples
 
 ```typescript
-import { HttpService } from '@tokenring-ai/utility/http/HttpService';
+import { HTTPRetriever } from '@tokenring-ai/utility/http/HTTPRetriever';
 import KeyedRegistry from '@tokenring-ai/utility/registry/KeyedRegistry';
 
 // Create a service that combines HTTP and registry functionality
-class DataService extends HttpService {
+class DataService {
+  private retriever: HTTPRetriever;
   private registry = new KeyedRegistry<string>();
 
   constructor() {
-    super();
+    this.retriever = new HTTPRetriever({
+      baseUrl: 'https://api.example.com',
+      headers: { 'Authorization': 'Bearer token' },
+      timeout: 5000
+    });
     // Register database connections
-    this.registry.register('db', 'postgresql://localhost:5432');
+    this.registry.set('db', 'postgresql://localhost:5432');
   }
 
   async fetchData() {
-    const dbUrl = this.registry.getItemByName('db');
-    const response = await this.fetchJson('/data', {}, 'fetchData');
+    const dbUrl = this.registry.get('db');
+    const response = await this.retriever.fetchJson({
+      url: '/data',
+      context: 'fetchData'
+    });
     return { data: response, dbUrl };
   }
 }
 ```
 
-### Custom HTTP Service
-
-```typescript
-import { HttpService } from '@tokenring-ai/utility/http/HttpService';
-
-class GitHubApi extends HttpService {
-  protected baseUrl = 'https://api.github.com';
-  protected defaultHeaders = {
-    'Accept': 'application/vnd.github.v3+json'
-  };
-
-  async getRepository(owner: string, repo: string) {
-    return this.fetchJson(`/repos/${owner}/${repo}`, {}, 'getRepository');
-  }
-
-  async getUser(username: string) {
-    return this.fetchJson(`/users/${username}`, {}, 'getUser');
-  }
-}
-
-const github = new GitHubApi();
-const repo = await github.getRepository('tokenring-ai', 'token-ring');
-```
-
-### Registry Pattern with Callbacks
+### Registry Pattern with Callbacks Examples
 
 ```typescript
 import KeyedRegistry from '@tokenring-ai/utility/registry/KeyedRegistry';
@@ -804,11 +925,11 @@ import KeyedRegistry from '@tokenring-ai/utility/registry/KeyedRegistry';
 const pluginRegistry = new KeyedRegistry<Plugin>();
 
 // Register plugins
-pluginRegistry.register('plugin-a', pluginA);
-pluginRegistry.register('plugin-b', pluginB);
+pluginRegistry.set('plugin-a', pluginA);
+pluginRegistry.set('plugin-b', pluginB);
 
 // Wait for plugin to be registered (useful for async initialization)
-pluginRegistry.waitForItemByName('plugin-a', (plugin) => {
+pluginRegistry.waitFor('plugin-a', (plugin) => {
   console.log('Plugin A is ready:', plugin);
   // Use plugin
 });
@@ -821,7 +942,6 @@ pluginRegistry.waitForItemByName('plugin-a', (plugin) => {
 - Use `pick` and `omit` for safe object property manipulation
 - Use `deepMerge` for combining configuration objects
 - Use `deepClone` for creating deep copies of objects
-- Use `abandon` when you intentionally want to ignore promise results
 - Use `throttle` and `debounce` to control the rate of function calls
 - Use `KeyedRegistry` for service discovery and management
 - Use `TypedRegistry` for class-based service registration
@@ -844,6 +964,12 @@ pluginRegistry.waitForItemByName('plugin-a', (plugin) => {
 - Use `intelligentTruncate` for smart truncation that preserves word boundaries
 - Use `clamp` for constraining numeric values to a range
 - Use `safeParse` for safe JSON parsing with fallback values
+- Use `arrayableToArray` for normalizing single or array values
+- Use `formatDate`, `formatTime`, and `formatTimeAgo` for date formatting
+- Use `errorAsString` for consistent error string conversion
+- Use `unknownAsError` for converting unknown values to errors
+- Use `HTTPRetriever` for HTTP requests with retry and timeout support
+- Use `cachedDataRetriever` for caching API responses with TTL
 
 ## Testing and Development
 
@@ -877,7 +1003,7 @@ describe('Object Utilities', () => {
 
 describe('Timer Utilities', () => {
   test('throttle limits function calls', () => {
-    const fn = jest.fn();
+    const fn = vi.fn();
     const throttled = throttle(fn);
     throttled(100, 'a');
     throttled(100, 'b');
@@ -885,7 +1011,7 @@ describe('Timer Utilities', () => {
   });
 
   test('debounce delays function execution', () => {
-    const fn = jest.fn();
+    const fn = vi.fn();
     const debounced = debounce(fn, 100);
     debounced('a');
     debounced('b');
@@ -899,11 +1025,12 @@ describe('Timer Utilities', () => {
 ### Production Dependencies
 
 - `human-id`: ^4.1.3
+- `zod`: ^4.3.6
 
 ### Development Dependencies
 
-- `vitest`: ^4.1.0
-- `typescript`: ^5.9.3
+- `vitest`: ^4.1.1
+- `typescript`: ^6.0.2
 
 ## Related Components
 
@@ -936,7 +1063,10 @@ describe('Timer Utilities', () => {
 - The `intelligentTruncate` function preserves word boundaries when truncating
 - The `clamp` function constrains numeric values to a specified range
 - The `safeParse` function provides safe JSON parsing with fallback values
+- The `HTTPRetriever` class provides HTTP client functionality with retry and timeout support
+- The `KeyedRegistry` uses `set` method (not `register`) for adding items
+- The `KeyedRegistry` uses `get` method (not `getItemByName`) for retrieving items
 
 ## License
 
-MIT License - see [LICENSE](https://github.com/tokenring-ai/monorepo/blob/main/LICENSE) for details.
+MIT License - see [LICENSE](./LICENSE) for details.

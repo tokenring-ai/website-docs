@@ -46,13 +46,16 @@ and interactive content review scenarios where human input is needed.
 | Tool Name | Display Name | Description |
 | :--- | :--- | :--- |
 | `ask_questions` | `Feedback/askQuestions` | Ask questions via chat with form inputs |
-| `feedback_getFileFeedback` | `Feedback/getFileFeedback` | Get feedback on file content |
-| `feedback_react-feedback` | `Feedback/react-feedback` | Get feedback on React components |
+| `getFileFeedback` | `Feedback/getFileFeedback` | Get feedback on file content |
+| `react-feedback` | `Feedback/react-feedback` | Get feedback on React components |
 
 #### Feedback/askQuestions
 
 Ask questions to users via chat when feedback is necessary or when uncertain
-about the proper path to complete a task.
+about the proper path to complete a task. If there is uncertainty about the
+task to be completed, or you are worried about doing something incorrectly,
+use this tool, as it provides a strong guarantee that you are doing things
+aligned with the users intents.
 
 **Input Parameters**:
 
@@ -69,35 +72,67 @@ about the proper path to complete a task.
 import askQuestions from "@tokenring-ai/feedback/tools/askQuestions";
 
 const result = await askQuestions.execute({
-  message: "I'm unsure about the approach.",
+  message: "I'm unsure about the approach to take for this refactoring.",
   questions: [
     {
-      question: "Which method do you prefer?",
-      choices: ["Method A", "Method B", "Method C"]
+      question: "Which refactoring method do you prefer?",
+      choices: ["Extract to separate module", "Inline functions", "Keep as-is"]
+    },
+    {
+      question: "Should we add tests before or after?",
+      choices: [] // Freeform answer
     }
   ]
 }, agent);
 ```
 
+**Response Format**:
+
+Returns a formatted string with user responses:
+
+```text
+The user has provided the following responses:
+
+Which refactoring method do you prefer?
+Extract to separate module
+
+Should we add tests before or after?
+After implementation
+```
+
+**Error Handling**:
+
+- Throws error if user doesn't respond to question prompt
+- Returns default message if user doesn't provide answer
+- Validates that at least one question is provided
+- Supports iterative questioning - continues until all questions are answered
+
+---
+
 #### Feedback/getFileFeedback
 
 Present file content to the user for review, solicit feedback (accept/reject
-with comments), and optionally write content to a file if accepted.
+with comments), and optionally write content to a file if accepted. If the
+`contentType` is `text/markdown` or `text/x-markdown`, the content will be
+rendered as HTML for review.
 
 **Input Parameters**:
 
 | Parameter | Type | Required | Description |
 | :--- | :--- | :--- | :--- |
-| filePath | string | Yes | Path where content should be saved |
+| filePath | string | Yes | Path where content should be saved if accepted |
 | content | string | Yes | The actual text content to review |
 | contentType | string | No | MIME type, defaults to 'text/plain' |
 
 **Supported Content Types**:
 
-- `text/plain`: Plain text with HTML escaping
-- `text/markdown`: Markdown rendered to HTML using marked.js
-- `text/html`: Raw HTML content rendered in iframe
-- `application/json`: JSON formatted with HTML escaping
+| Content Type | Rendering Method |
+| :--- | :--- |
+| `text/plain` | Plain text with HTML escaping in `<pre>` tag |
+| `text/markdown` | Markdown rendered to HTML using marked.js |
+| `text/x-markdown` | Markdown rendered to HTML using marked.js |
+| `text/html` | Raw HTML content rendered in iframe |
+| `application/json` | JSON formatted with HTML escaping in `<pre>` tag |
 
 **Example**:
 
@@ -106,22 +141,45 @@ import getFileFeedback from "@tokenring-ai/feedback/tools/getFileFeedback";
 
 const result = await getFileFeedback.execute({
   filePath: "docs/sample.md",
-  content: "# Sample\nThis is **bold** text.",
+  content: "# Sample\n\nThis is **bold** text and `code`.",
   contentType: "text/markdown"
 }, agent);
 ```
 
+**Response Format**:
+
+Returns a JSON string with the following structure:
+
+```json
+{
+  "status": "accepted" | "rejected",
+  "comment": "optional user comment",
+  "filePath": "path if accepted",
+  "rejectedFilePath": "path if rejected with timestamp"
+}
+```
+
+**Error Handling**:
+
+- Throws error if `filePath` or `content` parameters are missing
+- Cleanup errors are logged but don't stop execution
+- Server startup errors are logged with fallback URL reporting
+- Rejected files are saved with `.rejected` prefix and timestamp
+
+---
+
 #### Feedback/react-feedback
 
 Show a React component in a browser window for user feedback, allowing
-accept/reject with optional comments.
+accept/reject with optional comments. The component is bundled using esbuild
+and rendered with React 18 from CDN.
 
 **Input Parameters**:
 
 | Parameter | Type | Required | Description |
 | :--- | :--- | :--- | :--- |
-| code | string | Yes | Complete React component source code |
-| file | string | No | Filename/path, defaults to timestamped name |
+| code | string | Yes | Complete source code of the React component (valid JSX/TSX) |
+| file | string | No | Filename/path of the React component to be previewed |
 
 **Example**:
 
@@ -131,12 +189,44 @@ import reactFeedback from "@tokenring-ai/feedback/tools/react-feedback";
 const result = await reactFeedback.execute({
   code: `
     export default function MyComponent() {
-      return <div>Hello, Feedback!</div>;
+      return (
+        <div style={{ padding: '20px' }}>
+          <h1>Hello, Feedback!</h1>
+          <p>This is a React component preview.</p>
+        </div>
+      );
     }
   `,
   file: "src/components/MyComponent.tsx"
 }, agent);
 ```
+
+**Response Format**:
+
+Returns a JSON string with the following structure:
+
+```json
+// Accepted
+{ "status": "accept", "comment": "optional comment" }
+
+// Rejected
+{ "status": "reject", "comment": "optional comment" }
+```
+
+**Technical Details**:
+
+- Components are bundled using esbuild with JSX automatic transformation
+- React and React DOM are loaded from unpkg CDN (version 18)
+- External dependencies (react, react-dom) are treated as global variables
+- Components must export a default function component
+- Temporary files are automatically cleaned up after feedback is received
+
+**Error Handling**:
+
+- Throws error if `code` parameter is missing
+- Cleanup is performed after file operations
+- Server is stopped after cleanup
+- Rejected files are saved with `.rejected` prefix and timestamp
 
 ### Configuration
 
@@ -154,6 +244,8 @@ app.install(feedbackPlugin);
 
 // Tools are now available via the chat service
 ```
+
+The plugin automatically registers all tools with the ChatService upon installation.
 
 ### Integration
 
@@ -180,9 +272,15 @@ async function execute(params: unknown, agent: Agent) {
 }
 ```
 
+### Required Services
+
+- **ChatService**: Required for tool registration (handled by plugin)
+- **FileSystemService**: Required by `getFileFeedback` and `reactFeedback`
+- **Agent**: Required for logging and service access
+
 ### Best Practices
 
-#### Using askQuestions
+#### Using ask_questions
 
 1. **Provide Clear Context**: Always include a descriptive message explaining
    why you need feedback
@@ -223,11 +321,7 @@ import askQuestions from "./tools/askQuestions.ts";
 import getFileFeedback from "./tools/getFileFeedback.ts";
 import reactFeedback from "./tools/react-feedback.ts";
 
-export default {
-  askQuestions,
-  getFileFeedback,
-  reactFeedback,
-};
+export default [askQuestions, getFileFeedback, reactFeedback];
 ```
 
 Each tool follows the `TokenRingToolDefinition` pattern:
@@ -264,7 +358,7 @@ This package does not define any chat commands.
 The package uses an empty configuration schema with no configurable options:
 
 ```typescript
-import {z} from "zod";
+import { z } from "zod";
 
 const packageConfigSchema = z.object({});
 ```
@@ -354,11 +448,11 @@ import { describe, it, expect } from "vitest";
 import askQuestionsTool from "./tools/askQuestions.ts";
 
 describe("Feedback Tools", () => {
-  describe("askQuestions", () => {
+  describe("ask_questions", () => {
     it("should throw error if message is missing", async () => {
       await expect(
         askQuestionsTool.execute(
-          {message: "", questions: []},
+          { message: "", questions: [] },
           mockAgent
         )
       ).rejects.toThrow();
@@ -408,14 +502,14 @@ export default defineConfig({
 - `@tokenring-ai/chat@0.2.0` - Chat service
 - `@tokenring-ai/agent@0.2.0` - Agent system and question schema
 - `@tokenring-ai/filesystem@0.2.0` - File system service
+- `@tokenring-ai/utility@0.2.0` - Utility functions
 - `zod@^4.3.6` - Schema validation
-- `esbuild@^0.27.4` - React component bundling
+- `esbuild@^0.28.0` - React component bundling
+- `esbuild-plugin-external-global@^1.0.1` - ESBuild plugin for external globals
 - `express@^5.2.1` - Web server for preview
-- `marked@^17.0.5` - Markdown rendering
+- `marked@^17.0.6` - Markdown rendering
 - `date-fns@^4.1.0` - Date formatting
 - `open@^11.0.0` - Browser launcher
-- `react@^19.2.4` - React library
-- `react-dom@^19.2.4` - React DOM library
 
 #### Development Dependencies
 
@@ -430,7 +524,7 @@ All tools follow consistent error handling patterns.
 #### Parameter Validation
 
 ```typescript
-// askQuestions: Validates that at least one question is provided
+// ask_questions: Validates that at least one question is provided
 if (questionItems.size === 0) {
   return "You did not provide any questions...";
 }
@@ -438,13 +532,13 @@ if (questionItems.size === 0) {
 // getFileFeedback: Validates filePath and content are provided
 if (!filePath || !content) {
   throw new Error(
-    `[feedback_getFileFeedback] filePath and content are required.`
+    `[getFileFeedback] filePath and content are required.`
   );
 }
 
-// reactFeedback: Validates code is provided
+// react-feedback: Validates code is provided
 if (!code) {
-  throw new Error(`[feedback_react-feedback] code is required.`);
+  throw new Error(`[react-feedback] code is required.`);
 }
 ```
 
@@ -464,6 +558,7 @@ if (!code) {
 - `@tokenring-ai/app`: Required for TokenRingPlugin abstraction
 - `@tokenring-ai/agent`: Required for Agent and askQuestion API
 - `@tokenring-ai/filesystem`: Required for file operations
+- `@tokenring-ai/utility`: Required for array utilities
 
 #### Related Tools
 

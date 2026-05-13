@@ -16,14 +16,14 @@ The `@tokenring-ai/wikipedia` package enables Token Ring AI agents to interact w
 - **Agent Tools**: Two tools automatically registered for agent interaction
 - **Configurable**: Optional baseUrl for different Wikipedia language editions
 - **Error Handling**: Comprehensive error handling with status codes and clear error messages
-- **Retry Logic**: Built-in retry logic via `doFetchWithRetry` for transient network failures
-- **Service Architecture**: Extends `HttpService` for consistent HTTP handling
+- **Retry Logic**: Built-in retry logic via `doFetchWithRetry` for page retrieval
+- **Service Architecture**: Uses `HTTPRetriever` for consistent HTTP handling
 
 ## Core Components
 
 ### WikipediaService
 
-The main service class that handles all Wikipedia API interactions. Implements `TokenRingService` interface and extends `HttpService` from `@tokenring-ai/utility`.
+The main service class that handles all Wikipedia API interactions. Implements `TokenRingService` interface and uses `HTTPRetriever` from `@tokenring-ai/utility`.
 
 **Location**: `pkg/wikipedia/WikipediaService.ts`
 
@@ -34,23 +34,24 @@ constructor(config: ParsedWikipediaConfig)
 ```
 
 **Parameters:**
+
 - `config` (ParsedWikipediaConfig): Configuration object
   - `baseUrl` (optional): Base URL for Wikipedia API, defaults to `https://en.wikipedia.org`
 
 **Properties:**
+
 - `name`: "WikipediaService"
 - `description`: "Service for searching Wikipedia articles"
 - `options`: Service configuration (ParsedWikipediaConfig)
-- `baseUrl`: Protected property storing the base URL
-- `defaultHeaders`: Protected property with User-Agent header (`"TokenRing-Writer/1.0 (https://github.com/tokenring/writer)"`)
 
 #### Service Methods
 
-##### `search(query: string, opts?: WikipediaSearchOptions): Promise<any>`
+##### `search(query: string, opts?: WikipediaSearchOptions): Promise<JSONValue>`
 
 Performs a Wikipedia search and returns structured search results with articles matching the query.
 
 **Parameters:**
+
 - `query` (required): Search query string
 - `opts` (optional): Search options
   - `limit` (optional): Number of results to return (1-500, default: 10)
@@ -58,7 +59,9 @@ Performs a Wikipedia search and returns structured search results with articles 
   - `offset` (optional): Pagination offset for large result sets (default: 0)
 
 **Returns:**
+
 Promise resolving to Wikipedia API search response:
+
 ```typescript
 {
   query: {
@@ -81,6 +84,7 @@ Promise resolving to Wikipedia API search response:
 **Throws:** Error if query is empty
 
 **Example:**
+
 ```typescript
 import WikipediaService, {WikipediaConfigSchema} from "@tokenring-ai/wikipedia";
 
@@ -103,14 +107,17 @@ const specializedResults = await wikipedia.search("Token Ring AI framework", {
 Retrieves raw wiki markup content for a specific Wikipedia page title. Uses `doFetchWithRetry` from `@tokenring-ai/utility` for reliable network requests.
 
 **Parameters:**
+
 - `title` (required): Page title (URL-encoded in practice, but the service handles this)
 
 **Returns:**
+
 - Raw wiki markup content as a text string
 
 **Throws:** Error if title is empty or page retrieval fails (includes status code in error object)
 
 **Example:**
+
 ```typescript
 // Get raw wiki markup for a page
 const content = await wikipedia.getPage("Token_Ring");
@@ -120,7 +127,7 @@ console.log(content.substring(0, 200) + "...");
 
 ## Services
 
-### WikipediaService
+### WikipediaService Reference
 
 The `WikipediaService` is a `TokenRingService` that can be required by agents using the `requireServiceByType` method.
 
@@ -176,6 +183,7 @@ interface WikipediaConfig {
 ```
 
 **Schema Definition:**
+
 ```typescript
 export const WikipediaConfigSchema = z.object({
   baseUrl: z.string().default("https://en.wikipedia.org")
@@ -254,6 +262,7 @@ The package provides two tools for agent integration, automatically registered w
 Search Wikipedia articles with structured results.
 
 **Tool Definition:**
+
 ```typescript
 {
   name: "wikipedia_search",
@@ -261,30 +270,34 @@ Search Wikipedia articles with structured results.
   description: "Search Wikipedia articles. Returns structured JSON with search results.",
   inputSchema: z.object({
     query: z.string().min(1).describe("Search query"),
-    limit: z.number().int().positive().max(500).optional().describe("Number of results (1-500, default: 10)"),
-    offset: z.number().int().min(0).optional().describe("Offset for pagination (default: 0)"),
+    limit: z.number().int().positive().max(500).exactOptional().describe("Number of results (1-500, default: 10)"),
+    offset: z.number().int().min(0).exactOptional().describe("Offset for pagination (default: 0)"),
   }),
   execute: async (input, agent) => {
     const wikipedia = agent.requireServiceByType(WikipediaService);
     agent.infoMessage(`[wikipediaSearch] Searching: ${input.query}`);
     const results = await wikipedia.search(input.query, {limit: input.limit, offset: input.offset});
-    return { type: 'json' as const, data: results };
+    return JSON.stringify(results);
   }
 }
 ```
 
 **Input Schema:**
+
 ```typescript
 z.object({
   query: z.string().min(1).describe("Search query"),
-  limit: z.number().int().positive().max(500).optional().describe("Number of results (1-500, default: 10)"),
-  offset: z.number().int().min(0).optional().describe("Offset for pagination (default: 0)"),
+  limit: z.number().int().positive().max(500).exactOptional().describe("Number of results (1-500, default: 10)"),
+  offset: z.number().int().min(0).exactOptional().describe("Offset for pagination (default: 0)"),
 })
 ```
 
-**Returns:** `TokenRingToolJSONResult` with search results
+**Note:** The tool does not expose the `namespace` parameter. To search specific namespaces, use the `WikipediaService` directly with `agent.requireServiceByType(WikipediaService)`.
+
+**Returns:** JSON string with search results
 
 **Usage:**
+
 ```typescript
 // In agent task execution, tool is auto-available
 const agent = new Agent();
@@ -292,7 +305,7 @@ const results = await agent.executeTool("wikipedia_search", {
   query: "artificial intelligence",
   limit: 10
 });
-console.log(results.data.query.search);
+console.log(JSON.parse(results));
 // Output: Array of search results with title, snippet, pageid, etc.
 ```
 
@@ -301,6 +314,7 @@ console.log(results.data.query.search);
 Retrieve raw wiki markup content for a specific Wikipedia page.
 
 **Tool Definition:**
+
 ```typescript
 {
   name: "wikipedia_getPage",
@@ -323,31 +337,33 @@ Retrieve raw wiki markup content for a specific Wikipedia page.
 ```
 
 **Input Schema:**
+
 ```typescript
 z.object({
   title: z.string().min(1).describe("Wikipedia page title"),
 })
 ```
 
-**Returns:** `TokenRingToolTextResult` with raw wiki markup content
+**Returns:** Text string with raw wiki markup content
 
 **Usage:**
+
 ```typescript
 // In agent task execution, tool is auto-available
 const agent = new Agent();
 const content = await agent.executeTool("wikipedia_getPage", {
   title: "Machine learning"
 });
-console.log(content.data);
+console.log(content);
 // Output: Raw wiki markup content of the page
 ```
 
 ## Package Structure
 
-```
+```text
 pkg/wikipedia/
 ├── index.ts                      # Main exports (WikipediaService)
-├── WikipediaService.ts           # Core service class extending HttpService
+├── WikipediaService.ts           # Core service class using HTTPRetriever
 ├── plugin.ts                     # TokenRingPlugin registration
 ├── tools.ts                      # Barrel export for tools/
 ├── tools/
@@ -407,7 +423,7 @@ const searchResults = await agent.executeTool("wikipedia_search", {
   query: "machine learning",
   limit: 5
 });
-console.log(searchResults.data.query.search);
+console.log(JSON.parse(searchResults).query.search);
 
 // Pagination example
 const firstPage = await agent.executeTool("wikipedia_search", {
@@ -426,7 +442,7 @@ const secondPage = await agent.executeTool("wikipedia_search", {
 const pageContent = await agent.executeTool("wikipedia_getPage", {
   title: "TypeScript"
 });
-console.log(pageContent.data.substring(0, 500));
+console.log(pageContent.substring(0, 500));
 ```
 
 ### Integration with Token Ring Applications
@@ -463,12 +479,12 @@ async function researchTopic(agent: Agent, query: string) {
   });
 
   // Process results
-  if (searchResult.data.query.search.length === 0) {
+  if (JSON.parse(searchResult).query.search.length === 0) {
     throw new Error("No relevant articles found");
   }
 
   // Get content from the most relevant article
-  const topArticle = searchResult.data.query.search[0];
+  const topArticle = JSON.parse(searchResult).query.search[0];
   const pageContent = await agent.executeTool("wikipedia_getPage", {
     title: topArticle.title
   });
@@ -476,7 +492,7 @@ async function researchTopic(agent: Agent, query: string) {
   return {
     title: topArticle.title,
     snippet: topArticle.snippet,
-    content: pageContent.data,
+    content: pageContent,
     pageId: topArticle.pageid
   };
 }
@@ -518,20 +534,12 @@ The search method returns a structured response with comprehensive metadata:
 ### Tool Response Types
 
 #### Search Tool Response
-```typescript
-{
-  type: 'json';
-  data: WikipediaSearchResponse;
-}
-```
+
+- Returns: JSON string (use `JSON.parse()` to access data)
 
 #### GetPage Tool Response
-```typescript
-{
-  type: 'text';
-  data: string;  // Raw wiki markup
-}
-```
+
+- Returns: Text string with raw wiki markup
 
 ## Error Handling
 
@@ -597,6 +605,7 @@ try {
 **Location**: `/w/api.php?{params}`
 
 **Parameters:**
+
 - `action=query` - Action type (fixed)
 - `list=search` - List search results
 - `srsearch={query}` - Search query string
@@ -606,11 +615,13 @@ try {
 - `sroffset={number}` - Pagination offset (default: 0)
 
 **Example Request:**
-```
+
+```http
 GET https://en.wikipedia.org/w/api.php?action=query&list=search&srsearch=AI&format=json&srlimit=10
 ```
 
 **Response Structure:**
+
 ```json
 {
   "batchcomplete": true,
@@ -637,22 +648,25 @@ GET https://en.wikipedia.org/w/api.php?action=query&list=search&srsearch=AI&form
 **Location**: `{baseUrl}/w/index.php?{params}`
 
 **Parameters:**
+
 - `title={page}` - Page title
 - `action=raw` - Return raw wiki markup (fixed)
 
 **Example Request:**
-```
+
+```http
 GET https://en.wikipedia.org/w/index.php?title=Artificial_intelligence&action=raw
 ```
 
 **Response:**
+
 - Raw wiki markup text (plain text, not JSON)
 
 ### URLSearchParams Construction
 
 The service uses URLSearchParams for parameter building:
 
-```javascript
+```typescript
 // Search endpoint
 const params = new URLSearchParams({
   action: "query",
@@ -673,12 +687,10 @@ const params = new URLSearchParams({
 
 ### HTTP Headers
 
-The service sets a custom User-Agent header for all requests:
+The service sets a custom User-Agent header for all requests via `HTTPRetriever`:
 
 ```typescript
-defaultHeaders = {
-  "User-Agent": "TokenRing-Writer/1.0 (https://github.com/tokenring/writer)"
-}
+headers: { "User-Agent": "TokenRing-Writer/1.0 (https://github.com/tokenring/writer)" }
 ```
 
 This is required by Wikipedia's API policy for proper identification of API clients.
@@ -686,6 +698,7 @@ This is required by Wikipedia's API policy for proper identification of API clie
 ## Best Practices
 
 1. **Rate Limiting**: Wikipedia API has rate limits; implement appropriate delays if performing many searches
+
    ```typescript
    // Example: Add delay between requests
    const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
@@ -697,11 +710,13 @@ This is required by Wikipedia's API policy for proper identification of API clie
    ```
 
 2. **Query Optimization**:
+
    - Use specific, descriptive queries for better results
    - Consider using Boolean operators (e.g., "machine learning AND neural networks")
    - Adjust `limit` parameter based on result quantity needs
 
 3. **Pagination**: For large result sets, use `offset` parameter to paginate through results
+
    ```typescript
    const pageSize = 50;
    let offset = 0;
@@ -727,6 +742,7 @@ This is required by Wikipedia's API policy for proper identification of API clie
    - Note: The `wikipedia_search` tool does not expose the namespace parameter; use the service directly for namespace filtering
 
 6. **Error Handling**: Always wrap API calls in try-catch blocks
+
    ```typescript
    try {
      const results = await wikipedia.search("your query");
@@ -742,6 +758,7 @@ This is required by Wikipedia's API policy for proper identification of API clie
    ```
 
 7. **Caching**: Cache frequently accessed search results and page content
+
    ```typescript
    const cache = new Map<string, any>();
    
@@ -772,7 +789,7 @@ This is required by Wikipedia's API policy for proper identification of API clie
    - Strip templates and references for clean text
    - Handle special characters and formatting
 
-10. **Retry Logic**: The `getPage()` method uses `doFetchWithRetry` from `@tokenring-ai/utility` for automatic retry on transient failures. The `search()` method uses the base `HttpService.fetchJson()` which does not include retry logic.
+10. **Retry Logic**: The `getPage()` method uses `doFetchWithRetry` from `@tokenring-ai/utility` for automatic retry on transient failures. The `search()` method uses `HTTPRetriever.fetchValidatedJson()` which includes built-in error handling.
 
 ## Integration
 
@@ -830,7 +847,7 @@ export default {
   description: packageJSON.description,
   install(app, config) {
     app.waitForService(ChatService, chatService =>
-      chatService.addTools(tools)  // Tools auto-registered
+      chatService.addTools(...tools)  // Tools auto-registered
     );
     app.addServices(new WikipediaService(config.wikipedia));
   },
@@ -911,16 +928,15 @@ describe("WikipediaService", () => {
 - `@tokenring-ai/app` (0.2.0): Application framework for service registration
 - `@tokenring-ai/chat` (0.2.0): Chat functionality for tool registration
 - `@tokenring-ai/agent` (0.2.0): Agent framework for tool execution
-- `@tokenring-ai/utility` (0.2.0): HTTP service base class and general utilities (`doFetchWithRetry`, `HttpService`)
+- `@tokenring-ai/utility` (0.2.0): HTTP utilities (`doFetchWithRetry`, `HTTPRetriever`)
 - `zod` (^4.3.6): Runtime type validation for configuration and inputs
 
 ### Development Dependencies
 
-- `vitest` (^4.0.18): Testing framework
-- `@vitest/coverage-v8` (^4.0.18): Code coverage
-- `typescript` (^5.9.3): TypeScript support
+- `vitest` (^4.1.1): Testing framework
+- `typescript` (^6.0.2): TypeScript support
 
-The service extends `HttpService` from `@tokenring-ai/utility` for base HTTP functionality and uses `doFetchWithRetry` for reliable network requests on page retrieval.
+The service uses `HTTPRetriever` from `@tokenring-ai/utility` for HTTP requests and `doFetchWithRetry` for reliable network requests on page retrieval.
 
 ## Limitations
 
@@ -932,14 +948,14 @@ The service extends `HttpService` from `@tokenring-ai/utility` for base HTTP fun
 - **Namespace Support**: Service supports standard Wikipedia namespaces (0, 14, 108, etc.), but the `wikipedia_search` tool does not expose the namespace parameter
 - **No Image Handling**: Does not provide direct access to images or media files
 - **No Category Browsing**: Search only, no category tree traversal
-- **Retry Logic**: Only `getPage()` uses retry logic via `doFetchWithRetry`; `search()` does not
+- **Retry Logic**: Only `getPage()` uses retry logic via `doFetchWithRetry`; `search()` uses `HTTPRetriever.fetchValidatedJson()`
 
 ## Related Components
 
 - `@tokenring-ai/research` - Research service that may integrate Wikipedia functionality
 - `@tokenring-ai/websearch` - General web search integration
 - `@tokenring-ai/browser` - Browser-based content retrieval
-- `HttpService` - Base class for HTTP service implementations in `@tokenring-ai/utility`
+- `HTTPRetriever` - HTTP client class in `@tokenring-ai/utility`
 - `TokenRingAgent` - Agent framework for tool execution and service access
 - `ChatService` - Chat service for tool registration in `@tokenring-ai/chat`
 - `doFetchWithRetry` - Retry-enabled fetch utility in `@tokenring-ai/utility`
@@ -948,7 +964,7 @@ The service extends `HttpService` from `@tokenring-ai/utility` for base HTTP fun
 
 - Wikipedia API uses underscores for spaces in titles (`Token_Ring` not `Token Ring`)
 - The `getPage()` method uses `doFetchWithRetry` from utility package for reliability
-- The `search()` method uses base `HttpService.fetchJson()` without retry logic
+- The `search()` method uses `HTTPRetriever.fetchValidatedJson()` for validated JSON responses
 - User-Agent header defaults to `"TokenRing-Writer/1.0 (https://github.com/tokenring/writer)"`
 - Search results include HTML-formatted snippets for display purposes
 - Page content returns raw wiki markup
@@ -957,6 +973,7 @@ The service extends `HttpService` from `@tokenring-ai/utility` for base HTTP fun
 - All API calls are asynchronous and return Promises
 - Configuration uses Zod schema validation for type safety
 - Tool-level error wrapping adds tool name prefix to error messages
+- Tool schemas use `exactOptional()` for optional parameters
 
 ## License
 

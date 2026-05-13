@@ -9,6 +9,7 @@ A browser-based file system provider that implements the `FileSystemProvider` in
 The `BrowserFileSystemProvider` implements the complete `FileSystemProvider` interface from `@tokenring-ai/filesystem` and provides a comprehensive set of file system operations that work entirely in memory. It ships with a built-in mock file system containing sample files, allowing for immediate exploration without external setup.
 
 **Key Characteristics**:
+
 - **In-Memory Only**: No persistence across page reloads or provider destruction
 - **Mock Behavior**: Gracefully handles edge cases (non-existent files in copy/rename) for testing
 - **Browser-Optimized**: Designed for browser environments where direct file system access is unavailable
@@ -18,7 +19,7 @@ The `BrowserFileSystemProvider` implements the complete `FileSystemProvider` int
 
 - **In-Memory File System**: Complete file system operations that work entirely in memory, perfect for browser environments
 - **Full CRUD Operations**: Read, write, append, and delete files with proper content handling (string and Buffer support)
-- **Directory Traversal**: Async generator-based tree traversal with recursive and non-recursive modes
+- **Directory Traversal**: Generator-based tree traversal with recursive and non-recursive modes
 - **File Operations**: Copy and rename files with overwrite protection and conflict detection
 - **Content Search**: Grep functionality with context line support (lines before/after matches)
 - **File Statistics**: Detailed file metadata including size, timestamps, and type information
@@ -42,16 +43,15 @@ The package uses ES modules (`"type": "module"`) and exports the following:
 ```typescript
 // Main provider export
 export { default as BrowserFileSystemProvider } from "./BrowserFileSystemProvider.ts";
-
-// Package entry point
-export { default } from "./plugin.ts"; // TokenRing plugin
 ```
 
-**Note:** All exports use `.ts` extensions for direct TypeScript imports in the monorepo.
+**Note**: All exports use `.ts` extensions for direct TypeScript imports in the monorepo.
+
+The plugin can be imported separately from `./plugin.ts` for TokenRing integration.
 
 ## Package Structure
 
-```
+```text
 pkg/browser-file-system/
 ├── BrowserFileSystemProvider.ts      # Main provider implementation
 ├── BrowserFileSystemProvider.test.ts # Unit tests for provider
@@ -61,7 +61,65 @@ pkg/browser-file-system/
 ├── package.json                      # Package configuration
 ├── vitest.config.ts                  # Test configuration
 ├── LICENSE                           # License information
-└── README.md                         # This file
+└── README.md                         # Package README
+```
+
+## Chat Commands
+
+This package does not define any chat commands. File system operations are accessed through:
+
+- **Tools**: Available as agent tools when integrated with the agent system
+- **Service API**: Direct access through the FileSystemService
+- **Provider API**: Direct usage of BrowserFileSystemProvider
+
+## Tools
+
+This package does not define any tools directly. Tools can be created using the provider API and registered with the agent system.
+
+## Configuration
+
+This package does not require any configuration. The plugin automatically registers the `BrowserFileSystemProvider` with the FileSystemService under the name `"browser"`.
+
+### Plugin Registration
+
+The plugin automatically registers the `BrowserFileSystemProvider` with the FileSystemService:
+
+```typescript
+import { TokenRingApp } from "@tokenring-ai/app";
+import browserFileSystem from "@tokenring-ai/browser-file-system/plugin";
+
+const app = new TokenRingApp();
+
+// Register the browser file system plugin
+app.registerPlugin(browserFileSystem);
+
+// Access the file system service
+app.services.waitForItemByType(
+  FileSystemService,
+  (fileSystemService) => {
+    const fs = fileSystemService.getFileSystem("browser");
+    const content = fs.readFile("/README.md");
+    console.log(content?.toString("utf-8"));
+  }
+);
+```
+
+**Note**: The plugin does not require configuration - it registers directly with the name `"browser"`.
+
+## Services
+
+### FileSystemService Integration
+
+This package integrates with the `FileSystemService` from `@tokenring-ai/filesystem`. The provider is automatically registered when the plugin is loaded.
+
+The plugin registers the browser file system provider with the name `"browser"`:
+
+```typescript
+// Plugin registration logic from plugin.ts
+fileSystemService.registerFileSystemProvider(
+  "browser",
+  new BrowserFileSystemProvider()
+);
 ```
 
 ## Core Components
@@ -71,7 +129,7 @@ pkg/browser-file-system/
 The main class that implements the complete `FileSystemProvider` interface:
 
 ```typescript
-import { BrowserFileSystemProvider } from '@tokenring-ai/browser-file-system';
+import { BrowserFileSystemProvider } from "@tokenring-ai/browser-file-system";
 
 const fileSystem = new BrowserFileSystemProvider();
 ```
@@ -87,8 +145,7 @@ const mockFileSystem: Record<string, { content: string }> = {
   },
   "/src/index.js": { content: 'console.log("Hello from mock index.js");' },
   "/src/components/Button.jsx": {
-    content:
-      "const Button = () => <button>Click Me</button>;\nexport default Button;",
+    content: "const Button = () => <button>Click Me</button>;\nexport default Button;",
   },
   "/package.json": {
     content: '{ "name": "mock-project", "version": "1.0.0" }',
@@ -96,137 +153,649 @@ const mockFileSystem: Record<string, { content: string }> = {
 };
 ```
 
-**Note:** The mock file system is a shared module-level object. All instances share the same file system state. State is not persisted across page reloads.
+**Note**: The mock file system is a shared module-level object. All instances share the same file system state. State is not persisted across page reloads.
 
-## Services
+## Provider API
 
-### FileSystemService Integration
+The provider implements the `FileSystemProvider` interface from `@tokenring-ai/filesystem`. All methods are synchronous and operate directly on the in-memory file system.
 
-This package integrates with the `FileSystemService` from `@tokenring-ai/filesystem`. The provider is automatically registered when the plugin is loaded with the appropriate configuration.
+### BrowserFileSystemProvider Methods
 
-### Plugin Registration
+#### getDirectoryTree
 
-The plugin automatically registers the `BrowserFileSystemProvider` as a file system provider with the FileSystemService when configured with `type: "browser"`:
+Returns a generator that yields file paths in a directory tree.
+
+```typescript
+*getDirectoryTree(
+  path: string = "/",
+  params?: { recursive?: boolean; ig?: (path: string) => boolean }
+): Generator<string, void, unknown>
+```
+
+**Parameters**:
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| path | string | Directory path to list (default: `"/"`) |
+| params.recursive | boolean | Whether to include subdirectories (default: `true`) |
+| params.ig | (path: string) => boolean | Optional ignore filter function |
+
+**Returns**: Generator yielding file paths
+
+**Example**:
+
+```typescript
+// Recursive listing
+for (const filePath of fs.getDirectoryTree("/")) {
+  console.log(filePath);
+}
+
+// Non-recursive listing of direct children
+for (const filePath of fs.getDirectoryTree("/src", { recursive: false })) {
+  console.log(filePath);
+}
+
+// With ignore filter
+for (const filePath of fs.getDirectoryTree("/", {
+  recursive: true,
+  ig: (path) => path.includes("test")
+})) {
+  console.log(filePath);
+}
+```
+
+#### createDirectory
+
+Creates a directory (no-op in mock implementation).
+
+```typescript
+createDirectory(
+  path: string,
+  options?: { recursive?: boolean }
+): boolean
+```
+
+**Parameters**:
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| path | string | Directory path to create |
+| options.recursive | boolean | Whether to create parent directories (ignored) |
+
+**Returns**: Always returns `true`
+
+**Example**:
+
+```typescript
+fs.createDirectory("/new/dir", { recursive: true });
+```
+
+#### readFile
+
+Reads file content from the file system.
+
+```typescript
+readFile(filePath: string): Buffer | null
+```
+
+**Parameters**:
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| filePath | string | Path to the file to read |
+
+**Returns**: File content as Buffer or `null` if file doesn't exist
+
+**Example**:
+
+```typescript
+const content = fs.readFile("/README.md");
+if (content) {
+  console.log(content.toString("utf-8"));
+}
+```
+
+#### writeFile
+
+Writes content to a file.
+
+```typescript
+writeFile(
+  filePath: string,
+  content: string | Buffer
+): boolean
+```
+
+**Parameters**:
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| filePath | string | Path where to write the file |
+| content | string \| Buffer | Content to write |
+
+**Returns**: Always returns `true`
+
+**Example**:
+
+```typescript
+fs.writeFile("/src/utils.js", "export const helper = () => 'Hello';");
+fs.writeFile("/binary.bin", Buffer.from([0x00, 0x01, 0x02]));
+```
+
+#### appendFile
+
+Appends content to an existing file or creates the file if it doesn't exist.
+
+```typescript
+appendFile(
+  filePath: string,
+  content: string | Buffer
+): boolean
+```
+
+**Parameters**:
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| filePath | string | Path to the file to append to |
+| content | string \| Buffer | Content to append |
+
+**Returns**: Always returns `true`
+
+**Example**:
+
+```typescript
+fs.appendFile("/README.md", "\n## Updated content\n");
+```
+
+#### deleteFile
+
+Deletes a file from the file system.
+
+```typescript
+deleteFile(filePath: string): boolean
+```
+
+**Parameters**:
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| filePath | string | Path to the file to delete |
+
+**Returns**: Always returns `true` (even for non-existent files)
+
+**Example**:
+
+```typescript
+fs.deleteFile("/temp.txt");
+```
+
+#### exists
+
+Checks if a file exists in the file system.
+
+```typescript
+exists(filePath: string): boolean
+```
+
+**Parameters**:
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| filePath | string | Path to check |
+
+**Returns**: `true` if file exists, `false` otherwise
+
+**Example**:
+
+```typescript
+if (fs.exists("/README.md")) {
+  console.log("File exists!");
+}
+```
+
+#### copy
+
+Copies a file from source to destination.
+
+```typescript
+copy(
+  source: string,
+  destination: string,
+  options?: { overwrite?: boolean }
+): boolean
+```
+
+**Parameters**:
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| source | string | Source file path |
+| destination | string | Destination file path |
+| options.overwrite | boolean | Whether to overwrite destination if it exists (default: `false`) |
+
+**Returns**: `true` - Always returns true
+
+**Throws**: Error if destination exists and overwrite is `false`
+
+**Mock Behavior**: Returns `true` even for non-existent source files without throwing an error. This is intentional mock behavior for testing purposes.
+
+**Example**:
+
+```typescript
+// Copy without overwrite (throws if destination exists)
+try {
+  fs.copy("/src/file.txt", "/dest/file.txt");
+} catch (error) {
+  console.error(error.message); // "Destination file already exists..."
+}
+
+// Copy with overwrite
+fs.copy("/src/file.txt", "/dest/file.txt", { overwrite: true });
+
+// Copy non-existent source (mock behavior - returns true)
+const result = fs.copy("/non-existent.txt", "/dest.txt");
+console.log(result); // true (no error thrown)
+```
+
+#### rename
+
+Renames or moves a file.
+
+```typescript
+rename(
+  oldPath: string,
+  newPath: string
+): boolean
+```
+
+**Parameters**:
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| oldPath | string | Current file path |
+| newPath | string | New file path |
+
+**Returns**: `true` - Always returns true
+
+**Throws**: Error if destination file already exists
+
+**Mock Behavior**: Returns `true` even for non-existent source files without throwing an error. This is intentional mock behavior for testing purposes.
+
+**Example**:
+
+```typescript
+// Rename existing file
+fs.rename("/old-name.txt", "/new-name.txt");
+
+// Rename with existing destination (throws error)
+try {
+  fs.rename("/source.txt", "/existing.txt");
+} catch (error) {
+  console.error(error.message); // "Destination file already exists..."
+}
+
+// Rename non-existent source (mock behavior - returns true)
+const result = fs.rename("/non-existent.txt", "/new.txt");
+console.log(result); // true (no error thrown)
+```
+
+#### stat
+
+Gets file statistics.
+
+```typescript
+stat(filePath: string): StatLike
+```
+
+**Parameters**:
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| filePath | string | Path to the file |
+
+**Returns**: File statistics object with properties:
+
+- `exists`: boolean
+- `path`: string
+- `absolutePath`: string (if exists)
+- `isFile`: boolean (if exists)
+- `isDirectory`: boolean (if exists)
+- `isSymbolicLink`: boolean (always false)
+- `size`: number (if exists)
+- `created`, `modified`, `accessed`: Date (if exists)
+
+**Example**:
+
+```typescript
+const stats = fs.stat("/README.md");
+if (stats.exists) {
+  console.log(`Size: ${stats.size} bytes`);
+  console.log(`Modified: ${stats.modified}`);
+}
+```
+
+#### glob
+
+Matches files using a glob pattern. **Note**: The pattern parameter is currently ignored; only the ignoreFilter is applied.
+
+```typescript
+glob(
+  pattern: string,
+  options?: {
+    ignoreFilter?: (path: string) => boolean;
+  }
+): string[]
+```
+
+**Parameters**:
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| pattern | string | Glob pattern (currently ignored in mock implementation; returns all files) |
+| options.ignoreFilter | (path: string) => boolean | Optional filter function to exclude files |
+
+**Returns**: Array of all file paths in the mock file system, filtered by ignoreFilter if provided
+
+**Example**:
+
+```typescript
+// Get all files (pattern is ignored, returns all mock files)
+const allFiles = fs.glob("*");
+// Returns: ["/README.md", "/src/index.js", "/src/components/Button.jsx", "/package.json"]
+
+// Filter out test files
+const sourceFiles = fs.glob("*", {
+  ignoreFilter: (path) => path.includes(".test.")
+});
+// Returns files that don't match the ignore filter
+```
+
+#### watch
+
+Watches for file changes (not implemented).
+
+```typescript
+watch(
+  dir: string,
+  options?: any
+): void
+```
+
+**Parameters**:
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| dir | string | Directory to watch |
+| options | any | Watch options |
+
+**Throws**: Error - This functionality is not implemented
+
+**Note**: Throws an error as this functionality is not implemented
+
+**Example**:
+
+```typescript
+fs.watch("/src"); // Throws error: "BrowserFileSystemProvider: watch not implemented"
+```
+
+#### grep
+
+Searches file contents for matching strings.
+
+```typescript
+grep(
+  searchString: string | string[],
+  options?: {
+    ignoreFilter?: (path: string) => boolean;
+    includeContent?: {
+      linesBefore?: number;
+      linesAfter?: number;
+    };
+  }
+): GrepResult[]
+```
+
+**Parameters**:
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| searchString | string \| string[] | Search string(s) - uses first element if array |
+| options.ignoreFilter | (path: string) => boolean | Optional filter function |
+| options.includeContent.linesBefore | number | Number of lines before match (default: `0`) |
+| options.includeContent.linesAfter | number | Number of lines after match (default: `0`) |
+
+**Returns**: Array of search results with properties:
+
+- `file`: string - File path
+- `line`: number - Line number (1-indexed)
+- `match`: string - The matching line
+- `matchedString`: string - The search string that matched
+- `content`: string \| null - Context content if requested
+
+**Throws**: Error if search array is empty or undefined
+
+**Example**:
+
+```typescript
+// Basic search
+const results = fs.grep("console");
+for (const result of results) {
+  console.log(`${result.file}:${result.line}: ${result.match}`);
+}
+
+// Search with context
+const withContext = fs.grep("console", {
+  includeContent: { linesBefore: 1, linesAfter: 1 }
+});
+for (const result of withContext) {
+  console.log(`\n--- ${result.file}:${result.line} ---`);
+  console.log(result.content);
+}
+
+// Search with ignore filter
+const filtered = fs.grep("import", {
+  ignoreFilter: (path) => path.includes("node_modules")
+});
+```
+
+## Usage Examples
+
+### Basic File System Operations
+
+```typescript
+import { BrowserFileSystemProvider } from "@tokenring-ai/browser-file-system";
+
+const fs = new BrowserFileSystemProvider();
+
+// Read a file
+const readmeContent = fs.readFile("/README.md");
+console.log(readmeContent?.toString("utf-8"));
+
+// Check if file exists
+const hasPackageJson = fs.exists("/package.json"); // true
+
+// Write a new file
+fs.writeFile("/src/utils.js", "export const helper = () => 'Hello';");
+
+// Append to existing file
+fs.appendFile("/README.md", "\n## Updated content\n");
+
+// Get directory tree
+console.log("Files in mock system:");
+for (const filePath of fs.getDirectoryTree("/", { recursive: true })) {
+  console.log(filePath);
+}
+```
+
+### Advanced Operations
+
+```typescript
+// Copy file with overwrite
+fs.copy("/src/index.js", "/src/main.js", { overwrite: true });
+
+// Rename file
+fs.rename("/src/main.js", "/src/app.js");
+
+// Search file contents with context
+const searchResults = fs.grep("console", {
+  includeContent: { linesBefore: 1, linesAfter: 1 }
+});
+
+// Get file statistics
+const stats = fs.stat("/README.md");
+console.log(`File size: ${stats.size} bytes`);
+
+// Using glob (pattern is ignored; only ignoreFilter is applied)
+const files = fs.glob("**/*.js", {
+  ignoreFilter: (path) => path.includes("test")
+});
+console.log(files); // Returns all non-test files
+
+// Directory traversal with ignore filter
+const nonTestFiles: string[] = [];
+for (const filePath of fs.getDirectoryTree("/", {
+  recursive: true,
+  ig: (path) => path.includes(".test.")
+})) {
+  nonTestFiles.push(filePath);
+}
+```
+
+### Error Handling in Examples
+
+```typescript
+import { BrowserFileSystemProvider } from "@tokenring-ai/browser-file-system";
+
+const fs = new BrowserFileSystemProvider();
+
+// Handle copy errors
+try {
+  fs.copy("/source.txt", "/dest.txt"); // Throws if dest exists
+} catch (error) {
+  console.error("Copy failed:", error.message);
+  // Use overwrite option to force copy
+  fs.copy("/source.txt", "/dest.txt", { overwrite: true });
+}
+
+// Handle non-existent files
+const content = fs.readFile("/non-existent.txt");
+if (content === null) {
+  console.log("File does not exist");
+}
+
+// Note: copy and rename return true for non-existent source files (mock behavior)
+const copyResult = fs.copy("/non-existent.txt", "/dest.txt");
+console.log(copyResult); // true (mock behavior)
+```
+
+### Complete Integration Example
 
 ```typescript
 import { TokenRingApp } from "@tokenring-ai/app";
-import browserFileSystem from "@tokenring-ai/browser-file-system";
+import browserFileSystem from "@tokenring-ai/browser-file-system/plugin";
 
+// Create and configure the app
 const app = new TokenRingApp();
 
 // Register the browser file system plugin
-app.registerPlugin(browserFileSystem, {
-  filesystem: {
-    providers: {
-      browser: {
-        type: "browser"
-      }
-    }
-  }
-});
+app.registerPlugin(browserFileSystem);
 
-// Access the file system service
+// Wait for the file system service to be ready
 app.services.waitForItemByType(
   FileSystemService,
-  async (fileSystemService) => {
+  (fileSystemService) => {
+    // Use the file system
     const fs = fileSystemService.getFileSystem("browser");
-    const content = await fs.readFile("/README.md");
-    console.log(content?.toString("utf-8"));
+
+    // Read a file
+    const content = fs.readFile("/README.md");
+    console.log("File content:", content?.toString("utf-8"));
+
+    // Write a new file
+    fs.writeFile("/src/app.js", "console.log('Hello');");
+
+    // Search for content
+    const results = fs.grep("console", {
+      includeContent: { linesBefore: 1, linesAfter: 1 }
+    });
+    console.log("Search results:", results);
+
+    // Get directory listing
+    const files = [];
+    for (const filePath of fs.getDirectoryTree("/")) {
+      files.push(filePath);
+    }
+    console.log("Files:", files);
   }
 );
 ```
 
-### Plugin Registration Logic
-
-The plugin registration logic looks like this:
+### Testing with Mock Files
 
 ```typescript
-export default {
-  name: packageJSON.name,
-  version: packageJSON.version,
-  description: packageJSON.description,
-  install(app, config) {
-    if (config.filesystem) {
-      app.services
-        .waitForItemByType(FileSystemService, (fileSystemService) => {
-          for (const name in config.filesystem.providers) {
-            const provider = config.filesystem.providers[name];
-            if (provider.type === "browser") {
-              fileSystemService.registerFileSystemProvider(
-                name,
-                new BrowserFileSystemProvider(),
-              );
-            }
-          }
-        });
-    }
-  },
-  config: packageConfigSchema
-} satisfies TokenRingPlugin<typeof packageConfigSchema>;
-```
+import { BrowserFileSystemProvider } from "@tokenring-ai/browser-file-system";
 
-## Provider Configuration
+const fs = new BrowserFileSystemProvider();
 
-### Configuration Schema
+// Test file operations
+function testFileSystem() {
+  // Check if README exists
+  const readmeExists = fs.exists("/README.md");
+  console.log("README exists:", readmeExists);
 
-The plugin uses `FileSystemConfigSchema` from `@tokenring-ai/filesystem` for configuration validation:
+  // Read README
+  const readme = fs.readFile("/README.md");
+  if (readme) {
+    console.log("README content length:", readme.length);
+  }
 
-```typescript
-import { FileSystemConfigSchema } from "@tokenring-ai/filesystem/schema";
-import { z } from "zod";
+  // Create a new file
+  fs.writeFile("/test.txt", "Test content");
+  console.log("Test file created");
 
-const packageConfigSchema = z.object({
-  filesystem: FileSystemConfigSchema
-});
-```
+  // Append to file
+  fs.appendFile("/test.txt", "\nMore content");
+  console.log("Content appended");
 
-### Plugin Registration
+  // Copy file
+  fs.copy("/test.txt", "/test-copy.txt");
+  console.log("File copied");
 
-The provider is registered through the FileSystemService:
+  // Rename file
+  fs.rename("/test-copy.txt", "/renamed.txt");
+  console.log("File renamed");
 
-```typescript
-import { FileSystemService } from '@tokenring-ai/filesystem';
-import { BrowserFileSystemProvider } from '@tokenring-ai/browser-file-system';
+  // Delete file
+  fs.deleteFile("/renamed.txt");
+  console.log("File deleted");
+}
 
-const fileSystemService = new FileSystemService();
-
-// Register the browser provider
-fileSystemService.registerFileSystemProvider(
-  'browser',
-  new BrowserFileSystemProvider()
-);
+testFileSystem();
 ```
 
 ## Integration
 
 ### TokenRing Plugin Integration
 
-The package integrates with the TokenRing plugin system and automatically registers the file system provider when configured:
+The package integrates with the TokenRing plugin system and automatically registers the file system provider when loaded:
 
 ```typescript
-import { TokenRingApp } from '@tokenring-ai/app';
-import browserFileSystem from '@tokenring-ai/browser-file-system';
+import { TokenRingApp } from "@tokenring-ai/app";
+import browserFileSystem from "@tokenring-ai/browser-file-system/plugin";
 
 const app = new TokenRingApp();
 
 // Register the browser file system plugin
-app.registerPlugin(browserFileSystem, {
-  filesystem: {
-    providers: {
-      browser: {
-        type: 'browser'
-      }
-    }
-  }
-});
+app.registerPlugin(browserFileSystem);
 
 // Access the file system service
 app.services.waitForItemByType(
   FileSystemService,
-  async (fileSystemService) => {
-    const fs = fileSystemService.getFileSystem('browser');
-    const content = await fs.readFile('/README.md');
-    console.log(content?.toString('utf-8'));
+  (fileSystemService) => {
+    const fs = fileSystemService.getFileSystem("browser");
+    const content = fs.readFile("/README.md");
+    console.log(content?.toString("utf-8"));
   }
 );
 ```
@@ -236,15 +805,15 @@ app.services.waitForItemByType(
 The browser file system provider can be used by agents through the FileSystemService:
 
 ```typescript
-import { TokenRingAgent } from '@tokenring-ai/agent';
-import { FileSystemService } from '@tokenring-ai/filesystem';
+import { TokenRingAgent } from "@tokenring-ai/agent";
+import { FileSystemService } from "@tokenring-ai/filesystem";
 
 // Agent can access the file system through the service
 const fileSystemService = agent.requireServiceByType(FileSystemService);
-const fs = fileSystemService.getFileSystem('browser');
+const fs = fileSystemService.getFileSystem("browser");
 
 // Perform file operations
-const content = await fs.readFile('/README.md');
+const content = fs.readFile("/README.md");
 ```
 
 ### Tool Integration
@@ -252,683 +821,27 @@ const content = await fs.readFile('/README.md');
 The file system provider can be used to create tools for agents:
 
 ```typescript
-import { TokenRingAgentTool } from '@tokenring-ai/app';
-import { FileSystemService } from '@tokenring-ai/filesystem';
+import { TokenRingAgentTool } from "@tokenring-ai/app";
+import { FileSystemService } from "@tokenring-ai/filesystem";
 
 const readFileTool: TokenRingAgentTool = {
-  name: 'browser_read_file',
-  description: 'Read a file from the browser file system',
+  name: "browser_read_file",
+  description: "Read a file from the browser file system",
   parameters: {
-    type: 'object',
+    type: "object",
     properties: {
-      path: { type: 'string', description: 'Path to the file to read' }
+      path: { type: "string", description: "Path to the file to read" }
     },
-    required: ['path']
+    required: ["path"]
   },
-  execute: async (agent, params) => {
+  execute: (agent, params) => {
     const fileSystemService = agent.requireServiceByType(FileSystemService);
-    const fs = fileSystemService.getFileSystem('browser');
-    const content = await fs.readFile(params.path);
-    return content?.toString('utf-8') || 'File not found';
+    const fs = fileSystemService.getFileSystem("browser");
+    const content = fs.readFile(params.path);
+    return content?.toString("utf-8") || "File not found";
   }
 };
 ```
-
-## API Reference
-
-### BrowserFileSystemProvider
-
-The main provider class that implements the `FileSystemProvider` interface with the following methods:
-
-#### Properties
-
-| Property | Type | Description |
-|----------|------|-------------|
-| None | - | No public properties |
-
-#### Methods
-
-##### getDirectoryTree
-
-Returns an async generator that yields file paths in a directory tree.
-
-```typescript
-async *getDirectoryTree(
-  path: string = '/',
-  params?: {
-    ig?: (path: string) => boolean;
-    recursive?: boolean;
-  }
-): AsyncGenerator<string, void, unknown>
-```
-
-**Parameters:**
-
-| Parameter | Type | Description |
-|-----------|------|-------------|
-| path | string | Directory path to list (default: '/') |
-| params.recursive | boolean | Whether to include subdirectories (default: true) |
-| params.ig | (path: string) => boolean | Optional ignore filter function |
-
-**Returns:** Async generator yielding file paths
-
-**Example:**
-
-```typescript
-// Recursive listing
-for await (const filePath of fs.getDirectoryTree('/')) {
-  console.log(filePath);
-}
-
-// Non-recursive listing of direct children
-for await (const filePath of fs.getDirectoryTree('/src', { recursive: false })) {
-  console.log(filePath);
-}
-
-// With ignore filter
-for await (const filePath of fs.getDirectoryTree('/', {
-  recursive: true,
-  ig: (path) => path.includes('test')
-})) {
-  console.log(filePath);
-}
-```
-
-##### createDirectory
-
-Creates a directory (no-op in mock implementation).
-
-```typescript
-async createDirectory(
-  path: string,
-  options?: { recursive?: boolean }
-): Promise<boolean>
-```
-
-**Parameters:**
-
-| Parameter | Type | Description |
-|-----------|------|-------------|
-| path | string | Directory path to create |
-| options.recursive | boolean | Whether to create parent directories (ignored) |
-
-**Returns:** `Promise<boolean>` - Always returns `true`
-
-##### readFile
-
-Reads file content from the file system.
-
-```typescript
-async readFile(filePath: string): Promise<Buffer | null>
-```
-
-**Parameters:**
-
-| Parameter | Type | Description |
-|-----------|------|-------------|
-| filePath | string | Path to the file to read |
-
-**Returns:** `Promise<Buffer | null>` - File content as Buffer or null if file doesn't exist
-
-**Example:**
-
-```typescript
-const content = await fs.readFile('/README.md');
-if (content) {
-  console.log(content.toString('utf-8'));
-}
-```
-
-##### writeFile
-
-Writes content to a file.
-
-```typescript
-async writeFile(
-  filePath: string,
-  content: string | Buffer
-): Promise<boolean>
-```
-
-**Parameters:**
-
-| Parameter | Type | Description |
-|-----------|------|-------------|
-| filePath | string | Path where to write the file |
-| content | string \| Buffer | Content to write |
-
-**Returns:** `Promise<boolean>` - Always returns `true`
-
-**Example:**
-
-```typescript
-await fs.writeFile('/src/utils.js', 'export const helper = () => "Hello";');
-```
-
-##### appendFile
-
-Appends content to an existing file or creates the file if it doesn't exist.
-
-```typescript
-async appendFile(
-  filePath: string,
-  content: string | Buffer
-): Promise<boolean>
-```
-
-**Parameters:**
-
-| Parameter | Type | Description |
-|-----------|------|-------------|
-| filePath | string | Path to the file to append to |
-| content | string \| Buffer | Content to append |
-
-**Returns:** `Promise<boolean>` - Always returns `true`
-
-**Example:**
-
-```typescript
-await fs.appendFile('/README.md', '\n## Updated content\n');
-```
-
-##### deleteFile
-
-Deletes a file from the file system.
-
-```typescript
-async deleteFile(filePath: string): Promise<boolean>
-```
-
-**Parameters:**
-
-| Parameter | Type | Description |
-|-----------|------|-------------|
-| filePath | string | Path to the file to delete |
-
-**Returns:** `Promise<boolean>` - Always returns `true` (even for non-existent files)
-
-##### exists
-
-Checks if a file exists in the file system.
-
-```typescript
-async exists(filePath: string): Promise<boolean>
-```
-
-**Parameters:**
-
-| Parameter | Type | Description |
-|-----------|------|-------------|
-| filePath | string | Path to check |
-
-**Returns:** `Promise<boolean>` - `true` if file exists, `false` otherwise
-
-##### copy
-
-Copies a file from source to destination.
-
-```typescript
-async copy(
-  source: string,
-  destination: string,
-  options?: { overwrite?: boolean }
-): Promise<boolean>
-```
-
-**Parameters:**
-
-| Parameter | Type | Description |
-|-----------|------|-------------|
-| source | string | Source file path |
-| destination | string | Destination file path |
-| options.overwrite | boolean | Whether to overwrite destination if it exists (default: false) |
-
-**Returns:** `Promise<boolean>` - Always returns `true`
-
-**Throws:** Error if destination exists and overwrite is false
-
-**Note:** Returns `true` for non-existent source files (mock behavior)
-
-**Example:**
-
-```typescript
-// Copy with overwrite
-await fs.copy('/src/index.js', '/src/main.js', { overwrite: true });
-
-// Copy without overwrite (throws error if destination exists)
-await fs.copy('/src/index.js', '/src/main.js');
-
-// Note: copy returns true for non-existent source (mock behavior)
-const result = await fs.copy('/non-existent.txt', '/dest.txt');
-console.log(result); // true
-```
-
-##### rename
-
-Renames or moves a file.
-
-```typescript
-async rename(
-  oldPath: string,
-  newPath: string
-): Promise<boolean>
-```
-
-**Parameters:**
-
-| Parameter | Type | Description |
-|-----------|------|-------------|
-| oldPath | string | Current file path |
-| newPath | string | New file path |
-
-**Returns:** `Promise<boolean>` - Always returns `true`
-
-**Throws:** Error if destination exists
-
-**Note:** Returns `true` for non-existent source files (mock behavior)
-
-**Example:**
-
-```typescript
-await fs.rename('/src/main.js', '/src/app.js');
-
-// Note: rename returns true for non-existent source (mock behavior)
-const result = await fs.rename('/non-existent.txt', '/new.txt');
-console.log(result); // true
-```
-
-##### stat
-
-Gets file statistics.
-
-```typescript
-async stat(filePath: string): Promise<StatLike>
-```
-
-**Parameters:**
-
-| Parameter | Type | Description |
-|-----------|------|-------------|
-| filePath | string | Path to the file |
-
-**Returns:** `Promise<StatLike>` - File statistics (see [StatLike type](#statlike))
-
-For existing files:
-```typescript
-{
-  exists: true,
-  path: string,
-  absolutePath: string,
-  isFile: boolean,
-  isDirectory: boolean,
-  isSymbolicLink: boolean,
-  size: number,
-  created: Date,
-  modified: Date,
-  accessed: Date
-}
-```
-
-For non-existent files:
-```typescript
-{
-  exists: false,
-  path: string
-}
-```
-
-**Example:**
-
-```typescript
-const stats = await fs.stat('/README.md');
-console.log(`File size: ${stats.size} bytes`);
-console.log(`Modified: ${stats.modified}`);
-```
-
-##### glob
-
-Matches files using a glob pattern.
-
-```typescript
-async glob(
-  pattern: string,
-  options?: {
-    ignoreFilter?: (path: string) => boolean;
-  }
-): Promise<string[]>
-```
-
-**Parameters:**
-
-| Parameter | Type | Description |
-|-----------|------|-------------|
-| pattern | string | Glob pattern (currently ignored, only ignoreFilter is applied) |
-| options.ignoreFilter | (path: string) => boolean | Optional filter function |
-
-**Returns:** `Promise<string[]>` - Array of matching file paths
-
-**Note:** The glob pattern parameter is currently ignored; only the ignoreFilter is applied
-
-**Example:**
-
-```typescript
-// Get all non-test files
-const files = await fs.glob('**/*.js', {
-  ignoreFilter: (path) => path.includes('test')
-});
-console.log(files);
-```
-
-##### watch
-
-Watches for file changes (not implemented).
-
-```typescript
-async watch(
-  dir: string,
-  options?: any
-): Promise<any>
-```
-
-**Parameters:**
-
-| Parameter | Type | Description |
-|-----------|------|-------------|
-| dir | string | Directory to watch |
-| options | any | Watch options |
-
-**Returns:** `Promise<any>` - Always returns `null`
-
-**Note:** Logs a warning as this functionality is not implemented
-
-##### grep
-
-Searches file contents for matching strings.
-
-```typescript
-async grep(
-  searchString: string | string[],
-  options?: {
-    ignoreFilter?: (path: string) => boolean;
-    includeContent?: {
-      linesBefore?: number;
-      linesAfter?: number;
-    };
-  }
-): Promise<GrepResult[]>
-```
-
-**Parameters:**
-
-| Parameter | Type | Description |
-|-----------|------|-------------|
-| searchString | string \| string[] | Search string(s) |
-| options.ignoreFilter | (path: string) => boolean | Optional filter function |
-| options.includeContent.linesBefore | number | Number of lines before match (default: 0) |
-| options.includeContent.linesAfter | number | Number of lines after match (default: 0) |
-
-**Returns:** `Promise<GrepResult[]>` - Array of search results (see [GrepResult type](#grepresult))
-
-**Example:**
-
-```typescript
-// Basic search
-const results = await fs.grep('console');
-console.log(results);
-
-// Search with context
-const resultsWithContext = await fs.grep('console', {
-  includeContent: { linesBefore: 1, linesAfter: 1 }
-});
-console.log(resultsWithContext);
-
-// Search with ignore filter
-const resultsFiltered = await fs.grep('test', {
-  ignoreFilter: (path) => path.includes('test')
-});
-console.log(resultsFiltered);
-```
-
-### Type Definitions
-
-#### StatLike
-
-```typescript
-type StatLike = {
-  path: string;
-  absolutePath?: string;
-  exists: true;
-  isFile: boolean;
-  isDirectory: boolean;
-  isSymbolicLink?: boolean;
-  size?: number;
-  created?: Date;
-  modified?: Date;
-  accessed?: Date;
-} | {
-  path: string;
-  exists: false;
-}
-```
-
-#### GrepResult
-
-```typescript
-type GrepResult = {
-  file: string;
-  line: number;
-  match: string;
-  matchedString?: string;
-  content: string | null;
-}
-```
-
-#### GlobOptions
-
-```typescript
-type GlobOptions = {
-  ignoreFilter?: (path: string) => boolean;
-  absolute?: boolean;
-  includeDirectories?: boolean;
-}
-```
-
-#### GrepOptions
-
-```typescript
-type GrepOptions = {
-  ignoreFilter?: (path: string) => boolean;
-  includeContent?: { linesBefore?: number; linesAfter?: number };
-}
-```
-
-## Usage Examples
-
-### Complete Integration Example
-
-```typescript
-import { TokenRingApp } from '@tokenring-ai/app';
-import browserFileSystem from '@tokenring-ai/browser-file-system';
-
-// Create and configure the app
-const app = new TokenRingApp();
-
-// Register the browser file system plugin
-app.registerPlugin(browserFileSystem, {
-  filesystem: {
-    providers: {
-      browser: {
-        type: 'browser'
-      }
-    }
-  }
-});
-
-// Wait for the file system service to be ready
-app.services.waitForItemByType(
-  FileSystemService,
-  async (fileSystemService) => {
-    // Use the file system
-    const fs = fileSystemService.getFileSystem('browser');
-
-    // Read a file
-    const content = await fs.readFile('/README.md');
-    console.log('File content:', content?.toString('utf-8'));
-
-    // Write a new file
-    await fs.writeFile('/src/app.js', 'console.log("Hello");');
-
-    // Search for content
-    const results = await fs.grep('console', {
-      includeContent: { linesBefore: 1, linesAfter: 1 }
-    });
-    console.log('Search results:', results);
-
-    // Get directory listing
-    const files = [];
-    for await (const filePath of fs.getDirectoryTree('/')) {
-      files.push(filePath);
-    }
-    console.log('Files:', files);
-  }
-);
-```
-
-### Testing with Mock Files
-
-```typescript
-import { BrowserFileSystemProvider } from '@tokenring-ai/browser-file-system';
-
-const fs = new BrowserFileSystemProvider();
-
-// Test file operations
-async function testFileSystem() {
-  // Check if README exists
-  const readmeExists = await fs.exists('/README.md');
-  console.log('README exists:', readmeExists);
-
-  // Read README
-  const readme = await fs.readFile('/README.md');
-  if (readme) {
-    console.log('README content length:', readme.length);
-  }
-
-  // Create a new file
-  await fs.writeFile('/test.txt', 'Test content');
-  console.log('Test file created');
-
-  // Append to file
-  await fs.appendFile('/test.txt', '\nMore content');
-  console.log('Content appended');
-
-  // Copy file
-  await fs.copy('/test.txt', '/test-copy.txt');
-  console.log('File copied');
-
-  // Rename file
-  await fs.rename('/test-copy.txt', '/renamed.txt');
-  console.log('File renamed');
-
-  // Delete file
-  await fs.deleteFile('/renamed.txt');
-  console.log('File deleted');
-}
-
-testFileSystem().catch(console.error);
-```
-
-### Integration with Web Terminal
-
-```typescript
-import { BrowserFileSystemProvider } from '@tokenring-ai/browser-file-system';
-
-const fs = new BrowserFileSystemProvider();
-
-// List directory command
-async function listDirectory(path: string) {
-  const files = [];
-  for await (const filePath of fs.getDirectoryTree(path, { recursive: false })) {
-    const stats = await fs.stat(filePath);
-    files.push({
-      name: filePath,
-      size: stats.size,
-      isFile: stats.isFile
-    });
-  }
-  return files;
-}
-
-// Read file command
-async function readFile(path: string) {
-  const content = await fs.readFile(path);
-  return content?.toString('utf-8') || null;
-}
-
-// Search command
-async function searchFiles(query: string) {
-  return await fs.grep(query);
-}
-```
-
-### File Search with Context
-
-```typescript
-import { BrowserFileSystemProvider } from '@tokenring-ai/browser-file-system';
-
-const fs = new BrowserFileSystemProvider();
-
-// Find all occurrences of 'console' with context
-const results = await fs.grep('console', {
-  includeContent: {
-    linesBefore: 2,
-    linesAfter: 2
-  }
-});
-
-// Display results with context
-for (const result of results) {
-  console.log(`File: ${result.file}`);
-  console.log(`Line: ${result.line}`);
-  console.log(`Content:\n${result.content}`);
-  console.log('---');
-}
-```
-
-### Directory Navigation with Ignore Filters
-
-```typescript
-import { BrowserFileSystemProvider } from '@tokenring-ai/browser-file-system';
-
-const fs = new BrowserFileSystemProvider();
-
-// Get all files except test files
-const files = [];
-for await (const filePath of fs.getDirectoryTree('/', {
-  recursive: true,
-  ig: (path) => path.includes('.test.') || path.includes('/test/')
-})) {
-  files.push(filePath);
-}
-console.log('Production files:', files);
-
-// Get only JavaScript files
-const jsFiles = await fs.glob('**/*.js', {
-  ignoreFilter: (path) => !path.endsWith('.js')
-});
-console.log('JavaScript files:', jsFiles);
-```
-
-## Chat Commands
-
-This package does not define any chat commands. File system operations are accessed through:
-
-- **Tools**: Available as agent tools when integrated with the agent system
-- **Service API**: Direct access through the FileSystemService
-- **Provider API**: Direct usage of BrowserFileSystemProvider
-
-## RPC Endpoints
-
-This package does not define any RPC endpoints. File system operations are accessed through the provider API and service integration.
 
 ## State Management
 
@@ -938,7 +851,7 @@ The BrowserFileSystemProvider maintains state entirely in memory using a JavaScr
 // Internal state structure
 const mockFileSystem: Record<string, { content: string }> = {
   "/README.md": { content: "# Mock File System..." },
-  "/src/index.js": { content: "console.log(\"Hello\");" },
+  "/src/index.js": { content: "console.log('Hello');" },
   // ... more files
 };
 ```
@@ -971,7 +884,7 @@ The provider implements comprehensive error handling:
 
 - **File Not Found**: Returns `null` for missing files in `readFile`
 - **Path Conflicts**: Validates copy and rename operations, throwing errors for conflicts
-- **Invalid Operations**: Logs warnings for unsupported operations
+- **Invalid Operations**: Throws errors for unsupported operations (e.g., `watch`)
 - **Path Normalization**: Automatically normalizes paths for consistency
 
 ### Error Types
@@ -979,24 +892,38 @@ The provider implements comprehensive error handling:
 The provider may throw the following errors:
 
 - `Error` - Path conflicts during copy/rename operations (when destination exists without overwrite option)
-- `Error` - General errors for file operations
+- `Error` - Unsupported operations (e.g., `watch` not implemented)
 
 ### Error Handling Example
 
 ```typescript
-import { BrowserFileSystemProvider } from '@tokenring-ai/browser-file-system';
+import { BrowserFileSystemProvider } from "@tokenring-ai/browser-file-system";
 
 const fs = new BrowserFileSystemProvider();
 
+// Copy error - destination exists
 try {
-  await fs.copy('/source.txt', '/dest.txt'); // Will throw if /dest.txt exists
+  fs.copy("/source.txt", "/existing.txt");
 } catch (error) {
-  console.error('Copy failed:', error.message);
+  console.error(error.message);
+  // "Destination file already exists: /existing.txt. Use overwrite option to replace."
 }
 
-// With overwrite option
-await fs.copy('/source.txt', '/dest.txt', { overwrite: true });
-console.log('Copy successful');
+// Rename error - destination exists
+try {
+  fs.rename("/source.txt", "/existing.txt");
+} catch (error) {
+  console.error(error.message);
+  // "Destination file already exists: /existing.txt"
+}
+
+// Watch error - not implemented
+try {
+  fs.watch("/src");
+} catch (error) {
+  console.error(error.message);
+  // "BrowserFileSystemProvider: watch not implemented"
+}
 ```
 
 ## Testing
@@ -1037,21 +964,6 @@ The package includes comprehensive unit and integration tests covering:
 
 ## Development
 
-### Project Structure
-
-```
-pkg/browser-file-system/
-├── BrowserFileSystemProvider.ts      # Main provider implementation
-├── BrowserFileSystemProvider.test.ts # Unit tests for provider
-├── integration.test.ts               # Integration tests
-├── index.ts                          # Module exports
-├── plugin.ts                         # TokenRing plugin integration
-├── package.json                      # Package configuration
-├── vitest.config.ts                  # Test configuration
-├── LICENSE                           # License information
-└── README.md                         # Package README
-```
-
 ### Build Instructions
 
 ```bash
@@ -1071,12 +983,13 @@ To add new mock files for testing:
 
 1. Edit `BrowserFileSystemProvider.ts`
 2. Add the file path and content to the `mockFileSystem` object:
-   ```typescript
-   const mockFileSystem: Record<string, { content: string }> = {
-     // ... existing files
-     '/new-file.txt': 'New file content'
-   };
-   ```
+
+```typescript
+const mockFileSystem: Record<string, { content: string }> = {
+  // ... existing files
+  "/new-file.txt": "New file content"
+};
+```
 
 ## Dependencies
 
@@ -1084,16 +997,16 @@ To add new mock files for testing:
 
 - `@tokenring-ai/app` (0.2.0) - Core application framework and plugin system
 - `@tokenring-ai/filesystem` (0.2.0) - File system service and provider interface
-- `zod` (^4.3.6) - Schema validation
+- `@tokenring-ai/utility` (0.2.0) - Utility functions including arrayable helpers
 
 ### Development Dependencies
 
-- `vitest` (^4.1.0) - Testing framework
-- `typescript` (^5.9.3) - TypeScript compiler
+- `vitest` (^4.1.1) - Testing framework
+- `typescript` (^6.0.2) - TypeScript compiler
 
 ## License
 
-MIT License - see the root LICENSE file for details.
+MIT License - see LICENSE file for details.
 
 Copyright (c) 2025 Mark Dierolf
 

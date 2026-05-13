@@ -17,6 +17,16 @@ This package implements a provider-based architecture where different iterable t
 - **Error Handling**: Graceful error handling with recovery during batch operations
 - **Streaming Processing**: Items are processed one at a time to minimize memory usage
 
+## Chat Commands
+
+| Command | Description |
+|---------|-------------|
+| `/iterable define <name> --type <type> [options]` | Create a new named iterable with the specified type and configuration |
+| `/iterable list` | List all defined iterables with their types |
+| `/iterable show <name>` | Display detailed information about a specific iterable |
+| `/iterable delete <name>` | Remove a defined iterable permanently |
+| `/foreach @<iterable> <prompt>` | Process each item in an iterable with a custom prompt |
+
 ## Core Components
 
 ### IterableService
@@ -81,7 +91,7 @@ class IterableState extends AgentStateSlice<typeof serializationSchema> {
   constructor({iterables = []}: { iterables?: StoredIterable[] } = {});
   serialize(): z.output<typeof serializationSchema>;
   deserialize(data: z.output<typeof serializationSchema>): void;
-  show(): string[];
+  show(): string;
 }
 ```
 
@@ -116,21 +126,9 @@ interface IterableSpec {
 }
 ```
 
-#### IterableMetadata
-
-```typescript
-interface IterableMetadata {
-  name: string;
-  type: string;
-  description?: string;
-  createdAt: Date;
-  updatedAt: Date;
-}
-```
-
 ## Services
 
-### IterableService
+### IterableService Reference
 
 The main service for managing iterables. Implements `TokenRingService` interface.
 
@@ -266,7 +264,7 @@ class FileIterableProvider implements IterableProvider {
 }
 ```
 
-### Provider Registration
+### Provider Registration Methods
 
 #### Plugin Registration
 
@@ -302,8 +300,8 @@ The IterableService uses a `KeyedRegistry` to manage providers. Each provider is
 ```typescript
 class IterableService implements TokenRingService {
   private providers = new KeyedRegistry<IterableProvider>();
-  registerProvider = this.providers.register;
-  getProvider = this.providers.getItemByName;
+  registerProvider = this.providers.set;
+  getProvider = this.providers.get;
 }
 ```
 
@@ -393,7 +391,7 @@ Usage:
 
 This package does not define any RPC endpoints.
 
-## Chat Commands
+## Chat Commands Reference
 
 ### /iterable - Manage Named Iterables
 
@@ -404,22 +402,26 @@ The `/iterable` command provides subcommands for managing iterables:
 Create a new iterable with specified type and configuration.
 
 **Syntax:**
-```
+
+```text
 /iterable define <name> --type <type> [provider-options]
 ```
 
 **Arguments:**
+
 - `<name>`: Unique name for the iterable
 - `--type <type>`: The iterable provider type to use (required)
 - `[provider-options]`: Provider-specific options (e.g., `--pattern`, `--file`)
 
 **Examples:**
-```
+
+```text
 /iterable define files --type file --pattern "**/*.ts"
 /iterable define projects --type json --file "projects.json"
 ```
 
 **Error Handling:**
+
 - Throws `CommandFailedError` if name is missing
 - Throws `CommandFailedError` if `--type` is missing or invalid
 - Throws `CommandFailedError` if provider is not found
@@ -429,12 +431,14 @@ Create a new iterable with specified type and configuration.
 Show all defined iterables with their types.
 
 **Example:**
-```
+
+```text
 /iterable list
 ```
 
 **Output:**
-```
+
+```text
 Available iterables:
  - @files = file
  - @users = json
@@ -445,20 +449,24 @@ Available iterables:
 Display detailed information about a specific iterable.
 
 **Syntax:**
-```
+
+```text
 /iterable show <name>
 ```
 
 **Arguments:**
+
 - `<name>`: Name of the iterable to show
 
 **Example:**
-```
+
+```text
 /iterable show files
 ```
 
 **Output:**
-```
+
+```text
 Iterable: @files
 Type: file
 Spec: {
@@ -470,6 +478,7 @@ Updated: 2024-01-01T00:00:00.000Z
 ```
 
 **Error Handling:**
+
 - Throws `CommandFailedError` if name is missing
 - Throws `CommandFailedError` if iterable is not found
 
@@ -478,19 +487,23 @@ Updated: 2024-01-01T00:00:00.000Z
 Remove a defined iterable permanently.
 
 **Syntax:**
-```
+
+```text
 /iterable delete <name>
 ```
 
 **Arguments:**
+
 - `<name>`: Name of the iterable to delete
 
 **Example:**
-```
+
+```text
 /iterable delete old-projects
 ```
 
 **Error Handling:**
+
 - Throws `CommandFailedError` if name is missing
 - Throws `CommandFailedError` if iterable is not found
 
@@ -503,22 +516,26 @@ The `/foreach` command processes each item in an iterable with a custom prompt:
 Process each item in an iterable with a template prompt.
 
 **Syntax:**
-```
+
+```text
 /foreach @<iterable> <prompt>
 ```
 
 **Arguments:**
+
 - `@<iterable>`: Name of the iterable to process (prefixed with @)
 - `<prompt>`: Template prompt to execute for each item
 
 **Variable Interpolation:**
+
 - `{variable}` - Access item properties
 - `{variable:default}` - Fallback values for missing properties
 - `{nested.property}` - Access nested properties with dot notation
 - `{nested.property:default}` - Combine nested access with fallbacks
 
 **Examples:**
-```
+
+```text
 /foreach @files "Add comments to {file}"
 /foreach @users "Welcome {name} from {city}"
 /foreach @projects "Review {name}: {description:No description}"
@@ -526,17 +543,20 @@ Process each item in an iterable with a template prompt.
 ```
 
 **Common Use Cases:**
+
 - Code analysis and refactoring across multiple files
 - Data processing and transformation
 - Content generation for multiple items
 - Batch operations on structured data
 
 **Important Notes:**
+
 - The command maintains checkpoint state between iterations and restores it after processing each item
 - If an error occurs during processing of an item, a `CommandFailedError` is thrown with the error message
 - The final state is restored after all items are processed in the `finally` block
 
 **Error Handling:**
+
 - Throws `CommandFailedError` if remainder is empty
 - Throws `CommandFailedError` if iterable name is not prefixed with @
 - Throws `CommandFailedError` if prompt is missing
@@ -553,6 +573,7 @@ const packageConfigSchema = z.object({});
 ```
 
 No configuration is required by default. The plugin automatically:
+
 1. Registers chat commands (`/iterable` and `/foreach`)
 2. Adds the IterableService to the application
 3. Initializes the IterableState for each agent
@@ -664,6 +685,7 @@ function getNestedProperty(obj: any, path: string): any {
 ```
 
 **Interpolation Features:**
+
 - **Simple variables**: `{variable}`
 - **Default values**: `{variable:default}`
 - **Nested properties**: `{user.name}`
@@ -773,8 +795,7 @@ await chatService.executeCommand('/foreach @users "Send welcome email to {name} 
 
 ### Complex Variable Interpolation
 
-```typescript
-// With nested properties and fallbacks
+```text
 /foreach @projects "Project: {name}, Status: {status:Unknown}, Owner: {owner.name:Unassigned}"
 ```
 
@@ -900,8 +921,8 @@ describe('IterableService', () => {
 
 ### Development Dependencies
 
-- `vitest` (^4.1.0) - Testing framework
-- `typescript` (^5.9.3) - TypeScript compiler
+- `vitest` (^4.1.1) - Testing framework
+- `typescript` (^6.0.2) - TypeScript compiler
 
 ## Related Components
 

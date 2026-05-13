@@ -2,11 +2,13 @@
 
 Multi-database storage for agent state checkpoints and app session checkpoints using Drizzle ORM with support for SQLite, MySQL, and PostgreSQL.
 
-## Overview
+## User Guide
+
+### Overview
 
 The `@tokenring-ai/drizzle-storage` package provides a production-ready, multi-database storage solution for managing agent state checkpoints and app session checkpoints in the Token Ring AI system. It implements both the `AgentCheckpointStorage` and `AppCheckpointStorage` interfaces with support for SQLite (Bun), MySQL, and PostgreSQL databases using Drizzle ORM for type-safe operations and automatic table creation.
 
-## Key Features
+### Key Features
 
 - **Multi-Database Support**: SQLite (Bun), MySQL, PostgreSQL
 - **Dual Storage Interfaces**: Implements both `AgentCheckpointStorage` and `AppCheckpointStorage`
@@ -19,15 +21,23 @@ The `@tokenring-ai/drizzle-storage` package provides a production-ready, multi-d
 - **Plugin Support**: TokenRingPlugin for automatic configuration
 - **Latest Checkpoint Retrieval**: Specialized method for retrieving the latest app checkpoint
 
-## Installation
+### Installation
 
 ```bash
 bun install @tokenring-ai/drizzle-storage
 ```
 
-## Configuration
+### Chat Commands
 
-### Plugin Configuration
+This package does not define any chat commands. It is a storage backend package used by other components.
+
+### Tools
+
+This package does not define any tools. It is a storage backend package used by other components.
+
+### Configuration
+
+#### Plugin Configuration
 
 The package includes a TokenRing plugin that automatically registers the storage service. Configure it in your Token Ring config file using the `drizzleStorage` key:
 
@@ -41,216 +51,170 @@ export default {
 };
 ```
 
-### Configuration Schema
+#### Configuration Options
 
-The plugin uses Zod schemas for configuration validation:
-
-```typescript
-import { z } from "zod";
-
-const DrizzleStorageConfigSchema = z.discriminatedUnion("type", [
-  sqliteStorageConfigSchema,
-  postgresStorageConfigSchema,
-  mysqlStorageConfigSchema
-]);
-```
+| Option | Type | Required | Description |
+|--------|------|----------|-------------|
+| `type` | `"sqlite"` \| `"mysql"` \| `"postgres"` | Yes | Database type |
+| `databasePath` | `string` | SQLite only | Path to SQLite database file |
+| `connectionString` | `string` | MySQL/Postgres | Database connection string |
+| `migrationsFolder` | `string` | SQLite optional | Path to migrations folder |
 
 #### SQLite Configuration
 
-```typescript
-const sqliteStorageConfigSchema = z.object({
-  type: z.literal("sqlite"),
-  databasePath: z.string(),
-  migrationsFolder: z.string().optional(),
-});
+```yaml
+drizzleStorage:
+  type: sqlite
+  databasePath: "./agent_state.db"
+  migrationsFolder: "./migrations"
 ```
 
 #### MySQL Configuration
 
-```typescript
-const mysqlStorageConfigSchema = z.object({
-  type: z.literal("mysql"),
-  connectionString: z.string(),
-});
+```yaml
+drizzleStorage:
+  type: mysql
+  connectionString: "mysql://user:password@localhost:3306/database"
 ```
 
 #### PostgreSQL Configuration
 
-```typescript
-const postgresStorageConfigSchema = z.object({
-  type: z.literal("postgres"),
-  connectionString: z.string(),
-});
+```yaml
+drizzleStorage:
+  type: postgres
+  connectionString: "postgres://user:password@localhost:5432/database"
 ```
 
-## Core Components
+### Integration
 
-### Storage Classes
+The package integrates with the Token Ring agent system through the TokenRing plugin:
 
-The package provides storage classes for each database type, all implementing the `AgentCheckpointStorage`, `AppCheckpointStorage`, and `TokenRingService` interfaces.
+1. **Service Registration**: Automatically registers the storage service with the application
+2. **Agent Checkpoint Service Integration**: Automatically registers the storage provider with `AgentCheckpointService`
+3. **App Checkpoint Service Integration**: Automatically registers the storage provider with `AppCheckpointService`
+4. **State Management**: Provides storage backend for both agent state checkpoints and app session checkpoints
+5. **Automatic Configuration**: Reads configuration from Token Ring config files
 
-```typescript
-import { SQLiteStorage, MySQLStorage, PostgresStorage } from '@tokenring-ai/drizzle-storage';
-```
+### Best Practices
 
-### Plugin Implementation
+- **Use the Plugin**: When possible, use the TokenRing plugin for automatic integration
+- **JSON Serialization**: Ensure state objects are JSON-serializable
+- **Connection Pooling**: Use MySQL or PostgreSQL for production workloads
+- **Error Handling**: Wrap storage operations in try-catch blocks
+- **Checkpoint Naming**: Use descriptive names for checkpoints
+- **Cleanup**: Regularly review and clean up old checkpoints
+- **Session Tracking**: Always include `sessionId` and `agentType` fields
+- **Separate Concerns**: Use agent checkpoints for agent state, app checkpoints for app sessions
+- **Latest Checkpoint**: Use `retrieveLatestAppCheckpoint()` for most recent app state
 
-The plugin automatically registers the storage service with the Token Ring checkpoint services:
+---
 
-```typescript
-// pkg/drizzle-storage/plugin.ts
-import { TokenRingPlugin } from "@tokenring-ai/app";
-import AgentCheckpointService from "@tokenring-ai/checkpoint/AgentCheckpointService";
-import AppCheckpointService from "@tokenring-ai/checkpoint/AppCheckpointService";
-import { z } from "zod";
-import { MySQLStorage } from "./mysql/createMySQLStorage.js";
-import packageJSON from "./package.json" with { type: "json" };
-import { PostgresStorage } from "./postgres/createPostgresStorage.js";
-import { DrizzleStorageConfigSchema } from "./schema.ts";
-import { SQLiteStorage } from "./sqlite/createSQLiteStorage.js";
+## Developer Reference
 
-const packageConfigSchema = z.object({
-  drizzleStorage: DrizzleStorageConfigSchema,
-});
+### Core Components
 
-export default {
-  name: packageJSON.name,
-  version: packageJSON.version,
-  description: packageJSON.description,
-  install(app, config) {
-    const storage = config.drizzleStorage;
+The package consists of three main storage classes and a plugin system:
 
-    if (storage) {
-      let storageService: SQLiteStorage | MySQLStorage | PostgresStorage | null = null;
-      if (storage.type === "sqlite") {
-        storageService = new SQLiteStorage(storage);
-      } else if (storage.type === "mysql") {
-        storageService = new MySQLStorage(storage);
-      } else if (storage.type === "postgres") {
-        storageService = new PostgresStorage(storage);
-      }
-      if (storageService) {
-        app.services.register(storageService);
-        app.services.waitForItemByType(AgentCheckpointService, (checkpointService) => {
-          checkpointService.setCheckpointProvider(storageService);
-        });
-        app.services.waitForItemByType(AppCheckpointService, (checkpointService) => {
-          checkpointService.setCheckpointProvider(storageService);
-        });
-      }
-    }
-  },
-  config: packageConfigSchema
-} satisfies TokenRingPlugin<typeof packageConfigSchema>;
-```
+- **SQLiteStorage**: SQLite database provider using Bun's native SQLite
+- **MySQLStorage**: MySQL database provider with connection pooling
+- **PostgresStorage**: PostgreSQL database provider with connection pooling
+- **DrizzleStorage Plugin**: TokenRingPlugin for automatic service registration
 
-## Services
+### Services
 
-### SQLiteStorage
+All storage classes implement `TokenRingService`, `AgentCheckpointStorage`, and `AppCheckpointStorage` interfaces.
 
-SQLite storage provider implementing `TokenRingService`, `AgentCheckpointStorage`, and `AppCheckpointStorage`:
+#### SQLiteStorage
+
+SQLite storage provider using Bun's native SQLite module.
+
+**Constructor Parameters:**
 
 ```typescript
-class SQLiteStorage implements TokenRingService, AgentCheckpointStorage, AppCheckpointStorage {
-  name: string;
-  description: string;
-  displayName: string;
-
-  constructor(config: {
-    type: "sqlite";
-    databasePath: string;
-    migrationsFolder?: string;
-  });
-
-  start(): Promise<void>;
-  // AgentCheckpointStorage methods
-  storeAgentCheckpoint(checkpoint: NamedAgentCheckpoint): Promise<string>;
-  retrieveAgentCheckpoint(id: string): Promise<StoredAgentCheckpoint | null>;
-  listAgentCheckpoints(): Promise<AgentCheckpointListItem[]>;
-  // AppCheckpointStorage methods
-  storeAppCheckpoint(checkpoint: AppSessionCheckpoint): Promise<string>;
-  retrieveAppCheckpoint(id: string): Promise<StoredAppCheckpoint | null>;
-  listAppCheckpoints(): Promise<AppSessionListItem[]>;
-  retrieveLatestAppCheckpoint(): Promise<StoredAppCheckpoint | null>;
+interface SQLiteStorageConfig {
+  type: "sqlite";
+  databasePath: string;
+  migrationsFolder?: string;
 }
 ```
 
 **Properties:**
-- `name`: "SQLiteStorage"
-- `description`: "SQLite storage provider"
-- `displayName`: "SQLite (database_path)"
 
-### MySQLStorage
+| Property | Type | Description |
+|----------|------|-------------|
+| `name` | `string` | Service name: "SQLiteStorage" |
+| `description` | `string` | Service description: "SQLite storage provider" |
+| `displayName` | `string` | Display name including database path |
+| `config` | `SQLiteStorageConfig` | Configuration object |
+| `sqlite` | `Database` | Bun SQLite database instance |
+| `db` | `DrizzleSQLiteDatabase` | Drizzle ORM database instance |
 
-MySQL storage provider implementing `TokenRingService`, `AgentCheckpointStorage`, and `AppCheckpointStorage`:
+**Methods:**
+
+| Method | Description |
+|--------|-------------|
+| `start()` | Creates tables if they don't exist |
+| `storeAgentCheckpoint(checkpoint)` | Stores an agent checkpoint, returns ID |
+| `retrieveAgentCheckpoint(id)` | Retrieves an agent checkpoint by ID |
+| `listAgentCheckpoints()` | Lists all agent checkpoints |
+| `storeAppCheckpoint(checkpoint)` | Stores an app checkpoint, returns ID |
+| `retrieveAppCheckpoint(id)` | Retrieves an app checkpoint by ID |
+| `listAppCheckpoints()` | Lists all app checkpoints |
+| `retrieveLatestAppCheckpoint()` | Retrieves the latest app checkpoint |
+
+#### MySQLStorage
+
+MySQL storage provider with connection pooling.
+
+**Constructor Parameters:**
 
 ```typescript
-class MySQLStorage implements TokenRingService, AgentCheckpointStorage, AppCheckpointStorage {
-  name: string;
-  description: string;
-  displayName: string;
-
-  constructor(config: {
-    type: "mysql";
-    connectionString: string;
-  });
-
-  start(): Promise<void>;
-  // AgentCheckpointStorage methods
-  storeAgentCheckpoint(checkpoint: NamedAgentCheckpoint): Promise<string>;
-  retrieveAgentCheckpoint(id: string): Promise<StoredAgentCheckpoint | null>;
-  listAgentCheckpoints(): Promise<AgentCheckpointListItem[]>;
-  // AppCheckpointStorage methods
-  storeAppCheckpoint(checkpoint: AppSessionCheckpoint): Promise<string>;
-  retrieveAppCheckpoint(id: string): Promise<StoredAppCheckpoint | null>;
-  listAppCheckpoints(): Promise<AppSessionListItem[]>;
-  retrieveLatestAppCheckpoint(): Promise<StoredAppCheckpoint | null>;
+interface MySQLStorageConfig {
+  type: "mysql";
+  connectionString: string;
 }
 ```
 
 **Properties:**
-- `name`: "MySQLStorage"
-- `description`: "MySQL storage provider"
-- `displayName`: "MySQL (connection_string)"
 
-### PostgresStorage
+| Property | Type | Description |
+|----------|------|-------------|
+| `name` | `string` | Service name: "MySQLStorage" |
+| `description` | `string` | Service description: "MySQL storage provider" |
+| `displayName` | `string` | Display name including connection URL |
+| `config` | `MySQLStorageConfig` | Configuration object |
+| `connection` | `mysql.Pool` | MySQL connection pool |
+| `db` | `MySql2Database` | Drizzle ORM database instance |
 
-PostgreSQL storage provider implementing `TokenRingService`, `AgentCheckpointStorage`, and `AppCheckpointStorage`:
+#### PostgresStorage
+
+PostgreSQL storage provider with connection pooling.
+
+**Constructor Parameters:**
 
 ```typescript
-class PostgresStorage implements TokenRingService, AgentCheckpointStorage, AppCheckpointStorage {
-  name: string;
-  description: string;
-  displayName: string;
-
-  constructor(config: {
-    type: "postgres";
-    connectionString: string;
-  });
-
-  start(): Promise<void>;
-  // AgentCheckpointStorage methods
-  storeAgentCheckpoint(checkpoint: NamedAgentCheckpoint): Promise<string>;
-  retrieveAgentCheckpoint(id: string): Promise<StoredAgentCheckpoint | null>;
-  listAgentCheckpoints(): Promise<AgentCheckpointListItem[]>;
-  // AppCheckpointStorage methods
-  storeAppCheckpoint(checkpoint: AppSessionCheckpoint): Promise<string>;
-  retrieveAppCheckpoint(id: string): Promise<StoredAppCheckpoint | null>;
-  listAppCheckpoints(): Promise<AppSessionListItem[]>;
-  retrieveLatestAppCheckpoint(): Promise<StoredAppCheckpoint | null>;
+interface PostgresStorageConfig {
+  type: "postgres";
+  connectionString: string;
 }
 ```
 
 **Properties:**
-- `name`: "PostgresStorage"
-- `description`: "PostgreSQL storage provider"
-- `displayName`: "Postgres (connection_string)"
 
-## API Reference
+| Property | Type | Description |
+|----------|------|-------------|
+| `name` | `string` | Service name: "PostgresStorage" |
+| `description` | `string` | Service description: "PostgreSQL storage provider" |
+| `displayName` | `string` | Display name including connection URL |
+| `config` | `PostgresStorageConfig` | Configuration object |
+| `connection` | `postgres.Sql` | PostgreSQL connection |
+| `db` | `DrizzlePostgresDatabase` | Drizzle ORM database instance |
 
-### AgentCheckpointStorage Interface
+### Provider Documentation
 
-All storage classes implement this interface for agent-level checkpoint storage:
+All storage providers implement the same interfaces.
+
+#### AgentCheckpointStorage Interface
 
 ```typescript
 interface AgentCheckpointStorage {
@@ -261,84 +225,7 @@ interface AgentCheckpointStorage {
 }
 ```
 
-#### start()
-
-Initializes the database connection and creates tables if they don't exist:
-
-```typescript
-const storage = new SQLiteStorage({
-  type: "sqlite",
-  databasePath: "./agent_state.db"
-});
-
-await storage.start();
-```
-
-This method:
-- Establishes database connection
-- Creates the `AgentCheckpoints` and `AppCheckpoints` tables if they don't exist
-- Prepares the storage for checkpoint operations
-
-#### storeAgentCheckpoint()
-
-Stores a new agent checkpoint with the provided data:
-
-```typescript
-const checkpoint = {
-  agentId: "agent-123",
-  sessionId: "session-456",
-  agentType: "coder",
-  name: "session-1",
-  state: { messages: ["Hello"], count: 1 },
-  createdAt: Date.now()
-};
-
-const id = await storage.storeAgentCheckpoint(checkpoint);
-console.log('Checkpoint ID:', id);
-```
-
-**Parameters:**
-- `checkpoint: NamedAgentCheckpoint` - The checkpoint data to store
-
-**Returns:**
-- `Promise<string>` - The ID of the stored checkpoint
-
-#### retrieveAgentCheckpoint()
-
-Retrieves an agent checkpoint by its ID:
-
-```typescript
-const retrieved = await storage.retrieveAgentCheckpoint(id);
-if (retrieved) {
-  console.log('Retrieved state:', retrieved.state);
-  console.log('Retrieved agentId:', retrieved.agentId);
-}
-```
-
-**Parameters:**
-- `id: string` - The checkpoint ID to retrieve
-
-**Returns:**
-- `Promise<StoredAgentCheckpoint | null>` - The checkpoint data or null if not found
-
-#### listAgentCheckpoints()
-
-Lists all agent checkpoints ordered by creation time (descending):
-
-```typescript
-const checkpoints = await storage.listAgentCheckpoints();
-console.log('Total checkpoints:', checkpoints.length);
-checkpoints.forEach(cp => {
-  console.log(`${cp.name} (${cp.agentId}): ${new Date(cp.createdAt)}`);
-});
-```
-
-**Returns:**
-- `Promise<AgentCheckpointListItem[]>` - Array of checkpoint summaries
-
-### AppCheckpointStorage Interface
-
-All storage classes also implement this interface for app-level session checkpoint storage:
+#### AppCheckpointStorage Interface
 
 ```typescript
 interface AppCheckpointStorage {
@@ -350,197 +237,17 @@ interface AppCheckpointStorage {
 }
 ```
 
-#### storeAppCheckpoint()
+### RPC Endpoints
 
-Stores a new app session checkpoint:
+This package does not define RPC endpoints directly. It provides storage services that are used by other packages implementing RPC functionality.
 
-```typescript
-const checkpoint = {
-  sessionId: "session-456",
-  hostname: "localhost",
-  projectDirectory: "/home/user/project",
-  state: { files: ["index.ts"], config: {} },
-  createdAt: Date.now()
-};
+### Usage Examples
 
-const id = await storage.storeAppCheckpoint(checkpoint);
-console.log('App Checkpoint ID:', id);
-```
-
-**Parameters:**
-- `checkpoint: AppSessionCheckpoint` - The app session checkpoint data to store
-
-**Returns:**
-- `Promise<string>` - The ID of the stored checkpoint
-
-#### retrieveAppCheckpoint()
-
-Retrieves an app session checkpoint by its ID:
-
-```typescript
-const retrieved = await storage.retrieveAppCheckpoint(id);
-if (retrieved) {
-  console.log('Retrieved state:', retrieved.state);
-  console.log('Working directory:', retrieved.projectDirectory);
-}
-```
-
-**Parameters:**
-- `id: string` - The checkpoint ID to retrieve
-
-**Returns:**
-- `Promise<StoredAppCheckpoint | null>` - The checkpoint data or null if not found
-
-#### listAppCheckpoints()
-
-Lists all app session checkpoints ordered by creation time (descending):
-
-```typescript
-const checkpoints = await storage.listAppCheckpoints();
-console.log('Total app checkpoints:', checkpoints.length);
-checkpoints.forEach(cp => {
-  console.log(`${cp.hostname}: ${new Date(cp.createdAt)}`);
-});
-```
-
-**Returns:**
-- `Promise<AppSessionListItem[]>` - Array of checkpoint summaries
-
-#### retrieveLatestAppCheckpoint()
-
-Retrieves the most recent app session checkpoint:
-
-```typescript
-const latest = await storage.retrieveLatestAppCheckpoint();
-if (latest) {
-  console.log('Latest session:', latest.sessionId);
-  console.log('State:', latest.state);
-}
-```
-
-**Returns:**
-- `Promise<StoredAppCheckpoint | null>` - The latest checkpoint data or null if no checkpoints exist
-
-### Data Types
-
-#### Agent Checkpoint Types
-
-```typescript
-interface NamedAgentCheckpoint {
-  agentId: string;
-  sessionId: string;
-  agentType: string;
-  name: string;
-  state: any;
-  createdAt: number;
-}
-
-interface StoredAgentCheckpoint extends NamedAgentCheckpoint {
-  id: string;
-}
-
-interface AgentCheckpointListItem {
-  id: string;
-  sessionId: string;
-  name: string;
-  agentId: string;
-  agentType: string;
-  createdAt: number;
-}
-```
-
-#### App Checkpoint Types
-
-```typescript
-interface AppSessionCheckpoint {
-  sessionId: string;
-  hostname: string;
-  projectDirectory: string;
-  state: any;
-  createdAt: number;
-}
-
-interface StoredAppCheckpoint extends AppSessionCheckpoint {
-  id: string;
-}
-
-interface AppSessionListItem {
-  id: string;
-  sessionId: string;
-  hostname: string;
-  projectDirectory: string;
-  createdAt: number;
-}
-```
-
-## Database Schema
-
-The package creates two tables in each database: `AgentCheckpoints` and `AppCheckpoints`.
-
-### AgentCheckpoints Table
-
-| Column      | Type           | Description                              |
-|-------------|----------------|------------------------------------------|
-| `id`        | Integer/BigInt | Auto-incrementing primary key            |
-| `sessionId` | Text           | Session identifier                       |
-| `agentId`   | Text           | Agent identifier                         |
-| `agentType` | Text           | Type of agent (e.g., "coder", "writer")  |
-| `name`      | Text           | Checkpoint name                          |
-| `state`     | Text           | JSON-serialized state data               |
-| `createdAt` | Integer/BigInt | Unix timestamp                           |
-
-### AppCheckpoints Table
-
-| Column          | Type           | Description                              |
-|-----------------|----------------|------------------------------------------|
-| `id`            | Integer/BigInt | Auto-incrementing primary key            |
-| `sessionId`     | Text           | Session identifier                       |
-| `hostname`      | Text           | Hostname of the app session              |
-| `projectDirectory` | Text        | Working directory of the app session     |
-| `state`         | Text           | JSON-serialized state data               |
-| `createdAt`     | Integer/BigInt | Unix timestamp                           |
-
-### Schema Implementation
-
-Each database type has its own schema file using Drizzle ORM:
-
-- **SQLite**: `sqlite/schema.ts`
-- **MySQL**: `mysql/schema.ts`
-- **PostgreSQL**: `postgres/schema.ts`
-
-Example schema (SQLite):
-
-```typescript
-import { integer, sqliteTable, text } from "drizzle-orm/sqlite-core";
-
-export const agentCheckpoints = sqliteTable("AgentCheckpoints", {
-  id: integer("id").primaryKey({ autoIncrement: true }),
-  sessionId: text("sessionId").notNull(),
-  agentId: text("agentId").notNull(),
-  name: text("name").notNull(),
-  agentType: text("agentType").notNull(),
-  state: text("state").notNull(),
-  createdAt: integer("createdAt").notNull(),
-});
-
-export const appCheckpoints = sqliteTable("AppCheckpoints", {
-  id: integer("id").primaryKey({ autoIncrement: true }),
-  sessionId: text("sessionId").notNull(),
-  hostname: text("hostname").notNull(),
-  projectDirectory: text("projectDirectory").notNull(),
-  state: text("state").notNull(),
-  createdAt: integer("createdAt").notNull(),
-});
-```
-
-**Note:** There is a known inconsistency in the MySQL and PostgreSQL `start()` methods where the table creation SQL does not match the actual schema files. The schema files define the correct structure, but the `start()` method may create tables with incorrect column definitions. This should be addressed in future updates.
-
-## Usage Examples
-
-### SQLite Usage
+#### Direct Usage - Agent Checkpoints
 
 ```typescript
 import { SQLiteStorage } from '@tokenring-ai/drizzle-storage';
+import type { NamedAgentCheckpoint } from "@tokenring-ai/checkpoint/AgentCheckpointStorage";
 
 const storage = new SQLiteStorage({
   type: "sqlite",
@@ -550,7 +257,7 @@ const storage = new SQLiteStorage({
 await storage.start();
 
 // Store an agent checkpoint
-const agentCheckpoint = {
+const checkpoint: NamedAgentCheckpoint = {
   agentId: "agent-123",
   sessionId: "session-456",
   agentType: "coder",
@@ -559,351 +266,185 @@ const agentCheckpoint = {
   createdAt: Date.now()
 };
 
-const agentId = await storage.storeAgentCheckpoint(agentCheckpoint);
-console.log('Agent checkpoint stored with ID:', agentId);
+const id = await storage.storeAgentCheckpoint(checkpoint);
+console.log('Checkpoint stored with ID:', id);
 
-// Store an app checkpoint
-const appCheckpoint = {
-  sessionId: "session-456",
-  hostname: "localhost",
-  projectDirectory: "/home/user/project",
-  state: { files: ["index.ts"], config: {} },
-  createdAt: Date.now()
-};
+// Retrieve an agent checkpoint
+const retrieved = await storage.retrieveAgentCheckpoint(id);
+console.log('Retrieved state:', retrieved?.state);
 
-const appId = await storage.storeAppCheckpoint(appCheckpoint);
-console.log('App checkpoint stored with ID:', appId);
+// List all agent checkpoints
+const checkpoints = await storage.listAgentCheckpoints();
+console.log('Available checkpoints:', checkpoints);
 ```
 
-### MySQL Usage
-
-```typescript
-import { MySQLStorage } from '@tokenring-ai/drizzle-storage';
-
-const storage = new MySQLStorage({
-  type: "mysql",
-  connectionString: "mysql://user:password@localhost:3306/database"
-});
-
-await storage.start();
-
-// Store an agent checkpoint
-const agentId = await storage.storeAgentCheckpoint({
-  agentId: "agent-123",
-  sessionId: "session-456",
-  agentType: "coder",
-  name: "session-1",
-  state: { messages: ["Hello"] },
-  createdAt: Date.now()
-});
-
-// Store an app checkpoint
-const appId = await storage.storeAppCheckpoint({
-  sessionId: "session-456",
-  hostname: "localhost",
-  projectDirectory: "/home/user/project",
-  state: { files: ["index.ts"] },
-  createdAt: Date.now()
-});
-```
-
-### PostgreSQL Usage
-
-```typescript
-import { PostgresStorage } from '@tokenring-ai/drizzle-storage';
-
-const storage = new PostgresStorage({
-  type: "postgres",
-  connectionString: "postgres://user:password@localhost:5432/database"
-});
-
-await storage.start();
-
-// Store an agent checkpoint
-const agentId = await storage.storeAgentCheckpoint({
-  agentId: "agent-123",
-  sessionId: "session-456",
-  agentType: "coder",
-  name: "session-1",
-  state: { messages: ["Hello"] },
-  createdAt: Date.now()
-});
-
-// Store an app checkpoint
-const appId = await storage.storeAppCheckpoint({
-  sessionId: "session-456",
-  hostname: "localhost",
-  projectDirectory: "/home/user/project",
-  state: { files: ["index.ts"] },
-  createdAt: Date.now()
-});
-```
-
-### Full Workflow Example
-
-```typescript
-import { PostgresStorage } from '@tokenring-ai/drizzle-storage';
-
-async function checkpointWorkflow() {
-  const storage = new PostgresStorage({
-    type: "postgres",
-    connectionString: process.env.DATABASE_URL
-  });
-
-  // Initialize the storage
-  await storage.start();
-
-  // Store initial agent state
-  const initialAgentCheckpoint = {
-    agentId: 'my-agent',
-    sessionId: 'session-1',
-    agentType: 'coder',
-    name: 'initial',
-    state: { step: 0, message: 'Starting workflow' },
-    createdAt: Date.now()
-  };
-
-  const initialAgentId = await storage.storeAgentCheckpoint(initialAgentCheckpoint);
-  console.log('Initial agent checkpoint stored:', initialAgentId);
-
-  // Store initial app state
-  const initialAppCheckpoint = {
-    sessionId: 'session-1',
-    hostname: 'localhost',
-    projectDirectory: '/home/user/project',
-    state: { files: ['index.ts'], step: 0 },
-    createdAt: Date.now()
-  };
-
-  const initialAppId = await storage.storeAppCheckpoint(initialAppCheckpoint);
-  console.log('Initial app checkpoint stored:', initialAppId);
-
-  // Retrieve and update agent checkpoint
-  const current = await storage.retrieveAgentCheckpoint(initialAgentId);
-  if (current) {
-    current.state.step += 1;
-    current.state.message = 'Processing...';
-
-    const updatedId = await storage.storeAgentCheckpoint({
-      ...current,
-      createdAt: Date.now()
-    });
-    console.log('Agent checkpoint updated:', updatedId);
-  }
-
-  // Retrieve latest app checkpoint
-  const latestApp = await storage.retrieveLatestAppCheckpoint();
-  if (latestApp) {
-    console.log('Latest app session:', latestApp.sessionId);
-    console.log('Working directory:', latestApp.projectDirectory);
-  }
-
-  // List all agent checkpoints
-  const agentCheckpoints = await storage.listAgentCheckpoints();
-  console.log('Total agent checkpoints:', agentCheckpoints.length);
-
-  // List all app checkpoints
-  const appCheckpoints = await storage.listAppCheckpoints();
-  console.log('Total app checkpoints:', appCheckpoints.length);
-}
-```
-
-### Error Handling
+#### Direct Usage - App Checkpoints
 
 ```typescript
 import { SQLiteStorage } from '@tokenring-ai/drizzle-storage';
+import type { AppSessionCheckpoint } from "@tokenring-ai/checkpoint/AppCheckpointStorage";
 
-async function safeCheckpointOperation() {
-  const storage = new SQLiteStorage({
-    type: "sqlite",
-    databasePath: "./agent_state.db"
-  });
+const storage = new SQLiteStorage({
+  type: "sqlite",
+  databasePath: "./app_state.db"
+});
 
-  try {
-    await storage.start();
+await storage.start();
 
-    const agentCheckpoint = {
-      agentId: "agent-123",
-      sessionId: "session-1",
-      agentType: "coder",
-      name: "session-1",
-      state: { messages: ["Hello"] },
-      createdAt: Date.now()
-    };
+// Store an app checkpoint
+const appCheckpoint: AppSessionCheckpoint = {
+  sessionId: "app-session-1",
+  hostname: "localhost",
+  projectDirectory: "/path/to/project",
+  state: { projectDirectory: "/path/to/project", files: [] },
+  createdAt: Date.now()
+};
 
-    const id = await storage.storeAgentCheckpoint(agentCheckpoint);
-    console.log('Checkpoint stored:', id);
+const id = await storage.storeAppCheckpoint(appCheckpoint);
+console.log('App checkpoint stored with ID:', id);
 
-    // Handle non-existent checkpoint
-    const missing = await storage.retrieveAgentCheckpoint("999999");
-    if (missing === null) {
-      console.log('Checkpoint not found');
-    }
-
-    // Handle no app checkpoints
-    const latest = await storage.retrieveLatestAppCheckpoint();
-    if (latest === null) {
-      console.log('No app checkpoints exist');
-    }
-  } catch (error) {
-    console.error('Database operation failed:', error);
-  }
-}
+// Retrieve the latest app checkpoint
+const latest = await storage.retrieveLatestAppCheckpoint();
+console.log('Latest app checkpoint:', latest);
 ```
 
-### Plugin Integration Example
+#### Using the Plugin
 
-```typescript
-// Configure in .tokenring/coder-config.mjs
+```javascript
+// .tokenring/coder-config.mjs
 export default {
   drizzleStorage: {
     type: "sqlite",
-    databasePath: "./tokenring-state.db"
+    databasePath: "./agent_state.db"
   }
 };
-
-// The plugin will automatically:
-// 1. Create the storage instance
-// 2. Register it with the app services
-// 3. Set it as the checkpoint provider for AgentCheckpointService
-// 4. Set it as the checkpoint provider for AppCheckpointService
 ```
 
-## Best Practices
+The plugin automatically:
 
-- **Use the Plugin**: When possible, use the TokenRing plugin for automatic integration with both checkpoint services
-- **JSON Serialization**: Ensure state objects are JSON-serializable
-- **Connection Pooling**: Use MySQL or PostgreSQL for production workloads with connection pooling
-- **Error Handling**: Wrap storage operations in try-catch blocks to handle database errors
-- **Checkpoint Naming**: Use descriptive names for checkpoints to make them easier to identify
-- **Cleanup**: Regularly review and clean up old checkpoints to manage storage space
-- **Session Tracking**: Always include `sessionId` and `agentType` fields for proper checkpoint organization
-- **Separate Concerns**: Use agent checkpoints for agent-specific state and app checkpoints for application-level session state
-- **Latest Checkpoint**: Use `retrieveLatestAppCheckpoint()` when you need the most recent app session state
-- **Schema Consistency**: Be aware of the schema inconsistency issue in MySQL/PostgreSQL `start()` methods
+1. Creates the appropriate storage instance based on configuration
+2. Registers it as a service in the app
+3. Connects it to both `AgentCheckpointService` and `AppCheckpointService`
 
-## Integration
+### Testing
 
-### Integration with Agent System
-
-The package integrates with the Token Ring agent system through the TokenRing plugin:
-
-1. **Service Registration**: Automatically registers the storage service with the application
-2. **Agent Checkpoint Service Integration**: Automatically registers the storage provider with AgentCheckpointService
-3. **App Checkpoint Service Integration**: Automatically registers the storage provider with AppCheckpointService
-4. **State Management**: Provides storage backend for both agent state checkpoints and app session checkpoints
-5. **Automatic Configuration**: Reads configuration from Token Ring config files
-
-### Integration with Other Packages
-
-The package integrates with:
-
-- **@tokenring-ai/app**: For plugin registration and app framework integration
-- **@tokenring-ai/checkpoint**: For checkpoint storage interfaces and types (both AgentCheckpointStorage and AppCheckpointStorage)
-- **@tokenring-ai/agent**: For agent state management and persistence
-
-## Testing
-
-Run comprehensive tests with Bun runtime:
+Run the comprehensive test suite with Bun runtime:
 
 ```bash
-bun run test
+# Run all tests
+bun test
+
+# Run tests in watch mode
+bun test --watch
+
+# Run tests with coverage
+bun test --coverage
 ```
 
-### Test Coverage
+**Note:** Tests require Bun runtime because the SQLite implementation uses `bun:sqlite`. MySQL and PostgreSQL tests are currently skipped as they require Docker/testcontainers.
 
-- **SQLite**: Local file database (requires Bun runtime due to `bun:sqlite` module)
-- **MySQL/PostgreSQL**: Tests are currently skipped (require Docker/testcontainers)
-- CRUD operations for both agent and app checkpoints
-- Error handling and edge cases
-- Non-existent checkpoint retrieval (returns `null`)
-- Latest app checkpoint retrieval
-- Complex state structure preservation
+### Dependencies
 
-### Important Notes on Testing
+#### Runtime Dependencies
 
-- **SQLite tests require Bun runtime**: The SQLite implementation uses Bun's native `bun:sqlite` module, so tests must be run with `bun test`
-- **MySQL/PostgreSQL tests are skipped**: These tests require Docker containers via testcontainers and are currently marked as skipped
-- To enable MySQL/PostgreSQL tests, you'll need to set up Docker containers using testcontainers
+| Package | Version | Purpose |
+|---------|---------|---------|
+| `@tokenring-ai/app` | 0.2.0 | Token Ring application framework |
+| `@tokenring-ai/checkpoint` | 0.2.0 | Checkpoint interfaces |
+| `drizzle-orm` | ^0.45.2 | Type-safe ORM |
+| `mysql2` | ^3.20.0 | MySQL driver |
+| `postgres` | ^3.4.9 | PostgreSQL driver |
+| `zod` | ^4.3.6 | Schema validation |
 
-### Example Test
+#### Development Dependencies
+
+| Package | Version | Purpose |
+|---------|---------|---------|
+| `drizzle-kit` | ^0.31.10 | Migration generator |
+| `vitest` | ^4.1.1 | Testing framework |
+| `bun-types` | ^1.3.11 | Bun TypeScript definitions |
+| `typescript` | ^6.0.2 | TypeScript compiler |
+
+### Schema Documentation
+
+The package defines Zod schemas for configuration validation.
+
+#### DrizzleStorageConfigSchema
+
+Combined schema using discriminated union:
 
 ```typescript
-import { AgentCheckpointStorage, NamedAgentCheckpoint } from "@tokenring-ai/checkpoint/AgentCheckpointStorage";
-import { AppCheckpointStorage, AppSessionCheckpoint } from "@tokenring-ai/checkpoint/AppCheckpointStorage";
-import { describe, expect, it, beforeAll, afterAll } from "vitest";
-import { SQLiteStorage } from "./sqlite/createSQLiteStorage.js";
+const DrizzleStorageConfigSchema = z.discriminatedUnion("type", [
+  sqliteStorageConfigSchema,
+  postgresStorageConfigSchema,
+  mysqlStorageConfigSchema
+]);
+```
 
-describe("DrizzleStorage - SQLite (Bun Required)", () => {
-  // Check for Bun runtime
-  const isBun = typeof Bun !== "undefined";
-  
-  if (!isBun) {
-    it.skip("SQLite tests require Bun runtime", () => {
-      expect(true).toBe(true);
-    });
-    return;
-  }
+#### SQLite Configuration Schema
 
-  describe("SQLite Storage Operations", () => {
-    let storage: AgentCheckpointStorage;
-    const dbPath = "./test-agent-state.db";
-
-    beforeAll(async () => {
-      // Use dynamic import to avoid bun:sqlite import error in Node.js
-      const { SQLiteStorage } = await import("./sqlite/createSQLiteStorage.js");
-      storage = new SQLiteStorage({
-        type: "sqlite",
-        databasePath: dbPath,
-      });
-      await storage.start();
-    });
-
-    afterAll(async () => {
-      // Cleanup: remove test database file
-      const { unlinkSync, existsSync } = await import("node:fs");
-      if (existsSync(dbPath)) {
-        unlinkSync(dbPath);
-      }
-    });
-
-    it("should store and retrieve checkpoint", async () => {
-      const checkpoint: NamedAgentCheckpoint = {
-        agentId: "test-agent-1",
-        sessionId: "session-1",
-        agentType: "general",
-        name: "session-1",
-        state: { agentState: { messages: { hello: "world" } }, toolsEnabled: ["foo"], hooksEnabled: ["bar"] },
-        createdAt: Date.now(),
-      };
-
-      const id = await storage.storeAgentCheckpoint(checkpoint);
-      expect(id).toBeDefined();
-      expect(typeof id).toBe("string");
-
-      const retrieved = await storage.retrieveAgentCheckpoint(id);
-      expect(retrieved).toBeDefined();
-      expect(retrieved?.agentId).toBe(checkpoint.agentId);
-      expect(retrieved?.name).toBe(checkpoint.name);
-      expect(retrieved?.state).toEqual(checkpoint.state);
-    });
-
-    it("should return null for non-existent checkpoint", async () => {
-      const retrieved = await storage.retrieveAgentCheckpoint("999999");
-      expect(retrieved).toBeNull();
-    });
-  });
+```typescript
+const sqliteStorageConfigSchema = z.object({
+  type: z.literal("sqlite"),
+  databasePath: z.string(),
+  migrationsFolder: z.string().exactOptional(),
 });
 ```
 
-## Package Structure
+#### MySQL Configuration Schema
 
+```typescript
+const mysqlStorageConfigSchema = z.object({
+  type: z.literal("mysql"),
+  connectionString: z.string(),
+});
 ```
+
+#### PostgreSQL Configuration Schema
+
+```typescript
+const postgresStorageConfigSchema = z.object({
+  type: z.literal("postgres"),
+  connectionString: z.string(),
+});
+```
+
+### Database Schema
+
+All database types use the same logical schema with two tables: `AgentCheckpoints` and `AppCheckpoints`.
+
+#### AgentCheckpoints Table
+
+| Column | Type | Description |
+|--------|------|-------------|
+| `id` | Integer/BigInt | Auto-incrementing primary key |
+| `sessionId` | Text | Session identifier |
+| `agentId` | Text | Agent identifier |
+| `agentType` | Text | Type of agent (e.g., "coder", "writer") |
+| `name` | Text | Checkpoint name |
+| `state` | Text | JSON-serialized state data |
+| `createdAt` | Integer/BigInt | Unix timestamp |
+
+#### AppCheckpoints Table
+
+| Column | Type | Description |
+|--------|------|-------------|
+| `id` | Integer/BigInt | Auto-incrementing primary key |
+| `sessionId` | Text | Session identifier |
+| `hostname` | Text | Hostname of the application |
+| `projectDirectory` | Text | Current working directory |
+| `state` | Text | JSON-serialized state data |
+| `createdAt` | Integer/BigInt | Unix timestamp |
+
+### Project Structure
+
+```text
 pkg/drizzle-storage/
 ├── index.ts                    # Package entry point with exports
 ├── plugin.ts                   # TokenRingPlugin implementation
 ├── schema.ts                   # Combined configuration schema
 ├── package.json                # Dependencies and scripts
+├── README.md                   # Documentation
 ├── DrizzleAgentStateStorage.test.ts  # Test suite
 ├── vitest.config.ts            # Test configuration
 ├── LICENSE                     # MIT License
@@ -921,71 +462,26 @@ pkg/drizzle-storage/
     └── drizzle.config.ts       # Drizzle configuration
 ```
 
-## Dependencies
+### Scripts
 
-### Runtime Dependencies
+| Script | Description |
+|--------|-------------|
+| `test` | Run all tests |
+| `test:watch` | Run tests in watch mode |
+| `test:coverage` | Run tests with coverage |
+| `db:generate` | Generate migrations for all databases |
+| `db:generate:sqlite` | Generate SQLite migrations |
+| `db:generate:postgres` | Generate PostgreSQL migrations |
+| `db:generate:mysql` | Generate MySQL migrations |
+| `build` | Type check with TypeScript |
 
-- `drizzle-orm`: Type-safe ORM for database operations
-- `mysql2`: MySQL driver with connection pooling
-- `postgres`: PostgreSQL driver with connection pooling
-- `bun:sqlite`: Bun's built-in SQLite driver (for SQLite only)
-- `zod`: Schema validation
+### Related Components
+
+- `@tokenring-ai/checkpoint`: Checkpoint interfaces and types
 - `@tokenring-ai/app`: Token Ring application framework
-- `@tokenring-ai/checkpoint`: Token Ring checkpoint interfaces
+- `@tokenring-ai/coder`: Coder application (uses checkpoint storage)
+- `@tokenring-ai/writer`: Writer application (uses checkpoint storage)
 
-### Development Dependencies
-
-- `drizzle-kit`: Migration generator
-- `vitest`: Testing framework
-- `testcontainers`: Docker container management for testing
-- `typescript`: TypeScript compiler
-- `bun-types`: TypeScript definitions for Bun
-
-## Migration Strategy
-
-This package uses Drizzle's codebase-first approach with runtime table creation:
-
-1. **Define Schema**: Schema is defined in TypeScript files for each database type (`sqlite/schema.ts`, `mysql/schema.ts`, `postgres/schema.ts`)
-2. **Create Tables**: Tables are automatically created at runtime when the `start()` method is called using `CREATE TABLE IF NOT EXISTS` statements
-3. **Note**: Drizzle migrations are not automatically applied via the migration system due to Bun packaging constraints. The `start()` method creates tables directly.
-4. **Known Issue**: There is an inconsistency between the schema files and the table creation SQL in the `start()` methods for MySQL and PostgreSQL. The schema files define the correct structure, but the `start()` method may create tables with incorrect column definitions.
-
-## Error Handling
-
-The package includes comprehensive error handling:
-
-- Database connection errors
-- Invalid checkpoint data
-- Non-existent checkpoint retrieval (returns `null`)
-- JSON parsing errors for state
-
-## Performance Considerations
-
-- **SQLite**: Single-file database, ideal for development and small-scale applications
-- **MySQL**: Connection pooling for high-performance applications
-- **PostgreSQL**: Advanced features for enterprise workloads with connection pooling
-
-## Notes
-
-- State must be JSON-serializable
-- Tables are created on initialization (not via migrations)
-- Connection pooling enabled for MySQL/PostgreSQL
-- SQLite requires Bun runtime
-- Suitable for production workloads with MySQL/PostgreSQL
-- Plugin automatically registers with both Token Ring checkpoint services (AgentCheckpointService and AppCheckpointService)
-- Agent checkpoints include `sessionId` and `agentType` fields for proper organization
-- App checkpoints include `hostname` and `projectDirectory` fields for session context
-- Each storage class implements both `AgentCheckpointStorage` and `AppCheckpointStorage` interfaces
-- `retrieveLatestAppCheckpoint()` provides convenient access to the most recent app session state
-- All checkpoint lists are ordered by creation time (descending)
-- **Important**: There is a known schema inconsistency in MySQL/PostgreSQL `start()` methods that should be addressed
-
-## Related Components
-
-- [@tokenring-ai/checkpoint](./checkpoint.md) - Checkpoint management system
-- [@tokenring-ai/agent](./agent.md) - Agent orchestration system
-- [@tokenring-ai/app](./app.md) - Token Ring application framework
-
-## License
+### License
 
 MIT License - see LICENSE file for details.

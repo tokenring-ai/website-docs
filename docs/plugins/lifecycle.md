@@ -1,87 +1,374 @@
 # @tokenring-ai/lifecycle
 
-The `@tokenring-ai/lifecycle` package provides agent lifecycle management capabilities for the Token Ring ecosystem. It enables agents to manage and execute hooks at various lifecycle events, allowing for customizable behavior during agent operations such as input processing, response handling, and state transitions.
+The `@tokenring-ai/lifecycle` package provides agent lifecycle management capabilities for the Token Ring ecosystem. It enables a hook-based system for dispatching events during agent lifecycle operations, allowing custom handlers to be registered and executed at key points in the agent's request/response cycle.
 
-## Overview
+## User Guide
 
-The lifecycle package implements a hook-based system that allows developers to register and execute custom callbacks at specific points in the agent's lifecycle. This provides a flexible mechanism for extending agent behavior without modifying core agent code.
+### Overview
+
+The lifecycle package implements an event dispatching service that enables agents to notify registered handlers about lifecycle events such as input processing, success responses, error responses, and cancellations. This provides a flexible mechanism for extending agent behavior without modifying core agent code.
 
 ### Key Features
 
-- **Hook Registration**: Register custom hooks for various agent lifecycle events
-- **Dynamic Hook Management**: Enable, disable, and manage hooks at runtime
-- **State Persistence**: Hook configurations are persisted and restored across agent sessions
-- **Interactive Management**: CLI commands for managing hooks via tree selection
+- **Hook-based event system** for agent lifecycle events
+- **Per-Agent Configuration**: Each agent maintains its own set of enabled hooks
+- **Interactive Commands**: CLI commands for listing, enabling, disabling, and selecting hooks
 - **RPC API**: Remote procedure call endpoints for programmatic hook management
-- **Type-Safe**: Full TypeScript support with Zod schema validation
+- **State Persistence**: Hook configuration persists across agent sessions
+- **Type Safety**: Full TypeScript support with Zod schema validation
+- **Event-Driven Architecture**: Callback-based execution with async support
 
-## Core Components
+### Chat Commands
 
-### AgentLifecycleService
+The package provides the following slash-prefixed commands for hook management:
 
-The primary service that manages hook registration, execution, and state.
+| Command                    | Description                                    |
+|----------------------------|------------------------------------------------|
+| `/hooks list`              | List all registered hooks                      |
+| `/hooks get`               | Show currently enabled hooks                   |
+| `/hooks set <hooks...>`    | Set enabled hooks (replaces current selection) |
+| `/hooks enable <hooks...>` | Add hooks to the enabled set                   |
+| `/hooks disable <hooks...>`| Remove hooks from the enabled set              |
+| `/hooks select`            | Interactive tree-based hook selection          |
+| `/hooks reset`             | Reset enabled hooks to initial configuration   |
+
+#### `/hooks list`
+
+List all registered hooks.
+
+```bash
+/hooks list
+```
+
+**Example Output**:
+
+```text
+Registered hooks:
+- preProcess
+- onMessage
+- onError
+```
+
+#### `/hooks get`
+
+Show currently enabled hooks for the agent.
+
+```bash
+/hooks get
+```
+
+**Example Output**:
+
+```text
+Currently enabled hooks: preProcess, onMessage
+```
+
+#### `/hooks set <hooks...>`
+
+Set enabled hooks, replacing the current selection entirely.
+
+```bash
+/hooks set preProcess onMessage
+```
+
+#### `/hooks enable <hooks...>`
+
+Add one or more hooks to the enabled set.
+
+```bash
+/hooks enable onError
+```
+
+#### `/hooks disable <hooks...>`
+
+Remove one or more hooks from the enabled set.
+
+```bash
+/hooks disable preProcess
+```
+
+#### `/hooks select`
+
+Open an interactive tree-based selector to choose which hooks to enable.
+
+```bash
+/hooks select
+```
+
+> **Note**: Only available in interactive (non-headless) mode.
+
+#### `/hooks reset`
+
+Reset the enabled hooks to the initial configuration.
+
+```bash
+/hooks reset
+```
+
+### Tools
+
+The lifecycle package does not define any MCP tools. It provides chat commands and RPC endpoints for hook management.
+
+### Configuration
+
+#### Plugin Configuration
+
+Configure the lifecycle plugin with default settings for new agents:
+
+```yaml
+lifecycle:
+  agentDefaults:
+    enabledHooks: []
+```
+
+#### Service Configuration Schema
+
+```typescript
+import { LifecycleServiceConfigSchema } from "@tokenring-ai/lifecycle/schema";
+
+const config = {
+  lifecycle: {
+    agentDefaults: {
+      enabledHooks: string[]  // Default enabled hooks for new agents
+    }
+  }
+};
+```
+
+#### Agent Configuration
+
+Each agent maintains its own lifecycle configuration:
+
+```typescript
+import { LifecycleAgentConfigSchema } from "@tokenring-ai/lifecycle/schema";
+
+// Per-agent configuration
+const agentConfig = {
+  enabledHooks: string[]  // Agent-specific enabled hooks
+};
+```
+
+#### Environment Variables
+
+The lifecycle package does not require any environment variables.
+
+### Integration
+
+#### Plugin Installation
+
+Install the lifecycle plugin in your TokenRing application:
+
+```typescript
+import { TokenRingApp } from "@tokenring-ai/app";
+import lifecyclePlugin from "@tokenring-ai/lifecycle/plugin";
+
+const app = new TokenRingApp();
+
+// Install the plugin with configuration
+await app.install(lifecyclePlugin, {
+  lifecycle: {
+    agentDefaults: {
+      enabledHooks: []  // No hooks enabled by default
+    }
+  }
+});
+```
+
+#### Registering Hooks
+
+Register custom hooks with the lifecycle service:
+
+```typescript
+import { AgentLifecycleService } from "@tokenring-ai/lifecycle";
+import { HookCallback, AfterAgentInputSuccess } from "@tokenring-ai/lifecycle/util/hooks";
+
+// Get the lifecycle service
+const lifecycleService = app.getService(AgentLifecycleService);
+
+// Register a new hook subscription
+lifecycleService.registerHook("onMessage", {
+  name: "onMessage",
+  displayName: "On Message Success",
+  description: "Executed after successful agent response",
+  callbacks: [
+    new HookCallback(
+      AfterAgentInputSuccess,
+      async (data, agent) => {
+        console.log(`Response: ${data.response}`);
+        // Custom post-processing logic
+      }
+    )
+  ]
+});
+```
+
+#### Managing Hooks
+
+Enable and disable hooks for individual agents:
+
+```typescript
+// Enable hooks for an agent
+lifecycleService.enableHooks(["preProcess", "onMessage"], agent);
+
+// Disable specific hooks
+lifecycleService.disableHooks(["preProcess"], agent);
+
+// Set exact hook list (replaces current)
+lifecycleService.setEnabledHooks(["onMessage"], agent);
+
+// Get currently enabled hooks
+const enabled = lifecycleService.getEnabledHooks(agent);
+```
+
+### Best Practices
+
+1. **Register Hooks Early**: Register all hooks during plugin initialization before agent creation
+2. **Use Descriptive Names**: Give hooks clear, descriptive names and descriptions
+3. **Handle Async Properly**: Hook callbacks can be async; await them appropriately
+4. **Handle Errors Gracefully**: Wrap hook callbacks in try-catch blocks to prevent breaking agent flow
+5. **Enable Selectively**: Only enable hooks that are needed for specific agent tasks
+6. **Monitor Performance**: Be aware that hooks add overhead to agent processing
+
+## Developer Reference
+
+### Core Components
+
+#### AgentLifecycleService (Service Class)
+
+The main service class that manages hook registration and execution.
 
 **Location**: `pkg/lifecycle/AgentLifecycleService.ts`
 
-**Key Methods**:
+**Implements**: `TokenRingService`
 
 ```typescript
-class AgentLifecycleService implements TokenRingService {
+export default class AgentLifecycleService implements TokenRingService {
   readonly name = "AgentLifecycleService";
   description = "A service which dispatches hooks when certain agent lifecycle event happen.";
 
-  // Hook Management
-  registerHook(hookName: string, hook: HookSubscription): void;
-  getAllHookEntries(): Array<[string, HookSubscription]>;
-  getAllHookNames(): string[];
+  // Hook registration
+  registerHook: (name: string, hook: HookSubscription) => void
+  getAllHookEntries: () => [string, HookSubscription][]
+  getAllHookNames: () => string[]
 
-  // Agent State Management
-  attach(agent: Agent): void;
-  getEnabledHooks(agent: Agent): string[];
-  setEnabledHooks(hookNames: string[], agent: void): void;
-  enableHooks(hookNames: string[], agent: Agent): void;
-  disableHooks(hookNames: string[], agent: Agent): void;
-  executeHooks(data: Hook, agent: Agent): Promise<void>;
+  // Agent lifecycle
+  attach(agent: Agent): void
+
+  // Hook management
+  addHooks: (hooks: Record<string, HookSubscription>) => void
+  getEnabledHooks: (agent: Agent) => string[]
+  setEnabledHooks: (hookNames: string[], agent: Agent) => void
+  enableHooks: (hookNames: string[], agent: Agent) => void
+  disableHooks: (hookNames: string[], agent: Agent) => void
+
+  // Hook execution
+  executeHooks: (data: Hook, agent: Agent) => Promise<void>
 }
 ```
 
-### Hook Types
-
-The package defines several hook types for different lifecycle events:
+**Constructor Parameters**:
 
 ```typescript
-// pkg/lifecycle/util/hooks.ts
+constructor(readonly options: ParsedLifecycleServiceConfig)
+```
 
-class BeforeAgentInput {
+### Services
+
+#### AgentLifecycleService (TokenRingService)
+
+**Type**: `TokenRingService`
+
+**Purpose**: Central service for managing agent lifecycle hooks
+
+**Registration**: Automatically registered when the plugin is installed via `app.install()`
+
+**Configuration**:
+
+```typescript
+import { LifecycleServiceConfigSchema } from "@tokenring-ai/lifecycle/schema";
+
+type ParsedLifecycleServiceConfig = {
+  agentDefaults: {
+    enabledHooks: string[]
+  }
+};
+```
+
+### Provider Documentation
+
+#### Hook Types
+
+The package defines several predefined hook classes for different lifecycle stages:
+
+**Base Hook Interface**:
+
+```typescript
+export type Hook = {
+  type: "hook";
+};
+```
+
+**Predefined Hook Classes**:
+
+##### BeforeAgentInput
+
+Triggered before processing an agent input.
+
+```typescript
+export class BeforeAgentInput {
   readonly type = "hook";
   constructor(readonly request: ParsedInputReceived) {}
 }
+```
 
-class AfterAgentInputSuccess {
+##### AfterAgentInputSuccess
+
+Triggered after a successful agent response.
+
+```typescript
+export class AfterAgentInputSuccess {
   readonly type = "hook";
   constructor(
     readonly request: ParsedInputReceived,
     readonly response: ParsedAgentSuccessResponse
   ) {}
 }
+```
 
-class AfterAgentInputError {
+##### AfterAgentInputError
+
+Triggered when an agent encounters an error.
+
+```typescript
+export class AfterAgentInputError {
   readonly type = "hook";
   constructor(
     readonly request: ParsedInputReceived,
     readonly response: ParsedAgentErrorResponse
   ) {}
 }
+```
 
-class AfterAgentInputCancelled {
+##### AfterAgentInputCancelled
+
+Triggered when an agent request is cancelled.
+
+```typescript
+export class AfterAgentInputCancelled {
   readonly type = "hook";
   constructor(
     readonly request: ParsedInputReceived,
     readonly response: ParsedAgentCancelledResponse
   ) {}
 }
+```
 
-class AfterAgentInputHandled {
+##### AfterAgentInputHandled
+
+Triggered after any agent response (success, error, or cancelled).
+
+```typescript
+export class AfterAgentInputHandled {
   readonly type = "hook";
   constructor(
     readonly request: ParsedInputReceived,
@@ -90,25 +377,30 @@ class AfterAgentInputHandled {
 }
 ```
 
-### HookCallback
+#### HookCallback
 
-Used to register callbacks for specific hook types:
+Callback registration for hook execution.
 
 ```typescript
-class HookCallback<T extends Hook> {
+export class HookCallback<T extends Hook> {
   constructor(
     readonly hookConstructor: abstract new (...args: any[]) => T,
-    readonly callback: (data: T, agent: Agent) => Promise<void> | void
+    readonly callback: (data: T, agent: Agent) => MaybePromise<void>
   ) {}
 }
 ```
 
-### HookSubscription
+**Parameters**:
 
-Defines a registered hook with its metadata:
+- `hookConstructor`: The hook class constructor to match against executed hooks
+- `callback`: Async or sync function to execute when the hook is triggered
+
+#### HookSubscription
+
+Defines a registered hook with its metadata.
 
 ```typescript
-type HookSubscription = {
+export type HookSubscription = {
   name: string;
   displayName: string;
   description: string;
@@ -116,42 +408,21 @@ type HookSubscription = {
 };
 ```
 
-## Services
+### RPC Endpoints
 
-### AgentLifecycleService
+The package provides RPC endpoints for remote hook management at `/rpc/lifecycle`.
 
-**Type**: `TokenRingService`
+**RPC Schema**: `pkg/lifecycle/rpc/schema.ts`
 
-**Purpose**: Central service for managing agent lifecycle hooks
+| Endpoint         | Method    | Request Parameters                       | Response Parameters                                                                 |
+|------------------|-----------|------------------------------------------|-------------------------------------------------------------------------------------|
+| `getAvailableHooks` | query   | `{}`                                     | `{ hooks: Record<string, { displayName: string, description: string }> }`          |
+| `getEnabledHooks`   | query   | `{ agentId: string }`                    | `{ status: "success", hooks: string[] }` or `{ status: "agentNotFound" }`          |
+| `setEnabledHooks`   | mutation| `{ agentId: string, hooks: string[] }`   | `{ status: "success", hooks: string[] }` or `{ status: "agentNotFound" }`          |
+| `enableHooks`       | mutation| `{ agentId: string, hooks: string[] }`   | `{ status: "success", hooks: string[] }` or `{ status: "agentNotFound" }`          |
+| `disableHooks`      | mutation| `{ agentId: string, hooks: string[] }`   | `{ status: "success", hooks: string[] }` or `{ status: "agentNotFound" }`          |
 
-**Registration**: Automatically registered when the plugin is installed
-
-**Configuration**:
-```typescript
-import { LifecycleServiceConfigSchema } from "@tokenring-ai/lifecycle/schema";
-
-const config = {
-  lifecycle: {
-    agentDefaults: {
-      enabledHooks: [] // Default enabled hooks for new agents
-    }
-  }
-};
-```
-
-## RPC Endpoints
-
-The package provides the following RPC endpoints at `/rpc/lifecycle`:
-
-| Endpoint | Type | Description | Request Parameters | Response Parameters |
-|----------|------|-------------|-------------------|---------------------|
-| `getAvailableHooks` | query | Get all registered hooks | `{}` | `{ hooks: Record<string, { displayName: string, description?: string }> }` |
-| `getEnabledHooks` | query | Get enabled hooks for an agent | `{ agentId: string }` | `{ hooks: string[] }` |
-| `setEnabledHooks` | mutation | Set enabled hooks (replaces current) | `{ agentId: string, hooks: string[] }` | `{ hooks: string[] }` |
-| `enableHooks` | mutation | Enable additional hooks | `{ agentId: string, hooks: string[] }` | `{ hooks: string[] }` |
-| `disableHooks` | mutation | Disable specified hooks | `{ agentId: string, hooks: string[] }` | `{ hooks: string[] }` |
-
-### RPC Example
+#### RPC Usage Example
 
 ```typescript
 import { createRPCClient } from "@tokenring-ai/rpc";
@@ -161,262 +432,45 @@ const client = createRPCClient(LifecycleRpcSchema, rpcTransport);
 
 // Get available hooks
 const available = await client.getAvailableHooks({});
-console.log(available.hooks);
+console.log("Available hooks:", available.hooks);
 
 // Get enabled hooks for an agent
-const enabled = await client.getEnabledHooks({ agentId: "my-agent" });
-console.log(enabled.hooks);
+const enabled = await client.getEnabledHooks({ agentId: "agent-123" });
+if (enabled.status === "success") {
+  console.log("Enabled hooks:", enabled.hooks);
+}
 
-// Enable specific hooks
-await client.enableHooks({ 
-  agentId: "my-agent", 
-  hooks: ["preProcess", "postProcess"] 
+// Enable hooks
+const result = await client.enableHooks({
+  agentId: "agent-123",
+  hooks: ["preProcess", "onMessage"]
 });
+if (result.status === "success") {
+  console.log("Updated hooks:", result.hooks);
+}
 ```
 
-## Chat Commands
+### Usage Examples
 
-The package provides the following slash-prefixed commands:
-
-### `/hooks list`
-
-List all registered hooks.
-
-**Usage**:
-```
-/hooks list
-```
-
-**Example**:
-```
-/hooks list
-# Output:
-# Registered hooks:
-# - preProcess
-# - postProcess
-# - onMessage
-```
-
-### `/hooks get`
-
-Show currently enabled hooks.
-
-**Usage**:
-```
-/hooks get
-```
-
-**Example**:
-```
-/hooks get
-# Output:
-# Currently enabled hooks: preProcess, postProcess
-```
-
-### `/hooks enable <hookNames>`
-
-Add one or more hooks to the current enabled set.
-
-**Usage**:
-```
-/hooks enable <hookName1> [hookName2] ...
-```
-
-**Example**:
-```
-/hooks enable preProcess
-# Output: Enabled Hooks: preProcess
-
-/hooks enable preProcess onMessage
-# Output: Enabled Hooks: preProcess, onMessage
-```
-
-### `/hooks disable <hookNames>`
-
-Remove one or more hooks from the current enabled set.
-
-**Usage**:
-```
-/hooks disable <hookName1> [hookName2] ...
-```
-
-**Example**:
-```
-/hooks disable preProcess
-# Output: Disabled Hooks: preProcess
-```
-
-### `/hooks set <hookNames>`
-
-Set enabled hooks, replacing the current selection entirely.
-
-**Usage**:
-```
-/hooks set <hookName1> [hookName2] ...
-```
-
-**Example**:
-```
-/hooks set preProcess onMessage
-# Output: Selected hooks: preProcess, onMessage
-```
-
-### `/hooks select`
-
-Open an interactive tree-based selector to choose which hooks to enable.
-
-**Usage**:
-```
-/hooks select
-```
-
-**Example**:
-```
-/hooks select
-# Opens interactive UI for hook selection
-# Note: Only available in interactive (non-headless) mode
-```
-
-### `/hooks reset`
-
-Reset the enabled hooks to the initial configuration.
-
-**Usage**:
-```
-/hooks reset
-```
-
-**Example**:
-```
-/hooks reset
-# Output: Reset hooks to initial selections: (none)
-```
-
-## Configuration
-
-### Plugin Configuration
+#### Basic Hook Registration
 
 ```typescript
-import { LifecycleServiceConfigSchema } from "@tokenring-ai/lifecycle/schema";
-
-const config = {
-  lifecycle: {
-    agentDefaults: {
-      enabledHooks: [] // Default enabled hooks for new agents
-    }
-  }
-};
-```
-
-### Agent Configuration Schema
-
-```typescript
-import { LifecycleAgentConfigSchema } from "@tokenring-ai/lifecycle/schema";
-
-// Per-agent configuration
-const agentConfig = {
-  lifecycle: {
-    enabledHooks: ["preProcess", "postProcess"]
-  }
-};
-```
-
-### Configuration Types
-
-```typescript
-// Service-level configuration
-type ParsedLifecycleServiceConfig = {
-  agentDefaults: {
-    enabledHooks: string[];
-  };
-};
-
-// Agent-level configuration
-type ParsedLifecycleAgentConfig = {
-  enabledHooks?: string[];
-};
-```
-
-## Integration
-
-### Plugin Installation
-
-```typescript
-import TokenRingApp from "@tokenring-ai/app";
-import lifecyclePlugin from "@tokenring-ai/lifecycle/plugin";
-
-const app = new TokenRingApp();
-
-// Install the lifecycle plugin
-await app.install(lifecyclePlugin, {
-  lifecycle: {
-    agentDefaults: {
-      enabledHooks: []
-    }
-  }
-});
-
-// The AgentLifecycleService is automatically registered
-const lifecycleService = app.requireService(AgentLifecycleService);
-```
-
-### Registering Hooks
-
-```typescript
-import AgentLifecycleService from "@tokenring-ai/lifecycle/AgentLifecycleService";
-import { HookCallback } from "@tokenring-ai/lifecycle/util/hooks";
-import { AfterAgentInputSuccess } from "@tokenring-ai/lifecycle/util/hooks";
-
-// Register a hook
-lifecycleService.registerHook("postProcess", {
-  name: "postProcess",
-  displayName: "Post-Process",
-  description: "Execute after agent input is successfully processed",
-  callbacks: [
-    new HookCallback(AfterAgentInputSuccess, async (data, agent) => {
-      console.log("Agent successfully processed input:", data.request);
-      // Perform post-processing tasks
-    })
-  ]
-});
-```
-
-### State Management Integration
-
-```typescript
-import { LifecycleState } from "@tokenring-ai/lifecycle/state/lifecycleState";
-
-// Access lifecycle state from an agent
-const lifecycleState = agent.getState(LifecycleState);
-console.log("Enabled hooks:", lifecycleState.enabledHooks);
-
-// Modify lifecycle state
-agent.mutateState(LifecycleState, (state) => {
-  state.enabledHooks.push("newHook");
-});
-```
-
-## Usage Examples
-
-### Basic Hook Registration
-
-```typescript
-import AgentLifecycleService from "@tokenring-ai/lifecycle/AgentLifecycleService";
-import { HookCallback } from "@tokenring-ai/lifecycle/util/hooks";
-import { AfterAgentInputSuccess } from "@tokenring-ai/lifecycle/util/hooks";
+import { AgentLifecycleService } from "@tokenring-ai/lifecycle";
+import { HookCallback, AfterAgentInputSuccess } from "@tokenring-ai/lifecycle/util/hooks";
 
 // In your plugin's install function
 export default {
   name: "my-plugin",
   install(app, config) {
     app.waitForService(AgentLifecycleService, (lifecycleService) => {
-      lifecycleService.registerHook("myCustomHook", {
-        name: "myCustomHook",
-        displayName: "My Custom Hook",
-        description: "A custom hook for demonstration",
+      lifecycleService.registerHook("postProcess", {
+        name: "postProcess",
+        displayName: "Post-Process",
+        description: "Execute after agent input is successfully processed",
         callbacks: [
           new HookCallback(AfterAgentInputSuccess, async (data, agent) => {
-            console.log("Custom hook executed!");
+            console.log("Agent successfully processed input:", data.request);
+            // Perform post-processing tasks
           })
         ]
       });
@@ -425,54 +479,28 @@ export default {
 };
 ```
 
-### Dynamic Hook Management
+#### Dynamic Hook Management
 
 ```typescript
+import { AgentLifecycleService } from "@tokenring-ai/lifecycle";
+
 // Enable hooks dynamically
-agent.requireServiceByType(AgentLifecycleService).enableHooks(
-  ["preProcess", "postProcess"],
-  agent
-);
+const lifecycleService = agent.requireServiceByType(AgentLifecycleService);
+lifecycleService.enableHooks(["preProcess", "onMessage"], agent);
 
 // Disable hooks dynamically
-agent.requireServiceByType(AgentLifecycleService).disableHooks(
-  ["preProcess"],
-  agent
-);
+lifecycleService.disableHooks(["preProcess"], agent);
 
 // Get current enabled hooks
-const enabledHooks = agent.requireServiceByType(AgentLifecycleService)
-  .getEnabledHooks(agent);
+const enabledHooks = lifecycleService.getEnabledHooks(agent);
+console.log("Enabled hooks:", enabledHooks);
 ```
 
-### State Persistence
+#### Error Handling in Hooks
 
 ```typescript
-import { LifecycleState } from "@tokenring-ai/lifecycle/state/lifecycleState";
+import { HookCallback, AfterAgentInputSuccess } from "@tokenring-ai/lifecycle/util/hooks";
 
-// State is automatically persisted and restored
-// Serialize state
-const serialized = lifecycleState.serialize();
-
-// Deserialize state
-lifecycleState.deserialize(serialized);
-
-// Reset to initial configuration
-lifecycleState.reset();
-```
-
-## Best Practices
-
-### Hook Registration
-
-1. **Register hooks early**: Register hooks during plugin installation before agents are created
-2. **Use descriptive names**: Choose clear, descriptive names for your hooks
-3. **Document hook behavior**: Provide clear descriptions for each hook
-4. **Handle errors gracefully**: Wrap hook callbacks in try-catch blocks
-
-### Hook Execution
-
-```typescript
 lifecycleService.registerHook("safeHook", {
   name: "safeHook",
   displayName: "Safe Hook",
@@ -493,80 +521,92 @@ lifecycleService.registerHook("safeHook", {
 
 ### State Management
 
-1. **Use agent state**: Store hook configurations in agent state for persistence
-2. **Respect initial config**: Always respect the initial configuration when resetting
-3. **Validate hook names**: Ensure hook names match registered hooks before enabling
+The package uses `LifecycleState` for per-agent state persistence.
 
-## Testing and Development
+**Location**: `pkg/lifecycle/state/lifecycleState.ts`
 
-### Package Structure
+```typescript
+export class LifecycleState extends AgentStateSlice {
+  enabledHooks: string[] = [];
 
-```
-pkg/lifecycle/
-├── plugin.ts           # Plugin definition and installation
-├── index.ts            # Package exports
-├── schema.ts           # Configuration schemas
-├── types.ts            # Type definitions
-├── AgentLifecycleService.ts  # Main service implementation
-├── commands.ts         # Command registration
-├── rpc/
-│   ├── schema.ts       # RPC schema definition
-│   └── lifecycle.ts    # RPC endpoint implementation
-├── state/
-│   └── lifecycleState.ts   # Agent state slice
-├── util/
-│   └── hooks.ts        # Hook utilities and types
-├── commands/
-│   └── hooks/
-│       ├── list.ts     # List command
-│       ├── get.ts      # Get command
-│       ├── enable.ts   # Enable command
-│       ├── disable.ts  # Disable command
-│       ├── set.ts      # Set command
-│       ├── select.ts   # Select command
-│       └── reset.ts    # Reset command
-├── package.json        # Package configuration
-└── vitest.config.ts    # Test configuration
+  constructor(readonly initialConfig: ParsedLifecycleServiceConfig["agentDefaults"])
+
+  // State methods
+  reset(): void
+  serialize(): { enabledHooks: string[] }
+  deserialize(data: { enabledHooks: string[] }): void
+  show(): string
+}
 ```
 
-### Running Tests
+**Persistence**: Hook configuration is automatically persisted to SQLite and restored when agents are reloaded.
+
+**Checkpointing**: State checkpoints include hook configuration for recovery scenarios.
+
+#### State Usage Example
+
+```typescript
+import { LifecycleState } from "@tokenring-ai/lifecycle/state/lifecycleState";
+
+// Access lifecycle state from an agent
+const lifecycleState = agent.getState(LifecycleState);
+console.log("Enabled hooks:", lifecycleState.enabledHooks);
+
+// Modify lifecycle state
+agent.mutateState(LifecycleState, (state) => {
+  state.enabledHooks.push("newHook");
+});
+
+// Serialize state
+const serialized = lifecycleState.serialize();
+
+// Deserialize state
+lifecycleState.deserialize(serialized);
+
+// Reset to initial configuration
+lifecycleState.reset();
+```
+
+### Testing
+
+#### Running Tests
 
 ```bash
 # Run tests
-npm run test
+bun test
 
 # Run tests in watch mode
-npm run test:watch
+bun test:watch
 
 # Run tests with coverage
-npm run test:coverage
+bun test:coverage
 ```
 
-### Development Setup
+#### Development Setup
 
 ```bash
 # Install dependencies
-npm install
+bun install
 
 # Type check
-npm run build
+bun run build
 ```
 
-## Dependencies
+### Dependencies
 
-| Package | Version | Purpose |
-|---------|---------|---------|
-| `@tokenring-ai/agent` | 0.2.0 | Agent framework and types |
-| `@tokenring-ai/app` | 0.2.0 | Application framework |
-| `@tokenring-ai/rpc` | 0.2.0 | RPC system |
-| `@tokenring-ai/utility` | 0.2.0 | Utility functions |
-| `zod` | ^4.3.6 | Schema validation |
+| Package                    | Version | Purpose                      |
+|----------------------------|---------|------------------------------|
+| `@tokenring-ai/agent`      | 0.2.0   | Core agent system            |
+| `@tokenring-ai/app`        | 0.2.0   | Base application framework   |
+| `@tokenring-ai/rpc`        | 0.2.0   | RPC service                  |
+| `@tokenring-ai/utility`    | 0.2.0   | Shared utilities             |
+| `zod`                      | ^4.3.6  | Schema validation            |
 
-## Related Components
+### Related Components
 
-- **@tokenring-ai/agent**: Core agent framework that lifecycle hooks integrate with
-- **@tokenring-ai/app**: Application framework for plugin management
-- **@tokenring-ai/rpc**: RPC system for remote hook management
+- **@tokenring-ai/agent**: Core agent system that uses lifecycle hooks
+- **@tokenring-ai/app**: Base application framework
+- **@tokenring-ai/rpc**: RPC service for remote endpoints
 
 ## License
 

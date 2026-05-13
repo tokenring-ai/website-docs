@@ -46,7 +46,6 @@ const config: ParsedAgentConfig = {
   debug: false,
   initialCommands: [],
   headless: false,
-  callable: true,
   idleTimeout: 0,
   maxRunTime: 0,
   minimumRunning: 0,
@@ -90,7 +89,7 @@ const agent = new Agent(app, {}, config, shutdownController.signal);
 
 | Method | Description |
 |--------|-------------|
-| `handleInput({message, attachments})` | Process user input with event emission, returns requestId |
+| `handleInput(input)` | Process user input with event emission, returns requestId |
 | `runCommand(command)` | Execute agent commands |
 | `busyWithActivity<T>(message, awaitable)` | Execute with busy state indicator |
 | `setCurrentActivity(message)` | Set current activity indicator |
@@ -111,9 +110,9 @@ const agent = new Agent(app, {}, config, shutdownController.signal);
 
 | Method | Description |
 |--------|-------------|
-| `askForApproval({message, label, default, autoSubmitAfter})` | Request approval (Yes/No), returns `Promise<boolean \| null>` |
+| `askForApproval({message, label, default, timeout})` | Request approval (Yes/No), returns `Promise<boolean \| null>` |
 | `askForText({message, label, masked})` | Request text input, returns `Promise<string \| null>` |
-| `askQuestion<T>(question)` | Request human input with various question types |
+| `askQuestion(question)` | Request human input with various question types |
 | `sendInteractionResponse(response)` | Send human response to interaction |
 | `waitForInteraction(interaction)` | Wait for user interaction |
 
@@ -152,7 +151,6 @@ agentManager.addAgentConfigs({
   debug: false,
   initialCommands: [],
   headless: false,
-  callable: true,
   idleTimeout: 0,
   maxRunTime: 0,
   minimumRunning: 0,
@@ -241,7 +239,7 @@ commandService.addAgentCommands({
   execute: async ({remainder, agent}) => {
     return `Processed: ${remainder}`;
   },
-  help: "# /myCommand\\n\\nMy custom command help text"
+  help: "# /myCommand\n\nMy custom command help text"
 });
 ```
 
@@ -268,11 +266,13 @@ commandService.addAgentCommands({
 **Command Input Schema:**
 
 Commands use `AgentCommandInputSchema` which supports:
+
 - `args` - Named arguments with flags and strings
 - `positionals` - Positional arguments
 - `remainder` - Remaining text after parsed arguments
 
 Example input schema:
+
 ```typescript
 const inputSchema = {
   args: {
@@ -425,10 +425,8 @@ const subAgentService = agent.requireServiceByType(SubAgentService);
 const result = await subAgentService.runSubAgent({
   agentType: "worker",
   headless: true,
-  input: {
-    from: "parent",
-    message: "/work Process this data"
-  },
+  from: "parent",
+  steps: ["/work Process this data"],
   parentAgent: agent,
   options: {
     forwardChatOutput: true,
@@ -442,7 +440,6 @@ const result = await subAgentService.runSubAgent({
     minContextLength: 300
   },
   autoCleanup: true,
-  checkPermissions: true,
 });
 
 console.log(result.status, result.response);
@@ -464,37 +461,32 @@ The agent package provides the following JSON-RPC endpoints for remote agent man
 
 | Endpoint | Type | Request Params | Response |
 |----------|------|----------------|----------|
-| `getAgent` | query | `{agentId: string}` | `{id, displayName, description, debugEnabled, config}` |
-| `getAgentEvents` | query | `{agentId: string, fromPosition: number}` | `{events: AgentEventEnvelope[], position: number}` |
-| `streamAgentEvents` | stream | `{agentId: string, fromPosition: number}` | Async generator yielding `{events, position}` |
+| `getAgentConfig` | query | `{agentId: string}` | `{status, ...AgentConfig}` or `{status: "agentNotFound"}` |
+| `getAgentEvents` | query | `{agentId: string, fromPosition: number}` | `{status, events, position}` or `{status: "agentNotFound"}` |
+| `streamAgentEvents` | stream | `{agentId: string, fromPosition: number}` | Async generator yielding `{status, events, position}` |
 | `listAgents` | query | `{}` | `{id, displayName, description, idle, currentActivity}[]` |
-| `getAgentTypes` | query | `{}` | `{type, displayName, description, category, callable}[]` |
+| `getAgentTypes` | query | `{}` | `{type, displayName, description, category}[]` |
 | `createAgent` | mutation | `{agentType: string, headless: boolean}` | `{id, displayName, description}` |
-| `deleteAgent` | mutation | `{agentId: string, reason: string}` | `{success: boolean}` |
-| `sendInput` | mutation | `{agentId: string, input: {from: string, message: string, attachments?: InputAttachment[]}}` | `{requestId: string}` |
-| `sendInteractionResponse` | mutation | `{agentId: string, response: {requestId: string, interactionId: string, result: any}}` | `{success: boolean}` |
-| `abortCurrentOperation` | mutation | `{agentId: string, message: string}` | `{success: boolean}` |
-| `getCommandHistory` | query | `{agentId: string}` | `string[]` |
-| `getAvailableCommands` | query | `{agentId: string}` | `string[]` |
-| `getAvailableSubAgents` | query | `{agentId: string}` | `{agents: {type, displayName, description, category}[]}` |
-| `getEnabledSubAgents` | query | `{agentId: string}` | `{agents: string[]}` |
-| `enableSubAgents` | mutation | `{agentId: string, agents: string[]}` | `{success: boolean}` |
-| `disableSubAgents` | mutation | `{agentId: string, agents: string[]}` | `{success: boolean}` |
-
-**RPC Endpoint Details:**
+| `deleteAgent` | mutation | `{agentId: string, reason: string}` | `{status: "success"}` or `{status: "agentNotFound"}` |
+| `sendInput` | mutation | `{agentId: string, input: InputMessage}` | `{status: "success", requestId: string}` or `{status: "agentNotFound"}` |
+| `sendInteractionResponse` | mutation | `{agentId: string, response: InteractionResponse}` | `{status: "success"}` or `{status: "agentNotFound"}` |
+| `abortCurrentOperation` | mutation | `{agentId: string, message: string}` | `{status: "success"}` or `{status: "agentNotFound"}` |
+| `getCommandHistory` | query | `{agentId: string}` | `{status: "success", history: string[]}` or `{status: "agentNotFound"}` |
+| `getAvailableCommands` | query | `{agentId: string}` | `{status: "success", commands: string[]}` or `{status: "agentNotFound"}` |
 
 ### Query Endpoints
 
-#### `getAgent`
+#### `getAgentConfig`
 
-Retrieves detailed information about a specific agent.
+Retrieves configuration information about a specific agent.
 
 **Request:**
+
 ```json
 {
   "jsonrpc": "2.0",
   "id": 1,
-  "method": "getAgent",
+  "method": "getAgentConfig",
   "params": {
     "agentId": "agent-123"
   }
@@ -502,20 +494,23 @@ Retrieves detailed information about a specific agent.
 ```
 
 **Response:**
+
 ```json
 {
   "jsonrpc": "2.0",
   "id": 1,
   "result": {
-    "id": "agent-123",
+    "status": "success",
+    "agentType": "myAgent",
     "displayName": "My Agent",
     "description": "Custom development agent",
-    "debugEnabled": false,
-    "config": {
-      "agentType": "myAgent",
-      "category": "development",
-      // ... other config (excluding workHandler)
-    }
+    "category": "development",
+    "debug": false,
+    "initialCommands": [],
+    "headless": false,
+    "idleTimeout": 0,
+    "maxRunTime": 0,
+    "minimumRunning": 0
   }
 }
 ```
@@ -525,6 +520,7 @@ Retrieves detailed information about a specific agent.
 Retrieves events from a specific position in the agent's event history.
 
 **Request:**
+
 ```json
 {
   "jsonrpc": "2.0",
@@ -538,11 +534,13 @@ Retrieves events from a specific position in the agent's event history.
 ```
 
 **Response:**
+
 ```json
 {
   "jsonrpc": "2.0",
   "id": 1,
   "result": {
+    "status": "success",
     "events": [...],
     "position": 100
   }
@@ -556,6 +554,7 @@ Retrieves events from a specific position in the agent's event history.
 Streams events from a specific position in the agent's event history.
 
 **Request:**
+
 ```json
 {
   "jsonrpc": "2.0",
@@ -568,18 +567,6 @@ Streams events from a specific position in the agent's event history.
 }
 ```
 
-**Response (streaming):**
-```json
-{
-  "jsonrpc": "2.0",
-  "id": 1,
-  "result": {
-    "events": [...],
-    "position": 100
-  }
-}
-```
-
 ### Mutation Endpoints
 
 #### `createAgent`
@@ -587,6 +574,7 @@ Streams events from a specific position in the agent's event history.
 Creates a new agent of the specified type.
 
 **Request:**
+
 ```json
 {
   "jsonrpc": "2.0",
@@ -600,6 +588,7 @@ Creates a new agent of the specified type.
 ```
 
 **Response:**
+
 ```json
 {
   "jsonrpc": "2.0",
@@ -617,6 +606,7 @@ Creates a new agent of the specified type.
 Shuts down and removes an agent.
 
 **Request:**
+
 ```json
 {
   "jsonrpc": "2.0",
@@ -629,22 +619,12 @@ Shuts down and removes an agent.
 }
 ```
 
-**Response:**
-```json
-{
-  "jsonrpc": "2.0",
-  "id": 1,
-  "result": {
-    "success": true
-  }
-}
-```
-
 #### `sendInput`
 
 Sends input to an agent.
 
 **Request:**
+
 ```json
 {
   "jsonrpc": "2.0",
@@ -662,11 +642,13 @@ Sends input to an agent.
 ```
 
 **Response:**
+
 ```json
 {
   "jsonrpc": "2.0",
   "id": 1,
   "result": {
+    "status": "success",
     "requestId": "req-789"
   }
 }
@@ -677,6 +659,7 @@ Sends input to an agent.
 Sends a response to a human interaction request.
 
 **Request:**
+
 ```json
 {
   "jsonrpc": "2.0",
@@ -693,22 +676,12 @@ Sends a response to a human interaction request.
 }
 ```
 
-**Response:**
-```json
-{
-  "jsonrpc": "2.0",
-  "id": 1,
-  "result": {
-    "success": true
-  }
-}
-```
-
 #### `abortCurrentOperation`
 
 Aborts the current operation of an agent.
 
 **Request:**
+
 ```json
 {
   "jsonrpc": "2.0",
@@ -717,73 +690,6 @@ Aborts the current operation of an agent.
   "params": {
     "agentId": "agent-123",
     "message": "User cancelled operation"
-  }
-}
-```
-
-**Response:**
-```json
-{
-  "jsonrpc": "2.0",
-  "id": 1,
-  "result": {
-    "success": true
-  }
-}
-```
-
-#### `enableSubAgents`
-
-Enables sub-agent types for an agent.
-
-**Request:**
-```json
-{
-  "jsonrpc": "2.0",
-  "id": 1,
-  "method": "enableSubAgents",
-  "params": {
-    "agentId": "agent-123",
-    "agents": ["worker", "researcher"]
-  }
-}
-```
-
-**Response:**
-```json
-{
-  "jsonrpc": "2.0",
-  "id": 1,
-  "result": {
-    "success": true
-  }
-}
-```
-
-#### `disableSubAgents`
-
-Disables sub-agent types for an agent.
-
-**Request:**
-```json
-{
-  "jsonrpc": "2.0",
-  "id": 1,
-  "method": "disableSubAgents",
-  "params": {
-    "agentId": "agent-123",
-    "agents": ["worker"]
-  }
-}
-```
-
-**Response:**
-```json
-{
-  "jsonrpc": "2.0",
-  "id": 1,
-  "result": {
-    "success": true
   }
 }
 ```
@@ -849,13 +755,6 @@ Shuts down the current agent, or the agent with the given ID.
 
 Displays detailed help information for all available commands or a specific command.
 
-**Examples:**
-
-```bash
-/help                   # Show help for all commands
-/help multi            # Show help for multi command (if implemented)
-```
-
 ### `/settings` - Settings Display
 
 ```bash
@@ -863,27 +762,6 @@ Displays detailed help information for all available commands or a specific comm
 ```
 
 Displays agent settings and state information.
-
-### `/work` - Work Handler
-
-```bash
-/work <task>
-```
-
-Invokes the work handler for the agent, with the message corresponding to the work which needs to be completed.
-
-**Examples:**
-
-```bash
-/work Write a blog post about AI safety
-/work Analyze the latest market trends
-/work Create a new user account
-```
-
-**Notes:**
-
-- If the agent has a custom `workHandler` configured, it will be used
-- Otherwise, the default `AgentCommandService` will handle the request
 
 ### `/debug` - Debug Commands
 
@@ -941,19 +819,91 @@ Throw an error to test error handling.
 
 Send shutdown command to app.
 
+**Debug Checkpoint:**
+
+```bash
+/debug checkpoint
+```
+
+Test checkpoint creation and restoration.
+
+**Debug Commands:**
+
+```bash
+/debug commands
+```
+
+List all registered commands.
+
 ### Agent Mention Syntax
 
 You can also invoke agents using the `@` mention syntax:
 
-```
+```text
 @researcher artificial intelligence
 ```
 
 This is equivalent to:
 
-```
+```text
 /agent run researcher artificial intelligence
 ```
+
+## Tools
+
+The agent package includes the following built-in tools:
+
+| Tool | Description |
+|------|-------------|
+| `get_current_datetime` | Returns the current date, time, day of week, and timezone |
+| `give_up` | Aborts the current operation when the task cannot be completed |
+| `sleep` | Sleeps for a specified number of seconds |
+
+### `get_current_datetime`
+
+Returns the current date, time, day of week, and the user's local timezone.
+
+**Input Schema:**
+
+```typescript
+z.object({})
+```
+
+**Description:**
+
+Use this tool any time you need to determine what date and time it is. Do not rely on your internal knowledge of what date and time it is, since that date and time is when you were trained, and is not reflective of the current date and time.
+
+### `give_up`
+
+Call this tool when you are unable to complete the assigned task, or when the task violates your guidelines, or when you have encountered an unrecoverable error.
+
+**Input Schema:**
+
+```typescript
+z.object({
+  reason: z.string().describe("A detailed explanation of why the task cannot be completed.")
+})
+```
+
+**Description:**
+
+Provide a clear explanation of why the work cannot be finished.
+
+### `sleep`
+
+Sleeps for a specified number of seconds, then returns the current date and time.
+
+**Input Schema:**
+
+```typescript
+z.object({
+  seconds: z.number().int().positive().describe("The number of seconds to sleep (must be a positive integer).")
+})
+```
+
+**Description:**
+
+Useful for introducing delays in agent workflows or waiting before performing actions.
 
 ## Configuration
 
@@ -971,26 +921,12 @@ const agentConfig = {
   description: string,             // Agent purpose (required)
   category: string,                // Agent category (required)
   debug: boolean,                  // Enable debug logging (default: false)
-  workHandler: Function,           // Custom work handler (optional)
   initialCommands: string[],       // Startup commands (default: [])
   createMessage: string,           // Message displayed when agent is created (default: "Agent Created")
   headless: boolean,               // Headless mode (default: false)
-  callable: boolean,               // Enable tool calls (default: true)
-  command: {                       // Register this agent as a callable command (optional)
-    name?: string,                 // Custom command name (defaults to agentType)
-    description?: string,          // Custom command description (defaults to agent description)
-    help?: string,                 // Custom help text for the command
-    background?: boolean,          // Run in background mode (default: false)
-    forwardChatOutput?: boolean,   // Forward chat output (default: true)
-    forwardSystemOutput?: boolean, // Forward system output (default: true)
-    forwardHumanRequests?: boolean,// Forward human requests (default: true)
-    forwardReasoning?: boolean,    // Forward reasoning (default: false)
-    forwardInputCommands?: boolean,// Forward input commands (default: true)
-    forwardArtifacts?: boolean,    // Forward artifacts (default: false)
-  },
-  minimumRunning: number,          // Minimum running agents of this type (default: 0)
   idleTimeout: number,             // Idle timeout in seconds (default: 0 = no limit)
   maxRunTime: number,              // Max runtime in seconds (default: 0 = no limit)
+  minimumRunning: number,          // Minimum running agents of this type (default: 0)
   subAgent: {                      // Sub-agent configuration
     forwardChatOutput?: boolean,   // Forward chat output (default: false)
     forwardStatusMessages?: boolean,// Forward status messages (default: true)
@@ -1045,6 +981,47 @@ const config = {
 };
 ```
 
+### SubAgentConfig Schema
+
+```typescript
+import {SubAgentConfigSchema} from "@tokenring-ai/agent/schema";
+
+const subAgentConfig = {
+  forwardChatOutput: z.boolean().default(false),
+  forwardStatusMessages: z.boolean().default(true),
+  forwardSystemOutput: z.boolean().default(false),
+  forwardHumanRequests: z.boolean().default(true),
+  forwardReasoning: z.boolean().default(false),
+  forwardInputCommands: z.boolean().default(true),
+  forwardArtifacts: z.boolean().default(false),
+  timeout: z.number().default(0),
+  maxResponseLength: z.number().default(10000),
+  minContextLength: z.number().default(1000),
+};
+```
+
+### AgentCommandConfig Schema
+
+```typescript
+import {AgentCommandConfigSchema} from "@tokenring-ai/agent/schema";
+
+const commandConfig = {
+  agentType: string,               // Type of agent used to execute the tool (required)
+  description: string,             // Custom command description (optional)
+  commandSchema: {                 // Command input schema (optional)
+    remainder: {
+      name: string,                // Default: "prompt"
+      description: string,         // Default: "Prompt to send to the agent"
+      required: boolean            // Default: true
+    }
+  },
+  help: string,                    // Custom help text (optional)
+  background: boolean,             // Run in background (default: false)
+  steps: string[],                 // The steps to execute (min: 1)
+  subAgent: SubAgentConfigSchema   // Sub-agent configuration
+};
+```
+
 ## Usage Examples
 
 ### Basic Agent Creation and Usage
@@ -1067,7 +1044,6 @@ agentManager.addAgentConfigs({
   debug: false,
   initialCommands: [],
   headless: false,
-  callable: true,
   idleTimeout: 0,
   maxRunTime: 0,
   minimumRunning: 0,
@@ -1228,10 +1204,8 @@ const subAgentService = agent.requireServiceByType(SubAgentService);
 const result = await subAgentService.runSubAgent({
   agentType: "code-assistant",
   headless: true,
-  input: {
-    from: "parent",
-    message: "/work Analyze this code: function test() { return true; }"
-  },
+  from: "parent",
+  steps: ["/work Analyze this code: function test() { return true; }"],
   parentAgent: agent,
   options: {
     forwardChatOutput: true,
@@ -1245,7 +1219,6 @@ const result = await subAgentService.runSubAgent({
     minContextLength: 300
   },
   autoCleanup: true,
-  checkPermissions: true,
 });
 
 console.log("Result:", result.status, result.response);
@@ -1257,22 +1230,12 @@ console.log("Result:", result.status, result.response);
 |--------|------|---------|-------------|
 | `agentType` | `string` | - | The type of agent to create |
 | `headless` | `boolean` | - | Whether to run in headless mode |
-| `input` | `InputMessage` | - | The command to send to the agent |
+| `from` | `string` | - | The source of the input |
+| `steps` | `SubAgentStep[]` | - | The command steps to execute |
 | `parentAgent` | `Agent` | - | The parent agent instance |
 | `background` | `boolean` | false | Run in background and return immediately |
 | `options` | `Partial<ParsedSubAgentConfig>` | `{}` | Configuration options for sub-agent |
 | `autoCleanup` | `boolean` | true | Auto-delete child agent when done |
-| `checkPermissions` | `boolean` | true | Check parent agent permissions |
-
-**RunSubAgentResult:**
-
-```typescript
-interface RunSubAgentResult {
-  status: "success" | "error" | "cancelled";
-  response: string;
-  childAgent?: Agent; // Only if autoCleanup is false
-}
-```
 
 ### Human Interface Requests
 
@@ -1282,7 +1245,7 @@ const approved = await agent.askForApproval({
   message: "Are you sure you want to proceed?",
   label: "Approve?",
   default: false,
-  autoSubmitAfter: 30000 // Auto-approve after 30 seconds
+  timeout: 30000 // Auto-approve after 30 seconds
 });
 
 // Text input
@@ -1413,7 +1376,6 @@ const config = {
         debug: false,
         initialCommands: [],
         headless: false,
-        callable: true,
         idleTimeout: 0,
         maxRunTime: 0,
         minimumRunning: 0,
@@ -1427,20 +1389,7 @@ const config = {
 };
 ```
 
-### Tools
-
-The agent package includes built-in tools:
-
-- `runAgent` - Execute sub-agent
-- `todo` - Todo list management
-- `getCurrentDatetime` - Get current date/time
-
-### Context Handlers
-
-- `available-agents` - Provides list of available agent types
-- `todo-list` - Provides todo list context
-
-## State Management
+## Agent State Management
 
 ### State Slices
 
@@ -1565,18 +1514,6 @@ The reset operation supports multiple target types:
 - `cancel` - Operation cancelled
 - `input.execution` - Input execution status update
 
-### Event Schema
-
-All events follow this structure:
-
-```typescript
-{
-  type: EventType,
-  timestamp: number,
-  // Event-specific fields
-}
-```
-
 ## Human Interface Types
 
 ### Question Types
@@ -1694,7 +1631,7 @@ try {
 2. **Implement checkpointing**: Regularly generate checkpoints for long-running agents
 3. **Subscribe to state changes**: Use `subscribeState` for reactive updates
 
-### Error Handling
+### Error Handling Best Practices
 
 1. **Catch CommandFailedError**: Handle command execution errors gracefully
 2. **Use abort signals**: Respect abort signals for cancellation
@@ -1736,9 +1673,7 @@ const myAgentPlugin: TokenRingPlugin = {
 - `@tokenring-ai/app` - Base application framework
 - `@tokenring-ai/lifecycle` - Lifecycle hooks integration
 - `@tokenring-ai/rpc` - RPC service integration
-- `eventemitter3` - Event handling
 - `uuid` - Unique ID generation
-- `glob-gitignore` - Gitignore parsing
 - `zod` - Schema validation
 
 ## Related Components

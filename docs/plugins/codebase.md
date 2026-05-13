@@ -18,7 +18,7 @@ providing file trees, full file contents, and symbol information as needed.
 - **Interactive Management**: Agent commands for resource selection
 - **State Management**: Persistent resource enablement across sessions
 - **Wildcard Support**: Pattern matching for resource selection
-- **Multi-language Repository Mapping**: Symbol extraction for 10 languages
+- **Multi-language Repository Mapping**: Symbol extraction for 11 languages
 - **Context Injection**: Automatic codebase context in chat sessions
 - **Symbol-Level Mapping**: Uses code-chopper for symbol extraction
 
@@ -64,6 +64,11 @@ codebase resources. These commands are available in the agent chat interface.
 # View repository structure and symbols
 /codebase show repo
 ```
+
+### Tools
+
+This package does not define any tools. It provides context handlers and
+agent commands for managing codebase resources.
 
 ### Configuration
 

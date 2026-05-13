@@ -16,6 +16,7 @@ Workflows are configuration-driven, defined in your application's configuration 
 - **Headless Support**: Run workflows in background agents without user interaction
 - **Workflow Listing**: Display available workflows with names, descriptions, and step counts
 - **Abort Support**: Workflow execution can be aborted via agent abort signal
+- **Sub-Agent Configuration**: Customize sub-agent behavior for spawned workflows
 - **Comprehensive Testing**: Unit tests for all command implementations
 
 ## Core Components
@@ -27,7 +28,7 @@ The primary service managing workflow execution within the TokenRing application
 **Properties:**
 - `name`: The service identifier ("WorkflowService")
 - `description`: Human-readable service description ("Manages multi-step agent workflows")
-- `workflows`: Map of workflow configurations keyed by workflow name
+- `workflows`: KeyedRegistry of workflow configurations
 
 **Methods:**
 
@@ -48,13 +49,20 @@ Retrieves a workflow by its configuration key name.
 
 **Returns:** The WorkflowItem configuration or undefined if not found
 
-#### `listWorkflows(): Array<{ key: string; workflow: WorkflowItem }>`
+#### `listWorkflowEntries(): Array<[string, WorkflowItem]>`
 
-Lists all available workflows from the configuration.
+Lists all available workflows as key-value pairs.
 
-**Returns:** Array of workflow entries containing the configuration key and WorkflowItem object
+**Returns:** Array of tuples containing the workflow name and WorkflowItem object
 
-#### `spawnWorkflow(workflowName: string, { headless }: { headless: boolean }): Promise<Agent>`
+#### `reconfigure(newConfig: ParsedWorkflowConfig): void`
+
+Reconfigures the workflow service with a new configuration.
+
+**Parameters:**
+- `newConfig`: The new workflow configuration object
+
+#### `spawnWorkflow(workflowName: string, { headless }: { headless: boolean }): Agent`
 
 Spawns a new agent of the specified type and runs the workflow on it.
 
@@ -62,7 +70,7 @@ Spawns a new agent of the specified type and runs the workflow on it.
 - `workflowName`: The name key of the workflow to run
 - `headless`: Whether to run in headless mode
 
-**Returns:** Promise resolving to the spawned Agent instance
+**Returns:** The spawned Agent instance
 
 ### WorkflowItem Type
 
@@ -72,14 +80,15 @@ The configuration structure defining a workflow's properties:
 export type WorkflowItem = z.infer<typeof WorkflowItemSchema>;
 // Which resolves to:
 {
-  name: string;           // Human-readable workflow name
-  description: string;    // Detailed description of workflow purpose
-  agentType: string;      // Required agent type for execution
-  steps: string[];        // Sequential commands to execute in order
+  displayName: string;        // Human-readable workflow name
+  description: string;        // Detailed description of workflow purpose
+  agentType: string;          // Required agent type for execution
+  steps: string[];            // Sequential commands to execute in order
+  subAgent: SubAgentConfig;   // Sub-agent configuration options
 }
 ```
 
-All properties are required and validated through Zod schema validation at application startup.
+All properties are required (except `subAgent` which has default values) and validated through Zod schema validation at application startup.
 
 ## Services
 
@@ -90,14 +99,17 @@ The workflow package implements the `TokenRingService` interface:
 ```typescript
 export default class WorkflowService implements TokenRingService {
   readonly name = "WorkflowService";
-  description = "Manages multi-step agent workflows";
-  workflows: Map<string, WorkflowItem>;
+  readonly description = "Manages multi-step agent workflows";
 
-  constructor(private app: TokenRingApp, workflows: ParsedWorkflowConfig)
+  readonly workflows: KeyedRegistry<WorkflowItem>;
+  getWorkflow: (name: string) => WorkflowItem | undefined;
+  listWorkflowEntries: () => Array<[string, WorkflowItem]>;
 
-  getWorkflow(name: string): WorkflowItem | undefined
-  listWorkflows(): Array<{ key: string; workflow: WorkflowItem }>
-  async spawnWorkflow(workflowName: string, { headless }: { headless: boolean }): Promise<Agent>
+  constructor(app: TokenRingApp, config: ParsedWorkflowConfig)
+
+  reconfigure(newConfig: ParsedWorkflowConfig): void
+
+  spawnWorkflow(workflowName: string, options: { headless: boolean }): Agent
 }
 ```
 
@@ -107,7 +119,8 @@ The service is automatically registered when the plugin is installed. The workfl
 
 - **AgentCommandService**: Registers chat commands for workflow interaction
 - **RpcService**: Registers JSON-RPC endpoints for remote workflow management
-- **AgentManager**: Handles agent spawning for workflow execution
+- **AgentManager**: Validates agent types at plugin installation time
+- **SubAgentService**: Manages sub-agent creation and workflow execution
 
 ## Provider Documentation
 
@@ -133,11 +146,11 @@ Lists all available workflows.
 **Output:**
 ```typescript
 Array<{
-  key: string;           // Workflow identifier
-  name: string;          // Human-readable workflow name
-  description: string;   // Workflow description
-  agentType: string;     // Agent type for execution
-  steps: string[];       // List of workflow steps
+  name: string;           // Workflow identifier
+  displayName: string;    // Human-readable workflow name
+  description: string;    // Workflow description
+  agentType: string;      // Agent type for execution
+  steps: string[];        // List of workflow steps
 }>
 ```
 
@@ -145,8 +158,8 @@ Array<{
 ```typescript
 const workflows = await rpcClient.listWorkflows({});
 // Returns: [
-//   { key: "morning-article", name: "MarketMinute Morning Article", description: "...", agentType: "contentWriter", steps: [...] },
-//   { key: "daily-report", name: "Daily Report Generator", description: "...", agentType: "reportGenerator", steps: [...] }
+//   { name: "morning-article", displayName: "MarketMinute Morning Article", description: "...", agentType: "contentWriter", steps: [...] },
+//   { name: "daily-report", displayName: "Daily Report Generator", description: "...", agentType: "reportGenerator", steps: [...] }
 // ]
 ```
 
@@ -166,11 +179,11 @@ Retrieves a specific workflow by name.
 **Output:**
 ```typescript
 {
-  key: string;           // Workflow identifier
-  name: string;          // Human-readable workflow name
-  description: string;   // Workflow description
-  agentType: string;     // Agent type for execution
-  steps: string[];       // List of workflow steps
+  key: string;            // Workflow identifier
+  displayName: string;    // Human-readable workflow name
+  description: string;    // Workflow description
+  agentType: string;      // Agent type for execution
+  steps: string[];        // List of workflow steps
 }
 ```
 
@@ -179,7 +192,7 @@ Retrieves a specific workflow by name.
 **Example:**
 ```typescript
 const workflow = await rpcClient.getWorkflow({ name: "morning-article" });
-// Returns: { key: "morning-article", name: "MarketMinute Morning Article", description: "...", agentType: "contentWriter", steps: [...] }
+// Returns: { key: "morning-article", displayName: "MarketMinute Morning Article", description: "...", agentType: "contentWriter", steps: [...] }
 ```
 
 ### `spawnWorkflow`
@@ -191,24 +204,24 @@ Spawns a new agent and runs the specified workflow.
 **Input:**
 ```typescript
 {
-  workflowName: string;  // The name of the workflow to run
-  headless?: boolean;     // Whether to run in headless mode (default: false)
+  name: string;        // The name of the workflow to run
+  headless?: boolean;  // Whether to run in headless mode (default: false)
 }
 ```
 
 **Output:**
 ```typescript
 {
-  id: string;            // Spawned agent ID
-  name: string;          // Spawned agent name
-  description: string;   // Spawned agent description
+  id: string;          // Spawned agent ID
+  displayName: string; // Spawned agent display name
+  description: string; // Spawned agent description
 }
 ```
 
 **Example:**
 ```typescript
-const result = await rpcClient.spawnWorkflow({ workflowName: "morning-article", headless: true });
-// Returns: { id: "agent-123", name: "MarketMinute Morning Article", description: "..." }
+const result = await rpcClient.spawnWorkflow({ name: "morning-article", headless: true });
+// Returns: { id: "agent-123", displayName: "MarketMinute Morning Article", description: "..." }
 ```
 
 ## Chat Commands
@@ -254,9 +267,9 @@ Available workflows:
 ```
 
 **Implementation Details:**
-- Retrieves workflows from `WorkflowService.listWorkflows()`
-- Displays workflow key, name, description, and step count
-- Returns "Workflow service is not running." if service is unavailable
+- Retrieves workflows from `WorkflowService.listWorkflowEntries()`
+- Displays workflow name, displayName, description, and step count
+- Returns formatted list of available workflows
 
 ### `/workflow run`
 
@@ -287,8 +300,8 @@ Run a workflow by name on the current agent.
 - Uses `AgentCommandService.executeAgentCommand` to execute each step
 - Processes steps sequentially with abort signal support
 - Checks for abort signal before each step execution
-- Returns completion message when all steps are executed
-- Returns "Workflow was aborted." if abort signal is triggered
+- Returns `Workflow "<workflowName>" completed` when all steps are executed
+- Returns `Workflow was aborted.` if abort signal is triggered
 
 ### `/workflow spawn`
 
@@ -318,8 +331,9 @@ Spawn a new agent and run a workflow on it.
 **Implementation Details:**
 - Uses `SubAgentService.runSubAgent()` to spawn a new agent with the workflow's specified agent type
 - Sends `/workflow run <name>` command to the spawned agent to execute workflow steps
-- Output is forwarded back to the parent agent
+- The spawned agent's output (chat, reasoning, human requests, and system output) is forwarded to the parent agent
 - Respects the parent agent's headless mode setting
+- Uses workflow's `subAgent` configuration for additional options
 - The spawned agent runs independently with its own context and state
 
 ## Configuration
@@ -330,12 +344,14 @@ The workflow configuration uses Zod schema validation:
 
 ```typescript
 import { z } from 'zod';
+import { SubAgentConfigSchema } from "@tokenring-ai/agent/schema";
 
 const WorkflowItemSchema = z.object({
-  name: z.string(),
-  description: z.string(),
-  agentType: z.string(),
-  steps: z.array(z.string()),
+  displayName: z.string(),      // Human-readable workflow name
+  description: z.string(),      // Detailed description of workflow purpose
+  agentType: z.string(),        // Required agent type for execution
+  steps: z.array(z.string()),   // Sequential commands to execute in order
+  subAgent: SubAgentConfigSchema.prefault({}), // Sub-agent configuration options
 });
 
 const WorkflowConfigSchema = z.record(z.string(), WorkflowItemSchema);
@@ -349,7 +365,7 @@ The workflow plugin automatically loads workflows from your application configur
 export default {
   workflows: {
     "my-workflow": {
-      name: "My Workflow",
+      displayName: "My Workflow",
       description: "A sample workflow",
       agentType: "contentWriter",
       steps: ["/chat Do something"]
@@ -360,7 +376,7 @@ export default {
 
 ### Configuration Validation
 
-At application startup, all workflow configurations are validated against the schema. Invalid configurations will prevent the application from starting with descriptive error messages indicating which workflows are misconfigured.
+At application startup, all workflow configurations are validated against the schema. Invalid configurations will prevent the application from starting with descriptive error messages indicating which workflows are misconfigured. Additionally, the plugin validates that all referenced `agentType` values exist in the `AgentManager`.
 
 ### Full Configuration Example
 
@@ -368,7 +384,7 @@ At application startup, all workflow configurations are validated against the sc
 export default {
   workflows: {
     "morning-article": {
-      name: "MarketMinute Morning Article Generator (9AM EST)",
+      displayName: "MarketMinute Morning Article Generator (9AM EST)",
       description: "Automatically write and publish the 9AM EST morning market minute articles",
       agentType: "contentWriter",
       steps: [
@@ -376,10 +392,13 @@ export default {
         "/tools enable @tokenring-ai/agent/runAgent",
         "/tools enable @tokenring-ai/websearch/searchNews",
         "/chat Write morning market analysis"
-      ]
+      ],
+      subAgent: {
+        headless: false,
+      }
     },
     "daily-report": {
-      name: "Daily Report Generator",
+      displayName: "Daily Report Generator",
       description: "Generate and send daily reports",
       agentType: "reportGenerator",
       steps: [
@@ -389,7 +408,7 @@ export default {
       ]
     },
     "content-pipeline": {
-      name: "Content Creation Pipeline",
+      displayName: "Content Creation Pipeline",
       description: "Research, write, and publish content",
       agentType: "contentWriter",
       steps: [
@@ -411,22 +430,23 @@ export default {
 The workflow package integrates with TokenRing applications through the plugin system:
 
 ```typescript
-import {AgentCommandService} from "@tokenring-ai/agent";
-import {TokenRingPlugin} from "@tokenring-ai/app";
-import {RpcService} from "@tokenring-ai/rpc";
-import {z} from "zod";
+import { AgentCommandService, AgentManager } from "@tokenring-ai/agent";
+import { TokenRingPlugin } from "@tokenring-ai/app";
+import { RpcService } from "@tokenring-ai/rpc";
+import { z } from "zod";
 import agentCommands from "./commands.ts";
-import packageJSON from "./package.json" with {type: "json"};
+import packageJSON from "./package.json" with { type: "json" };
 import workflowRPC from "./rpc/workflow";
-import {WorkflowConfigSchema} from "./schema.ts";
+import { WorkflowConfigSchema } from "./schema.ts";
 import WorkflowService from "./WorkflowService";
 
 const packageConfigSchema = z.object({
-  workflows: WorkflowConfigSchema.prefault({})
+  workflows: WorkflowConfigSchema.prefault({}),
 });
 
 export default {
   name: packageJSON.name,
+  displayName: "Workflow Orchestration",
   version: packageJSON.version,
   description: packageJSON.description,
   install(app, config) {
@@ -436,11 +456,24 @@ export default {
     const workflowService = new WorkflowService(app, config.workflows);
     app.addServices(workflowService);
 
+    app.waitForService(AgentManager, agentManager => {
+      for (const [workflowName, workflowConfig] of Object.entries(config.workflows)) {
+        const agentType = workflowConfig.agentType;
+        if (!agentManager.getAgentConfig(agentType)) {
+          throw new Error(`Error while processing workflow ${workflowName}: Agent ${agentType} not found`);
+        }
+      }
+    });
+
     app.waitForService(RpcService, rpcService => {
       rpcService.registerEndpoint(workflowRPC);
     });
   },
-  config: packageConfigSchema
+
+  reconfigure(app, config) {
+    app.requireService(WorkflowService).reconfigure(config.workflows);
+  },
+  config: packageConfigSchema,
 } satisfies TokenRingPlugin<typeof packageConfigSchema>;
 ```
 
@@ -452,7 +485,7 @@ The workflow package requires these services to be available:
 |---------|---------|
 | AgentCommandService | Registers and handles chat commands for workflow interaction |
 | RpcService | Exposes JSON-RPC endpoints for remote workflow management |
-| AgentManager | Handles agent spawning and lifecycle management |
+| AgentManager | Validates agent types and handles agent spawning |
 | SubAgentService | Manages sub-agent creation and command execution |
 
 ### Command Registration
@@ -461,8 +494,8 @@ The workflow package exports three separate commands via `commands.ts`:
 
 ```typescript
 import list from './commands/workflow/list.ts';
-import spawn from './commands/workflow/spawn.ts';
 import run from './commands/workflow/run.ts';
+import spawn from './commands/workflow/spawn.ts';
 
 export default [list, spawn, run];
 ```
@@ -519,25 +552,25 @@ import { WorkflowService } from '@tokenring-ai/workflow';
 const workflowService = app.getService(WorkflowService);
 
 // List all workflows
-const workflows = workflowService.listWorkflows();
-console.log('Available workflows:', workflows.map(w => w.key));
+const workflows = workflowService.listWorkflowEntries();
+console.log('Available workflows:', workflows.map(([name, w]) => name));
 // Output: ['morning-article', 'daily-report', 'content-pipeline']
 
 // Get specific workflow
 const workflow = workflowService.getWorkflow('morning-article');
 if (workflow) {
-  console.log('Workflow:', workflow.name);
+  console.log('Display Name:', workflow.displayName);
   console.log('Steps:', workflow.steps);
   console.log('Agent Type:', workflow.agentType);
 }
 
 // Spawn workflow on dedicated agent
-const spawnedAgent = await workflowService.spawnWorkflow('morning-article', {
+const spawnedAgent = workflowService.spawnWorkflow('morning-article', {
   headless: true
 });
 
 console.log('Spawned agent ID:', spawnedAgent.id);
-console.log('Agent name:', spawnedAgent.displayName);
+console.log('Agent display name:', spawnedAgent.displayName);
 ```
 
 ### Workflow Step Types
@@ -575,7 +608,7 @@ steps: [
 // Using the RPC client to interact with workflow endpoints
 const workflows = await rpcClient.listWorkflows({});
 const specificWorkflow = await rpcClient.getWorkflow({ name: "morning-article" });
-const agent = await rpcClient.spawnWorkflow({ workflowName: "morning-article", headless: true });
+const agent = await rpcClient.spawnWorkflow({ name: "morning-article", headless: true });
 ```
 
 ## Best Practices
@@ -593,12 +626,14 @@ const agent = await rpcClient.spawnWorkflow({ workflowName: "morning-article", h
 1. **Choose appropriate agent types**: Select agent types that match the workflow's requirements
 2. **Use headless mode for background tasks**: Set `headless: true` for automated workflows
 3. **Monitor spawned agents**: Track spawned agent status and output
+4. **Configure sub-agent options**: Use the `subAgent` configuration to customize spawned agent behavior
 
 ### Configuration
 
 1. **Validate workflow schemas**: Ensure all workflows conform to the schema before deployment
 2. **Use consistent naming**: Follow naming conventions for workflow keys (kebab-case recommended)
 3. **Group related workflows**: Organize workflows by function or domain in configuration
+4. **Verify agent types**: Ensure all `agentType` references exist in the agent configuration
 
 ### Error Handling
 
@@ -606,7 +641,7 @@ const agent = await rpcClient.spawnWorkflow({ workflowName: "morning-article", h
 2. **Monitor step execution**: Track individual step success/failure
 3. **Implement abort handling**: Support workflow cancellation via abort signals
 
-### Testing
+## Testing
 
 ### Testing Setup
 
@@ -628,23 +663,28 @@ bun test --coverage
 The test file `commands/workflow.test.ts` includes:
 
 - **List Command**: Tests for `/workflow list` command output formatting
-- **Run Command**: Tests for sequential workflow step execution, error handling for non-existent workflows
-- **Spawn Command**: Tests for agent spawning with correct agent type, headless mode handling, error handling
-- **Integration Tests**: Full workflow execution and spawn flow scenarios
-- **Abort Signal Handling**: Tests for workflow cancellation via abort signals
+- **Run Command**: Tests for sequential workflow step execution
+  - Basic workflow execution
+  - Complex workflow with multiple steps
+  - Error handling for non-existent workflows
+- **Spawn Command**: Tests for sub-agent spawning
+  - Basic spawning functionality
+  - Headless mode spawning
+  - Error handling for non-existent workflows
+- **Integration Scenarios**: Full workflow execution and spawn flow tests
 
 ### Example Test
 
 ```typescript
-import {Agent, AgentCommandService, SubAgentService} from '@tokenring-ai/agent';
+import { Agent, AgentCommandService, SubAgentService } from '@tokenring-ai/agent';
 import createTestingAgent from '@tokenring-ai/agent/test/createTestingAgent';
 import TokenRingApp from '@tokenring-ai/app';
 import createTestingApp from '@tokenring-ai/app/test/createTestingApp';
-import {describe, expect, it, vi} from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import WorkflowService from '../WorkflowService';
-import workflowRunCommand from './workflow/run.js';
-import workflowSpawnCommand from './workflow/spawn.js';
-import workflowListCommand from './workflow/list.js';
+import workflowRunCommand from './workflow/run.ts';
+import workflowSpawnCommand from './workflow/spawn.ts';
+import workflowListCommand from './workflow/list.ts';
 
 describe('workflow list command', () => {
   let app: TokenRingApp;
@@ -653,10 +693,11 @@ describe('workflow list command', () => {
 
   const mockWorkflows = {
     testWorkflow: {
-      name: 'Test Workflow',
+      displayName: 'Test Workflow',
       description: 'A test workflow',
       agentType: 'test-agent',
       steps: ['step1', 'step2', 'step3'],
+      subAgent: {},
     },
   };
 
@@ -679,7 +720,6 @@ describe('workflow list command', () => {
 
 describe('workflow run command', () => {
   it('should execute workflow steps', async () => {
-    // Mock AgentCommandService
     vi.spyOn(agentCommandService, 'executeAgentCommand').mockImplementation(() => Promise.resolve());
 
     const result = await workflowRunCommand.execute({
@@ -735,63 +775,12 @@ describe('workflow spawn command', () => {
 });
 ```
 
-### Example Test
-
-```typescript
-import {Agent, AgentCommandService} from '@tokenring-ai/agent';
-import createTestingAgent from '@tokenring-ai/agent/test/createTestingAgent';
-import TokenRingApp from '@tokenring-ai/app';
-import createTestingApp from '@tokenring-ai/app/test/createTestingApp';
-import WorkflowService from '../WorkflowService';
-import listCommand from './commands/workflow/list.ts';
-import runCommand from './commands/workflow/run.ts';
-import spawnCommand from './commands/workflow/spawn.ts';
-
-describe('workflow list command', () => {
-  let app: TokenRingApp;
-  let agent: Agent;
-  let workflowService: WorkflowService;
-
-  const mockWorkflows = {
-    testWorkflow: {
-      name: 'Test Workflow',
-      description: 'A test workflow',
-      agentType: 'test-agent',
-      steps: ['step1', 'step2', 'step3'],
-    },
-  };
-
-  beforeEach(() => {
-    app = createTestingApp();
-    workflowService = new WorkflowService(app, mockWorkflows);
-    app.addServices(workflowService);
-    agent = createTestingAgent(app);
-  });
-
-  it('should list workflows', async () => {
-    const result = await listCommand.execute('', agent);
-    expect(result).toContain('Available workflows');
-    expect(result).toContain('testWorkflow');
-    expect(result).toContain('Test Workflow');
-  });
-});
-
-describe('workflow run command', () => {
-  // Test implementation for run command
-});
-
-describe('workflow spawn command', () => {
-  // Test implementation for spawn command
-});
-```
-
 ## Dependencies
 
 ### Production Dependencies
 
 - `@tokenring-ai/app` (0.2.0) - Base application framework
 - `@tokenring-ai/agent` (0.2.0) - Agent orchestration and management
-- `@tokenring-ai/chat` (0.2.0) - Chat service integration
 - `@tokenring-ai/rpc` (0.2.0) - JSON-RPC endpoint management
 - `@tokenring-ai/utility` (0.2.0) - Utility functions and helpers
 - `zod` (^4.3.6) - Schema validation
@@ -818,7 +807,7 @@ describe('workflow spawn command', () => {
 
 ### Package Structure
 
-```
+```text
 pkg/workflow/
 ├── index.ts                 # Main exports (WorkflowService, WorkflowItem)
 ├── plugin.ts                # Plugin definition for TokenRing integration
@@ -832,12 +821,11 @@ pkg/workflow/
 │   └── workflow/
 │       ├── list.ts          # /workflow list command implementation
 │       ├── run.ts           # /workflow run command implementation
-│       └── spawn.ts         # /workflow spawn command implementation
-├── rpc/
-│   ├── schema.ts            # JSON-RPC schema definition
-│   └── workflow.ts          # RPC endpoint implementation
-└── commands/
-    └── workflow.test.ts     # Unit tests for chat commands
+│       ├── spawn.ts         # /workflow spawn command implementation
+│       └── workflow.test.ts # Unit tests for chat commands
+└── rpc/
+    ├── schema.ts            # JSON-RPC schema definition
+    └── workflow.ts          # RPC endpoint implementation
 ```
 
 ### Building
@@ -870,7 +858,7 @@ The workflow commands use the following error types:
 **Example Error Handling:**
 
 ```typescript
-import {CommandFailedError} from '@tokenring-ai/agent/AgentError';
+import { CommandFailedError } from '@tokenring-ai/agent/AgentError';
 
 try {
   await runCommand.execute('run nonexistent', agent);

@@ -5,6 +5,7 @@
 The `@tokenring-ai/audio` package provides comprehensive audio processing capabilities for the TokenRing ecosystem, enabling voice recording, transcription, text-to-speech synthesis, and audio playback. It integrates seamlessly with TokenRing's agent and chat systems through a provider-based architecture.
 
 **Key Features:**
+
 - Voice recording with configurable parameters (sample rate, channels, format, timeout)
 - AI-powered audio transcription using speech-to-text (STT) models
 - Text-to-speech (TTS) synthesis with customizable voices and speed
@@ -48,6 +49,7 @@ The `AudioService` class is the primary service managing audio operations and pr
 **Package Path:** `@tokenring-ai/audio/AudioService`
 
 **Service Properties:**
+
 - `name`: Always `"AudioService"`
 - `description`: Always `"Service for Audio Operations"`
 - `options`: Configuration options passed during construction
@@ -72,6 +74,7 @@ constructor(options: z.output<typeof AudioServiceConfigSchema>)
 ```
 
 **Parameters:**
+
 - `options`: Service configuration including tmpDirectory, providers, and agentDefaults
 
 **Example:**
@@ -82,9 +85,6 @@ import { AudioServiceConfigSchema } from '@tokenring-ai/audio';
 
 const audioService = new AudioService({
   tmpDirectory: '/tmp',
-  providers: {
-    linux: { /* provider config */ }
-  },
   agentDefaults: {
     provider: 'linux',
     transcribe: {
@@ -162,7 +162,7 @@ class CustomAudioProvider implements AudioProvider {
 
 ## Services
 
-### AudioService
+### AudioService (Developer Reference)
 
 The main service that manages audio operations and provider registry.
 
@@ -187,6 +187,7 @@ app.registerPlugin(audioPlugin.withConfig({
 **Service Attachment:**
 
 When an agent is created, the `AudioService.attach()` method:
+
 1. Merges service defaults with agent-specific configuration using `deepMerge`
 2. Initializes the `AudioState` for the agent
 3. Sets up state persistence and restoration
@@ -237,36 +238,27 @@ audioService.setActiveProvider('linux', agent);
 const provider = audioService.requireAudioProvider(agent);
 ```
 
-### Provider Configuration
+### Provider Registration
 
-Providers are configured through the plugin configuration:
+Providers are registered programmatically through the `AudioService.registerProvider()` method:
 
 ```typescript
-import audioPlugin from '@tokenring-ai/audio';
+import AudioService from '@tokenring-ai/audio/AudioService';
 
-const app = new TokenRingApp({
-  plugins: [
-    audioPlugin.withConfig({
-      audio: {
-        providers: {
-          linux: {
-            type: 'linux',
-            record: {
-              sampleRate: 48000,
-              channels: 1,
-              format: 'wav'
-            },
-            playback: {}
-          }
-        },
-        agentDefaults: {
-          provider: 'linux',
-          // ... other defaults
-        },
-      },
-    }),
-  ],
+const audioService = new AudioService({
+  tmpDirectory: '/tmp',
+  agentDefaults: {
+    provider: 'linux',
+    // ... other defaults
+  },
 });
+
+// Register providers
+audioService.registerProvider('linux', linuxProvider);
+audioService.registerProvider('macos', macosProvider);
+
+// Set active provider for an agent
+audioService.setActiveProvider('linux', agent);
 ```
 
 ## RPC Endpoints
@@ -297,6 +289,7 @@ The package provides the `/audio` command suite for interactive audio operations
 Records audio from the microphone. Press Ctrl+C to stop recording.
 
 **Options:**
+
 - `--format <fmt>` - Audio format for recording
 
 **Example:**
@@ -317,6 +310,7 @@ Records audio from the microphone. Press Ctrl+C to stop recording.
 Plays an audio file through the speakers.
 
 **Arguments:**
+
 - `<file>` - Path to the audio file to play
 
 **Example:**
@@ -338,9 +332,11 @@ Plays an audio file through the speakers.
 Converts text to speech and plays it through the speakers.
 
 **Arguments:**
+
 - `<text>` - Text to convert to speech
 
 **Options:**
+
 - `--voice <id>` - Voice ID for speech generation (note: currently not implemented in the tool)
 - `--speed <n>` - Speech speed (numeric value)
 
@@ -362,9 +358,11 @@ Converts text to speech and plays it through the speakers.
 Transcribes an audio file to text.
 
 **Arguments:**
+
 - `<file>` - Path to the audio file to transcribe
 
 **Options:**
+
 - `--language <code>` - Language code for transcription (e.g., `en`, `en-US`)
 
 **Example:**
@@ -430,7 +428,7 @@ Both TTS and STT interactive selectors (`/audio model tts select` and `/audio mo
 
 **Example Output:**
 
-```
+```text
 Choose a Text to Speech model:
 ├─ OpenAI (3/5 online)
 │  ├─ tts-1 (online)
@@ -455,9 +453,6 @@ const app = new TokenRingApp({
     audioPlugin.withConfig({
       audio: {
         tmpDirectory: '/tmp',
-        providers: {
-          linux: { /* provider config */ }
-        },
         agentDefaults: {
           provider: 'linux',
           transcribe: {
@@ -484,7 +479,6 @@ const app = new TokenRingApp({
 ```typescript
 const AudioServiceConfigSchema = z.object({
   tmpDirectory: z.string().default('/tmp'),
-  providers: z.record(z.string(), z.any()),
   agentDefaults: AudioAgentDefaultsSchema,
 });
 ```
@@ -536,7 +530,6 @@ const AudioAgentConfigSchema = z.object({
 | Option | Type | Default | Description |
 |--------|------|---------|-------------|
 | `tmpDirectory` | `string` | `/tmp` | Directory for temporary audio files |
-| `providers` | `Record<string, any>` | `{}` | Audio provider configurations |
 | `agentDefaults` | `AudioAgentDefaultsSchema` | required | Default configuration for agents |
 
 #### Agent Defaults
@@ -544,8 +537,8 @@ const AudioAgentConfigSchema = z.object({
 | Option | Type | Default | Description |
 |--------|------|---------|-------------|
 | `provider` | `string` | required | Default audio provider name |
-| `transcribe` | `AudioTranscriptionConfigSchema` | `{}` | Default transcription settings (prefaulted) |
-| `speech` | `AudioSpeechConfigSchema` | `{}` | Default speech settings (prefaulted) |
+| `transcribe` | `AudioTranscriptionConfigSchema` | prefaulted | Default transcription settings (prefaulted with defaults) |
+| `speech` | `AudioSpeechConfigSchema` | prefaulted | Default speech settings (prefaulted with defaults) |
 
 #### Transcription Options
 
@@ -574,6 +567,7 @@ app.registerPlugin(audioPlugin);
 ```
 
 The plugin automatically:
+
 1. Registers the `AudioService` with the application (if audio config is provided)
 2. Registers all audio tools with the `ChatService`
 3. Registers all agent commands with the `AgentCommandService`
@@ -712,7 +706,7 @@ const recording = await agent.callTool('voice_record', {
   format: 'wav',
   timeout: 30000
 });
-console.log('Recording saved:', recording.data.filePath);
+console.log('Recording saved:', recording);
 
 // Voice transcribe tool
 const transcription = await agent.callTool('voice_transcribe', {
@@ -732,7 +726,7 @@ console.log(result); // "Playback succeeded"
 const playback = await agent.callTool('audio_playback', {
   filename: '/path/to/audio.mp3'
 });
-console.log('Played:', playback.data.filePath);
+console.log('Played:', playback);
 ```
 
 ### Chat Command Usage
@@ -817,7 +811,7 @@ const serializationSchema = z.object({
 
 The `show()` method returns an array of strings for UI display:
 
-```
+```text
 Active Provider: <provider_name>
 Transcription Model: <model_name>
 Transcription Prompt: <prompt>
@@ -891,7 +885,7 @@ bun run build
 
 ### Package Structure
 
-```
+```text
 pkg/audio/
 ├── index.ts                 # Main exports
 ├── AudioService.ts          # Main audio service implementation
@@ -937,7 +931,7 @@ export {AudioServiceConfigSchema, AudioAgentConfigSchema} from "./schema.ts";
 export {default as AudioService} from "./AudioService.ts";
 ```
 
-## Error Handling
+## Error Handling (Developer Reference)
 
 The package includes robust error handling for audio operations.
 
