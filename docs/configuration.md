@@ -1,16 +1,15 @@
 # Configuration
 
-TokenRing AI applications are configured through `.tokenring/coder-config.mjs` or `.tokenring/writer-config.mjs` files.
+TokenRing One is configured through `.tokenring/one-config.mjs` files in your project.
 
 ## Configuration File Location
 
 Create your configuration file in the `.tokenring` directory:
 
-```
+```text
 your-project/
 └── .tokenring/
-    ├── coder-config.mjs
-    └── writer-config.mjs
+    └── one-config.mjs
 ```
 
 ## Basic Configuration
@@ -18,7 +17,7 @@ your-project/
 ```javascript
 export default {
   defaults: {
-    agent: "teamLeader",
+    agent: "leader",
     model: "gpt-4o"
   },
   models: {
@@ -78,13 +77,13 @@ Configure specialized agents for different tasks:
 
 ```javascript
 agents: {
-  teamLeader: {
+  leader: {
     name: "Team Leader",
     model: "gpt-4o",
     systemPrompt: "You are a team leader coordinating development tasks."
   },
-  frontend: {
-    name: "Frontend Developer",
+  "frontend-design": {
+    name: "Frontend Engineer",
     model: "claude-3-5-sonnet-20241022",
     systemPrompt: "You are a frontend specialist."
   }
@@ -110,7 +109,7 @@ plugins: {
 
 ## Environment Variables
 
-Set API keys and configuration via environment variables:
+Set API keys and configuration through environment variables:
 
 ```bash
 export OPENAI_API_KEY="your-key-here"

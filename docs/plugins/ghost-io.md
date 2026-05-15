@@ -32,93 +32,48 @@ This package does not provide any tools directly. It provides provider classes (
 
 The plugin uses an account-based configuration pattern that combines blog and CDN settings. It automatically loads accounts from environment variables and registers providers for each configured account.
 
-#### Plugin Configuration
+#### Configuration Schema
 
-The plugin integrates with Token Ring's BlogService and CDNService through an account-based configuration pattern.
+```yaml
+# Example configuration in YAML format
+ghost:
+  accounts:
+    my-blog:
+      url: https://your-ghost-site.ghost.io
+      apiKey: your-admin-api-key
+      blog:
+        description: My Ghost Blog
+        cdn: ghost-cdn
+      cdn: {}
+```
+
+The configuration schema structure:
 
 ```typescript
-import { TokenRingPlugin } from "@tokenring-ai/app";
 import { z } from "zod";
-import { GhostConfigSchema } from "./schema.ts";
-import packageJSON from "./package.json" with {type: "json"};
 
-const packageConfigSchema = z.object({
-  ghost: GhostConfigSchema.prefault({ accounts: {} }),
+export const GhostAccountCDNSchema = z.object({}).prefault({});
+
+export const GhostAccountBlogSchema = z
+  .object({
+    description: z.string().default("Ghost blog"),
+    cdn: z.string().exactOptional(),
+  })
+  .prefault({});
+
+export const GhostAccountSchema = z.object({
+  url: z.string(),
+  apiKey: z.string(),
+  blog: GhostAccountBlogSchema,
+  cdn: GhostAccountCDNSchema,
 });
 
-function addAccountsFromEnv(accounts: Record<string, Partial<GhostAccount>>) {
-  for (const [key, value] of Object.entries(process.env)) {
-    const match = key.match(/^GHOST_URL(\d*)$/);
-    if (!match || !value) continue;
-    const n = match[1];
-    const apiKey = process.env[`GHOST_API_KEY${n}`];
-    if (!apiKey) continue;
-    const name = process.env[`GHOST_ACCOUNT_NAME${n}`] ?? new URL(value).host;
-    accounts[name] = {
-      url: value,
-      apiKey,
-      blog: {
-        description: process.env[`GHOST_DESCRIPTION${n}`] ?? `Ghost.io (${name})`,
-        cdn: process.env[`GHOST_BLOG_CDN${n}`] ?? name,
-      },
-      cdn: {},
-    };
-  }
-}
-
-export default {
-  name: packageJSON.name,
-  displayName: "Ghost.io Integration",
-  version: packageJSON.version,
-  description: packageJSON.description,
-  install(app, config) {
-    addAccountsFromEnv(config.ghost.accounts);
-
-    for (const [name, account] of Object.entries(config.ghost.accounts)) {
-      if (account.cdn) {
-        app.services.waitForItemByType(CDNService, (cdnService) => {
-          cdnService.registerProvider(name, new GhostCDNProvider({ url: account.url, apiKey: account.apiKey }));
-        });
-      }
-
-      if (account.blog) {
-        app.services.waitForItemByType(BlogService, (blogService) => {
-          blogService.registerBlog(
-            name,
-            new GhostBlogProvider({
-              url: account.url,
-              apiKey: account.apiKey,
-              description: account.blog.description,
-              cdn: account.blog.cdn ?? name,
-            }),
-          );
-        });
-      }
-    }
-  },
-  config: packageConfigSchema,
-} satisfies TokenRingPlugin<typeof packageConfigSchema>;
+export const GhostConfigSchema = z.object({
+  accounts: z.record(z.string(), GhostAccountSchema).default({}),
+});
 ```
 
-#### Account Configuration
-
-```json
-{
-  "ghost": {
-    "accounts": {
-      "my-blog": {
-        "url": "https://my-ghost-blog.com",
-        "apiKey": "your-api-key",
-        "blog": {
-          "description": "Ghost blog at my-ghost-blog.com",
-          "cdn": "my-cdn"
-        },
-        "cdn": {}
-      }
-    }
-  }
-}
-```
+#### Configuration Options
 
 **Required Properties:**
 
@@ -141,6 +96,32 @@ export default {
 - The `blog` property is optional. If provided, a `GhostBlogProvider` will be registered with the `BlogService`.
 - The `cdn` property is optional. If provided (as an empty object `{}`), a `GhostCDNProvider` will be registered with the `CDNService`.
 - An account can have only `blog`, only `cdn`, or both configurations.
+
+#### Plugin Installation
+
+```typescript
+import { App } from "@tokenring-ai/app";
+import ghostIoPlugin from "@tokenring-ai/ghost-io/plugin";
+
+const app = new App();
+
+// Install the plugin with configuration
+app.installPlugin(ghostIoPlugin, {
+  ghost: {
+    accounts: {
+      "my-blog": {
+        url: "https://your-ghost-site.ghost.io",
+        apiKey: "your-admin-api-key",
+        blog: {
+          description: "My Ghost Blog",
+          cdn: "my-cdn"
+        },
+        cdn: {}
+      }
+    }
+  }
+});
+```
 
 #### Environment Variable Configuration
 
@@ -365,11 +346,13 @@ Parameters:
 
 ##### GhostBlogProvider Key Methods
 
-- **`getAllPosts(): Promise<BlogPostListItem[]>`** - Fetches all blog posts from Ghost Admin API
-- **`getRecentPosts(filter: BlogPostFilterOptions): Promise<BlogPostListItem[]>`** - Fetches recent posts with filtering
-- **`createPost(data: CreatePostData): Promise<BlogPost>`** - Creates a new draft post
-- **`updatePost(id: string, data: UpdatePostData): Promise<BlogPost>`** - Updates a post by ID
-- **`getPostById(id: string): Promise<BlogPost>`** - Fetches a post by its ID with HTML content
+| Method | Parameters | Returns | Description |
+|--------|------------|---------|-------------|
+| `getAllPosts()` | - | `Promise<BlogPostListItem[]>` | Fetches all blog posts from Ghost Admin API |
+| `getRecentPosts(filter)` | `filter: BlogPostFilterOptions` | `Promise<BlogPostListItem[]>` | Fetches recent posts with filtering |
+| `createPost(data)` | `data: CreatePostData` | `Promise<BlogPost>` | Creates a new draft post |
+| `updatePost(id, data)` | `id: string, data: UpdatePostData` | `Promise<BlogPost>` | Updates a post by ID |
+| `getPostById(id)` | `id: string` | `Promise<BlogPost>` | Fetches a post by its ID with HTML content |
 
 #### GhostCDNProvider
 
@@ -395,7 +378,9 @@ Parameters:
 
 ##### GhostCDNProvider Key Methods
 
-- **`upload(data: Buffer, options?: UploadOptions): Promise<UploadResult>`** - Uploads image buffer to Ghost CDN
+| Method | Parameters | Returns | Description |
+|--------|------------|---------|-------------|
+| `upload(data, options)` | `data: Buffer, options?: UploadOptions` | `Promise<UploadResult>` | Uploads image buffer to Ghost CDN |
 
 ### Services
 
@@ -597,7 +582,7 @@ pkg/ghost-io/
 | `zod`                   | ^4.3.6  | Schema validation                            |
 | `@tryghost/admin-api`   | ^1.14.7 | Official Ghost Admin SDK (v5.0)              |
 | `form-data`             | ^4.0.5  | Multipart form data for image uploads        |
-| `uuid`                  | ^13.0.0 | Unique identifier generation                 |
+| `uuid`                  | 14.0.0  | Unique identifier generation                 |
 
 #### Development Dependencies
 

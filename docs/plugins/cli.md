@@ -107,6 +107,7 @@ The CLI integrates with the agent system through the following mechanisms:
    - Agent types (spawn new agents)
    - Workflows (spawn workflow instances)
    - Web applications (open in browser via `WebHostService`)
+   - Web server management (start/stop)
 
 2. **Event Subscription**: Subscribes to `AgentEventState` via `agent.subscribeStateAsync()` for:
    - Real-time event streaming
@@ -138,6 +139,7 @@ The CLI integrates with `WebHostService` to display and launch web applications:
 
 - Web applications appear in the agent selection screen under "Web Application" category
 - Selecting a web application option opens it in the system browser
+- Web server management (start/stop) is available through the `webhost` selection type
 
 #### Integration with WorkflowService
 
@@ -211,7 +213,7 @@ console.log(styledText);
 - *Italic*: `*text*` or `_text_`
 - ~~Strikethrough~~: `~~text~~`
 - `Inline code`: `` `text` ``
-- [Links](url): `[text](url)`
+- Links: `[text](https://example.com)`
 - Headings: `# Heading 1`, `## Heading 2`, etc.
 - Lists: `- item`, `* item`, `1. item`
 - Blockquotes: `> quote`
@@ -286,7 +288,7 @@ export default class AgentCLI implements TokenRingService {
 - Spawns selected agent and enters interaction loop via `AgentLoop`
 - Handles SIGINT for graceful shutdown
 - Restarts agent selection after agent completion (unless `config.startAgent.shutdownWhenDone` is true)
-- Supports spawning agents, connecting to running agents, opening web applications, and running workflows
+- Supports spawning agents, connecting to running agents, opening web applications, running workflows, and managing web server (start/stop)
 
 #### AgentLoop Class
 
@@ -465,7 +467,8 @@ export type AgentSelectionResult =
   | { type: "spawn"; agentType: string }
   | { type: "connect"; agentId: string }
   | { type: "open"; url: string }
-  | { type: "workflow"; workflowKey: string };
+  | { type: "workflow"; workflowKey: string }
+  | { type: "webhost"; action: string };
 ```
 
 **Selection Types:**
@@ -476,6 +479,7 @@ export type AgentSelectionResult =
 | `connect` | Connect to an existing agent | `agentId` |
 | `open` | Open a web application in browser | `url` |
 | `workflow` | Spawn a workflow instance | `workflowKey` |
+| `webhost` | Manage web server (start/stop) | `action` |
 
 **Parsing Utility:**
 
@@ -847,7 +851,7 @@ pkg/cli/
 | `applyMarkdownStyles.ts` | Utility for applying markdown styling to terminal output (bold, italic, code blocks, lists, etc.) |
 | `InputEditor.ts` | Multi-line text editor with cursor navigation, word/line operations, and preferred column tracking |
 | `InlineQuestions.ts` | Inline question session handling for text input, tree selection, file selection, and multi-section forms |
-| `AgentSelection.ts` | Agent selection result types (`AgentSelectionResult`) and parsing utilities for spawn/connect/open/workflow actions |
+| `AgentSelection.ts` | Agent selection result types (`AgentSelectionResult`) and parsing utilities for spawn/connect/open/workflow/webhost |
 | `FileSearch.ts` | Workspace file search with scoring-based matching, @-syntax token handling, and path replacement utilities |
 | `CommandCompletions.ts` | Command completion context extraction and utilities for slash command auto-completion |
 | `ChatRenderUtils.ts` | Utilities for rendering chat transcripts, tool calls, artifacts, and question interactions |

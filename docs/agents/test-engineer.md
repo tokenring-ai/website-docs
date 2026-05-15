@@ -1,7 +1,7 @@
 # Test Engineer
 
 **Agent ID:** `test-engineer`  
-**Application:** TokenRing Coder  
+**Application:** TokenRing One  
 **Category:** `Coding - Specialized`
 
 ## Overview
@@ -10,7 +10,7 @@ Call this agent to create comprehensive testing strategies and implement test su
 
 ## Source Configuration
 
-`app/coder/src/config/agents/specialized/test-engineer.yaml`
+`app/one/config/agents/specialized/test-engineer.yaml`
 
 ## Enabled Tools
 

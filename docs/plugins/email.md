@@ -1,28 +1,28 @@
-# @tokenring-ai/email
-
-Abstract email interface for Token Ring with provider-based inbox, search, draft, and send workflows.
+# Email Plugin
 
 ## User Guide
 
 ### Overview
 
-The `@tokenring-ai/email` package provides a provider-based email abstraction for Token Ring agents. It supplies a shared `EmailService`, a provider interface for concrete integrations, chat tools, slash commands, and scripting functions for common email workflows.
+The Email plugin provides an abstract interface for managing email drafts and sending emails via multiple providers. It implements a provider-based architecture that allows Token Ring AI agents to interact with email inboxes, search messages, manage drafts, and send emails through chat tools, slash commands, scripting functions, and RPC endpoints.
 
-This package is intentionally abstract. Concrete integrations such as Gmail register providers into `EmailService`.
+This package serves as the foundation for email integrations, with concrete implementations (such as Gmail, Exchange, IMAP-backed services, or custom internal mail systems) extending the provider interface.
 
 ### Key Features
 
-- **Provider-based email architecture**: Plug in any email provider implementation
-- **Inbox listing and message search**: Retrieve and search email messages
-- **Message selection for follow-up work**: Select and inspect specific messages
-- **Draft creation and updates**: Compose and modify email drafts
-- **Sending drafts**: Send currently selected email drafts
-- **Email watching**: Automated processing of incoming emails based on patterns
-- **Slash commands and chat tools**: Interactive use in chat interface
-- **Agent-scoped provider selection**: Each agent can have its own active provider
-- **Scripting integration**: Programmatic access for automation
+- **Provider-based Architecture**: Pluggable email providers with a unified interface
+- **Inbox Management**: Read and list inbox messages from the active provider
+- **Message Search**: Search messages by query across the inbox
+- **Message Selection**: Select specific messages for follow-up work and inspection
+- **Draft Management**: Create, update, and manage email drafts
+- **Draft Sending**: Send the current draft through the active provider
+- **Provider Management**: Select and manage email providers per agent
+- **Email Watching**: Configure automated email monitoring with pattern-based action triggers
+- **Type-Safe**: Full TypeScript support with Zod schemas for validation
 
 ### Chat Commands
+
+The package registers 14 slash-prefixed commands organized into four categories:
 
 #### Provider Commands
 
@@ -33,22 +33,22 @@ This package is intentionally abstract. Concrete integrations such as Gmail regi
 | `/email provider select` | Interactively select the active email provider |
 | `/email provider reset` | Reset the active email provider to the initial configured value |
 
-**Examples:**
+**Examples**:
 
 ```bash
 # Get current provider
 /email provider get
 # Output: Current provider: gmail
 
-# Set provider by name
+# Set provider
 /email provider set gmail
 # Output: Active provider set to: gmail
 
-# Interactively select provider
+# Interactive selection
 /email provider select
-# Opens tree selection interface
+# Opens interactive tree selection
 
-# Reset to initial provider
+# Reset to default
 /email provider reset
 # Output: Provider reset to gmail
 ```
@@ -57,23 +57,32 @@ This package is intentionally abstract. Concrete integrations such as Gmail regi
 
 | Command | Description |
 |---------|-------------|
-| `/email messages list` | List messages from a selected email box |
+| `/email messages list` | List recent messages from a selected email box |
 | `/email search <query>` | Search messages from the active email provider |
 
-**Examples:**
+**Examples**:
 
 ```bash
-# List messages in inbox (default)
+# List messages
 /email messages list
+/email messages list --box sent
+/email messages list --limit 10 --page-token <token>
 
-# List messages with options
-/email messages list --box sent --limit 10 --page-token <token>
-
-# Search for messages
+# Search messages
 /email search invoice
 /email search --box sent invoice
 /email search "from:alex@example.com project"
 ```
+
+**Options for `/email messages list`**:
+
+- `--box <box>`: Email box to list from (default: "inbox")
+- `--limit <number>`: Optional limit for number of messages (default: 20)
+- `--page-token <token>`: Pagination token for retrieving next page
+
+**Options for `/email search`**:
+
+- `--box <box>`: Email box to search within (default: "inbox")
 
 #### Message Commands
 
@@ -82,27 +91,27 @@ This package is intentionally abstract. Concrete integrations such as Gmail regi
 | `/email message get` | Display the currently selected email message subject |
 | `/email message select` | Interactively select an inbox message to inspect |
 | `/email message set --id <id>` | Select an email message by its ID |
-| `/email message info` | Display detailed information about the currently selected email message |
+| `/email message info` | Display detailed information about the selected message |
 | `/email message clear` | Clear the current email message selection |
 
-**Examples:**
+**Examples**:
 
 ```bash
 # Get current message
 /email message get
-# Output: Current message: Status update
+# Output: Current message: Project Update
 
 # Select message interactively
 /email message select
-# Opens tree selection interface with recent messages
+/email message select --box sent
 
-# Select message by ID
+# Select by ID
 /email message set --id 12345
-# Output: Selected message: "Subject line"
+# Output: Selected message: Project Update
 
-# Get message details
+# Get message info
 /email message info
-# Output: Provider, subject, from, to, received, read status, etc.
+# Output: Provider, Subject, From, To, Received, Read, CC, Labels, Snippet
 
 # Clear selection
 /email message clear
@@ -117,91 +126,178 @@ This package is intentionally abstract. Concrete integrations such as Gmail regi
 | `/email draft clear` | Clear the current email draft selection |
 | `/email draft send` | Send the currently selected email draft |
 
-**Examples:**
+**Examples**:
 
 ```bash
 # Get current draft
 /email draft get
-# Output: Current draft: Meeting notes
+# Output: Current draft: Follow up
 
-# Clear draft selection
+# Clear draft
 /email draft clear
 # Output: Draft cleared. No email draft is currently selected.
 
 # Send draft
 /email draft send
-# Output: Sent email "Subject" to recipient names
+# Output: Sent email "Follow up" to alex@example.com
 ```
 
 ### Tools
 
-The package registers the following tools with `ChatService`:
+The package registers 8 tools with the chat system:
 
 | Tool | Description |
 |------|-------------|
 | `email_getMessages` | Retrieve messages from a selected email box |
-| `email_searchMessages` | Search email messages using the active email provider |
-| `email_selectMessage` | Select an email message by ID for further inspection |
+| `email_searchMessages` | Search messages using the active email provider |
+| `email_selectMessage` | Select a message by ID for further inspection |
 | `email_getCurrentMessage` | Retrieve the currently selected email message |
 | `email_createDraft` | Create a new email draft |
 | `email_updateDraft` | Update the currently selected email draft |
 | `email_getCurrentDraft` | Retrieve the currently selected email draft |
 | `email_sendCurrentDraft` | Send the currently selected email draft |
 
+#### Tool Details
+
+**`email_getMessages`**
+
+Retrieve messages from a selected email box.
+
+- **Parameters**:
+  - `box` (optional, string): Email box to read from (default: "inbox")
+  - `limit` (optional, number): Maximum messages to return (default: 25)
+  - `unreadOnly` (optional, boolean): Filter to unread messages only
+  - `pageToken` (optional, string): Pagination token for next page
+- **Returns**: Formatted table of messages with ID, From, Subject, Received, and Read status
+
+**`email_searchMessages`**
+
+Search messages using the active email provider.
+
+- **Parameters**:
+  - `query` (string): Search query to run against the inbox
+  - `box` (optional, string): Email box to search within (default: "inbox")
+  - `limit` (optional, number): Maximum results (default: 25)
+  - `unreadOnly` (optional, boolean): Filter to unread only
+- **Returns**: Formatted table of matching messages
+
+**`email_selectMessage`**
+
+Select a message by ID for further inspection.
+
+- **Parameters**:
+  - `id` (string): The unique identifier of the email message
+- **Returns**: Selected message details with subject, from, received date, and JSON representation
+
+**`email_getCurrentMessage`**
+
+Retrieve the currently selected email message.
+
+- **Parameters**: None
+- **Returns**: Current message data as JSON or "No email message is currently selected"
+
+**`email_createDraft`**
+
+Create a new email draft.
+
+- **Parameters**:
+  - `subject` (string): Email subject line
+  - `to` (array): Primary recipients (minimum 1), each with `email` and optional `name`
+  - `cc` (optional, array): CC recipients
+  - `bcc` (optional, array): BCC recipients
+  - `textBody` (optional, string): Plain text email body
+  - `htmlBody` (optional, string): HTML email body
+  - `threadId` (optional, string): Optional thread to associate
+- **Returns**: Created draft with ID
+
+**`email_updateDraft`**
+
+Update the currently selected email draft.
+
+- **Parameters** (all optional):
+  - `subject`: Updated email subject line
+  - `to`: Primary recipients
+  - `cc`: CC recipients
+  - `bcc`: BCC recipients
+  - `textBody`: Updated plain text body
+  - `htmlBody`: Updated HTML body
+  - `threadId`: Optional thread association
+- **Returns**: Updated draft
+
+**`email_getCurrentDraft`**
+
+Retrieve the currently selected email draft.
+
+- **Parameters**: None
+- **Returns**: Current draft as JSON or "No email draft is currently selected"
+
+**`email_sendCurrentDraft`**
+
+Send the currently selected email draft.
+
+- **Parameters**: None
+- **Returns**: Sent email confirmation as JSON
+
 ### Configuration
 
-The plugin is configured under the `email` key.
+The package is configured under the `email` key in the plugin configuration.
 
 #### Configuration Schema
 
 ```yaml
 email:
-  pollInterval: 60  # Poll interval in seconds (default: 60)
+  # Providers configuration
+  providers:
+    gmail:
+      type: "gmail"
+      description: "Primary Gmail inbox"
+      account: "primary"
+    exchange:
+      type: "exchange"
+      description: "Corporate Exchange"
+      server: "exchange.company.com"
+  
+  # Polling interval in seconds (default: 60, transformed to milliseconds)
+  pollInterval: 60
+  
+  # Agent-level defaults
   agentDefaults:
-    provider: gmail  # Default provider for agents
+    # Initial provider selection
+    provider: "gmail"
+    
+    # Email watching configuration
     watch:
-      markAsRead: true  # Mark processed emails as read (default: false)
-      unreadOnly: true  # Only consider unread emails (default: false)
-      maxEmailsToConsider: 50  # Max emails to process (default: 50)
+      markAsRead: false          # Mark watched emails as read (default: false)
+      unreadOnly: true           # Only consider unread emails (default: false)
+      maxEmailsToConsider: 25    # Max emails to process per check (default: 50)
       actions:
-        - pattern: ".*invoice.*"
-          command: "/process invoice"
-        - pattern: ".*urgent.*"
-          command: "/alert priority"
+        invoicePattern:
+          pattern: "invoice|receipt|payment"
+          command: "/research find latest invoice from sender"
 ```
 
 #### Environment Variables
 
 No environment variables are defined by this package. Provider-specific packages may define their own environment variables.
 
-#### Example Configuration
+#### Configuration Schemas
 
-```yaml
-email:
-  providers:
-    gmail:
-      type: gmail
-      description: Primary inbox
-      account: primary
-  pollInterval: 60
-  agentDefaults:
-    provider: gmail
-    watch:
-      markAsRead: true
-      unreadOnly: true
-      maxEmailsToConsider: 50
-      actions:
-        - pattern: ".*invoice.*"
-          command: "/process invoice"
-        - pattern: ".*urgent.*"
-          command: "/alert priority"
-```
+**`EmailWatchSchema`**: Watch configuration
 
-**Relevant schemas:**
+- `markAsRead`: boolean (default: false)
+- `unreadOnly`: boolean (default: false)
+- `maxEmailsToConsider`: number (default: 50)
+- `actions`: Array of `{ pattern: string, command: string }`
 
-- `EmailConfigSchema` - Main plugin configuration
-- `EmailAgentConfigSchema` - Per-agent configuration
-- `EmailWatchSchema` - Email watching configuration
+**`EmailAgentConfigSchema`**: Agent-level config
+
+- `provider`: optional string
+- `watch`: optional EmailWatchSchema
+
+**`EmailConfigSchema`**: Full package config
+
+- `pollInterval`: number (default: 60, transformed to milliseconds)
+- `agentDefaults`: EmailAgentConfigSchema (prefaulted)
 
 ### Integration
 
@@ -212,642 +308,563 @@ import TokenRingApp from "@tokenring-ai/app";
 import EmailPlugin from "@tokenring-ai/email/plugin";
 
 const app = new TokenRingApp();
+
 app.usePlugin(EmailPlugin, {
   email: {
-    agentDefaults: {
-      provider: "gmail",
-    },
     providers: {
       gmail: {
         type: "gmail",
-        description: "Primary inbox",
-        account: "primary",
-      },
+        description: "Primary Gmail inbox",
+        account: "primary"
+      }
     },
-  },
+    agentDefaults: {
+      provider: "gmail"
+    }
+  }
 });
 ```
 
-#### Programmatic Usage
+#### Programmatic Service Usage
 
 ```typescript
-import {EmailService} from "@tokenring-ai/email";
+import { EmailService } from "@tokenring-ai/email";
 
-// Get service from agent
+// Get the service from an agent
 const emailService = agent.requireServiceByType(EmailService);
 
-// List messages
-const messages = await emailService.getMessages({box: "inbox", limit: 10}, agent);
-
-// Search messages
-const results = await emailService.searchMessages({query: "invoice"}, agent);
-
-// Select a message
-const message = await emailService.selectMessageById("msg-123", agent);
+// List inbox messages
+const messages = await emailService.getMessages(
+  { limit: 10, unreadOnly: true },
+  agent
+);
 
 // Create a draft
 const draft = await emailService.createDraft({
-  subject: "Status update",
-  to: [{email: "alex@example.com"}],
-  textBody: "Here is the latest update.",
-}, agent);
-
-// Update the draft
-await emailService.updateDraft({
-  textBody: "Updated content...",
+  subject: "Follow up",
+  to: [{ email: "alex@example.com", name: "Alex" }],
+  textBody: "Checking in on the proposal."
 }, agent);
 
 // Send the draft
-const sent = await emailService.sendCurrentDraft(agent);
+await emailService.sendCurrentDraft(agent);
+
+// Switch providers
+emailService.setActiveProvider("exchange", agent);
 ```
 
-#### Email Watching
+#### Provider Registration
 
-Email watching automatically processes incoming messages based on configured patterns:
+Concrete provider packages register implementations with the service:
 
-```yaml
-email:
-  agentDefaults:
-    provider: gmail
-    watch:
-      markAsRead: true
-      unreadOnly: true
-      maxEmailsToConsider: 50
-      actions:
-        - pattern: ".*urgent.*"
-          command: "/alert priority"
+```typescript
+import EmailService from "@tokenring-ai/email/EmailService";
+
+// In provider package
+class GmailProvider implements EmailProvider {
+  description = "Gmail integration";
+
+  async listBoxes() {
+    return [{ id: "inbox", name: "Inbox" }];
+  }
+
+  async getMessages(filter) {
+    // Implementation
+  }
+
+  async searchMessages(filter) {
+    // Implementation
+  }
+
+  async getMessageById(id) {
+    // Implementation
+  }
+
+  async createDraft(data) {
+    // Implementation
+  }
+
+  async updateDraft(data) {
+    // Implementation
+  }
+
+  async sendDraft(id) {
+    // Implementation
+  }
+}
+
+// Register with the service
+const emailService = app.requireService(EmailService);
+emailService.registerEmailProvider("gmail", new GmailProvider());
 ```
-
-When a matching email arrives:
-
-1. The message body is prepared with headers
-2. Pattern matching is performed against each action
-3. Matching actions trigger:
-   - Message selection via `/message set --id <id>`
-   - Command execution with the message as an attachment
 
 ### Best Practices
 
-1. **Provider State Management**: Keep provider-specific selection state inside the provider package, not in `EmailState`.
+#### Provider Selection
 
-2. **Data Normalization**: Normalize provider-specific data into the shared `EmailMessage` and `EmailDraft` shapes defined in this package.
+- Always select a provider before performing email operations
+- Use `/email provider select` for interactive selection
+- Use `/email provider set <name>` for programmatic selection
+- Check `getAvailableProviders()` before setting
 
-3. **Draft Workflows**: Use draft workflows instead of one-shot sending when an LLM may refine content before sending.
+#### Draft Management
 
-4. **Error Handling**: Always handle provider errors gracefully and provide meaningful feedback to users.
+- Create a draft before updating or sending
+- Use `getCurrentDraft()` to check current state
+- Clear drafts with `clearCurrentDraft()` when done
 
-5. **Polling Interval**: Set appropriate poll intervals based on provider rate limits and use case urgency.
+#### Message Handling
 
-6. **Watch Patterns**: Use specific, well-tested regex patterns for email watching to avoid false positives.
+- Select messages before inspecting details
+- Use `getMessageById()` for direct access
+- Clear selections with `clearCurrentMessage()` when finished
 
-7. **Message Selection**: Use message selection commands to focus context before performing operations on specific emails.
+#### Email Watching Configuration
+
+- Configure watching carefully to avoid excessive processing
+- Use regex patterns that are specific to your use case
+- Monitor the `processedEmails` set to prevent duplicate processing
+- Set appropriate `maxEmailsToConsider` limits
+
+#### Error Handling
+
+- Always handle `No email provider is currently selected` errors
+- Check for available providers before operations
+- Use try-catch blocks for provider-specific operations
+
+---
 
 ## Developer Reference
 
 ### Core Components
 
-#### EmailService (Core)
+#### EmailService
 
-Main service for email operations, implementing `TokenRingService`.
+The main service class that orchestrates email operations across providers.
 
-**Key responsibilities:**
+**Location**: `pkg/email/EmailService.ts`
 
-- Register and manage email providers via `KeyedRegistry`
-- Resolve the active provider for each agent
-- Proxy inbox, search, message, and draft operations to the active provider
-- Manage provider selection state in `EmailState`
-- Background task for email watching and pattern-based automation
+**Implements**: `TokenRingService`
 
-**Key methods:**
+**Key Methods**:
 
 ```typescript
 class EmailService implements TokenRingService {
   readonly name = "EmailService";
   description = "Abstract interface for email inbox and drafting operations";
 
-  // Provider management
-  registerEmailProvider: (name: string, provider: EmailProvider) => void;
-  getAvailableProviders: () => string[];
-  requireEmailProvider: (name: string) => EmailProvider;
-
-  // Provider selection
+  // Provider Management
+  registerEmailProvider(name: string, provider: EmailProvider): void;
+  getAvailableProviders(): string[];
+  requireEmailProvider(name: string): EmailProvider;
   setActiveProvider(name: string, agent: Agent): void;
-  requireActiveEmailProvider(agent: Agent): EmailProvider;
 
-  // Box operations
+  // Inbox Operations
   getBoxes(agent: Agent): Promise<EmailBox[]>;
-
-  // Message operations
   getMessages(filter: EmailMessageQueryOptions, agent: Agent): Promise<EmailMessagePage>;
   searchMessages(filter: EmailSearchOptions, agent: Agent): Promise<EmailMessage[]>;
   getMessageById(id: string, agent: Agent): Promise<EmailMessage>;
-
-  // Message selection
   selectMessageById(id: string, agent: Agent): Promise<EmailMessage>;
   getCurrentMessage(agent: Agent): EmailMessage | undefined;
   clearCurrentMessage(agent: Agent): void;
 
-  // Draft operations
+  // Draft Operations
   createDraft(data: DraftEmailData, agent: Agent): Promise<EmailDraft>;
   updateDraft(data: UpdateDraftEmailData, agent: Agent): Promise<EmailDraft>;
   getCurrentDraft(agent: Agent): EmailDraft | undefined;
   clearCurrentDraft(agent: Agent): void;
-
-  // Sending
   sendCurrentDraft(agent: Agent): Promise<EmailDraft>;
 
-  // Email watching
+  // Background Tasks
   watchEmails(agent: Agent): void;
-  checkForNewEmails(watch: EmailWatchSchema, agent: Agent): Promise<void>;
+  checkForNewEmails(watchConfig: EmailWatchSchema, agent: Agent): Promise<void>;
 }
 ```
 
 #### EmailProvider
 
-Provider interface implemented by concrete email integration packages.
+The provider interface that concrete implementations must follow.
+
+**Location**: `pkg/email/EmailProvider.ts`
 
 ```typescript
 interface EmailProvider {
   description: string;
 
-  // Inbox operations
   listBoxes(): Promise<EmailBox[]>;
   getMessages(filter: EmailMessageQueryOptions): Promise<EmailMessagePage>;
   searchMessages(filter: EmailSearchOptions): Promise<EmailMessage[]>;
   getMessageById(id: string): Promise<EmailMessage>;
-
-  // Draft operations
   createDraft(data: DraftEmailData): Promise<EmailDraft>;
   updateDraft(data: UpdateDraftEmailData): Promise<EmailDraft>;
   sendDraft(id: string): Promise<void>;
 }
 ```
 
-**Note:** The `EmailProvider` interface does NOT include message selection or draft selection methods. Those are managed by `EmailService` and stored in agent state.
-
 ### Services
 
-#### EmailService (Registration)
+#### EmailService Implementation
 
-Implements `TokenRingService` and is registered by the package plugin.
+The EmailService is a `TokenRingService` implementation that:
 
-**Integration points:**
+1. **Manages Providers**: Uses a `KeyedRegistry` to register and retrieve email providers
+2. **Maintains Agent State**: Each agent has its own state including:
+   - Active provider selection
+   - Current message selection
+   - Current draft selection
+   - Email watching configuration
+   - Processed emails set (for watching)
+3. **Orchestrates Operations**: Delegates all operations to the active provider
+4. **Background Tasks**: Supports email watching with configurable polling
 
-- `ChatService` for email tools registration
-- `AgentCommandService` for `/email ...` commands registration
-- `ScriptingService` for scripting function registration
-
-### Provider Documentation
-
-This package defines the provider interface but does not include a concrete provider itself. Extension packages are expected to:
-
-1. Implement `EmailProvider` interface
-2. Initialize provider-local state in `attach()` method
-3. Register themselves through `EmailService.registerEmailProvider()`
-4. Normalize provider-specific data into shared `EmailMessage` and `EmailDraft` shapes
-
-#### Provider Implementation Example
+**State Management**:
 
 ```typescript
-import {EmailProvider, EmailMessage, EmailDraft} from "@tokenring-ai/email";
-import {Agent, AgentCreationContext} from "@tokenring-ai/agent";
+import { EmailState } from "@tokenring-ai/email/state/EmailState";
 
-class GmailProvider implements EmailProvider {
-  description = "Gmail API integration";
+// Get current state
+const state = agent.getState(EmailState);
+console.log(state.activeProvider); // "gmail"
+console.log(state.currentEmail);   // EmailMessage | undefined
 
-  async listBoxes() {
-    // Implement Gmail API calls to list boxes/folders
-    return boxes;
-  }
+// Update state
+agent.mutateState(EmailState, state => {
+  state.activeProvider = "exchange";
+});
+```
 
-  async getMessages(filter) {
-    // Implement Gmail API calls to get messages
-    return {messages, nextPageToken};
-  }
+**State Lifecycle**:
 
-  async searchMessages(filter) {
-    // Implement Gmail search
-    return results;
-  }
+1. **Initialization**: State is initialized from agent config during service attachment
+2. **Inheritance**: Child agents inherit provider selection from parent agents
+3. **Persistence**: State is serialized/deserialized for agent checkpointing
+4. **Provider-agnostic**: Base state handles common state; providers manage their-specific state
 
-  async getMessageById(id) {
-    // Fetch specific message
-    return message;
-  }
+### Provider Interfaces
 
-  async createDraft(data) {
-    // Create Gmail draft
-    return draft;
-  }
+#### EmailAddress
 
-  async updateDraft(data) {
-    // Update Gmail draft
-    return draft;
-  }
+Email address with optional name.
 
-  async sendDraft(id) {
-    // Send from Gmail draft
-  }
+```typescript
+{
+  email: string;
+  name?: string;
 }
+```
+
+#### EmailMessage
+
+Normalized inbox message.
+
+```typescript
+{
+  id: string;
+  threadId?: string;
+  subject: string;
+  from: EmailAddress;
+  to: EmailAddress[];
+  cc?: EmailAddress[];
+  bcc?: EmailAddress[];
+  snippet?: string;
+  textBody?: string;
+  htmlBody?: string;
+  labels?: string[];
+  isRead: boolean;
+  receivedAt: Date;
+  sentAt?: Date;
+}
+```
+
+#### EmailDraft
+
+Editable draft structure.
+
+```typescript
+{
+  id: string;
+  threadId?: string;
+  subject: string;
+  to: EmailAddress[];
+  cc?: EmailAddress[];
+  bcc?: EmailAddress[];
+  textBody?: string;
+  htmlBody?: string;
+  createdAt: Date;
+  updatedAt: Date;
+}
+```
+
+#### EmailBox
+
+Email box/folder.
+
+```typescript
+{
+  id: string;
+  name: string;
+}
+```
+
+#### EmailMessageQueryOptions
+
+Message query filters.
+
+```typescript
+{
+  box?: string;
+  limit?: number;
+  unreadOnly?: boolean;
+  pageToken?: string;
+}
+```
+
+#### EmailMessagePage
+
+Paginated message results.
+
+```typescript
+{
+  messages: EmailMessage[];
+  nextPageToken?: string;
+}
+```
+
+#### EmailSearchOptions
+
+Search filters.
+
+```typescript
+{
+  query: string;
+  box?: string;
+  limit?: number;
+  unreadOnly?: boolean;
+}
+```
+
+#### DraftEmailData
+
+Draft creation payload.
+
+```typescript
+Omit<EmailDraft, "id" | "createdAt" | "updatedAt">
+```
+
+#### UpdateDraftEmailData
+
+Draft update payload.
+
+```typescript
+Partial<DraftEmailData>
 ```
 
 ### RPC Endpoints
 
-This package defines RPC endpoints for programmatic access to email operations.
+The package exposes 10 RPC methods at `/rpc/email`.
 
-**Endpoint path:** `/rpc/email`
+#### Query Methods
 
-#### Methods
-
-##### `getEmailProviders`
+**`getEmailProviders`**
 
 Get list of available email providers.
 
-**Input:**
+- **Input**: `{}`
+- **Output**: `{ providers: string[] }`
 
-```typescript
-{
-  // No input parameters
-}
-```
+**`getEmailBoxes`**
 
-**Output:**
+Get available boxes for a provider.
 
-```typescript
-{
-  providers: string[];  // List of available provider names
-}
-```
+- **Input**: `{ provider: string }`
+- **Output**: `{ boxes: EmailBox[] }`
 
-##### `getEmailBoxes`
+**`getMessages`**
 
-Get available email boxes/folders for a provider.
+Get messages from a provider's box.
 
-**Input:**
+- **Input**: `{ provider: string, box?: string, limit?: number, unreadOnly?: boolean, pageToken?: string }`
+- **Output**: `{ messages: EmailMessage[], count: number, nextPageToken?: string, message: string }`
 
-```typescript
-{
-  provider: string;  // Provider name
-}
-```
+**`searchMessages`**
 
-**Output:**
+Search messages in a provider.
 
-```typescript
-{
-  boxes: EmailBox[];  // List of available boxes
-}
-```
+- **Input**: `{ provider: string, query: string, box?: string, limit?: number, unreadOnly?: boolean }`
+- **Output**: `{ messages: EmailMessage[], count: number, message: string }`
 
-##### `getMessages`
-
-Get messages from a specific box.
-
-**Input:**
-
-```typescript
-{
-  provider: string;  // Provider name
-  box?: string;  // Box name (default: "inbox")
-  limit?: number;  // Maximum number of messages
-  unreadOnly?: boolean;  // Filter to unread messages only
-  pageToken?: string;  // Pagination token
-}
-```
-
-**Output:**
-
-```typescript
-{
-  messages: EmailMessage[];  // List of messages
-  count: number;  // Number of messages returned
-  nextPageToken?: string;  // Token for next page
-  message: string;  // Status message
-}
-```
-
-##### `searchMessages`
-
-Search messages in a specific box.
-
-**Input:**
-
-```typescript
-{
-  provider: string;  // Provider name
-  query: string;  // Search query
-  box?: string;  // Box to search (default: "inbox")
-  limit?: number;  // Maximum results
-  unreadOnly?: boolean;  // Filter to unread messages only
-}
-```
-
-**Output:**
-
-```typescript
-{
-  messages: EmailMessage[];  // List of matching messages
-  count: number;  // Number of results
-  message: string;  // Status message
-}
-```
-
-##### `getMessageById`
+**`getMessageById`**
 
 Get a specific message by ID.
 
-**Input:**
+- **Input**: `{ provider: string, id: string }`
+- **Output**: `{ email: EmailMessage, message: string }`
 
-```typescript
-{
-  provider: string;  // Provider name
-  id: string;  // Message ID
-}
-```
+**`getEmailState`**
 
-**Output:**
+Get current email state for an agent.
 
-```typescript
-{
-  email: EmailMessage;  // The message
-  message: string;  // Status message
-}
-```
+- **Input**: `{ agentId: string }`
+- **Output**: `{ status: "success", selectedMessageId: string | null, selectedDraftId: string | null, selectedProvider: string | null, availableProviders: string[] }` or `AgentNotFoundSchema`
 
-##### `createDraft`
+#### Mutation Methods
+
+**`createDraft`**
 
 Create a new email draft.
 
-**Input:**
+- **Input**: `{ agentId: string, subject: string, to: EmailAddress[], cc?: EmailAddress[], bcc?: EmailAddress[], textBody?: string, htmlBody?: string }`
+- **Output**: `{ status: "success", draft: EmailDraft, message: string }` or `{ status: "agentNotFound" }`
 
-```typescript
-{
-  agentId: string;  // Agent ID
-  subject: string;  // Email subject
-  to: EmailAddress[];  // Primary recipients
-  cc?: EmailAddress[];  // CC recipients
-  bcc?: EmailAddress[];  // BCC recipients
-  textBody?: string;  // Plain text body
-  htmlBody?: string;  // HTML body
-}
-```
-
-**Output:**
-
-```typescript
-{
-  status: "success";
-  draft: EmailDraft;  // Created draft
-  message: string;  // Status message
-}
-```
-
-##### `updateDraft`
+**`updateDraft`**
 
 Update the current draft.
 
-**Input:**
+- **Input**: `{ agentId: string, updatedData: Partial<DraftEmailData> }`
+- **Output**: `{ status: "success", draft: EmailDraft, message: string }` or `{ status: "agentNotFound" }`
 
-```typescript
-{
-  agentId: string;  // Agent ID
-  updatedData: Partial<Omit<EmailDraft, "id" | "createdAt" | "updatedAt">>;
-}
-```
-
-**Output:**
-
-```typescript
-{
-  status: "success";
-  draft: EmailDraft;  // Updated draft
-  message: string;  // Status message
-}
-```
-
-##### `sendCurrentDraft`
+**`sendCurrentDraft`**
 
 Send the current draft.
 
-**Input:**
+- **Input**: `{ agentId: string }`
+- **Output**: `{ status: "success", draft: EmailDraft, message: string }` or `{ status: "agentNotFound" }`
 
-```typescript
-{
-  agentId: string;  // Agent ID
-}
-```
+**`updateEmailState`**
 
-**Output:**
+Update email state for an agent.
 
-```typescript
-{
-  status: "success";
-  draft: EmailDraft;  // Sent draft
-  message: string;  // Status message
-}
-```
-
-##### `getEmailState`
-
-Get the current email state for an agent.
-
-**Input:**
-
-```typescript
-{
-  agentId: string;  // Agent ID
-}
-```
-
-**Output:**
-
-```typescript
-{
-  status: "success";
-  selectedMessageId: string | null;
-  selectedDraftId: string | null;
-  selectedProvider: string | null;
-  availableProviders: string[];
-}
-```
-
-##### `updateEmailState`
-
-Update the email state for an agent.
-
-**Input:**
-
-```typescript
-{
-  agentId: string;  // Agent ID
-  selectedProvider?: string;  // New provider
-  selectedMessageId?: string;  // New message selection
-}
-```
-
-**Output:**
-
-```typescript
-{
-  status: "success";
-  selectedMessageId: string | null;
-  selectedDraftId: string | null;
-  selectedProvider: string | null;
-  availableProviders: string[];
-}
-```
+- **Input**: `{ agentId: string, selectedProvider?: string, selectedMessageId?: string }`
+- **Output**: `{ status: "success", selectedMessageId: string | null, selectedDraftId: string | null, selectedProvider: string | null, availableProviders: string[] }` or `{ status: "agentNotFound" }`
 
 ### Usage Examples
 
-#### Chat Tool Workflows
-
-1. **Review inbox:** Use `email_getMessages` to inspect recent messages
-2. **Search for specific content:** Use `email_searchMessages` to find relevant messages
-3. **Select and inspect:** Use `email_selectMessage` to focus on a specific message
-4. **Compose response:** Use `email_createDraft` to start a new draft
-5. **Refine content:** Use `email_updateDraft` to modify the draft
-6. **Send:** Use `email_sendCurrentDraft` to send the email
-
-#### Scripting Workflow
-
-The package registers the following functions with `ScriptingService`:
-
-| Function | Parameters | Description |
-|----------|------------|-------------|
-| `getEmailBoxes` | none | Get available email boxes |
-| `getMessages` | box?, limit?, pageToken?, unreadOnly? | Get messages from a box |
-| `searchEmailMessages` | query, box?, limit?, unreadOnly? | Search messages |
-| `createEmailDraft` | subject, bodyText, toCsv | Create a new draft |
-| `sendCurrentEmailDraft` | none | Send current draft |
-
-**Examples:**
+#### Creating and Sending an Email
 
 ```typescript
-// Get available boxes
-const boxes = JSON.parse(await scripting.getEmailBoxes());
+import { EmailService } from "@tokenring-ai/email";
 
-// Get messages
-const messages = JSON.parse(await scripting.getMessages("inbox", "10", undefined, "true"));
+const emailService = agent.requireServiceByType(EmailService);
 
-// Search messages
-const results = JSON.parse(await scripting.searchEmailMessages("invoice", "sent", "20"));
+// Create a draft
+const draft = await emailService.createDraft({
+  subject: "Project Update",
+  to: [{ email: "alex@example.com", name: "Alex" }],
+  cc: [{ email: "bob@example.com" }],
+  textBody: "Hi Alex,\n\nHere's the project update..."
+}, agent);
 
-// Create and send a draft
-await scripting.createEmailDraft(
-  "Monthly Report",
-  "Attached is the monthly report...",
-  "team@example.com"
-);
-await scripting.sendCurrentEmailDraft();
+// Update the draft
+const updatedDraft = await emailService.updateDraft({
+  subject: "Updated: Project Update"
+}, agent);
+
+// Send the draft
+const sentEmail = await emailService.sendCurrentDraft(agent);
 ```
 
-#### Background Email Processing
+#### Searching and Processing Messages
 
 ```typescript
-// Enable email watching in agent config
-agent.mutateState(EmailState, state => {
-  state.watch = {
-    markAsRead: true,
-    unreadOnly: true,
-    maxEmailsToConsider: 50,
-    actions: [
-      {
-        pattern: ".*urgent.*",
-        command: "/alert priority"
-      }
-    ]
-  };
-});
+import { EmailService } from "@tokenring-ai/email";
 
-// Start watching (happens automatically when agent is created with watch config)
-emailService.watchEmails(agent);
+const emailService = agent.requireServiceByType(EmailService);
+
+// Search for messages
+const results = await emailService.searchMessages({
+  query: "invoice",
+  box: "inbox",
+  limit: 10
+}, agent);
+
+// Select a message
+const message = await emailService.selectMessageById("msg_12345", agent);
+
+// Get message details
+const currentMessage = emailService.getCurrentMessage(agent);
 ```
 
-### Testing and Development
+#### Email Watching in Background Tasks
 
-#### Package Structure
+Configure automated email monitoring with pattern-based action triggers:
 
-```text
-pkg/email/
-├── EmailProvider.ts       # Provider interface and types
-├── EmailService.ts        # Main service implementation
-├── index.ts               # Exports
-├── plugin.ts              # Plugin registration
-├── schema.ts              # Configuration schemas
-├── state/
-│   └── EmailState.ts      # Agent state slice
-├── commands/
-│   └── email/
-│       ├── draft/
-│       │   ├── clear.ts
-│       │   ├── get.ts
-│       │   └── send.ts
-│       ├── message/
-│       │   ├── clear.ts
-│       │   ├── get.ts
-│       │   ├── info.ts
-│       │   ├── select.ts
-│       │   └── set.ts
-│       ├── messages/
-│       │   └── list.ts
-│       ├── provider/
-│       │   ├── get.ts
-│       │   ├── reset.ts
-│       │   ├── select.ts
-│       │   └── set.ts
-│       └── search.ts
-├── commands.ts            # Command registry
-├── tools/
-│   ├── createDraft.ts
-│   ├── getCurrentDraft.ts
-│   ├── getCurrentMessage.ts
-│   ├── getMessages.ts
-│   ├── searchMessages.ts
-│   ├── selectMessage.ts
-│   ├── sendCurrentDraft.ts
-│   └── updateDraft.ts
-├── tools.ts               # Tool registry
-├── rpc/
-│   ├── email.ts           # RPC endpoint implementation
-│   └── schema.ts          # RPC schema definitions
-├── package.json
-└── vitest.config.ts
+```yaml
+email:
+  agentDefaults:
+    watch:
+      markAsRead: true
+      unreadOnly: true
+      maxEmailsToConsider: 25
+      actions:
+        invoicePattern:
+          pattern: "invoice|receipt|payment"
+          command: "/research find latest invoice from sender"
+        supportPattern:
+          pattern: "support|help|issue"
+          command: "/ticket create --priority high"
 ```
+
+When a matching email is found:
+
+1. The email message is selected using `/message set --id <id>`
+2. The configured command is executed with the email body as an attachment
+3. The email is marked as processed to prevent duplicate processing
+
+### Testing
 
 #### Running Tests
 
 ```bash
-bun run test          # Run tests once
-bun run test:watch    # Run tests in watch mode
-bun run test:coverage # Run tests with coverage
-bun run build         # Type check without emitting
+cd pkg/email
+bun test
+```
+
+#### Watch Mode
+
+```bash
+bun test:watch
+```
+
+#### Coverage
+
+```bash
+bun test:coverage
+```
+
+#### Type Checking
+
+```bash
+bun build
 ```
 
 ### Dependencies
 
 #### Runtime Dependencies
 
-- `@tokenring-ai/agent` (0.2.0) - Agent framework and service management
-- `@tokenring-ai/app` (0.2.0) - Base application framework
-- `@tokenring-ai/chat` (0.2.0) - Chat tools and commands
-- `@tokenring-ai/rpc` (0.2.0) - RPC service framework
-- `@tokenring-ai/scripting` (0.2.0) - Scripting function registration
-- `@tokenring-ai/utility` (0.2.0) - Shared utilities
-- `zod` (^4.3.6) - Schema validation
+| Package | Version | Purpose |
+|---------|---------|---------|
+| `@tokenring-ai/agent` | workspace:* | Agent orchestration |
+| `@tokenring-ai/app` | workspace:* | Service management |
+| `@tokenring-ai/chat` | workspace:* | Chat tools |
+| `@tokenring-ai/rpc` | workspace:* | RPC endpoints |
+| `@tokenring-ai/scripting` | workspace:* | Scripting functions |
+| `@tokenring-ai/utility` | workspace:* | Utility functions |
+| `zod` | ^4.3.6 | Schema validation |
 
 #### Dev Dependencies
 
-- `typescript` (^6.0.2)
-- `vitest` (^4.1.1)
+| Package | Version | Purpose |
+|---------|---------|---------|
+| `typescript` | ^6.0.2 | Type checking |
+| `vitest` | ^4.1.1 | Testing |
 
 ### Related Components
 
-- `@tokenring-ai/google` - Gmail provider implementation
-- `@tokenring-ai/chat` - Chat tools and commands framework
-- `@tokenring-ai/agent` - Agent framework and state management
-- `@tokenring-ai/scripting` - Scripting function registration
-- `@tokenring-ai/rpc` - RPC service framework
-- `@tokenring-ai/app` - Plugin system and service management
+- **`@tokenring-ai/agent`**: Core agent orchestration
+- **`@tokenring-ai/chat`**: Chat tools and commands
+- **`@tokenring-ai/scripting`**: Scripting function registry
+- **`@tokenring-ai/rpc`**: RPC service
+- **`@tokenring-ai/app`**: Application framework
 
 ## License
 

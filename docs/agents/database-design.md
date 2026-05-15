@@ -1,7 +1,7 @@
 # Database Designer
 
 **Agent ID:** `database-design`  
-**Application:** TokenRing Coder  
+**Application:** TokenRing One  
 **Category:** `Coding - Specialized`
 
 ## Overview
@@ -10,7 +10,7 @@ Call this agent to design database schemas and implement data storage solutions.
 
 ## Source Configuration
 
-`app/coder/src/config/agents/specialized/database-design.yaml`
+`app/one/config/agents/specialized/database-design.yaml`
 
 ## Enabled Tools
 

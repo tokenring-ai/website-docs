@@ -1,7 +1,7 @@
 # Frontend Engineer
 
 **Agent ID:** `frontend-design`  
-**Application:** TokenRing Coder  
+**Application:** TokenRing One  
 **Category:** `Coding - Specialized`
 
 ## Overview
@@ -10,7 +10,7 @@ Call this agent to implement user interfaces, interactive components, and client
 
 ## Source Configuration
 
-`app/coder/src/config/agents/specialized/frontend-design.yaml`
+`app/one/config/agents/specialized/frontend-design.yaml`
 
 ## Enabled Tools
 

@@ -1,7 +1,7 @@
 # Product Design Engineer
 
 **Agent ID:** `product-design-engineer`  
-**Application:** TokenRing Coder  
+**Application:** TokenRing One  
 **Category:** `Coding - Specialized`
 
 ## Overview
@@ -10,7 +10,7 @@ Specialized agent for product enhancement and PRD (Product Requirements Document
 
 ## Source Configuration
 
-`app/coder/src/config/agents/specialized/product-design-engineer.yaml`
+`app/one/config/agents/specialized/product-design-engineer.yaml`
 
 ## Enabled Tools
 

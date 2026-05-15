@@ -1,7 +1,7 @@
 # Coding Agent
 
 **Agent ID:** `code`  
-**Application:** TokenRing Coder  
+**Application:** TokenRing One  
 **Category:** `Coding`
 
 ## Overview
@@ -10,7 +10,7 @@ A general code assistant that directly executes development tasks
 
 ## Source Configuration
 
-`app/coder/src/config/agents/coding/code.yaml`
+`app/one/config/agents/coding/code.yaml`
 
 ## Enabled Tools
 

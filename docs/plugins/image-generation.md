@@ -16,6 +16,7 @@ The Image Generation plugin provides AI-powered image creation capabilities for 
 - **Keyword-Based Similarity Search**: Implements custom similarity algorithm matching keywords from image metadata
 - **RPC Endpoints**: HTTP API for image generation and retrieval
 - **Web Host Integration**: Static file serving for generated media at `/api/media`
+- **Image Adjustment**: Convert formats, scale, and adjust brightness of existing images
 
 ## Installation
 
@@ -56,11 +57,11 @@ ImageGenerationServiceConfigSchema = z.object({
 
 **Configuration Options:**
 
-| Field | Type | Required | Description |
-|-------|------|----------|-------------|
-| `defaultModels` | `string[]` | No | List of model names to try for default selection (first available is used) |
-| `agentDefaults.outputDirectory` | `string` | Yes | Base directory for storing generated images |
-| `agentDefaults.model` | `string` | No | Default image generation model for agents |
+| Field                           | Type       | Required | Description                                                                |
+|---------------------------------|------------|----------|----------------------------------------------------------------------------|
+| `defaultModels`                 | `string[]` | No       | List of model names to try for default selection (first available is used) |
+| `agentDefaults.outputDirectory` | `string`   | Yes      | Base directory for storing generated images                                |
+| `agentDefaults.model`           | `string`   | No       | Default image generation model for agents                                  |
 
 ## Chat Commands
 
@@ -184,7 +185,7 @@ const image_generate: TokenRingToolDefinition = {
   inputSchema: z.object({
     prompt: z.string().describe("Description of the image to generate"),
     aspectRatio: z.enum(["square", "tall", "wide"]).default("square"),
-    keywords: z.array(z.string()).describe("Keywords to add to image EXIF/IPTC metadata").optional(),
+    keywords: z.array(z.string()).describe("Keywords to add to image EXIF/IPTC metadata").exactOptional(),
   }),
   execute: async (input, agent) => {
     // Implementation
@@ -194,11 +195,11 @@ const image_generate: TokenRingToolDefinition = {
 
 **Parameters:**
 
-| Parameter | Type | Required | Description |
-|-----------|------|----------|-------------|
-| `prompt` | `string` | Yes | Description of the image to generate |
-| `aspectRatio` | `"square" \| "tall" \| "wide"` | No | Aspect ratio. Default: "square" (1024x1024) |
-| `keywords` | `string[]` | No | Keywords to add to image EXIF/IPTC metadata |
+| Parameter     | Type                           | Required | Description                                 |
+|---------------|--------------------------------|----------|---------------------------------------------|
+| `prompt`      | `string`                       | Yes      | Description of the image to generate        |
+| `aspectRatio` | `"square" \| "tall" \| "wide"` | No       | Aspect ratio. Default: "square" (1024x1024) |
+| `keywords`    | `string[]`                     | No       | Keywords to add to image EXIF/IPTC metadata |
 
 **Aspect Ratios:**
 
@@ -235,7 +236,7 @@ const image_search: TokenRingToolDefinition = {
   description: "Search for images in the index based on keyword similarity",
   inputSchema: z.object({
     query: z.string().describe("Search query to match against image keywords"),
-    limit: z.number().int().positive().default(10).describe("Maximum number of results to return").optional(),
+    limit: z.number().int().positive().default(10).describe("Maximum number of results to return").exactOptional(),
   }),
   execute: async (input, agent) => {
     // Implementation
@@ -278,10 +279,10 @@ console.log(searchResults);
 
 **Parameters:**
 
-| Parameter | Type | Required | Description |
-|-----------|------|----------|-------------|
-| `query` | `string` | Yes | Search query to match against image keywords |
-| `limit` | `number` | No | Maximum number of results to return. Default: 10 |
+| Parameter | Type     | Required | Description                                      |
+|-----------|----------|----------|--------------------------------------------------|
+| `query`   | `string` | Yes      | Search query to match against image keywords     |
+| `limit`   | `number` | No       | Maximum number of results to return. Default: 10 |
 
 **Response Schema:**
 
@@ -299,6 +300,70 @@ console.log(searchResults);
   message: string;
 }
 ```
+
+### image_adjust
+
+Adjust an existing image using Bun.Image. Supports converting between formats, scaling, and adjusting brightness.
+
+**Tool Definition:**
+
+```typescript
+import { TokenRingToolDefinition } from "@tokenring-ai/chat/schema";
+import { z } from "zod";
+
+const image_adjust: TokenRingToolDefinition = {
+  name: "image_adjust",
+  displayName: "Image Generation/adjustImage",
+  description: "Adjust an existing image using Bun.Image. Supports converting between formats (jpeg, png, webp, gif), scaling by a ratio, and adjusting brightness. The result is saved as a new file in the configured output directory and added to the image index.",
+  inputSchema: z.object({
+    source: z.string().describe("Source image to adjust. Pass a filename (resolved relative to the output directory) or a relative/absolute path."),
+    format: z.enum(["jpeg", "png", "webp"]).describe("Output image format. Defaults to the source image's format.").exactOptional(),
+    scale: z.number().positive().describe("Scale ratio to apply to width and height (e.g. 0.5 halves dimensions, 2 doubles them).").exactOptional(),
+    brightness: z.number().nonnegative().describe("Brightness multiplier. 1.0 leaves brightness unchanged, <1 darkens, >1 brightens.").exactOptional(),
+    quality: z.number().int().min(1).max(100).describe("Output quality (1-100) for lossy formats (jpeg, webp).").exactOptional(),
+  }),
+  execute: async (input, agent) => {
+    // Implementation
+  }
+};
+```
+
+**Usage Example:**
+
+```typescript
+// Convert to JPEG and scale down
+const result = await agent.useTool("image_adjust", {
+  source: "abc123.png",
+  format: "jpeg",
+  scale: 0.5,
+  quality: 85
+});
+
+console.log(result);
+// {
+//   path: "./images/generated/def456.jpg",
+//   fileName: "def456.jpg",
+//   mediaType: "image/jpeg",
+//   width: 512,
+//   height: 512
+// }
+```
+
+**Parameters:**
+
+| Parameter   | Type                           | Required | Description                                                                 |
+|-------------|--------------------------------|----------|-----------------------------------------------------------------------------|
+| `source`    | `string`                       | Yes      | Source image filename or path                                               |
+| `format`    | `"jpeg" \| "png" \| "webp"`    | No       | Output format. Defaults to source format                                    |
+| `scale`     | `number`                       | No       | Scale ratio (must be positive)                                              |
+| `brightness`| `number`                       | No       | Brightness multiplier (must be non-negative)                                |
+| `quality`   | `number`                       | No       | Quality for lossy formats (1-100)                                           |
+
+**Supported Formats:**
+
+- `jpeg`: JPEG format with quality control
+- `png`: PNG format (lossless)
+- `webp`: WebP format with quality control
 
 ## RPC Endpoints
 
@@ -341,9 +406,14 @@ const allImages = await rpcClient.getImages({});
 // Search for sunset images
 const sunsetImages = await rpcClient.getImages({ search: "sunset" });
 
-// Get last 50 images
+// Get last 50 images (most recent first)
 const recentImages = await rpcClient.getImages({ limit: 50 });
 ```
+
+**Notes:**
+
+- Results are returned with most recent images first (last entries in the index file)
+- If no index file exists, returns empty array with count of 0
 
 ### generateImage
 
@@ -405,7 +475,7 @@ console.log(result);
 
 ### Core Components
 
-#### ImageGenerationService (Core Component)
+#### ImageGenerationService
 
 Main service managing image generation and indexing functionality.
 
@@ -573,6 +643,37 @@ async generateImage(
 
 **Throws:** Error if no model is selected or prompt is missing
 
+##### adjustImage()
+
+Adjust an existing image using Bun.Image.
+
+```typescript
+async adjustImage(
+  options: AdjustImageOptions,
+  agent: Agent
+): Promise<{
+  mediaType: string;
+  fileName: string;
+  filePath: string;
+  width: number;
+  height: number;
+  buffer: Buffer;
+}>
+```
+
+**Parameters:**
+
+- `options.source`: Source image path
+- `options.format`: Optional output format (jpeg, png, webp)
+- `options.scale`: Optional scale ratio
+- `options.brightness`: Optional brightness multiplier
+- `options.quality`: Optional quality for lossy formats
+- `agent`: Agent instance
+
+**Returns:** Object with mediaType, fileName, filePath, width, height, and buffer
+
+**Throws:** Error if source path is required or format is unsupported
+
 ### Services
 
 #### ImageGenerationService (Service)
@@ -595,10 +696,10 @@ The package uses `ImageGenerationState` to maintain per-agent configuration:
 
 **State Fields:**
 
-| Field | Type | Description |
-|-------|------|-------------|
-| `model` | `string \| null` | Currently selected image generation model for the agent |
-| `outputDirectory` | `string` | Output directory for generated images |
+| Field             | Type             | Description                                             |
+|-------------------|------------------|---------------------------------------------------------|
+| `model`           | `string \| null` | Currently selected image generation model for the agent |
+| `outputDirectory` | `string`         | Output directory for generated images                   |
 
 **State Commands:**
 
@@ -659,6 +760,20 @@ for (const image of searchResults.results) {
 }
 ```
 
+#### Adjusting an Image
+
+```typescript
+// Convert PNG to JPEG and scale down
+const result = await agent.useTool("image_adjust", {
+  source: "abc123.png",
+  format: "jpeg",
+  scale: 0.5,
+  quality: 85
+});
+
+console.log(result.path); // ./images/generated/def456.jpg
+```
+
 #### Rebuilding the Image Index
 
 ```typescript
@@ -684,6 +799,13 @@ const searchResult = await agent.useTool("image_search", {
 
 // Change model for next generation
 await agent.runCommand("/image model set anthropic:image-gen-v1");
+
+// Adjust the generated image
+const adjustResult = await agent.useTool("image_adjust", {
+  source: generateResult.path,
+  format: "webp",
+  quality: 90
+});
 ```
 
 ### Testing
@@ -705,6 +827,8 @@ bun test --coverage
 
 The package has the following dependencies:
 
+**Production Dependencies:**
+
 - `@tokenring-ai/agent` (0.2.0) - Agent orchestration system
 - `@tokenring-ai/ai-client` (0.2.0) - AI client and model registry
 - `@tokenring-ai/app` (0.2.0) - Application framework
@@ -714,8 +838,13 @@ The package has the following dependencies:
 - `@tokenring-ai/utility` (0.2.0) - Utility functions
 - `@tokenring-ai/web-host` (0.2.0) - Web server integration
 - `exiftool-vendored` (^35.15.1) - EXIF metadata processing
-- `uuid` (^13.0.0) - Unique ID generation
+- `uuid` (14.0.0) - Unique ID generation
 - `zod` (^4.3.6) - Schema validation
+
+**Development Dependencies:**
+
+- `vitest` (^4.1.1) - Testing framework
+- `typescript` (^6.0.2) - TypeScript compiler
 
 ### Related Components
 
@@ -734,7 +863,7 @@ The package has the following dependencies:
 The package registers the following services:
 
 1. **ImageGenerationService**: Core image generation and indexing functionality
-2. **ChatService**: Registers tools for image generation and search
+2. **ChatService**: Registers tools for image generation, search, and adjustment
 3. **AgentCommandService**: Registers `/image` commands
 4. **RpcService**: Registers `/rpc/image-generation` endpoint
 5. **WebHostService**: Registers `/api/media` static file serving
@@ -745,6 +874,7 @@ The following tools are automatically registered:
 
 - `image_generate`: Generate AI images
 - `image_search`: Search generated images by keyword similarity
+- `image_adjust`: Adjust existing images (format conversion, scaling, brightness)
 
 ### Web Host Integration
 
@@ -772,14 +902,19 @@ GET /api/media/abc123.png  -> Returns the image file
 
 The package includes comprehensive error handling:
 
-| Error | Description | Solution |
-|-------|-------------|----------|
-| `Prompt is required` | Missing prompt parameter | Provide a prompt string |
-| `No index found at {path}` | Index file doesn't exist | Run `/image reindex` first |
-| `Failed to read metadata for {file}` | EXIF read error | Non-fatal, continues processing other files |
-| `Failed to write EXIF data` | EXIF write error | Non-fatal, image still saved |
-| `No image generation model is currently selected` | No model configured | Use `/image model set` or configure in plugin |
-| `No default image generation model was configured` | No models available at startup | Configure `defaultModels` in plugin config |
+| Error                                              | Description                    | Solution                                      |
+|----------------------------------------------------|--------------------------------|-----------------------------------------------|
+| `Prompt is required`                               | Missing prompt parameter       | Provide a prompt string                       |
+| `No index found at {path}`                         | Index file doesn't exist       | Run `/image reindex` first                    |
+| `Failed to read metadata for {file}`               | EXIF read error                | Non-fatal, continues processing other files   |
+| `Failed to write EXIF data`                        | EXIF write error               | Non-fatal, image still saved                  |
+| `No image generation model is currently selected`  | No model configured            | Use `/image model set` or configure in plugin |
+| `No default image generation model was configured` | No models available at startup | Configure `defaultModels` in plugin config    |
+| `Source path is required`                          | Missing source for adjustment  | Provide a source file path                    |
+| `Failed to read source image`                      | Source file not found          | Verify the source file exists                 |
+| `Unsupported output format`                        | Invalid format specified       | Use jpeg, png, or webp                        |
+| `Scale must be greater than 0`                     | Invalid scale value            | Provide a positive scale ratio                |
+| `Brightness must be non-negative`                  | Invalid brightness value       | Provide a non-negative brightness multiplier  |
 
 ## Performance Considerations
 
@@ -801,10 +936,11 @@ pkg/image-generation/
 ├── tools.ts                         # Tool exports
 ├── tools/
 │   ├── generateImage.ts             # image_generate tool implementation
-│   └── searchImages.ts              # image_search tool implementation
+│   ├── searchImages.ts              # image_search tool implementation
+│   └── adjustImage.ts               # image_adjust tool implementation
 ├── commands.ts                      # Chat command exports
 ├── commands/
-│   └── image.ts                     # /image reindex command
+│   ├── image.ts                     # /image reindex command
 │   └── model/
 │       ├── get.ts                   # /image model get command
 │       ├── set.ts                   # /image model set command

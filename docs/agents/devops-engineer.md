@@ -1,7 +1,7 @@
 # DevOps Engineer
 
 **Agent ID:** `devops-engineer`  
-**Application:** TokenRing Coder  
+**Application:** TokenRing One  
 **Category:** `Coding - Specialized`
 
 ## Overview
@@ -10,7 +10,7 @@ Call this agent to set up deployment pipelines, infrastructure, and development 
 
 ## Source Configuration
 
-`app/coder/src/config/agents/specialized/devops-engineer.yaml`
+`app/one/config/agents/specialized/devops-engineer.yaml`
 
 ## Enabled Tools
 

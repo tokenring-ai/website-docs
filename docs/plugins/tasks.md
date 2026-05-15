@@ -706,7 +706,7 @@ await taskService.executeTasks(taskIds, agent);
 await agent.executeTool('tasks_run', {
   tasks: [
     {taskName: "Research", agentType: "researcher", message: "Gather information on topic", context: "..."},
-    {taskName: "Writing", agentType: "writer", message: "Create draft content", context: "..."},
+    {taskName: "Writing", agentType: "documentation-engineer", message: "Create draft content", context: "..."},
     {taskName: "Review", agentType: "editor", message: "Review and edit content", context: "..."}
   ]
 });

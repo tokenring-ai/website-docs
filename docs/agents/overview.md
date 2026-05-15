@@ -1,6 +1,6 @@
 # Agents Overview
 
-TokenRing currently exposes 27 configured agents across `TokenRing Coder` and `TokenRing Writer`.
+TokenRing One exposes specialized agents for direct coding, planning, research, architecture, testing, and operations workflows.
 
 ## Using Agents
 
@@ -9,13 +9,8 @@ Reference an agent by its configured ID with `@agent-id`:
 ```text
 > @leader Build a complete authentication flow
 > @plan Break this feature into implementation steps
-> @writer Draft a blog post about the release
+> @research Compare the current OAuth libraries for this stack
 ```
-
-## Writing
-
-- `manager` - Managing Editor
-- `writer` - Content Writer
 
 ## Coding
 
@@ -28,7 +23,7 @@ Reference an agent by its configured ID with `@agent-id`:
 
 - `research` - Web Research
 
-## Coding - Specialized
+## Specialized Agents
 
 - `accessibility-engineer` - Accessibility Engineer
 - `api-designer` - API Designer
@@ -53,4 +48,4 @@ Reference an agent by its configured ID with `@agent-id`:
 - `test-engineer` - Test Engineer
 - `ui-ux-designer` - UI/UX Designer
 
-Each agent page in this section mirrors the live metadata in the corresponding config under `app/coder/src/config/agents` or `app/writer/src/config/agents`.
+Each agent page in this section mirrors the live metadata in the corresponding config under `app/one/config/agents`.

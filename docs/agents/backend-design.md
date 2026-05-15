@@ -1,7 +1,7 @@
 # Backend Developer
 
 **Agent ID:** `backend-design`  
-**Application:** TokenRing Coder  
+**Application:** TokenRing One  
 **Category:** `Coding - Specialized`
 
 ## Overview
@@ -10,7 +10,7 @@ Call this agent to implement server-side logic, business rules, and data process
 
 ## Source Configuration
 
-`app/coder/src/config/agents/specialized/backend-design.yaml`
+`app/one/config/agents/specialized/backend-design.yaml`
 
 ## Enabled Tools
 

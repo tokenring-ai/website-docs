@@ -1068,7 +1068,7 @@ import { z } from "zod";
 import AgentCheckpointService from "./AgentCheckpointService.ts";
 import AppCheckpointService from "./AppCheckpointService.ts";
 import agentCommands from "./commands.ts";
-import hooks from "./hooks.ts";
+import autoCheckpoint from "./hooks/autoCheckpoint.ts";
 import packageJSON from "./package.json" with { type: "json" };
 import checkpointRPC from "./rpc/checkpoint.ts";
 import { CheckpointConfigSchema } from "./schema.ts";
@@ -1093,7 +1093,7 @@ export default {
       agentCommandService.addAgentCommands(agentCommands)
     );
     app.waitForService(AgentLifecycleService, lifecycleService =>
-      lifecycleService.addHooks(hooks)
+      lifecycleService.addHooks(autoCheckpoint)
     );
     app.waitForService(RpcService, rpcService => {
       rpcService.registerEndpoint(checkpointRPC);
@@ -1260,7 +1260,6 @@ pkg/checkpoint/
 ├── plugin.ts                      # Plugin registration
 ├── index.ts                       # Package exports
 ├── commands.ts                    # Command definitions
-├── hooks.ts                       # Hook definitions
 ├── hooks/
 │   └── autoCheckpoint.ts         # Auto-checkpointing hook
 ├── commands/

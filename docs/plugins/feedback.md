@@ -46,8 +46,8 @@ and interactive content review scenarios where human input is needed.
 | Tool Name | Display Name | Description |
 | :--- | :--- | :--- |
 | `ask_questions` | `Feedback/askQuestions` | Ask questions via chat with form inputs |
-| `getFileFeedback` | `Feedback/getFileFeedback` | Get feedback on file content |
-| `react-feedback` | `Feedback/react-feedback` | Get feedback on React components |
+| `feedback_getFileFeedback` | `Feedback/getFileFeedback` | Get feedback on file content |
+| `feedback_react-feedback` | `Feedback/react-feedback` | Get feedback on React components |
 
 #### Feedback/askQuestions
 
@@ -336,6 +336,85 @@ export default {
 } satisfies TokenRingToolDefinition<typeof inputSchema>;
 ```
 
+### Tool Definitions
+
+#### askQuestions Tool
+
+Located at `pkg/feedback/tools/askQuestions.ts`:
+
+```typescript
+const name = "ask_questions";
+const displayName = "Feedback/askQuestions";
+
+const inputSchema = z.object({
+  message: z.string().describe("A free-form, paragraph sized message..."),
+  questions: z.array(
+    z.object({
+      question: z.string().describe("A question to ask the human..."),
+      choices: z.array(z.string()).describe("Suggested choices..."),
+    }),
+  ),
+});
+```
+
+**Key Implementation Details**:
+
+- Uses `agent.askQuestion()` API with form-based questions
+- Supports iterative questioning for multiple questions
+- Converts choice-based questions to treeSelect type
+- Text questions without choices use text input type
+- Handles `__other__` option for freeform responses
+
+#### getFileFeedback Tool
+
+Located at `pkg/feedback/tools/getFileFeedback.ts`:
+
+```typescript
+const name = "feedback_getFileFeedback";
+const displayName = "Feedback/getFileFeedback";
+
+const inputSchema = z
+  .object({
+    filePath: z.string().describe("The path where the file content should be saved..."),
+    content: z.string().describe("The actual text content to be reviewed."),
+    contentType: z.string().default("text/plain"),
+  })
+  .strict();
+```
+
+**Key Implementation Details**:
+
+- Creates temporary directory for preview server
+- Supports multiple content types (plain text, Markdown, HTML, JSON)
+- Uses marked.js for Markdown rendering
+- Express server for serving preview UI
+- Accept/reject with optional comments
+- Automatic cleanup of temporary files
+
+#### react-feedback Tool
+
+Located at `pkg/feedback/tools/react-feedback.ts`:
+
+```typescript
+const name = "feedback_react-feedback";
+const displayName = "Feedback/react-feedback";
+
+const inputSchema = z
+  .object({
+    code: z.string().describe("The complete source code of the React component..."),
+    file: z.string().exactOptional().describe("The filename/path..."),
+  })
+  .strict();
+```
+
+**Key Implementation Details**:
+
+- Uses esbuild for bundling React components
+- Externalizes react and react-dom as global variables
+- Serves preview via Express server
+- React 18 loaded from unpkg CDN
+- Automatic cleanup after feedback submission
+
 ### Services
 
 The package does not define its own TokenRingService implementations. Instead,
@@ -345,13 +424,46 @@ it relies on existing services:
 - **FileSystemService**: Required by `getFileFeedback` and `reactFeedback`
 - **Agent**: Required for logging and service access
 
+### Plugin Structure
+
+Located at `pkg/feedback/plugin.ts`:
+
+```typescript
+import type { TokenRingPlugin } from "@tokenring-ai/app";
+import { ChatService } from "@tokenring-ai/chat";
+import { z } from "zod";
+import packageJSON from "./package.json" with { type: "json" };
+import tools from "./tools.ts";
+
+const packageConfigSchema = z.object({});
+
+export default {
+  name: packageJSON.name,
+  displayName: "Human Feedback",
+  version: packageJSON.version,
+  description: packageJSON.description,
+  install(app, _config) {
+    app.waitForService(ChatService, chatService => chatService.addTools(...tools));
+  },
+  config: packageConfigSchema,
+} satisfies TokenRingPlugin<typeof packageConfigSchema>;
+```
+
+**Plugin Registration Flow**:
+
+1. Plugin is installed via `app.install(feedbackPlugin)`
+2. Plugin waits for ChatService to be available
+3. All tools are registered with ChatService via `addTools()`
+4. Tools become available for use in chat interactions
+
 ### RPC Endpoints
 
 This package does not define any RPC endpoints.
 
 ### Chat Commands
 
-This package does not define any chat commands.
+This package does not define any chat commands. Tools are invoked through the
+ChatService's tool calling mechanism, not through slash commands.
 
 ### Schema Documentation
 
@@ -365,6 +477,54 @@ const packageConfigSchema = z.object({});
 
 This minimal schema ensures the plugin can be installed without any configuration
 parameters.
+
+### Tool Input Schemas
+
+#### ask_questions Schema
+
+```typescript
+z.object({
+  message: z.string().describe(
+    "A free-form, paragraph sized message, explaining the problem you are " +
+    "facing, or the uncertainty you have about the task."
+  ),
+  questions: z.array(
+    z.object({
+      question: z.string().describe("A question to ask the human..."),
+      choices: z.array(z.string()).describe(
+        "Suggested choices for the human to select from..."
+      ),
+    })
+  ),
+});
+```
+
+#### getFileFeedback Schema
+
+```typescript
+z.object({
+  filePath: z.string().describe(
+    "The path where the file content should be saved if accepted."
+  ),
+  content: z.string().describe("The actual text content to be reviewed."),
+  contentType: z.string().describe(
+    "Optional. The MIME type of the content..."
+  ).default("text/plain"),
+}).strict();
+```
+
+#### react-feedback Schema
+
+```typescript
+z.object({
+  code: z.string().describe(
+    "The complete source code of the React component to be previewed..."
+  ),
+  file: z.string().exactOptional().describe(
+    "The filename/path of the React component to be previewed"
+  ),
+}).strict();
+```
 
 ### Usage Examples
 

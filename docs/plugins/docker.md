@@ -1,35 +1,29 @@
-# @tokenring-ai/docker
+# Docker Integration
 
 ## User Guide
 
 ### Overview
 
-The `@tokenring-ai/docker` package provides AI agents with comprehensive Docker integration capabilities, enabling container orchestration, image management, and secure container execution within the Token Ring ecosystem. It supports both ephemeral container execution for one-off commands and persistent container management through the sandbox system.
+The `@tokenring-ai/docker` package provides comprehensive container management and isolated sandboxing capabilities via Docker. It enables AI agents to interact with Docker through a configurable service and a set of tools for Docker operations. The package supports local Docker via Unix socket, remote hosts via TCP, and optional TLS configuration for secure connections.
 
 ### Key Features
 
-- **Ephemeral Container Execution**: Run one-off commands in temporary containers with automatic cleanup via `docker_dockerRun`
-- **Persistent Container Management**: Create and manage long-running containers via `DockerSandboxProvider`
-- **TLS/SSL Support**: Secure Docker daemon connections with certificate-based authentication
-- **Multiple Docker Hosts**: Support for local Unix sockets (`unix:///var/run/docker.sock`) and remote TCP connections (`tcp://remote:2375`)
-- **Agent Integration**: Seamless integration with Token Ring's agent and service architecture
-- **19 Docker Tools**: Comprehensive toolset for container, image, network, and registry management
+- **Ephemeral Container Execution**: Run one-off commands in temporary containers with automatic cleanup
+- **Persistent Container Management**: Create, manage, and execute commands in long-running containers via `DockerSandboxProvider`
+- **Secure Configuration**: Service-based Docker configuration with TLS support
+- **Agent Integration**: Seamless integration with Token Ring's agent ecosystem and service architecture
+- **Sandbox Provider**: Integrates with the Token Ring sandbox system for container orchestration
+- **Comprehensive Toolset**: 18 Docker tools for managing images, containers, networks, stacks, and more
 - **Shell Safety**: All operations use proper shell escaping via `@tokenring-ai/utility/string/shellEscape`
 - **Workdir Bind Mount**: Ephemeral containers automatically bind mount the project directory at `/workdir`
 
-### Installation
-
-```bash
-bun install @tokenring-ai/docker
-```
-
 ### Chat Commands
 
-This package does not define chat commands. It provides tools that can be invoked by AI agents through the chat service.
+This package does not define chat commands (slash-prefixed commands). All functionality is accessed through tools.
 
 ### Tools
 
-The package provides 19 Docker tools for comprehensive container and image management. Each tool follows the TokenRing tool pattern with proper input validation, error handling, and agent integration.
+The package provides 18 Docker tools for comprehensive container and image management. Each tool follows the TokenRing tool pattern with proper input validation, error handling, and agent integration.
 
 #### Tool Categories
 
@@ -43,657 +37,112 @@ The package provides 19 Docker tools for comprehensive container and image manag
 | Registry             | `docker_authenticateRegistry`                                                                                                                    |
 | Maintenance          | `docker_pruneImages`, `docker_pruneVolumes`                                                                                                      |
 
-### Tool Reference
+#### Container Tools
 
-#### docker_dockerRun
+| Tool Name               | Description                                                                                              |
+|:------------------------|:---------------------------------------------------------------------------------------------------------|
+| `docker_dockerRun`      | Run ephemeral containers with bind mounts. Executes a command in a temporary container that auto-removes |
+| `docker_listContainers` | List Docker containers with options for filtering, formatting, and limiting results                      |
+| `docker_startContainer` | Start one or more Docker containers with optional attach and interactive flags                           |
+| `docker_stopContainer`  | Stop one or more Docker containers with configurable wait time                                           |
+| `docker_removeContainer`| Remove one or more Docker containers with options for force removal and volume cleanup                   |
+| `docker_execInContainer`| Execute a command in a running Docker container with environment variables and working directory support |
 
-Execute a shell command in an ephemeral Docker container that is automatically removed after execution.
+#### Image Tools
 
-**Description**: Runs a shell command in an ephemeral Docker container (docker run --rm). Returns the result (stdout, stderr, exit code). The base directory for the project is bind mounted at `/workdir`, and the working directory of the container is set to `/workdir`.
+| Tool Name           | Description                                                                                      |
+|:--------------------|:-------------------------------------------------------------------------------------------------|
+| `docker_listImages` | List Docker images with options for filtering, formatting, and showing digests                   |
+| `docker_buildImage` | Build a Docker image from a Dockerfile with build arguments and cache options                    |
+| `docker_removeImage`| Remove one or more Docker images with force and no-prune options                                 |
+| `docker_tagImage`   | Tag a Docker image with a new name and/or tag                                                    |
+| `docker_pushImage`  | Push a Docker image to a registry with optional all-tags support                                 |
 
-**Parameters**:
+#### Network Tools
 
-| Parameter      | Type   | Required | Default | Description                                       |
-|----------------|--------|----------|---------|---------------------------------------------------|
-| image          | string | Yes      | -       | Docker image name (e.g., ubuntu:latest)           |
-| cmd            | string | Yes      | -       | Command to run in the container (e.g., 'ls -l /') |
-| timeoutSeconds | number | No       | 60      | Timeout for the command, in seconds (max: 600)    |
+| Tool Name              | Description                                                                 |
+|:-----------------------|:----------------------------------------------------------------------------|
+| `docker_createNetwork` | Create a Docker network with driver, subnet, gateway, and IP range config   |
 
-**Example**:
+#### Stack Tools
 
-```typescript
-import {Agent} from "@tokenring-ai/agent";
-import dockerRun from "@tokenring-ai/docker/tools/dockerRun";
+| Tool Name          | Description                                                                 |
+|:-------------------|:----------------------------------------------------------------------------|
+| `docker_dockerStack`| Launch, update, or remove a Docker stack from the local Docker Swarm mode  |
 
-const agent = new Agent(registry);
-const result = await dockerRun.execute({
-  image: "ubuntu:22.04",
-  cmd: "ls -la /usr/bin",
-  timeoutSeconds: 30
-}, agent);
+#### Logging and Stats Tools
 
-if (result.data.ok) {
-  console.log("Command output:", result.data.stdout);
-} else {
-  console.error("Error:", result.data.stderr);
-}
-```
+| Tool Name                 | Description                                                    |
+|:--------------------------|:---------------------------------------------------------------|
+| `docker_getContainerLogs` | Get logs from a Docker container with follow, timestamps, tail |
+| `docker_getContainerStats`| Get stats from a Docker container with streaming control       |
 
-#### docker_listContainers
+#### Registry Tools
 
-List Docker containers with optional filtering and formatting.
+| Tool Name                    | Description                                                                 |
+|:-----------------------------|:----------------------------------------------------------------------------|
+| `docker_authenticateRegistry`| Authenticate against a Docker registry with password stdin support for security |
 
-**Parameters**:
+#### Maintenance Tools
 
-| Parameter      | Type    | Required | Default | Description                                                 |
-|----------------|---------|----------|---------|-------------------------------------------------------------|
-| all            | boolean | No       | false   | Whether to show all containers (default shows just running) |
-| quiet          | boolean | No       | false   | Whether to only display container IDs                       |
-| limit          | number  | No       | -       | Number of containers to show                                |
-| filter         | string  | No       | -       | Filter output based on conditions                           |
-| size           | boolean | No       | false   | Display total file sizes                                    |
-| format         | string  | No       | "json"  | Format the output (json or table)                           |
-| timeoutSeconds | number  | No       | 30      | Timeout in seconds (max: 120)                               |
-
-**Example**:
-
-```typescript
-import listContainers from "@tokenring-ai/docker/tools/listContainers";
-
-const result = await listContainers.execute(
-  { all: true, format: "json" },
-  agent
-);
-```
-
-#### docker_listImages
-
-List Docker images with optional filtering and formatting.
-
-**Parameters**:
-
-| Parameter      | Type    | Required | Default | Description                                                    |
-|----------------|---------|----------|---------|----------------------------------------------------------------|
-| all            | boolean | No       | false   | Whether to show all images (default hides intermediate images) |
-| quiet          | boolean | No       | false   | Whether to only display image IDs                              |
-| digests        | boolean | No       | false   | Whether to show digests                                        |
-| filter         | string  | No       | -       | Filter output based on conditions                              |
-| format         | string  | No       | "json"  | Format the output (json or table)                              |
-| timeoutSeconds | number  | No       | 30      | Timeout in seconds (max: 120)                                  |
-
-**Example**:
-
-```typescript
-import listImages from "@tokenring-ai/docker/tools/listImages";
-
-const result = await listImages.execute(
-  { all: true, format: "json" },
-  agent
-);
-```
-
-#### docker_buildImage
-
-Build a Docker image from a Dockerfile.
-
-**Parameters**:
-
-| Parameter      | Type                         | Required | Default | Description                                          |
-|----------------|------------------------------|----------|---------|------------------------------------------------------|
-| context        | string                       | Yes      | -       | The build context (directory containing Dockerfile)  |
-| tag            | string                       | Yes      | -       | The tag to apply to the built image                  |
-| dockerfile     | string                       | No       | -       | Path to the Dockerfile (relative to context)         |
-| buildArgs      | Record&lt;string, string&gt; | No       | {}      | Build arguments to pass to the build                 |
-| noCache        | boolean                      | No       | false   | Whether to use cache when building                   |
-| pull           | boolean                      | No       | false   | Whether to always pull newer versions of base images |
-| timeoutSeconds | number                       | No       | 300     | Timeout in seconds (max: 1800)                       |
-
-**Example**:
-
-```typescript
-import buildImage from "@tokenring-ai/docker/tools/buildImage";
-
-const result = await buildImage.execute(
-  {
-    context: "./myapp",
-    tag: "myapp:latest",
-    dockerfile: "Dockerfile",
-    buildArgs: { NODE_ENV: "production" }
-  },
-  agent
-);
-```
-
-#### docker_startContainer
-
-Start one or more Docker containers.
-
-**Parameters**:
-
-| Parameter      | Type               | Required | Default | Description                         |
-|----------------|--------------------|----------|---------|-------------------------------------|
-| containers     | string[]           | Yes      | -       | Container ID(s) or name(s) to start |
-| attach         | boolean            | No       | false   | Whether to attach STDOUT/STDERR     |
-| interactive    | boolean            | No       | false   | Whether to attach container's STDIN |
-| timeoutSeconds | number             | No       | 30      | Timeout in seconds (max: 120)       |
-
-**Example**:
-
-```typescript
-import startContainer from "@tokenring-ai/docker/tools/startContainer";
-
-const result = await startContainer.execute(
-  { containers: ["my-container"], attach: false },
-  agent
-);
-```
-
-#### docker_stopContainer
-
-Stop one or more Docker containers.
-
-**Parameters**:
-
-| Parameter      | Type               | Required | Default | Description                             |
-|----------------|--------------------|----------|---------|-----------------------------------------|
-| containers     | string[]           | Yes      | -       | Container ID(s) or name(s) to stop      |
-| time           | number             | No       | 10      | Seconds to wait for stop before killing |
-| timeoutSeconds | number             | No       | 30      | Timeout in seconds (max: 120)           |
-
-**Example**:
-
-```typescript
-import stopContainer from "@tokenring-ai/docker/tools/stopContainer";
-
-const result = await stopContainer.execute(
-  { containers: ["my-container"], time: 10 },
-  agent
-);
-```
-
-#### docker_removeContainer
-
-Remove one or more Docker containers.
-
-**Parameters**:
-
-| Parameter      | Type               | Required | Default | Description                                   |
-|----------------|--------------------|----------|---------|-----------------------------------------------|
-| containers     | string[]           | Yes      | -       | Container ID(s) or name(s) to remove          |
-| force          | boolean            | No       | false   | Whether to force removal of running container |
-| volumes        | boolean            | No       | false   | Whether to remove anonymous volumes           |
-| link           | boolean            | No       | false   | Whether to remove the specified link          |
-| timeoutSeconds | number             | No       | 30      | Timeout in seconds (max: 120)                 |
-
-**Example**:
-
-```typescript
-import removeContainer from "@tokenring-ai/docker/tools/removeContainer";
-
-const result = await removeContainer.execute(
-  { containers: ["my-container"], force: true },
-  agent
-);
-```
-
-#### docker_execInContainer
-
-Execute a command in a running Docker container.
-
-**Parameters**:
-
-| Parameter      | Type                         | Required | Default | Description                            |
-|----------------|------------------------------|----------|---------|----------------------------------------|
-| container      | string                       | Yes      | -       | Container name or ID                   |
-| commands       | string[]                     | Yes      | -       | Command to execute (array of arguments)|
-| interactive    | boolean                      | No       | false   | Whether to keep STDIN open             |
-| tty            | boolean                      | No       | false   | Whether to allocate a pseudo-TTY       |
-| workdir        | string                       | No       | -       | Working directory inside the container |
-| env            | Record&lt;string, string&gt; | No       | {}      | Environment variables to set           |
-| privileged     | boolean                      | No       | false   | Whether to give extended privileges    |
-| user           | string                       | No       | -       | Username or UID to execute as          |
-| timeoutSeconds | number                       | No       | 30      | Timeout in seconds (max: 300)          |
-
-**Example**:
-
-```typescript
-import execInContainer from "@tokenring-ai/docker/tools/execInContainer";
-
-const result = await execInContainer.execute(
-  {
-    container: "my-container",
-    commands: ["ls", "-la"],
-    workdir: "/app",
-    env: { NODE_ENV: "production" }
-  },
-  agent
-);
-```
-
-#### docker_getContainerLogs
-
-Get logs from a Docker container.
-
-**Parameters**:
-
-| Parameter      | Type    | Required | Default | Description                          |
-|----------------|---------|----------|---------|--------------------------------------|
-| name           | string  | Yes      | -       | The container name or ID             |
-| follow         | boolean | No       | false   | Whether to follow log output         |
-| timestamps     | boolean | No       | false   | Whether to show timestamps           |
-| since          | string  | No       | -       | Show logs since timestamp            |
-| until          | string  | No       | -       | Show logs before timestamp           |
-| tail           | number  | No       | 100     | Number of lines to show from the end |
-| details        | boolean | No       | false   | Whether to show extra details        |
-| timeoutSeconds | number  | No       | 30      | Timeout in seconds (max: 300)        |
-
-**Example**:
-
-```typescript
-import getContainerLogs from "@tokenring-ai/docker/tools/getContainerLogs";
-
-const result = await getContainerLogs.execute(
-  { name: "my-container", tail: 100, timestamps: true },
-  agent
-);
-```
-
-#### docker_getContainerStats
-
-Get stats from a Docker container.
-
-**Parameters**:
-
-| Parameter      | Type               | Required | Default | Description                         |
-|----------------|--------------------|----------|---------|-------------------------------------|
-| containers     | string[]           | Yes      | -       | Container name(s) or ID(s)          |
-| all            | boolean            | No       | false   | Whether to show all containers      |
-| noStream       | boolean            | No       | true    | Disable streaming and pull one stat |
-| format         | string             | No       | "json"  | Format the output (json or table)   |
-| timeoutSeconds | number             | No       | 10      | Timeout in seconds (max: 60)        |
-
-**Example**:
-
-```typescript
-import getContainerStats from "@tokenring-ai/docker/tools/getContainerStats";
-
-const result = await getContainerStats.execute(
-  { containers: ["my-container"], noStream: true },
-  agent
-);
-```
-
-#### docker_removeImage
-
-Remove one or more Docker images.
-
-**Parameters**:
-
-| Parameter      | Type     | Required | Default | Description                              |
-|----------------|----------|----------|---------|------------------------------------------|
-| images         | string[] | Yes      | -       | Image ID(s) or name(s) to remove         |
-| force          | boolean  | No       | false   | Whether to force removal                 |
-| noPrune        | boolean  | No       | false   | Whether to prevent pruning parent images |
-| timeoutSeconds | number   | No       | 30      | Timeout in seconds (max: 120)            |
-
-**Example**:
-
-```typescript
-import removeImage from "@tokenring-ai/docker/tools/removeImage";
-
-const result = await removeImage.execute(
-  { images: ["myapp:latest"], force: true },
-  agent
-);
-```
-
-#### docker_tagImage
-
-Tag a Docker image with a new name and/or tag.
-
-**Parameters**:
-
-| Parameter      | Type   | Required | Default | Description                   |
-|----------------|--------|----------|---------|-------------------------------|
-| sourceImage    | string | Yes      | -       | The source image to tag       |
-| targetImage    | string | Yes      | -       | The target image name and tag |
-| timeoutSeconds | number | No       | 30      | Timeout in seconds (max: 120) |
-
-**Example**:
-
-```typescript
-import tagImage from "@tokenring-ai/docker/tools/tagImage";
-
-const result = await tagImage.execute(
-  { sourceImage: "myapp:latest", targetImage: "myregistry/myapp:v1.0" },
-  agent
-);
-```
-
-#### docker_pushImage
-
-Push a Docker image to a registry.
-
-**Parameters**:
-
-| Parameter      | Type    | Required | Default | Description                    |
-|----------------|---------|----------|---------|--------------------------------|
-| tag            | string  | Yes      | -       | The image tag to push          |
-| allTags        | boolean | No       | false   | Whether to push all tags       |
-| timeoutSeconds | number  | No       | 300     | Timeout in seconds (max: 1800) |
-
-**Example**:
-
-```typescript
-import pushImage from "@tokenring-ai/docker/tools/pushImage";
-
-const result = await pushImage.execute(
-  { tag: "myregistry/myapp:v1.0", allTags: false },
-  agent
-);
-```
-
-#### docker_createNetwork
-
-Create a Docker network.
-
-**Parameters**:
-
-| Parameter      | Type                         | Required | Default  | Description                            |
-|----------------|------------------------------|----------|----------|----------------------------------------|
-| name           | string                       | Yes      | -        | The name of the network                |
-| driver         | string                       | No       | "bridge" | Driver to manage the network           |
-| options        | Record&lt;string, string&gt; | No       | {}       | Driver specific options                |
-| internal       | boolean                      | No       | false    | Restrict external access               |
-| subnet         | string                       | No       | -        | Subnet in CIDR format                  |
-| gateway        | string                       | No       | -        | Gateway for the subnet                 |
-| ipRange        | string                       | No       | -        | Allocate container IP from a sub-range |
-| timeoutSeconds | number                       | No       | 30       | Timeout in seconds (max: 120)          |
-
-**Example**:
-
-```typescript
-import createNetwork from "@tokenring-ai/docker/tools/createNetwork";
-
-const result = await createNetwork.execute(
-  {
-    name: "my-network",
-    driver: "bridge",
-    subnet: "172.20.0.0/16"
-  },
-  agent
-);
-```
-
-#### docker_dockerStack
-
-Launch, update, or remove a Docker stack from the local Docker Swarm.
-
-**Parameters**:
-
-| Parameter      | Type                         | Required | Default | Description                                      |
-|----------------|------------------------------|----------|---------|--------------------------------------------------|
-| action         | "deploy" \| "remove" \| "ps" | Yes      | -       | Action to perform                                |
-| stackName      | string                       | Yes      | -       | Name of the stack                                |
-| composeFile    | string                       | No*      | -       | Path to docker-compose.yml (required for deploy) |
-| timeoutSeconds | number                       | No       | 60      | Timeout in seconds (max: 600)                    |
-
-*Required when action is "deploy"
-
-**Actions**:
-
-- `deploy` - Deploy or update a stack (requires `composeFile`)
-- `remove` - Remove a stack
-- `ps` - List services in a stack
-
-**Example**:
-
-```typescript
-import dockerStack from "@tokenring-ai/docker/tools/dockerStack";
-
-// Deploy a stack
-const result = await dockerStack.execute(
-  {
-    action: "deploy",
-    stackName: "my-stack",
-    composeFile: "./docker-compose.yml"
-  },
-  agent
-);
-
-// Remove a stack
-await dockerStack.execute(
-  {
-    action: "remove",
-    stackName: "my-stack"
-  },
-  agent
-);
-```
-
-#### docker_authenticateRegistry
-
-Authenticate against a Docker registry.
-
-**Parameters**:
-
-| Parameter      | Type    | Required | Default | Description                    |
-|----------------|---------|----------|---------|--------------------------------|
-| server         | string  | Yes      | -       | The registry server URL        |
-| username       | string  | Yes      | -       | Username for the registry      |
-| password       | string  | Yes      | -       | Password for the registry      |
-| email          | string  | No       | -       | Email for the registry account |
-| passwordStdin  | boolean | No       | false   | Take the password from stdin   |
-| timeoutSeconds | number  | No       | 30      | Timeout in seconds (max: 120)  |
-
-**Note**: When `passwordStdin` is true, the password is passed via stdin instead of as a command-line argument for improved security.
-
-**Example**:
-
-```typescript
-import authenticateRegistry from "@tokenring-ai/docker/tools/authenticateRegistry";
-
-const result = await authenticateRegistry.execute(
-  {
-    server: "https://index.docker.io/v1/",
-    username: "myuser",
-    password: "mypassword"
-  },
-  agent
-);
-```
-
-#### docker_pruneImages
-
-Prune unused Docker images.
-
-**Parameters**:
-
-| Parameter      | Type    | Required | Default | Description                                 |
-|----------------|---------|----------|---------|---------------------------------------------|
-| all            | boolean | No       | false   | Remove all unused images, not just dangling |
-| filter         | string  | No       | -       | Filter images based on conditions           |
-| force          | boolean | No       | false   | Whether to force removal (always applied)   |
-| timeoutSeconds | number  | No       | 60      | Timeout in seconds (max: 300)               |
-
-**Note**: The `-f` flag is always used internally to avoid interactive prompts.
-
-**Returns**: Object with `ok`, `exitCode`, `stdout`, `stderr`, and `spaceReclaimed` fields.
-
-**Example**:
-
-```typescript
-import pruneImages from "@tokenring-ai/docker/tools/pruneImages";
-
-const result = await pruneImages.execute(
-  { all: true },
-  agent
-);
-
-console.log(`Space reclaimed: ${result.data.spaceReclaimed}`);
-```
-
-#### docker_pruneVolumes
-
-Prune unused Docker volumes.
-
-**Parameters**:
-
-| Parameter      | Type    | Required | Default | Description                               |
-|----------------|---------|----------|---------|-------------------------------------------|
-| filter         | string  | No       | -       | Filter volumes based on conditions        |
-| force          | boolean | No       | false   | Whether to force removal (always applied) |
-| timeoutSeconds | number  | No       | 60      | Timeout in seconds (max: 300)             |
-
-**Note**: The `-f` flag is always used internally to avoid interactive prompts.
-
-**Returns**: Object with `ok`, `exitCode`, `stdout`, `stderr`, `spaceReclaimed`, and `volumesDeleted` fields.
-
-**Example**:
-
-```typescript
-import pruneVolumes from "@tokenring-ai/docker/tools/pruneVolumes";
-
-const result = await pruneVolumes.execute(
-  { filter: "dangling=true" },
-  agent
-);
-
-console.log(`Space reclaimed: ${result.data.spaceReclaimed}`);
-console.log(`Volumes deleted: ${result.data.volumesDeleted}`);
-```
+| Tool Name              | Description                                                                 |
+|:-----------------------|:----------------------------------------------------------------------------|
+| `docker_pruneImages`   | Prune unused Docker images with optional all and filter parameters          |
+| `docker_pruneVolumes`  | Prune unused Docker volumes with filter support                             |
 
 ### Configuration
 
-#### DockerService Configuration
+#### Docker Configuration Schema
 
 ```yaml
 docker:
-  host: "unix:///var/run/docker.sock"
-  tls:
-    verify: true
-    caCert: "/path/to/ca.crt"
-    cert: "/path/to/client.crt"
-    key: "/path/to/client.key"
-  sandbox: true
+  host: "unix:///var/run/docker.sock"  # Optional: Docker daemon address
+  tls:                                  # Optional: TLS configuration
+    verify: false                       # Enable TLS verification
+    caCert: "/path/to/ca.crt"           # Path to CA certificate
+    cert: "/path/to/client.crt"         # Path to client certificate
+    key: "/path/to/client.key"          # Path to client key
+  sandbox: false                        # Enable sandbox provider
 ```
 
-**Configuration Options**:
+#### Configuration Options
 
-| Option     | Type    | Default | Description                                 |
-|------------|---------|---------|---------------------------------------------|
-| host       | string  | -       | Docker daemon address                       |
-| tls.verify | boolean | false   | Enable TLS verification                     |
-| tls.caCert | string  | -       | Path to CA certificate file                 |
-| tls.cert   | string  | -       | Path to client certificate file             |
-| tls.key    | string  | -       | Path to client key file                     |
-| sandbox    | boolean | false   | Enable Docker sandbox provider registration |
-
-#### Plugin Configuration
-
-```typescript
-import dockerPlugin from "@tokenring-ai/docker/plugin";
-
-await app.install(dockerPlugin, {
-  docker: {
-    host: "unix:///var/run/docker.sock",
-    sandbox: true
-  }
-});
-```
-
-**Note**: The plugin automatically registers tools with `ChatService` and creates a `DockerService`. When
-`sandbox: true` is set, the plugin also registers `DockerSandboxProvider` with `SandboxService`.
+| Option | Type | Default | Description |
+|:-------|:-----|:--------|:------------|
+| `host` | string | undefined | Docker daemon address (e.g., `unix:///var/run/docker.sock`, `tcp://remote:2375`) |
+| `tls.verify` | boolean | false | Enable TLS verification |
+| `tls.caCert` | string | undefined | Path to CA certificate file |
+| `tls.cert` | string | undefined | Path to client certificate file |
+| `tls.key` | string | undefined | Path to client key file |
+| `sandbox` | boolean | false | Enable Docker sandbox provider registration |
 
 #### Environment Variables
 
-The plugin automatically applies environment variables:
+The plugin automatically applies the following environment variables:
 
-| Variable          | Description                              |
-|-------------------|------------------------------------------|
-| DOCKER_HOST       | Sets the Docker host if not configured   |
-| DOCKER_SANDBOX    | Enables sandbox provider if set          |
-| DOCKER_TLS_VERIFY | Enables TLS verification if set          |
-| DOCKER_CERT_PATH  | Can be used to set TLS certificate paths |
+| Variable | Description |
+|:---------|:------------|
+| `DOCKER_HOST` | Sets the Docker host if not configured |
+| `DOCKER_SANDBOX` | Enables sandbox provider if set |
+| `DOCKER_TLS_VERIFY` | Enables TLS verification if set |
+| `DOCKER_CERT_PATH` | Can be used to set TLS certificate paths |
 
 ### Integration
 
-#### Plugin Integration
+The Docker package integrates with the following Token Ring services:
 
-The plugin automatically registers tools and services:
-
-```typescript
-import {TokenRingApp} from "@tokenring-ai/app";
-import dockerPlugin from "@tokenring-ai/docker/plugin";
-
-const app = new TokenRingApp();
-
-await app.install(dockerPlugin, {
-  docker: {
-    host: "unix:///var/run/docker.sock",
-    sandbox: true
-  }
-});
-```
-
-#### Service Integration
-
-Register services directly:
-
-```typescript
-import {TokenRingApp} from "@tokenring-ai/app";
-import {DockerService, DockerSandboxProvider} from "@tokenring-ai/docker";
-import {SandboxService} from "@tokenring-ai/sandbox";
-import {ChatService} from "@tokenring-ai/chat";
-import tools from "@tokenring-ai/docker/tools";
-
-const app = new TokenRingApp();
-
-const dockerService = new DockerService({
-  host: "unix:///var/run/docker.sock"
-});
-
-app.addServices(dockerService);
-
-app.waitForService(ChatService, chatService => {
-  chatService.addTools(tools);
-});
-
-app.waitForService(SandboxService, sandboxService => {
-  sandboxService.registerProvider("docker", new DockerSandboxProvider(dockerService));
-});
-```
+- **ChatService**: Registers all 18 Docker tools for agent use
+- **SandboxService**: Registers the DockerSandboxProvider when sandbox mode is enabled
+- **TerminalService**: Used by `docker_dockerRun` tool for command execution
 
 ### Best Practices
 
-#### Container Management
-
-1. **Use Persistent Containers for Long-Running Workloads**: Create containers once and reuse them for multiple commands
-2. **Always Clean Up**: Use `stopContainer` and `removeContainer` to prevent resource leaks
-3. **Set Appropriate Timeouts**: Configure timeouts based on expected operation duration
-4. **Use Environment Variables**: Pass sensitive data via environment variables rather than command arguments
-
-#### Image Management
-
-1. **Build with Caching**: Use `noCache` only when necessary for debugging
-2. **Tag Images Properly**: Use semantic versioning for image tags
-3. **Prune Regularly**: Use pruning commands to reclaim disk space
-4. **Authenticate Securely**: Use proper authentication for Docker registries
-
-#### Security
-
-1. **Use TLS for Remote Connections**: Enable TLS verification when connecting to remote Docker daemons
-2. **Validate Input**: All tools validate inputs using Zod schemas
-3. **Limit Container Privileges**: Use `--privileged` only when necessary
-4. **Secure Credentials**: Never hardcode credentials; use environment variables or secure storage
-5. **Use passwordStdin**: When authenticating to registries, consider using `passwordStdin: true` for improved security
-
-#### Error Handling
-
-1. **Check Result Status**: Always check `result.data.ok` before accessing output
-2. **Handle Exit Codes**: Use `result.data.exitCode` for detailed error information
-3. **Log Errors**: Use `agent.errorMessage()` for error reporting
-4. **Implement Retries**: Consider retry logic for transient failures
+1. **Timeout Management**: Set appropriate timeout values for long-running operations like image builds (default: 300s, max: 1800s)
+2. **Resource Cleanup**: Always remove containers and images after use to avoid resource exhaustion
+3. **Security**: Use TLS for remote Docker hosts and consider using password stdin for registry authentication
+4. **Error Handling**: Implement proper error handling in agent workflows as tools throw exceptions on failure
+5. **Shell Safety**: All user-provided strings are shell-escaped for safety
+6. **Array Parameters**: Several tools require non-empty arrays for container/image identifiers (`startContainer`, `stopContainer`, `removeContainer`, `removeImage`, `getContainerStats`)
 
 ---
 
@@ -701,31 +150,31 @@ app.waitForService(SandboxService, sandboxService => {
 
 ### Core Components
 
-#### DockerService (Core)
+#### DockerService
 
-The `DockerService` class provides the core Docker configuration and command building functionality.
+The `DockerService` is a Token Ring service that configures Docker connection parameters and builds Docker CLI commands with host and TLS settings.
 
-**File**: `pkg/docker/DockerService.ts`
+**Location**: `pkg/docker/DockerService.ts`
 
 **Properties**:
 
-| Property    | Type         | Description                                           |
-|-------------|--------------|-------------------------------------------------------|
-| name        | string       | Service identifier ("DockerService")                  |
-| description | string       | Service description ("Provides Docker functionality") |
-| options     | DockerConfig | The configuration options                             |
+| Property | Type | Description |
+|:---------|:-----|:------------|
+| `name` | string | Service identifier ("DockerService") |
+| `description` | string | Service description ("Provides Docker functionality") |
+| `options` | DockerConfig | The configuration options |
 
 **Constructor**:
 
 ```typescript
-constructor(options: z.output<typeof DockerConfigSchema>) {}
+constructor(readonly options: z.output<typeof DockerConfigSchema>)
 ```
 
 **Methods**:
 
-| Method           | Return Type | Description                                                       |
-|------------------|-------------|-------------------------------------------------------------------|
-| buildDockerCmd() | string      | Builds the complete Docker CLI command with host and TLS settings |
+| Method | Return Type | Description |
+|:-------|:------------|:------------|
+| `buildDockerCmd()` | string | Builds the Docker CLI command with host and TLS settings |
 
 **Example**:
 
@@ -746,11 +195,11 @@ const dockerCmd = dockerService.buildDockerCmd();
 // Returns: "docker -H unix:///var/run/docker.sock --tls --tlscacert=/path/to/ca.crt --tlscert=/path/to/client.crt --tlskey=/path/to/client.key"
 ```
 
-#### DockerSandboxProvider (Core)
+#### DockerSandboxProvider
 
-Implements `SandboxProvider` to manage persistent Docker containers that can execute multiple commands over time.
+The `DockerSandboxProvider` implements the `SandboxProvider` interface to manage persistent Docker containers. It creates detached containers that can execute multiple commands over time.
 
-**File**: `pkg/docker/DockerSandboxProvider.ts`
+**Location**: `pkg/docker/DockerSandboxProvider.ts`
 
 **Constructor**:
 
@@ -760,41 +209,41 @@ constructor(readonly dockerService: DockerService)
 
 **Methods**:
 
-| Method          | Parameters                           | Return Type                  | Description                              |
-|-----------------|--------------------------------------|------------------------------|------------------------------------------|
-| createContainer | options: SandboxOptions              | Promise&lt;SandboxResult&gt; | Create a new persistent container        |
-| executeCommand  | containerId: string, command: string | Promise&lt;ExecuteResult&gt; | Execute a command in a running container |
-| stopContainer   | containerId: string                  | Promise&lt;void&gt;          | Stop a running container                 |
-| getLogs         | containerId: string                  | Promise&lt;LogsResult&gt;    | Get container logs                       |
-| removeContainer | containerId: string                  | Promise&lt;void&gt;          | Remove a container                       |
+| Method | Parameters | Return Type | Description |
+|:-------|:-----------|:------------|:------------|
+| `createContainer` | `options: SandboxOptions` | `Promise<SandboxResult>` | Create a new persistent container |
+| `executeCommand` | `containerId: string, command: string` | `Promise<ExecuteResult>` | Execute a command in a running container |
+| `stopContainer` | `containerId: string` | `Promise<void>` | Stop a running container |
+| `getLogs` | `containerId: string` | `Promise<LogsResult>` | Get container logs |
+| `removeContainer` | `containerId: string` | `Promise<void>` | Remove a container |
 
 **SandboxOptions**:
 
 ```typescript
 interface SandboxOptions {
-  image?: string;                  // Docker image (default: "ubuntu:latest")
-  workingDir?: string;             // Working directory inside the container
-  environment?: Record&lt;string, string&gt;;  // Environment variables
-  timeout?: number;                // Timeout in seconds (default: 30)
+  image?: string;                    // Docker image (default: "ubuntu:latest")
+  workingDir?: string;               // Working directory inside the container
+  environment?: Record<string, string>;  // Environment variables
+  timeout?: number;                  // Timeout in seconds (default: 30)
 }
 ```
 
 **Example**:
 
 ```typescript
-import {DockerSandboxProvider, DockerService} from "@tokenring-ai/docker";
+import DockerSandboxProvider from "@tokenring-ai/docker/DockerSandboxProvider";
+import DockerService from "@tokenring-ai/docker/DockerService";
 
 const dockerService = new DockerService({});
 const provider = new DockerSandboxProvider(dockerService);
 
 // Create a persistent container
-const {containerId} = await provider.createContainer({
+const { containerId } = await provider.createContainer({
   image: "python:3.9",
-  environment: {PYTHONPATH: "/app"},
+  environment: { PYTHONPATH: "/app" },
   workingDir: "/app"
 });
 
-// Execute multiple commands
 const result = await provider.executeCommand(
   containerId,
   "python -c 'print(\"Hello from container\")'"
@@ -809,20 +258,23 @@ await provider.removeContainer(containerId);
 
 ### Services
 
-#### DockerService (Token Ring Service)
+#### DockerService Implementation
 
-The `DockerService` is a Token Ring service that manages Docker configuration and provides utility methods for building
-Docker commands.
-
-**Registration**:
+The `DockerService` implements the `TokenRingService` interface:
 
 ```typescript
-import {DockerService} from "@tokenring-ai/docker";
+interface TokenRingService {
+  readonly name: string;
+  readonly description: string;
+}
+```
 
-const dockerService = new DockerService({
-  host: "unix:///var/run/docker.sock",
-});
+**Usage in Plugin**:
 
+```typescript
+import DockerService from "./DockerService.ts";
+
+const dockerService = new DockerService(DockerConfigSchema.parse(config.docker));
 app.addServices(dockerService);
 ```
 
@@ -848,14 +300,14 @@ The `DockerSandboxProvider` implements the `SandboxProvider` interface from `@to
 
 ### RPC Endpoints
 
-This package does not define RPC endpoints. It uses the Token Ring tool system for agent communication.
+This package does not define RPC endpoints. All functionality is accessed through tools and services.
 
 ### Usage Examples
 
-#### 1. Ephemeral Container Execution
+#### Ephemeral Container Execution
 
 ```typescript
-import {Agent} from "@tokenring-ai/agent";
+import { Agent } from "@tokenring-ai/agent";
 import dockerRun from "@tokenring-ai/docker/tools/dockerRun";
 
 const agent = new Agent(registry);
@@ -872,7 +324,7 @@ if (result.data.ok) {
 }
 ```
 
-#### 2. Persistent Container Management
+#### Persistent Container Management
 
 ```typescript
 import DockerSandboxProvider from "@tokenring-ai/docker/DockerSandboxProvider";
@@ -905,7 +357,7 @@ await provider.stopContainer(containerId);
 await provider.removeContainer(containerId);
 ```
 
-#### 3. Docker Image Operations
+#### Docker Image Operations
 
 ```typescript
 import buildImage from "@tokenring-ai/docker/tools/buildImage";
@@ -930,7 +382,7 @@ await pushImage.execute({
 }, agent);
 ```
 
-#### 4. Container Lifecycle Management
+#### Container Lifecycle Management
 
 ```typescript
 import listContainers from "@tokenring-ai/docker/tools/listContainers";
@@ -963,29 +415,13 @@ await stopContainer.execute({ containers: ["my-container"] }, agent);
 
 ### Testing
 
-#### Basic Test Setup
+The package uses vitest for testing:
 
-```typescript
-import {describe, expect, it} from 'vitest';
-import {Agent} from '@tokenring-ai/agent';
-import dockerRun from '@tokenring-ai/docker/tools/dockerRun';
-
-describe('dockerRun', () => {
-  it('should execute command in container', async () => {
-    const agent = new Agent(registry);
-    const result = await dockerRun.execute({
-      image: 'alpine:latest',
-      cmd: 'echo "Hello World"',
-      timeoutSeconds: 30
-    }, agent);
-
-    expect(result.data.ok).toBe(true);
-    expect(result.data.stdout).toContain('Hello World');
-  });
-});
+```bash
+bun test
 ```
 
-#### Running Tests
+**Running Tests**:
 
 ```bash
 # Run all tests
@@ -1002,38 +438,99 @@ bun test:coverage
 
 #### Production Dependencies
 
-| Package | Version | Description |
-|---------|---------|-------------|
-| `@tokenring-ai/app` | 0.2.0 | Base application framework |
-| `@tokenring-ai/chat` | 0.2.0 | Chat and tool management |
-| `@tokenring-ai/agent` | 0.2.0 | Agent orchestration |
-| `@tokenring-ai/sandbox` | 0.2.0 | Sandbox service integration |
-| `@tokenring-ai/utility` | 0.2.0 | Shared utilities |
-| `@tokenring-ai/terminal` | 0.2.0 | Terminal service for command execution |
-| `execa` | ^9.6.1 | Process execution |
+| Package | Version | Purpose |
+|:--------|:--------|:--------|
+| `@tokenring-ai/app` | workspace:* | Base application framework |
+| `@tokenring-ai/chat` | workspace:* | Chat service integration |
+| `@tokenring-ai/agent` | workspace:* | Agent orchestration |
+| `@tokenring-ai/sandbox` | workspace:* | Sandbox provider interface |
+| `@tokenring-ai/utility` | workspace:* | Shared utilities |
+| `@tokenring-ai/terminal` | workspace:* | Terminal service for command execution |
 | `zod` | ^4.3.6 | Schema validation |
+| `execa` | ^9.6.1 | Process execution |
 
-#### Development Dependencies
+#### Dev Dependencies
 
-| Package | Version | Description |
-|---------|---------|-------------|
+| Package | Version | Purpose |
+|:--------|:--------|:--------|
 | `vitest` | ^4.1.1 | Testing framework |
-| `typescript` | ^6.0.2 | Type checking |
+| `typescript` | ^6.0.2 | TypeScript compiler |
 
-### Limitations and Considerations
+### Related Components
 
-- **Docker CLI Dependency**: Requires Docker CLI installed on the host system
-- **Unix Socket Permissions**: Local Docker access requires appropriate user permissions
-- **Network Access**: Remote Docker hosts require network connectivity
-- **Error Handling**: Tools throw exceptions on failure; implement proper error handling in agent workflows
-- **Security**: All commands are executed via shell; ensure proper input validation and sanitization
-- **Resource Management**: Containers and images should be properly cleaned up to avoid resource exhaustion
-- **TLS Configuration**: TLS verification requires proper certificate files to be accessible
-- **Force Flags**: The `docker_pruneImages` and `docker_pruneVolumes` tools always use the `-f` flag internally to avoid interactive prompts
-- **Timeout Limits**: Tools have maximum timeout limits to prevent indefinite execution
-- **Shell Escaping**: All user-provided strings are shell-escaped for safety
-- **Array Parameters**: Several tools (`startContainer`, `stopContainer`, `removeContainer`, `removeImage`,
-  `getContainerStats`) require non-empty arrays for container/image identifiers
+- **@tokenring-ai/sandbox**: Sandbox provider interface used by DockerSandboxProvider
+- **@tokenring-ai/chat**: Chat service for tool registration
+- **@tokenring-ai/terminal**: Terminal service for command execution
+- **@tokenring-ai/agent**: Agent orchestration for tool execution
+- **@tokenring-ai/app**: Application framework for plugin registration
+
+### API Reference
+
+#### Public Exports
+
+```typescript
+// Main service and provider
+export { default as DockerService } from "@tokenring-ai/docker/DockerService";
+export { default as DockerSandboxProvider } from "@tokenring-ai/docker/DockerSandboxProvider";
+
+// Configuration schema
+export { DockerConfigSchema } from "@tokenring-ai/docker/schema";
+
+// Types
+export { DockerCommandResult } from "@tokenring-ai/docker/types";
+
+// Plugin
+export { default as dockerPlugin } from "@tokenring-ai/docker/plugin";
+
+// Tools (import as a group)
+import tools from "@tokenring-ai/docker/tools";
+
+// Tools (import individually)
+export { dockerRun } from "@tokenring-ai/docker/tools";
+export { authenticateRegistry } from "@tokenring-ai/docker/tools";
+export { buildImage } from "@tokenring-ai/docker/tools";
+export { createNetwork } from "@tokenring-ai/docker/tools";
+export { dockerStack } from "@tokenring-ai/docker/tools";
+export { execInContainer } from "@tokenring-ai/docker/tools";
+export { getContainerLogs } from "@tokenring-ai/docker/tools";
+export { getContainerStats } from "@tokenring-ai/docker/tools";
+export { listContainers } from "@tokenring-ai/docker/tools";
+export { listImages } from "@tokenring-ai/docker/tools";
+export { pruneImages } from "@tokenring-ai/docker/tools";
+export { pruneVolumes } from "@tokenring-ai/docker/tools";
+export { pushImage } from "@tokenring-ai/docker/tools";
+export { removeContainer } from "@tokenring-ai/docker/tools";
+export { removeImage } from "@tokenring-ai/docker/tools";
+export { startContainer } from "@tokenring-ai/docker/tools";
+export { stopContainer } from "@tokenring-ai/docker/tools";
+export { tagImage } from "@tokenring-ai/docker/tools";
+```
+
+#### DockerCommandResult Interface
+
+```typescript
+interface DockerCommandResult {
+  ok?: boolean | undefined;
+  exitCode?: number | undefined;
+  stdout?: string | undefined;
+  stderr?: string | undefined;
+  error?: string | undefined;
+}
+```
+
+#### Tool Interface
+
+All tools follow this pattern:
+
+```typescript
+interface TokenRingToolDefinition<T = z.ZodType> {
+  name: string;                       // Tool name (e.g., "docker_dockerRun")
+  displayName: string;                 // Display name (e.g., "Docker/dockerRun")
+  description: string;                 // Tool description
+  inputSchema: T;                      // Zod schema for input validation
+  execute: (args: any, agent: Agent) => Promise<{ type: 'json', data: any }>;
+}
+```
 
 ### Package Structure
 
@@ -1046,7 +543,7 @@ pkg/docker/
 ├── types.ts                        # Shared interfaces (DockerCommandResult)
 ├── DockerService.ts                # Core service for Docker configuration
 ├── DockerSandboxProvider.ts        # Sandbox implementation for persistent containers
-├── tools.ts                        # Exported tools (all 19 tools)
+├── tools.ts                        # Exported tools (all 18 tools)
 └── tools/
     ├── dockerRun.ts                # Run ephemeral containers
     ├── listImages.ts               # List Docker images
@@ -1068,14 +565,16 @@ pkg/docker/
     └── pruneVolumes.ts             # Remove unused volumes
 ```
 
-### Related Components
+### Limitations and Considerations
 
-- `@tokenring-ai/sandbox`: Abstract sandbox interface for isolated execution
-- `@tokenring-ai/agent`: Agent system for integration
-- `@tokenring-ai/chat`: Chat service for tool and command integration
-- `@tokenring-ai/app`: Application framework for plugin registration
-- `@tokenring-ai/terminal`: Terminal service for command execution
-
-### License
-
-MIT License - see the root LICENSE file for details.
+- **Docker CLI Dependency**: Requires Docker CLI installed on the host system
+- **Unix Socket Permissions**: Local Docker access requires appropriate user permissions
+- **Network Access**: Remote Docker hosts require network connectivity
+- **Error Handling**: Tools throw exceptions on failure; implement proper error handling in agent workflows
+- **Security**: All commands are executed via shell; ensure proper input validation and sanitization
+- **Resource Management**: Containers and images should be properly cleaned up to avoid resource exhaustion
+- **TLS Configuration**: TLS verification requires proper certificate files to be accessible
+- **Force Flags**: The `docker_pruneImages` and `docker_pruneVolumes` tools always use the `-f` flag internally to avoid interactive prompts
+- **Timeout Limits**: Tools have maximum timeout limits to prevent indefinite execution
+- **Shell Escaping**: All user-provided strings are shell-escaped for safety
+- **Array Parameters**: Several tools (`startContainer`, `stopContainer`, `removeContainer`, `removeImage`, `getContainerStats`) require non-empty arrays for container/image identifiers

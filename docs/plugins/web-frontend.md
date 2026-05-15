@@ -47,7 +47,7 @@ Single-page application with:
 ### Chat Interface
 
 **Header:**
-- TokenRing Coder branding
+- TokenRing One branding
 - Current agent name
 - Switch button to return to agent selector
 
@@ -286,15 +286,15 @@ The built files in `dist/` are automatically served when the package is loaded.
 
 ### Docker
 
-The frontend is included in the TokenRing Coder Docker image:
+The frontend is included in the TokenRing One Docker image:
 
 ```bash
 docker run -ti --rm \
   -v ./your-project:/repo:rw \
   -e OPENAI_API_KEY \
   -p 3000:3000 \
-  ghcr.io/tokenring-ai/tokenring-coder:latest \
-  --source /repo --web
+  ghcr.io/tokenring-ai/one:latest \
+  --projectDirectory /repo --http 0.0.0.0:3000
 ```
 
 Access at `http://localhost:3000`

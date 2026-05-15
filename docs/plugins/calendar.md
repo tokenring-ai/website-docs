@@ -4,7 +4,7 @@ Abstract calendar interface for Token Ring with provider-based event listing, se
 
 ## Overview
 
-The `@tokenring-ai/calendar` package provides a provider-based calendar abstraction for Token Ring agents. It supplies a shared `CalendarService`, a provider interface for concrete implementations, chat tools, slash commands, and scripting functions for calendar workflows.
+The `@tokenring-ai/calendar` package provides a provider-based calendar abstraction for Token Ring agents. It supplies a shared `CalendarService`, a provider interface for concrete implementations, chat tools, slash commands, RPC endpoints, and scripting functions for calendar workflows.
 
 This package is intentionally abstract. Concrete integrations such as Google Calendar register providers into `CalendarService`.
 
@@ -49,6 +49,27 @@ This package is intentionally abstract. Concrete integrations such as Google Cal
 | `/calendar event clear` | Clear the current event selection |
 | `/calendar event delete` | Delete the currently selected event |
 
+### Command Examples
+
+```text
+# Provider commands
+/calendar provider get
+/calendar provider set google-calendar
+/calendar provider select
+/calendar provider reset
+
+# Event commands
+/calendar event list
+/calendar event list 20
+/calendar event search standup
+/calendar event create "Team sync" \| 2026-03-10T17:00:00.000Z \| 2026-03-10T17:30:00.000Z \| Weekly status sync
+/calendar event get
+/calendar event select
+/calendar event info
+/calendar event clear
+/calendar event delete
+```
+
 ### Tools
 
 | Tool | Description |
@@ -60,6 +81,69 @@ This package is intentionally abstract. Concrete integrations such as Google Cal
 | `calendar_createEvent` | Create a new calendar event |
 | `calendar_updateEvent` | Update the currently selected calendar event |
 | `calendar_deleteCurrentEvent` | Delete the currently selected calendar event |
+
+### Tool Schema Examples
+
+```typescript
+// calendar_getUpcomingEvents
+{
+  limit?: number;        // Optional limit (default: 10)
+  from?: string;         // Optional ISO date-time start bound
+  to?: string;           // Optional ISO date-time end bound
+}
+
+// calendar_searchEvents
+{
+  query: string;         // Required search query
+  limit?: number;        // Optional limit (default: 10)
+  from?: string;         // Optional ISO date-time start bound
+  to?: string;           // Optional ISO date-time end bound
+}
+
+// calendar_selectEvent
+{
+  id: string;            // Required event ID
+}
+
+// calendar_getCurrentEvent
+{
+  // No input required
+}
+
+// calendar_createEvent
+{
+  title: string;                    // Required event title
+  startAt: string;                  // Required ISO format start time
+  endAt: string;                    // Required ISO format end time
+  description?: string;             // Optional description
+  location?: string;                // Optional location
+  allDay?: boolean;                 // Optional all-day flag
+  attendees?: Array<{               // Optional attendees
+    email: string;
+    name?: string;
+  }>;
+}
+
+// calendar_updateEvent
+{
+  title?: string;                   // Optional title
+  startAt?: string;                 // Optional ISO format start time
+  endAt?: string;                   // Optional ISO format end time
+  description?: string;             // Optional description
+  location?: string;                // Optional location
+  allDay?: boolean;                 // Optional all-day flag
+  attendees?: Array<{               // Optional attendees
+    email: string;
+    name?: string;
+  }>;
+  status?: "confirmed" | "tentative" | "cancelled";  // Optional status
+}
+
+// calendar_deleteCurrentEvent
+{
+  // No input required
+}
+```
 
 ### Configuration
 
@@ -74,15 +158,17 @@ calendar:
       checkInterval: 300  # seconds between checks
       lookbackMinutes: 15  # how far back to check for new events
       actions:
-        - pattern: "team sync"  # regex pattern to match
+        - pattern: "meeting|sync|standup"  # regex pattern to match
           command: "/calendar event info"  # command to run on match
+        - pattern: "urgent|important"
+          command: "/message alert --priority high"
 ```
 
 #### Configuration Options
 
 | Option | Type | Default | Description |
 |--------|------|---------|-------------|
-| `pollInterval` | number | 300 | Poll interval in seconds (transformed to milliseconds) |
+| `pollInterval` | number | 300 | Poll interval in seconds (transformed to milliseconds internally) |
 | `agentDefaults.provider` | string | undefined | Initial calendar provider for agents |
 | `agentDefaults.watch` | object | undefined | Watch configuration for automated monitoring |
 | `agentDefaults.watch.checkInterval` | number | 300 | Seconds between event checks |
@@ -106,6 +192,7 @@ The calendar package integrates with the following Token Ring services:
 - Use `selectEventById` before update/delete operations
 - Configure watches carefully to avoid excessive command triggering
 - Handle provider errors gracefully in provider implementations
+- Use specific regex patterns for watch actions to avoid false positives
 
 ## Developer Reference
 
@@ -227,6 +314,30 @@ Implements `TokenRingService` and is registered by the package plugin.
 - `ScriptingService` for scripting functions
 - `RpcService` for RPC endpoints
 
+**Key Methods:**
+
+```typescript
+// Attach to agent and initialize state
+attach(agent: Agent, creationContext: AgentCreationContext): void {
+  // Initialize state with agent config
+  // Add provider info to creation context
+  // Start watch if configured
+}
+
+// Start background watch task
+watchCalendar(agent: Agent): void {
+  // Start background task for periodic event checking
+  // Respects agent signal for cancellation
+}
+
+// Check for new events and trigger actions
+checkForNewEvents(watch: CalendarWatchSchema, agent: Agent): Promise<void> {
+  // Fetch events within lookback window
+  // Filter for new events using processedEventIds
+  // Match patterns and execute commands
+}
+```
+
 ### State Management
 
 #### `CalendarState`
@@ -274,23 +385,29 @@ const serializationSchema = z.object({
 
 ```typescript
 const CalendarEventSchema = z.object({
-  id: z.string(),
-  title: z.string(),
-  description: z.string().exactOptional(),
-  location: z.string().exactOptional(),
-  startAt: z.date(),
-  endAt: z.date(),
-  allDay: z.boolean().exactOptional(),
-  attendees: z.array(z.object({
-    email: z.string(),
-    name: z.string().exactOptional(),
-    responseStatus: z.enum(["accepted", "declined", "tentative", "needsAction"]).exactOptional(),
-  })).exactOptional(),
-  status: z.enum(["confirmed", "tentative", "cancelled"]).exactOptional(),
-  url: z.string().exactOptional(),
-  meetingUrl: z.string().exactOptional(),
-  createdAt: z.number().exactOptional(),
-  updatedAt: z.number().exactOptional(),
+  id: z.string(),                              // Unique event identifier
+  title: z.string(),                           // Event title
+  description: z.string().exactOptional(),     // Event description
+  location: z.string().exactOptional(),        // Event location
+  startAt: z.date(),                           // Event start time (Date object)
+  endAt: z.date(),                             // Event end time (Date object)
+  allDay: z.boolean().exactOptional(),         // All-day flag
+  attendees: z.array(                          // Event attendees
+    z.object({
+      email: z.string(),
+      name: z.string().exactOptional(),
+      responseStatus: z.enum([
+        "accepted", "declined", "tentative", "needsAction"
+      ]).exactOptional(),
+    })
+  ).exactOptional(),
+  status: z.enum([                             // Event status
+    "confirmed", "tentative", "cancelled"
+  ]).exactOptional(),
+  url: z.string().exactOptional(),             // Event URL
+  meetingUrl: z.string().exactOptional(),      // Meeting join URL
+  createdAt: z.number().exactOptional(),       // Creation timestamp (Unix ms)
+  updatedAt: z.number().exactOptional(),       // Update timestamp (Unix ms)
 });
 
 type CalendarEvent = z.input<typeof CalendarEventSchema>;
@@ -300,8 +417,8 @@ type CalendarEvent = z.input<typeof CalendarEventSchema>;
 
 ```typescript
 interface CalendarAttendee {
-  email: string;
-  name?: string | undefined;
+  email: string;                               // Required email address
+  name?: string | undefined;                   // Optional display name
   responseStatus?: "accepted" | "declined" | "tentative" | "needsAction";
 }
 ```
@@ -310,16 +427,16 @@ interface CalendarAttendee {
 
 ```typescript
 interface CalendarEventFilterOptions {
-  limit?: number | undefined;
-  from?: Date | undefined;
-  to?: Date | undefined;
+  limit?: number | undefined;                  // Optional limit on results
+  from?: Date | undefined;                     // Optional start time filter
+  to?: Date | undefined;                       // Optional end time filter
 }
 
 interface CalendarEventSearchOptions {
-  query: string;
-  limit?: number | undefined;
-  from?: Date | undefined;
-  to?: Date | undefined;
+  query: string;                               // Required search query
+  limit?: number | undefined;                  // Optional limit on results
+  from?: Date | undefined;                     // Optional start time filter
+  to?: Date | undefined;                       // Optional end time filter
 }
 ```
 
@@ -377,6 +494,134 @@ The package registers RPC endpoints under `/rpc/calendar`:
 | `deleteEvent` | mutation | Delete an event from a specific provider |
 | `getCalendarState` | query | Get calendar state for a specific agent |
 | `updateCalendarState` | mutation | Update calendar state for a specific agent |
+
+#### RPC Schema Definitions
+
+```typescript
+// getCalendarProviders
+{
+  type: "query";
+  input: z.object({});
+  result: z.object({
+    providers: z.array(z.string()),
+  });
+}
+
+// getUpcomingEvents
+{
+  type: "query";
+  input: z.object({
+    provider: z.string(),
+    limit: z.number().int().positive().exactOptional(),
+    from: z.string().datetime().exactOptional(),
+    to: z.string().datetime().exactOptional(),
+  });
+  result: z.object({
+    events: z.array(CalendarEventSchema),
+    count: z.number(),
+    message: z.string(),
+  });
+}
+
+// searchEvents
+{
+  type: "query";
+  input: z.object({
+    provider: z.string(),
+    query: z.string(),
+    limit: z.number().int().positive().exactOptional(),
+  });
+  result: z.object({
+    events: z.array(CalendarEventSchema),
+    count: z.number(),
+    message: z.string(),
+  });
+}
+
+// createEvent
+{
+  type: "mutation";
+  input: z.object({
+    provider: z.string(),
+    title: z.string(),
+    startAt: z.string().datetime(),
+    endAt: z.string().datetime(),
+    description: z.string().exactOptional(),
+    location: z.string().exactOptional(),
+    allDay: z.boolean().exactOptional(),
+  });
+  result: z.object({
+    event: CalendarEventSchema,
+    message: z.string(),
+  });
+}
+
+// updateEvent
+{
+  type: "mutation";
+  input: z.object({
+    id: z.string(),
+    provider: z.string(),
+    updatedData: CalendarEventSchema.omit({
+      id: true,
+      createdAt: true,
+      updatedAt: true,
+    }).partial(),
+  });
+  result: z.object({
+    event: CalendarEventSchema,
+    message: z.string(),
+  });
+}
+
+// deleteEvent
+{
+  type: "mutation";
+  input: z.object({
+    id: z.string(),
+    provider: z.string(),
+  });
+  result: z.object({
+    message: z.string(),
+  });
+}
+
+// getCalendarState
+{
+  type: "query";
+  input: z.object({
+    agentId: z.string(),
+  });
+  result: z.discriminatedUnion("status", [
+    z.object({
+      status: z.literal("success"),
+      selectedEventId: z.string().nullable(),
+      selectedProvider: z.string().nullable(),
+      availableProviders: z.array(z.string()),
+    }),
+    AgentNotFoundSchema,
+  ]);
+}
+
+// updateCalendarState
+{
+  type: "mutation";
+  input: z.object({
+    agentId: z.string(),
+    selectedProvider: z.string().exactOptional(),
+    selectedEventId: z.string().exactOptional(),
+  });
+  result: z.discriminatedUnion("status", [
+    z.object({
+      status: z.literal("success"),
+      selectedEventId: z.string().nullable(),
+      selectedProvider: z.string().nullable(),
+      availableProviders: z.array(z.string()),
+    }),
+    AgentNotFoundSchema,
+  ]);
+}
+```
 
 **Example RPC Usage:**
 

@@ -1,7 +1,7 @@
 # UI/UX Designer
 
 **Agent ID:** `ui-ux-designer`  
-**Application:** TokenRing Coder  
+**Application:** TokenRing One  
 **Category:** `Coding - Specialized`
 
 ## Overview
@@ -10,7 +10,7 @@ Call this agent to design user interfaces, user experiences, and visual prototyp
 
 ## Source Configuration
 
-`app/coder/src/config/agents/specialized/ui-ux-designer.yaml`
+`app/one/config/agents/specialized/ui-ux-designer.yaml`
 
 ## Enabled Tools
 

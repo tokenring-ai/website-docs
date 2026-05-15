@@ -24,7 +24,7 @@ The `@tokenring-ai/drizzle-storage` package provides a production-ready, multi-d
 ### Installation
 
 ```bash
-bun install @tokenring-ai/drizzle-storage
+bun add @tokenring-ai/drizzle-storage
 ```
 
 ### Chat Commands
@@ -42,7 +42,7 @@ This package does not define any tools. It is a storage backend package used by 
 The package includes a TokenRing plugin that automatically registers the storage service. Configure it in your Token Ring config file using the `drizzleStorage` key:
 
 ```javascript
-// .tokenring/coder-config.mjs
+// .tokenring/one-config.mjs
 export default {
   drizzleStorage: {
     type: "postgres",
@@ -311,7 +311,7 @@ console.log('Latest app checkpoint:', latest);
 #### Using the Plugin
 
 ```javascript
-// .tokenring/coder-config.mjs
+// .tokenring/one-config.mjs
 export default {
   drizzleStorage: {
     type: "sqlite",
@@ -420,8 +420,8 @@ All database types use the same logical schema with two tables: `AgentCheckpoint
 | `id` | Integer/BigInt | Auto-incrementing primary key |
 | `sessionId` | Text | Session identifier |
 | `agentId` | Text | Agent identifier |
-| `agentType` | Text | Type of agent (e.g., "coder", "writer") |
 | `name` | Text | Checkpoint name |
+| `agentType` | Text | Type of agent (e.g., "coder", "writer") |
 | `state` | Text | JSON-serialized state data |
 | `createdAt` | Integer/BigInt | Unix timestamp |
 
@@ -440,26 +440,26 @@ All database types use the same logical schema with two tables: `AgentCheckpoint
 
 ```text
 pkg/drizzle-storage/
-├── index.ts                    # Package entry point with exports
-├── plugin.ts                   # TokenRingPlugin implementation
-├── schema.ts                   # Combined configuration schema
-├── package.json                # Dependencies and scripts
-├── README.md                   # Documentation
-├── DrizzleAgentStateStorage.test.ts  # Test suite
-├── vitest.config.ts            # Test configuration
-├── LICENSE                     # MIT License
-├── sqlite/                     # SQLite implementation
-│   ├── createSQLiteStorage.ts  # SQLiteStorage class
-│   ├── schema.ts               # Drizzle schema
-│   └── drizzle.config.ts       # Drizzle configuration
-├── mysql/                      # MySQL implementation
-│   ├── createMySQLStorage.ts   # MySQLStorage class
-│   ├── schema.ts               # Drizzle schema
-│   └── drizzle.config.ts       # Drizzle configuration
-└── postgres/                   # PostgreSQL implementation
-    ├── createPostgresStorage.ts # PostgresStorage class
-    ├── schema.ts               # Drizzle schema
-    └── drizzle.config.ts       # Drizzle configuration
+├── index.ts                                    # Package entry point with exports
+├── plugin.ts                                   # TokenRingPlugin implementation
+├── schema.ts                                   # Combined configuration schema
+├── package.json                                # Dependencies and scripts
+├── README.md                                   # Documentation
+├── DrizzleAgentStateStorage.test.ts            # Test suite
+├── vitest.config.ts                            # Test configuration
+├── LICENSE                                     # MIT License
+├── sqlite/                                     # SQLite implementation
+│   ├── createSQLiteStorage.ts                  # SQLiteStorage class
+│   ├── schema.ts                               # Drizzle schema
+│   └── drizzle.config.ts                       # Drizzle configuration
+├── mysql/                                      # MySQL implementation
+│   ├── createMySQLStorage.ts                   # MySQLStorage class
+│   ├── schema.ts                               # Drizzle schema
+│   └── drizzle.config.ts                       # Drizzle configuration
+└── postgres/                                   # PostgreSQL implementation
+    ├── createPostgresStorage.ts                # PostgresStorage class
+    ├── schema.ts                               # Drizzle schema
+    └── drizzle.config.ts                       # Drizzle configuration
 ```
 
 ### Scripts

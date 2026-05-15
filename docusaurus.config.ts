@@ -108,15 +108,11 @@ const config: Config = {
           ],
         },
         {
-          title: 'Apps',
+          title: 'App',
           items: [
             {
-              label: 'TokenRing Coder',
-              to: '/docs/apps/coder',
-            },
-            {
-              label: 'TokenRing Writer',
-              to: '/docs/apps/writer',
+              label: 'TokenRing One',
+              to: '/docs/apps/one',
             },
           ],
         },

@@ -1,7 +1,7 @@
 # Accessibility Engineer
 
 **Agent ID:** `accessibility-engineer`  
-**Application:** TokenRing Coder  
+**Application:** TokenRing One  
 **Category:** `Coding - Specialized`
 
 ## Overview
@@ -10,7 +10,7 @@ Specialized agent for ensuring web accessibility and usability compliance. Focus
 
 ## Source Configuration
 
-`app/coder/src/config/agents/specialized/accessibility-engineer.yaml`
+`app/one/config/agents/specialized/accessibility-engineer.yaml`
 
 ## Enabled Tools
 

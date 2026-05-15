@@ -2,7 +2,7 @@
 
 ## Overview
 
-The `@tokenring-ai/chrome` package provides Chrome browser automation for Token Ring using Puppeteer. It enables AI agents to perform web searches, news searches, web scraping, and screenshot capture in a headless browser environment.
+The `@tokenring-ai/chrome` package provides Chrome browser automation for Token Ring using Puppeteer. It enables AI agents to perform web searches, news searches, web scraping, screenshot capture, and custom script execution in a headless browser environment.
 
 ### Key Features
 
@@ -16,12 +16,12 @@ The `@tokenring-ai/chrome` package provides Chrome browser automation for Token 
 - Browser lifecycle management (launch vs connect)
 - Support for rendered and non-rendered page fetching
 - Agent state management for browser configuration
-- Custom Puppeteer script execution tool
+- Custom Puppeteer script execution with full browser access
 
 ## Installation
 
 ```bash
-bun install @tokenring-ai/chrome
+bun add @tokenring-ai/chrome
 ```
 
 ## Configuration
@@ -516,6 +516,7 @@ Captures visual screenshots of web pages with configurable viewport dimensions.
   - `mimeType`: "image/png"
   - `encoding`: "base64"
   - `body`: Base64-encoded PNG image data
+  - `sendToLLM: true` - The attachment is sent to the LLM
 
 **Usage Example:**
 
@@ -542,7 +543,7 @@ fs.writeFileSync('screenshot.png', result.attachments[0].body, 'base64');
 - Sets viewport with `deviceScaleFactor: 1` for 1:1 pixel ratio
 - Waits for `networkidle2` before capturing screenshot
 - Captures only the visible viewport (not full page) with `fullPage: false`
-- Returns screenshot as base64-encoded PNG in attachments
+- Returns screenshot as base64-encoded PNG in attachments with `sendToLLM: true`
 - Browser is **closed** (not disconnected) after operation completion via `browser.close()`
 - Returns `TokenRingToolResult` with `result` message and `attachments` array
 
@@ -996,11 +997,11 @@ The package depends on the following core packages:
 
 **Runtime Dependencies:**
 
-- `@tokenring-ai/app` 0.2.0 - Application framework and plugin system
-- `@tokenring-ai/chat` 0.2.0 - Chat service and tool definitions
-- `@tokenring-ai/agent` 0.2.0 - Agent framework for tool execution
-- `@tokenring-ai/websearch` 0.2.0 - Base WebSearchProvider and result types
-- `@tokenring-ai/utility` 0.2.0 - Utility functions for deep merging
+- `@tokenring-ai/app` workspace:* - Application framework and plugin system
+- `@tokenring-ai/chat` workspace:* - Chat service and tool definitions
+- `@tokenring-ai/agent` workspace:* - Agent framework for tool execution
+- `@tokenring-ai/websearch` workspace:* - Base WebSearchProvider and result types
+- `@tokenring-ai/utility` workspace:* - Utility functions for deep merging
 - `puppeteer` ^24.40.0 - Headless Chrome browser automation
 - `turndown` ^7.2.4 - HTML to Markdown conversion
 - `zod` ^4.3.6 - Runtime type validation

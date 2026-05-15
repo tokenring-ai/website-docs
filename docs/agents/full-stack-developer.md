@@ -1,7 +1,7 @@
 # Full Stack Developer
 
 **Agent ID:** `full-stack-developer`  
-**Application:** TokenRing Coder  
+**Application:** TokenRing One  
 **Category:** `Coding - Specialized`
 
 ## Overview
@@ -10,7 +10,7 @@ Call this agent to implement complete features across frontend and backend. Prov
 
 ## Source Configuration
 
-`app/coder/src/config/agents/specialized/full-stack-developer.yaml`
+`app/one/config/agents/specialized/full-stack-developer.yaml`
 
 ## Enabled Tools
 

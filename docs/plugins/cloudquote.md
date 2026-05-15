@@ -186,7 +186,7 @@ range. **Note: This tool uses the NewsRPM API, not the CloudQuote API.**
 | `start`   | number         | No       | Number of records to skip before returning results                    |
 | `count`   | number (1-100) | No       | Number of records to retrieve (max 100)                               |
 | `minDate` | string         | No       | Article publication date-time (ISO 8601) for start of date-time range |
-| `maxDate` | string         | No       | Article publication date-time (ISO 8601) for start of date-time range |
+| `maxDate` | string         | No       | Article publication date-time (ISO 8601) for end of date-time range   |
 
 **Important:** This tool uses the `getHeadlinesBySecurity` service method, which
 makes requests to `http://api.newsrpm.com` (NewsRPM API), not the CloudQuote API.
@@ -356,7 +356,7 @@ use the same API key for authentication.
 - Consider caching frequently accessed data to reduce API calls
 - For `getHeadlinesBySecurity`, use `count` parameter to limit results (max 100)
 
-#### Error Handling
+#### Error Handling in Tool Usage
 
 Always handle `CloudQuoteError` exceptions appropriately:
 
@@ -388,8 +388,7 @@ try {
 #### CloudQuoteService
 
 The `CloudQuoteService` is the core service that manages authentication and API
-communication with CloudQuote. It extends `HttpService` and implements the
-`TokenRingService` interface.
+communication with CloudQuote. It implements the `TokenRingService` interface.
 
 ##### Service Properties
 
@@ -397,8 +396,6 @@ communication with CloudQuote. It extends `HttpService` and implements the
 |---------------|--------|-----------------------------------------------------------|
 | `name`        | string | Service identifier (`"CloudQuote"`)                       |
 | `description` | string | Human-readable service description                        |
-| `baseUrl`     | string | CloudQuote API endpoint URL (`https://api.cloudquote.io`) |
-| `timeout`     | number | Request timeout in milliseconds (`10,000`)                |
 
 ##### Constructor
 
@@ -433,7 +430,7 @@ serialization and error handling.
 **Parameters:**
 
 - `apiPath` (string): API endpoint path (e.g., `'fcon/getQuote'`)
-- `params` (Record&lt;string, string | number | undefined | null&gt;): Query parameters
+- `params` (Record<string, string | number | undefined | null>): Query parameters
 
 **Returns:** `Promise<T>` - Response data
 
@@ -478,16 +475,15 @@ const headlines = await cloudQuoteService.getHeadlinesBySecurity({
 **Important:** This method makes requests to `http://api.newsrpm.com`, not the
 CloudQuote API. The same API key is used for authentication.
 
-###### `getPriceChart(params: any): { svgDataUri: string }`
+###### `getPriceChart(params: { symbol: string; interval: string }): { svgDataUri: string }`
 
 Generate a price chart URL for a security. This method returns a URL that can be
 directly used as an image source. **Note: This is a service method only and is
-not exposed as a tool. The method returns a static URL string, not an SVG data
-URI.**
+not exposed as a tool. The method returns a URL string, not an SVG data URI.**
 
 **Parameters:**
 
-- `params` (any): Chart parameters
+- `params` (object): Chart parameters
   - `symbol` (string): Ticker symbol
   - `interval` (string): Chart interval (e.g., `'1D'`, `'5D'`, `'1M'`)
 
@@ -505,10 +501,10 @@ console.log(chart.svgDataUri);
 ```
 
 **Note:** The returned URL is a static URL from financialcontent.com Chart
-service, not an actual SVG data URI. The `svgDataUri` property name is a
-misnomer - it returns a regular URL string.
+service. The `svgDataUri` property name is a misnomer - it returns a regular URL
+string.
 
-##### Error Handling
+##### Error Handling in Service
 
 The service uses `CloudQuoteError` for all API-related errors:
 
@@ -550,8 +546,8 @@ try {
 
 #### CloudQuoteService Implementation
 
-The `CloudQuoteService` extends `HttpService` from `@tokenring-ai/utility` and
-implements `TokenRingService`.
+The `CloudQuoteService` implements `TokenRingService` and uses `HTTPRetriever`
+from `@tokenring-ai/utility` for making HTTP requests.
 
 **Service Registration:**
 
@@ -763,19 +759,17 @@ const headlines = await agent.invokeTool('cloudquote_getHeadlinesBySecurity', {
 // Response contains news headlines with automatically populated links
 console.log(headlines);
 /*
-{
-  rows: [
-    {
-      title: "Apple Reports Record Quarterly Earnings",
-      bodyId: "12345",
-      slug: "apple-records-earnings",
-      link: "https://www.financialcontent.com/article/apple-records-earnings",
-      // Auto-populated
-      published: "2024-01-15T10:30:00Z"
-    },
-    // ... additional headlines
-  ]
-}
+[
+  {
+    title: "Apple Reports Record Quarterly Earnings",
+    bodyId: "12345",
+    slug: "apple-records-earnings",
+    link: "https://www.financialcontent.com/article/apple-records-earnings",
+    // Auto-populated
+    published: "2024-01-15T10:30:00Z"
+  },
+  // ... additional headlines
+]
 */
 ```
 
@@ -852,15 +846,11 @@ consider the following test cases:
   integration
 - **@tokenring-ai/rpc**: RPC service for endpoint registration and programmatic
   access
-- **@tokenring-ai/utility**: HTTP utilities including `HttpService` base class
-  and `doFetchWithRetry`
+- **@tokenring-ai/utility**: HTTP utilities including `HTTPRetriever` for making
+  API requests
 
 #### Utility Packages
 
-- **@tokenring-ai/utility/http/HttpService**: Base HTTP service class for making
-  API requests
-- **@tokenring-ai/utility/http/doFetchWithRetry**: HTTP request utility with
-  retry logic
 - **date-fns-tz**: Timezone-aware date formatting library
 - **zod**: Schema validation and type inference
 
@@ -888,7 +878,7 @@ the API response. The schema includes the following field categories:
 
 - `Price`, `PrevClose`, `Ask`, `Bid`, `High`, `Low`, `Open`, `AfterHoursPrice`
 
-**Calculated price fields (added by transformRow):**
+**Calculated price fields:**
 
 - `Change`, `ChangePercent`
 
@@ -919,11 +909,11 @@ the API response. The schema includes the following field categories:
 - `ExchangeName`, `ExchangeShortName`, `ExchangePrefixCode`,
   `ExchangeDefaultCurrency`
 
-**Security type information (added by typeMap):**
+**Security type information:**
 
 - `SecurityTypeName`, `SecurityTypeCode`
 
-**Currency information (added by currencyMap):**
+**Currency information:**
 
 - `NominalCurrencyCode`, `NominalCurrencyName`
 
@@ -995,7 +985,7 @@ in `YYYY-MM-DD` format using the `America/New_York` timezone.
 
 ## Package Structure
 
-```
+```text
 pkg/cloudquote/
 ├── CloudQuoteService.ts    # Core service implementation
 ├── plugin.ts               # Plugin initialization and registration

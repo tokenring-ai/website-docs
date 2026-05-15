@@ -129,7 +129,7 @@ Protocol and integration plugins.
 
 ### Installation
 
-Plugins are included in the TokenRing Coder monorepo. Install dependencies:
+Plugins are included in the TokenRing One monorepo. Install dependencies:
 
 ```bash
 bun install
@@ -150,7 +150,7 @@ const agent = new Agent({
 
 ### Configuration
 
-Configure plugins in `.tokenring/coder-config.mjs`:
+Configure plugins in `.tokenring/one-config.mjs`:
 
 ```javascript
 export default {

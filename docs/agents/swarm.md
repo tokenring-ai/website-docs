@@ -1,7 +1,7 @@
 # Swarm Agent
 
 **Agent ID:** `swarm`  
-**Application:** TokenRing Coder  
+**Application:** TokenRing One  
 **Category:** `Coding`
 
 ## Overview
@@ -10,7 +10,7 @@ Orchestrates multiple agents in parallel to execute complex tasks. Analyzes requ
 
 ## Source Configuration
 
-`app/coder/src/config/agents/coding/swarm.yaml`
+`app/one/config/agents/coding/swarm.yaml`
 
 ## Enabled Tools
 

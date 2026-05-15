@@ -1,7 +1,7 @@
 # SEO Engineer
 
 **Agent ID:** `seo-engineer`  
-**Application:** TokenRing Coder  
+**Application:** TokenRing One  
 **Category:** `Coding - Specialized`
 
 ## Overview
@@ -10,7 +10,7 @@ Specialized agent for analyzing and optimizing frontend pages for search engine 
 
 ## Source Configuration
 
-`app/coder/src/config/agents/specialized/seo-engineer.yaml`
+`app/one/config/agents/specialized/seo-engineer.yaml`
 
 ## Enabled Tools
 

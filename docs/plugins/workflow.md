@@ -158,7 +158,7 @@ Array<{
 ```typescript
 const workflows = await rpcClient.listWorkflows({});
 // Returns: [
-//   { name: "morning-article", displayName: "MarketMinute Morning Article", description: "...", agentType: "contentWriter", steps: [...] },
+//   { name: "morning-article", displayName: "MarketMinute Morning Article", description: "...", agentType: "documentation-engineer", steps: [...] },
 //   { name: "daily-report", displayName: "Daily Report Generator", description: "...", agentType: "reportGenerator", steps: [...] }
 // ]
 ```
@@ -192,7 +192,7 @@ Retrieves a specific workflow by name.
 **Example:**
 ```typescript
 const workflow = await rpcClient.getWorkflow({ name: "morning-article" });
-// Returns: { key: "morning-article", displayName: "MarketMinute Morning Article", description: "...", agentType: "contentWriter", steps: [...] }
+// Returns: { key: "morning-article", displayName: "MarketMinute Morning Article", description: "...", agentType: "documentation-engineer", steps: [...] }
 ```
 
 ### `spawnWorkflow`
@@ -280,7 +280,7 @@ Executes a workflow by name on the current agent.
 
 **Help Text:**
 ```markdown
-# /workflow run <name>
+# `/workflow run <name>`
 
 Run a workflow by name on the current agent.
 
@@ -312,7 +312,7 @@ Spawns a new agent and runs the specified workflow on it.
 
 **Help Text:**
 ```markdown
-# /workflow spawn <name>
+# `/workflow spawn <name>`
 
 Spawn a new agent and run a workflow on it.
 
@@ -367,7 +367,7 @@ export default {
     "my-workflow": {
       displayName: "My Workflow",
       description: "A sample workflow",
-      agentType: "contentWriter",
+      agentType: "documentation-engineer",
       steps: ["/chat Do something"]
     }
   }
@@ -386,7 +386,7 @@ export default {
     "morning-article": {
       displayName: "MarketMinute Morning Article Generator (9AM EST)",
       description: "Automatically write and publish the 9AM EST morning market minute articles",
-      agentType: "contentWriter",
+      agentType: "documentation-engineer",
       steps: [
         "/tools enable @tokenring-ai/research/research",
         "/tools enable @tokenring-ai/agent/runAgent",
@@ -410,7 +410,7 @@ export default {
     "content-pipeline": {
       displayName: "Content Creation Pipeline",
       description: "Research, write, and publish content",
-      agentType: "contentWriter",
+      agentType: "documentation-engineer",
       steps: [
         "/tools enable @tokenring-ai/research/research",
         "/tools enable @tokenring-ai/websearch/searchNews",

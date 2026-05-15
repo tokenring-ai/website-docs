@@ -2,19 +2,21 @@
 
 ## User Guide
 
-### Overview
+### Overview and Purpose
 
-The Code Watch plugin provides a background service that monitors configured filesystems for file changes and automatically triggers AI agents when specific comment patterns are detected in code files. This enables a workflow where developers can embed AI instructions directly in their code using special comment markers.
+The `@tokenring-ai/code-watch` plugin provides a background service for the Token Ring AI ecosystem that monitors configured filesystems for file changes, detects special AI comment patterns (like `# AI!` or `// AI!`), and automatically spawns agents to execute code modifications based on those instructions.
+
+This service uses polling-based file system watching with configurable intervals and stability thresholds to debounce rapid file changes. When an AI comment with the `AI!` marker is detected, the service spawns a configured agent type in headless mode to execute the requested code modifications.
 
 ### Key Features
 
-- **File System Monitoring**: Watches multiple filesystems for file additions and changes using polling-based watchers
-- **AI Comment Detection**: Detects AI triggers in Python/shell (`# AI!`) and C-style (`// AI!`) comments
-- **Smart Change Handling**: Uses stability thresholds to debounce rapid file changes and avoid redundant processing
-- **Concurrent Processing**: Processes files concurrently with configurable worker queue
-- **Agent Integration**: Automatically spawns configured agents to execute AI instructions in headless mode
-- **Ignore Filtering**: Respects ignore patterns from filesystem providers (e.g., `.gitignore`)
+- **File System Monitoring**: Watches multiple filesystems for file additions and changes using virtual filesystem providers
+- **AI Comment Detection**: Detects AI triggers in both Python/shell (`#`) and C-style (`//`) comments
+- **Smart Change Handling**: Uses stability thresholds to debounce rapid file changes
+- **Concurrent Processing**: Processes files concurrently with configurable worker queue via `async.queue`
+- **Agent Integration**: Automatically spawns appropriate agents to execute AI instructions in headless mode
 - **Error Handling**: Comprehensive error logging and graceful failure handling
+- **Ignore Filtering**: Respects ignore patterns from filesystem providers
 
 ### Chat Commands
 
@@ -30,9 +32,9 @@ The Code Watch plugin requires configuration to specify which filesystems to mon
 
 #### Configuration Options
 
-| Field         | Type                               | Required | Description                          |
-|:--------------|:-----------------------------------|:---------|:-------------------------------------|
-| `codewatch`   | `CodeWatchConfig`                  | No       | Main configuration object            |
+| Field       | Type              | Required | Description                          |
+|:------------|:------------------|:---------|:-------------------------------------|
+| `codewatch` | `CodeWatchConfig` | No       | Main configuration object            |
 
 #### CodeWatchConfig
 
@@ -278,6 +280,35 @@ app.install(codeWatch, {
 await app.run();
 ```
 
+#### Multiple Filesystem Configuration
+
+```typescript
+import TokenRingApp from '@tokenring-ai/app';
+import codeWatch from '@tokenring-ai/code-watch/plugin';
+
+const app = new TokenRingApp();
+
+app.install(codeWatch, {
+  codewatch: {
+    filesystems: {
+      local: {
+        pollInterval: 1000,
+        stabilityThreshold: 2000,
+        agentType: 'code-modification-agent'
+      },
+      project: {
+        pollInterval: 1500,
+        stabilityThreshold: 2500,
+        agentType: 'project-agent'
+      }
+    },
+    concurrency: 3
+  }
+});
+
+await app.run();
+```
+
 #### AI Comment Examples
 
 **Python/Shell Style:**
@@ -331,22 +362,22 @@ bun test:coverage
 
 #### Production Dependencies
 
-| Package                    | Version | Description                        |
-|:---------------------------|:--------|:-----------------------------------|
-| `@tokenring-ai/app`        | 0.2.0   | Core application framework         |
-| `@tokenring-ai/agent`      | 0.2.0   | Agent management and orchestration |
-| `@tokenring-ai/filesystem` | 0.2.0   | File system abstraction            |
-| `@tokenring-ai/utility`    | 0.2.0   | Utility functions and helpers      |
-| `zod`                      | ^4.3.6  | Schema validation                  |
-| `async`                    | ^3.2.6  | Concurrent processing utilities    |
+| Package                    | Version    | Description                        |
+|:---------------------------|:-----------|:-----------------------------------|
+| `@tokenring-ai/app`        | workspace:* | Core application framework         |
+| `@tokenring-ai/agent`      | workspace:* | Agent management and orchestration |
+| `@tokenring-ai/filesystem` | workspace:* | File system abstraction            |
+| `@tokenring-ai/utility`    | workspace:* | Utility functions and helpers      |
+| `zod`                      | ^4.3.6     | Schema validation                  |
+| `async`                    | ^3.2.6     | Concurrent processing utilities    |
 
 #### Development Dependencies
 
-| Package        | Version | Description            |
-|:---------------|:--------|:-----------------------|
-| `vitest`       | ^4.1.1  | Testing framework      |
-| `typescript`   | ^6.0.2  | TypeScript compiler    |
-| `@types/async` | ^3.2.25 | Async type definitions |
+| Package        | Version  | Description            |
+|:---------------|:---------|:-----------------------|
+| `vitest`       | ^4.1.1   | Testing framework      |
+| `typescript`   | ^6.0.2   | TypeScript compiler    |
+| `@types/async` | ^3.2.25  | Async type definitions |
 
 ### Related Components
 

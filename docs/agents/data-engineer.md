@@ -1,7 +1,7 @@
 # Data Engineer
 
 **Agent ID:** `data-engineer`  
-**Application:** TokenRing Coder  
+**Application:** TokenRing One  
 **Category:** `Coding - Specialized`
 
 ## Overview
@@ -10,7 +10,7 @@ Call this agent to implement data migrations, ETL pipelines, and data processing
 
 ## Source Configuration
 
-`app/coder/src/config/agents/specialized/data-engineer.yaml`
+`app/one/config/agents/specialized/data-engineer.yaml`
 
 ## Enabled Tools
 

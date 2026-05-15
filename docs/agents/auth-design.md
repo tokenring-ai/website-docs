@@ -1,7 +1,7 @@
 # Auth System Designer
 
 **Agent ID:** `auth-design`  
-**Application:** TokenRing Coder  
+**Application:** TokenRing One  
 **Category:** `Coding - Specialized`
 
 ## Overview
@@ -10,7 +10,7 @@ Call this agent to design secure authentication and authorization systems. Provi
 
 ## Source Configuration
 
-`app/coder/src/config/agents/specialized/auth-design.yaml`
+`app/one/config/agents/specialized/auth-design.yaml`
 
 ## Enabled Tools
 

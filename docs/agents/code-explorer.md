@@ -1,7 +1,7 @@
 # Code Explorer
 
 **Agent ID:** `code-explorer`  
-**Application:** TokenRing Coder  
+**Application:** TokenRing One  
 **Category:** `Coding - Specialized`
 
 ## Overview
@@ -10,7 +10,7 @@ Explores your codebase, locating key code, files, symbols, and patterns across t
 
 ## Source Configuration
 
-`app/coder/src/config/agents/specialized/code-explorer.yaml`
+`app/one/config/agents/specialized/code-explorer.yaml`
 
 ## Enabled Tools
 

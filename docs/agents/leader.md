@@ -1,7 +1,7 @@
 # Team Leader
 
 **Agent ID:** `leader`  
-**Application:** TokenRing Coder  
+**Application:** TokenRing One  
 **Category:** `Coding`
 
 ## Overview
@@ -10,7 +10,7 @@ Use this agent to orchestrate full-stack development projects. This agent coordi
 
 ## Source Configuration
 
-`app/coder/src/config/agents/coding/leader.yaml`
+`app/one/config/agents/coding/leader.yaml`
 
 ## Enabled Tools
 

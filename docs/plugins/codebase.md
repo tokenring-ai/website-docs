@@ -556,11 +556,11 @@ export default defineConfig({
 
 | Package | Version | Description |
 | :------ | :------ | :---------- |
-| `@tokenring-ai/agent` | 0.2.0 | Central orchestration system for agent management |
-| `@tokenring-ai/app` | 0.2.0 | Base application framework with plugin architecture |
-| `@tokenring-ai/chat` | 0.2.0 | Chat service and context handlers |
-| `@tokenring-ai/filesystem` | 0.2.0 | File system operations and `FileMatchResource` base class |
-| `@tokenring-ai/utility` | 0.2.0 | Shared utilities including `KeyedRegistry`, `deepMerge`, and `numberedList` |
+| `@tokenring-ai/agent` | workspace:* | Central orchestration system for agent management |
+| `@tokenring-ai/app` | workspace:* | Base application framework with plugin architecture |
+| `@tokenring-ai/chat` | workspace:* | Chat service and context handlers |
+| `@tokenring-ai/filesystem` | workspace:* | File system operations and `FileMatchResource` base class |
+| `@tokenring-ai/utility` | workspace:* | Shared utilities including `KeyedRegistry`, `deepMerge`, and `numberedList` |
 | `code-chopper` | ^0.1.8 | Code parsing and symbol extraction library |
 | `zod` | ^4.3.6 | Schema validation and type inference |
 

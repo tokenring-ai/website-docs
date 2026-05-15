@@ -74,7 +74,7 @@ const config = {
     uiFramework: 'ink' | 'opentui', // Reserved for future use
     verbose: boolean,             // Show reasoning/artifacts
     startAgent?: {
-      type: string,               // Agent type to spawn
+      type: string,               // Agent type to spawn (e.g., 'coder', 'writer')
       prompt?: string,            // Initial prompt
       shutdownWhenDone?: boolean, // Shutdown after completion
     },
@@ -86,7 +86,7 @@ const config = {
 
 The current `@tokenring-ai/cli` provides:
 
-- **Interactive Agent Selection**: Choose from available agents, workflows, or web apps
+- **Interactive Agent Selection**: Choose from available agents, workflows, web apps, or manage web server
 - **Real-time Streaming**: Incremental rendering of agent output
 - **Command Completion**: Tab completion for slash commands
 - **File Path Completion**: `@` syntax for workspace file search
@@ -94,6 +94,18 @@ The current `@tokenring-ai/cli` provides:
 - **Keyboard Shortcuts**: Full navigation and control
 - **Customizable Theme**: Hex color theming via `theme.ts`
 - **Graceful Shutdown**: Proper signal handling and cleanup
+
+## Agent Selection Types
+
+The current CLI supports the following agent selection types:
+
+| Type | Description |
+|------|-------------|
+| `spawn` | Spawn a new agent (e.g., 'coder', 'writer') |
+| `connect` | Connect to an existing agent |
+| `open` | Open a web application in browser |
+| `workflow` | Spawn a workflow instance |
+| `webhost` | Manage web server (start/stop) |
 
 ## Migration Checklist
 

@@ -49,7 +49,7 @@ GitHub repositories for "token ring":
 | Repository | Stars | Language | Description |
 |------------|-------|----------|-------------|
 | tokenring-ai/core | 150 | TypeScript | Token Ring core |
-| tokenring-ai/writer | 120 | TypeScript | Token Ring writer |
+| tokenring-ai/one | 120 | TypeScript | TokenRing One |
 ```
 
 #### `/github docs <owner>/<repo>`
@@ -67,15 +67,19 @@ Retrieve the main documentation files for a GitHub repository.
 ```text
 ## README.md
 
+```md
 # Vercel AI SDK
 
 The AI SDK provides utilities for building AI applications...
+```
 
 ## docs/getting-started.md
 
+```md
 # Getting Started
 
 Install the AI SDK...
+```
 ```
 
 #### `/github file <owner>/<repo> <path> [ref]`
@@ -96,9 +100,11 @@ Path: README.md
 SHA: abc123def456
 Size: 2048
 
+```
 # Vercel AI SDK
 
 The AI SDK provides utilities for building AI applications...
+```
 ```
 
 ### Tools
@@ -120,9 +126,9 @@ The package provides three tools for AI agents:
 ```typescript
 z.object({
   query: z.string().min(1).describe("GitHub repository search query"),
-  limit: z.number().int().positive().max(50).default(10).optional(),
-  sort: z.enum(["stars", "updated"]).optional(),
-  order: z.enum(["asc", "desc"]).optional()
+  limit: z.number().int().positive().max(50).default(10).exactOptional(),
+  sort: z.enum(["stars", "updated"]).exactOptional(),
+  order: z.enum(["asc", "desc"]).exactOptional()
 })
 ```
 
@@ -134,7 +140,7 @@ Repository search results for "token ring":
 | Repository | Stars | Language | Description |
 |------------|-------|----------|-------------|
 | tokenring-ai/core | 150 | TypeScript | Token Ring core |
-| tokenring-ai/writer | 120 | TypeScript | Token Ring writer |
+| tokenring-ai/one | 120 | TypeScript | TokenRing One |
 ```
 
 #### `github_getRepoDocumentation`
@@ -147,14 +153,14 @@ Repository search results for "token ring":
 z.object({
   owner: z.string().min(1).describe("GitHub repository owner or org"),
   repo: z.string().min(1).describe("GitHub repository name"),
-  ref: z.string().optional().describe("Optional branch, tag, or commit"),
-  maxFiles: z.number().int().positive().max(10).default(5).optional()
+  ref: z.string().exactOptional().describe("Optional branch, tag, or commit"),
+  maxFiles: z.number().int().positive().max(10).default(5).exactOptional()
 })
 ```
 
 **Example Output:**
 
-````text
+```text
 ## README.md
 
 ```md
@@ -170,7 +176,7 @@ The AI SDK provides utilities for building AI applications...
 
 Install the AI SDK...
 ```
-````
+```
 
 #### `github_getRepoFile`
 
@@ -183,13 +189,13 @@ z.object({
   owner: z.string().min(1).describe("GitHub repository owner or org"),
   repo: z.string().min(1).describe("GitHub repository name"),
   path: z.string().min(1).describe("Path to the file inside the repository"),
-  ref: z.string().optional().describe("Optional branch, tag, or commit")
+  ref: z.string().exactOptional().describe("Optional branch, tag, or commit")
 })
 ```
 
 **Example Output:**
 
-````text
+```text
 Path: README.md
 SHA: abc123def456
 Size: 2048
@@ -199,7 +205,7 @@ Size: 2048
 
 The AI SDK provides utilities for building AI applications...
 ```
-````
+```
 
 ### Configuration
 
@@ -208,7 +214,7 @@ The package uses `GitHubConfigSchema` for configuration:
 ```typescript
 const GitHubConfigSchema = z.object({
   baseUrl: z.string().default("https://api.github.com"),
-  token: z.string().optional(),
+  token: z.string().exactOptional(),
   userAgent: z.string().default("TokenRing/0.2.0"),
 });
 ```
@@ -227,7 +233,7 @@ github:
 | Option | Type | Required | Default | Description |
 |--------|------|----------|---------|-------------|
 | `baseUrl` | string | No | `https://api.github.com` | GitHub API base URL (use for GitHub Enterprise) |
-| `token` | string | No | `undefined` | Authentication token for private repos |
+| `token` | string \| undefined | No | `undefined` | Authentication token for private repos |
 | `userAgent` | string | No | `TokenRing/0.2.0` | User-Agent header for API requests |
 
 ### Integration
@@ -452,7 +458,7 @@ The `GitHubService` class implements the `TokenRingService` interface with the f
 ```typescript
 const GitHubConfigSchema = z.object({
   baseUrl: z.string().default("https://api.github.com"),
-  token: z.string().optional(),
+  token: z.string().exactOptional(),
   userAgent: z.string().default("TokenRing/0.2.0"),
 });
 ```
@@ -522,10 +528,11 @@ bun test:coverage
 
 ### Related Components
 
-- **[@tokenring-ai/git](git.md)** - Git operations and repository management
-- **[@tokenring-ai/research](research.md)** - Research tools using web search
 - **[@tokenring-ai/websearch](websearch.md)** - Web search integration
+- **[@tokenring-ai/research](research.md)** - Research tools using web search
 - **[@tokenring-ai/utility](utility.md)** - HTTP service base class
+- **[@tokenring-ai/agent](agent.md)** - Core agent functionality
+- **[@tokenring-ai/chat](chat.md)** - Chat and tool integration
 
 ## License
 

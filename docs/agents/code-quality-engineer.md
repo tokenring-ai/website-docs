@@ -1,7 +1,7 @@
 # Code Quality Engineer
 
 **Agent ID:** `code-quality-engineer`  
-**Application:** TokenRing Coder  
+**Application:** TokenRing One  
 **Category:** `Coding - Specialized`
 
 ## Overview
@@ -10,7 +10,7 @@ Call this agent to perform code quality reviews, refactoring, and implement qual
 
 ## Source Configuration
 
-`app/coder/src/config/agents/specialized/code-quality-engineer.yaml`
+`app/one/config/agents/specialized/code-quality-engineer.yaml`
 
 ## Enabled Tools
 

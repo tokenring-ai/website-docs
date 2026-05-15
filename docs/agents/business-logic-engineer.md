@@ -1,7 +1,7 @@
 # Business Logic Engineer
 
 **Agent ID:** `business-logic-engineer`  
-**Application:** TokenRing Coder  
+**Application:** TokenRing One  
 **Category:** `Coding - Specialized`
 
 ## Overview
@@ -10,7 +10,7 @@ Call this agent to implement complex business workflows, rules engines, and auto
 
 ## Source Configuration
 
-`app/coder/src/config/agents/specialized/business-logic-engineer.yaml`
+`app/one/config/agents/specialized/business-logic-engineer.yaml`
 
 ## Enabled Tools
 

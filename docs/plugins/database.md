@@ -1,4 +1,4 @@
-# Database
+# @tokenring-ai/database
 
 ## User Guide
 
@@ -24,6 +24,12 @@ operation protection through human confirmation for non-SELECT queries.
 - Schema inspection capabilities
 - Type-safe tool execution with Zod schemas
 - Required context handlers enforcement (`available-databases`)
+
+### Installation
+
+```bash
+bun add @tokenring-ai/database
+```
 
 ### Chat Commands
 
@@ -345,7 +351,7 @@ export default class DatabaseProvider {
 }
 ```
 
-### Service Implementation
+### Services
 
 The `DatabaseService` implements the `TokenRingService` interface and provides
 a centralized registry for database providers.

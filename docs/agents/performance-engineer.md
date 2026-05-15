@@ -1,7 +1,7 @@
 # Performance Engineer
 
 **Agent ID:** `performance-engineer`  
-**Application:** TokenRing Coder  
+**Application:** TokenRing One  
 **Category:** `Coding - Specialized`
 
 ## Overview
@@ -10,7 +10,7 @@ Call this agent to optimize application performance, scalability, and monitoring
 
 ## Source Configuration
 
-`app/coder/src/config/agents/specialized/performance-engineer.yaml`
+`app/one/config/agents/specialized/performance-engineer.yaml`
 
 ## Enabled Tools
 

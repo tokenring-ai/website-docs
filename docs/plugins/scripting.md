@@ -238,7 +238,7 @@ import {ScriptingServiceConfigSchema} from "@tokenring-ai/scripting";
 export default {
   scripting: {
     setupProject: [
-      `/agent switch writer`,
+      `/agent switch research`,
       `/template run projectSetup ${input}`,
       `/tools enable filesystem`,
       `/agent switch publisher`
@@ -539,7 +539,7 @@ scriptingService.registerFunction("runAgent", {
 # Define a script (in configuration)
 # scripts: {
 #   setupProject: [
-#     "/agent switch writer",
+#     "/agent switch research",
 #     "/template run projectSetup ${input}",
 #     "/tools enable filesystem",
 #     "/agent switch publisher"
@@ -554,7 +554,7 @@ scriptingService.registerFunction("runAgent", {
 
 ```bash
 # Execute a subagent using the runAgent function
-/var set $result = runAgent("writer", "Generate a summary of the latest AI trends", "Recent breakthroughs in neural networks")
+/var set $result = runAgent("research", "Generate a summary of the latest AI trends", "Recent breakthroughs in neural networks")
 /echo Sub-agent result: $result
 ```
 

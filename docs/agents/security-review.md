@@ -1,7 +1,7 @@
 # Security Reviewer
 
 **Agent ID:** `security-review`  
-**Application:** TokenRing Coder  
+**Application:** TokenRing One  
 **Category:** `Coding - Specialized`
 
 ## Overview
@@ -10,7 +10,7 @@ Call this agent to perform security assessments and implement secure coding prac
 
 ## Source Configuration
 
-`app/coder/src/config/agents/specialized/security-review.yaml`
+`app/one/config/agents/specialized/security-review.yaml`
 
 ## Enabled Tools
 

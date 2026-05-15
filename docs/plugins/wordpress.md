@@ -93,9 +93,9 @@ The plugin supports configuring accounts via environment variables. For each acc
 | `WORDPRESS_URL{n}` | WordPress site URL |
 | `WORDPRESS_USERNAME{n}` | WordPress username |
 | `WORDPRESS_PASSWORD{n}` | WordPress application password |
-| `WORDPRESS_NAME{n}` | Account name (defaults to hostname) |
-| `WORDPRESS_DESCRIPTION{n}` | Blog description (defaults to "WordPress ({name})") |
-| `WORDPRESS_CDN{n}` | CDN name (defaults to account name) |
+| `WORDPRESS_NAME{n}` | Account name, defaults to hostname |
+| `WORDPRESS_DESCRIPTION{n}` | Blog description, defaults to `WordPress ({name})` |
+| `WORDPRESS_CDN{n}` | CDN name, defaults to account name |
 
 Example:
 
@@ -244,7 +244,7 @@ WordPress status values are automatically mapped to BlogPost status values:
 
 - `createPost`: Throws error if feature_image.id is missing
 - `updatePost`: Throws error if feature_image.id is missing when updating featured image
-- `getPostById`: Throws error if post not found ("Post with ID {id} not found")
+- `getPostById`: Throws error if post not found, `Post with ID {id} not found`
 - Tag creation failures are silently caught and ignored
 
 #### WordPressCDNProvider
@@ -544,7 +544,7 @@ Common error scenarios and their handling:
 
 #### Get Post Errors
 
-- **"Post with ID {id} not found"**
+- **`Post with ID {id} not found`**
   - Cause: Attempting to get a non-existent post
   - Solution: Verify the post ID exists using `getAllPosts()` or `getRecentPosts()`
 

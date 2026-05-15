@@ -8,11 +8,11 @@ Multi-provider AI integration client for the Token Ring ecosystem. Provides unif
 
 The AI Client package (`@tokenring-ai/ai-client`) provides a unified interface to multiple AI providers, abstracting away provider-specific differences while maintaining full access to provider capabilities. It integrates with the Token Ring agent system through seven model registry classes that manage model specifications and provide client instances.
 
-The package supports 16 native AI providers and a generic provider for custom endpoints, offering access to chat, embeddings, image generation, video generation, reranking, speech synthesis, and transcription capabilities through a consistent API built on the Vercel AI SDK.
+The package supports 12 native AI providers and a generic provider for custom endpoints, offering access to chat, embeddings, image generation, video generation, reranking, speech synthesis, and transcription capabilities through a consistent API built on the Vercel AI SDK.
 
 ### Key Features
 
-- **16 Native AI Providers**: Anthropic, OpenAI, Google, Groq, Cerebras, DeepSeek, ElevenLabs, Fal, xAI, OpenRouter, Perplexity, Azure, Ollama, Llama (via Meta API), Minimax, plus generic providers for OpenAI/Anthropic/Responses-compatible APIs
+- **12 Native AI Providers**: Anthropic, OpenAI, Google, Groq, Cerebras, DeepSeek, ElevenLabs, Fal, xAI, OpenRouter, Perplexity, plus generic providers for OpenAI/Anthropic/Responses-compatible APIs
 - **Seven AI Capabilities**: Chat, Embeddings, Image Generation, Video Generation, Reranking, Speech, and Transcription
 - **Seven Model Registry Classes**: Dedicated registries for managing model specifications and capabilities (ChatModelRegistry, ImageGenerationModelRegistry, VideoGenerationModelRegistry, EmbeddingModelRegistry, SpeechModelRegistry, TranscriptionModelRegistry, and RerankingModelRegistry)
 - **Dynamic Model Registration**: Register custom models with availability checks and background discovery
@@ -27,7 +27,39 @@ The package supports 16 native AI providers and a generic provider for custom en
 
 ### Chat Commands
 
-This package does not define any chat commands. It provides AI model access through the Token Ring agent system.
+This package defines the following chat commands:
+
+| Command | Description | Parameters |
+|---------|-------------|------------|
+| `/ai models update` | Updates the models file with the latest models from the TokenRing AI server | `-y`: Skip confirmation prompt; `url`: URL of the models.yaml to download (default: `https://dist.tokenring.ai/models.yaml`) |
+
+**Example:**
+
+```bash
+/ai models update
+```
+
+Or with the `-y` flag to skip confirmation:
+
+```bash
+/ai models update -y
+```
+
+Or with a custom URL:
+
+```bash
+/ai models update https://custom.url/models.yaml
+```
+
+**Help:**
+
+```text
+Updates the models file with the latest models from the TokenRing AI server.
+
+## Example
+
+/ai models update
+```
 
 ### Tools
 
@@ -75,8 +107,9 @@ app.addPlugin(aiClientPlugin, {
 | `MIMO_API_KEY` | MiMo API key | `...` |
 | `LLAMA_BASE_URL` | llama.cpp base URL | `http://127.0.0.1:11434/v1` |
 | `LLAMA_API_KEY` | llama.cpp API key (optional) | `...` |
-| `AZURE_API_ENDPOINT` | Azure API endpoint | `https://...` |
-| `AZURE_API_KEY` | Azure API key | `<key>` |
+| `LLAMA_NAME{n}` | Custom name for llama.cpp instance {n} | `LlamaCPP1` |
+| `LLAMA_ENDPOINT_TYPE{n}` | Endpoint type for llama.cpp {n} (openai/anthropic/responses) | `openai` |
+| `LLAMA_CONTEXT_LENGTH{n}` | Context length for llama.cpp {n} | `128000` |
 | `OLLAMA_BASE_URL` | Ollama server URL | `http://127.0.0.1:11434/v1` |
 
 #### Manual Configuration
@@ -97,6 +130,19 @@ app.addPlugin(aiClientPlugin, {
       Google: {
         provider: "google",
         apiKey: "AIza..."
+      },
+      // Generic provider for OpenAI-compatible endpoints (Azure, Ollama, etc.)
+      Azure: {
+        provider: "generic",
+        endpointType: "openai",
+        apiKey: "sk-...",
+        baseURL: "https://YOUR_RESOURCE_NAME.openai.azure.com/openai/deployments/YOUR_DEPLOYMENT_NAME"
+      },
+      // Ollama local server
+      Ollama: {
+        provider: "generic",
+        endpointType: "openai",
+        baseURL: "http://127.0.0.1:11434/v1"
       }
     }
   }
@@ -117,6 +163,39 @@ The plugin configuration schema is:
 ```
 
 **Note**: The `provider` field in `AIProviderConfig` is a discriminator that matches provider names like "anthropic", "openai", "google", etc. (lowercase). The top-level keys (like "OpenAI", "Anthropic", "xAi") are display names that can be customized.
+
+#### Generic Provider Configuration
+
+The generic provider supports OpenAI-compatible, Anthropic-compatible, and Responses-compatible endpoints. It automatically discovers models from the provider's model list endpoint.
+
+**Configuration Options:**
+
+| Option | Type | Description |
+|--------|------|-------------|
+| `provider` | `"generic"` | Must be set to "generic" |
+| `endpointType` | `"openai" \| "anthropic" \| "responses"` | API compatibility type (default: "openai") |
+| `baseURL` | `string` | Base URL for the API (required) |
+| `apiKey` | `string` | API key (optional for some providers) |
+| `apiKeyFromEnv` | `string` | Environment variable name for API key (optional) |
+| `modelListUrl` | `string` | Custom URL for model list (optional) |
+| `modelPropsUrl` | `string` | Custom URL for model properties (optional) |
+| `headers` | `Record<string, string>` | Custom headers (optional) |
+| `queryParams` | `Record<string, string>` | Custom query parameters (optional) |
+| `defaultContextLength` | `number` | Default context length (default: 32000) |
+| `staticModelList` | `Array` | Static model list (optional) |
+
+**Common Use Cases:**
+
+- **Azure OpenAI**: Use `endpointType: "openai"` with Azure's OpenAI endpoint
+- **Ollama**: Use `endpointType: "openai"` with your local Ollama server (default: `http://127.0.0.1:11434/v1`)
+- **NVIDIA NIM**: Use `endpointType: "openai"` with NVIDIA's NIM endpoint
+- **Qwen (DashScope)**: Use `endpointType: "openai"` with DashScope's compatible endpoint
+- **Chutes**: Use `endpointType: "openai"` with Chutes' endpoint
+- **zAI**: Use `endpointType: "openai"` with zAI's endpoint
+- **MiMo**: Use `endpointType: "openai"` with MiMo's endpoint
+- **llama.cpp**: Use `endpointType: "openai"` with any llama.cpp server
+- **Anthropic-compatible**: Use `endpointType: "anthropic"` for Anthropic-compatible APIs
+- **Responses-compatible**: Use `endpointType: "responses"` for Responses-compatible APIs
 
 ### Integration
 
@@ -300,11 +379,7 @@ The package supports the following AI providers through dedicated integrations. 
 | xAI | Grok models | Reasoning and analysis, image generation, video generation |
 | OpenRouter | Aggregated access | Multiple provider access, dynamic model discovery |
 | Perplexity | Perplexity models | Web search integration, deep research |
-| Azure | Azure OpenAI | Enterprise deployment |
-| Ollama | Self-hosted models | Local inference, chat and embedding models |
-| Llama | Meta Llama models (via Meta API) | Remote inference via Meta API |
-| Minimax | Minimax models | Chat and reasoning models |
-| Generic | OpenAI/Anthropic/Responses-compatible | Custom providers, llama.cpp, any compatible API |
+| Generic | OpenAI/Anthropic/Responses-compatible | Custom providers, llama.cpp, Azure, Ollama, NVIDIA NIM, Qwen, Chutes, MiMo, zAI, any compatible API |
 
 ### RPC Endpoints
 
@@ -560,6 +635,58 @@ const videoModels = await rpcService.call("listVideoGenerationModels", {});
 
 // List embedding models
 const embeddingModels = await rpcService.call("listEmbeddingModels", {});
+```
+
+### Schemas
+
+The package exports several Zod schemas for model specifications and capabilities:
+
+#### Model Input Capabilities
+
+```typescript
+export const ModelInputCapabilitySchema = z.union([z.boolean(), z.array(z.string())]);
+export const ModelInputCapabilitiesSchema = z.object({
+  text: z.boolean().default(true),
+  image: ModelInputCapabilitySchema.default(false),
+  video: ModelInputCapabilitySchema.default(false),
+  audio: ModelInputCapabilitySchema.default(false),
+  file: ModelInputCapabilitySchema.default(false),
+});
+```
+
+#### Model Settings Definition
+
+```typescript
+export const ModelSettingsDefinitionSchema = z.discriminatedUnion("type", [
+  z.object({
+    description: z.string(),
+    type: z.literal("boolean"),
+    defaultValue: z.boolean().optional(),
+  }),
+  z.object({
+    description: z.string(),
+    type: z.literal("number"),
+    defaultValue: z.number().optional(),
+    min: z.number().optional(),
+    max: z.number().optional(),
+  }),
+  z.object({
+    description: z.string(),
+    type: z.literal("string"),
+    defaultValue: z.string().optional(),
+  }),
+  z.object({
+    description: z.string(),
+    type: z.literal("enum"),
+    defaultValue: primitiveTypeSchema.optional(),
+    values: z.array(primitiveTypeSchema),
+  }),
+  z.object({
+    description: z.string(),
+    type: z.literal("array"),
+    defaultValue: z.array(primitiveTypeSchema).optional(),
+  }),
+]);
 ```
 
 ### Related Components

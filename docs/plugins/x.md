@@ -63,12 +63,12 @@ setup:
 | Variable | Description | Required |
 |----------|-------------|----------|
 | `X_TOKEN` | Bearer token for the default account | No |
-| `X_TOKEN{n}` | Bearer token for account {n} (e.g., `X_TOKEN0`, `X_TOKEN1`) | No |
-| `X_ACCOUNT_NAME{n}` | Display name for account {n} | No (defaults to "X Account {n}") |
+| `X_TOKEN{n}` | Bearer token for account `n` (e.g., `X_TOKEN0`, `X_TOKEN1`) | No |
+| `X_ACCOUNT_NAME{n}` | Display name for account `n` | No, defaults to `X Account {n}` |
 
 The bare `X_TOKEN` variable (without a numeric suffix) creates a default
 account. When a numeric suffix is used, the display name defaults to
-"X Account {n}".
+`X Account {n}`.
 
 #### Configuration Options
 
@@ -76,7 +76,7 @@ account. When a numeric suffix is used, the display name defaults to
 |--------|------|---------|-------------|
 | `baseUrl` | string | `"https://api.x.com"` | X API base URL |
 | `bearerToken` | string | Required | OAuth 2.0 Bearer Token |
-| `userAgent` | string | `"TokenRing-Writer/1.0 (https://github.com/tokenring/writer)"` | User-Agent header |
+| `userAgent` | string | `"TokenRing-One/1.0 (https://github.com/tokenring-ai/one)"` | User-Agent header |
 | `userId` | string | Exact Optional | Specific user ID to fetch (defaults to current user) |
 
 #### Configuration Schema
@@ -89,7 +89,7 @@ x:
     <account-name>:
       bearerToken: "your-bearer-token"
       baseUrl: "https://api.x.com"
-      userAgent: "TokenRing-Writer/1.0 (https://github.com/tokenring/writer)"
+      userAgent: "TokenRing-One/1.0 (https://github.com/tokenring-ai/one)"
       userId: "user-id"
 ```
 
@@ -172,7 +172,7 @@ export const XProviderOptionsSchema = z.object({
   baseUrl: z.string().default("https://api.x.com"),
   bearerToken: z.string(),
   userAgent: z.string()
-    .default("TokenRing-Writer/1.0 (https://github.com/tokenring/writer)"),
+    .default("TokenRing-One/1.0 (https://github.com/tokenring-ai/one)"),
   userId: z.string().exactOptional(),
 });
 ```
@@ -337,7 +337,7 @@ Defines the configuration options for a single X provider account.
 |-------|------|----------|---------|-------------|
 | `baseUrl` | string | No | `"https://api.x.com"` | X API v2 base URL |
 | `bearerToken` | string | Yes | - | OAuth 2.0 Bearer token |
-| `userAgent` | string | No | `"TokenRing-Writer/1.0 (https://github.com/tokenring/writer)"` | User-Agent header value |
+| `userAgent` | string | No | `"TokenRing-One/1.0 (https://github.com/tokenring-ai/one)"` | User-Agent header value |
 | `userId` | string | No | - | User ID for account lookup; uses `/2/users/me` if omitted |
 
 #### XConfigSchema
@@ -354,7 +354,7 @@ export const XConfigSchema = z.object({
 
 | Field | Type | Required | Description |
 |-------|------|----------|-------------|
-| `accounts` | Record<string, XProviderOptions> | Yes | Map of account names to provider options |
+| `accounts` | `Record<string, XProviderOptions>` | Yes | Map of account names to provider options |
 
 #### Internal Response Schemas
 

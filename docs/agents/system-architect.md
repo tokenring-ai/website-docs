@@ -1,7 +1,7 @@
 # System Architect
 
 **Agent ID:** `system-architect`  
-**Application:** TokenRing Coder  
+**Application:** TokenRing One  
 **Category:** `Coding - Specialized`
 
 ## Overview
@@ -10,7 +10,7 @@ Call this agent to design system architectures and select optimal technology sta
 
 ## Source Configuration
 
-`app/coder/src/config/agents/specialized/system-architect.yaml`
+`app/one/config/agents/specialized/system-architect.yaml`
 
 ## Enabled Tools
 

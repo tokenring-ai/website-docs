@@ -1,7 +1,7 @@
 # Planning Agent
 
 **Agent ID:** `plan`  
-**Application:** TokenRing Coder  
+**Application:** TokenRing One  
 **Category:** `Coding`
 
 ## Overview
@@ -10,7 +10,7 @@ Analyzes a task and generates a detailed implementation plan with specific steps
 
 ## Source Configuration
 
-`app/coder/src/config/agents/coding/plan.yaml`
+`app/one/config/agents/coding/plan.yaml`
 
 ## Enabled Tools
 

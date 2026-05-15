@@ -228,7 +228,7 @@ await resource.addFilesToSet(fileSet, agent);
 
 ## Services
 
-### FileSystemService
+### FileSystemService in Application
 
 The `FileSystemService` class implements the `TokenRingService` interface and manages all filesystem operations.
 
@@ -406,7 +406,7 @@ Manage files in the chat session with various actions to add, remove, list, or c
 
 **Usage:**
 
-```
+```bash
 /file [action] [files...]
 ```
 
@@ -463,7 +463,7 @@ Manage filesystem providers for agents.
 
 **Usage:**
 
-```
+```bash
 /filesystem/provider [action] [providerName]
 ```
 
@@ -496,7 +496,7 @@ Manage filesystem providers for agents.
 
 Tools are exported from `tools.ts` and registered with `ChatService` during plugin installation.
 
-Currently, five tools are actively exported: `file_edit`, `file_write`, `file_read`, `file_glob`, and `file_grep`. The `append` tool is defined but commented out in the exports.
+Currently, five tools are actively exported: `file_edit`, `file_write`, `file_read`, `file_glob`, and `file_grep`.
 
 ### file_edit
 
@@ -753,7 +753,7 @@ const displayName = "Filesystem/glob";
 
 **Output Format:**
 
-```
+```bash
 BEGIN DIRECTORY LISTING
 - file1.ts
 - file2.ts
@@ -1693,7 +1693,7 @@ describe('FileSystemService Integration', () => {
 
 ## Package Structure
 
-```
+```bash
 pkg/filesystem/
 ├── index.ts                         # Main exports
 ├── package.json                     # Package configuration
@@ -1752,7 +1752,7 @@ pkg/filesystem/
 └── README.md                        # Package README
 ```
 
-## Testing
+## Package Testing
 
 The package uses `vitest` for testing. Test files follow the `*.test.ts` naming convention.
 

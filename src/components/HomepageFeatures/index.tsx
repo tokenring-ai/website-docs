@@ -11,22 +11,12 @@ type FeatureItem = {
 
 const FeatureList: FeatureItem[] = [
   {
-    title: 'TokenRing Coder',
-    emoji: '💻',
+    title: 'TokenRing One',
+    emoji: '🔷',
     description: (
       <>
-        AI-powered coding assistant for software development. Edit, refactor, test,
-        and commit code with integrated git operations and automated testing.
-      </>
-    ),
-  },
-  {
-    title: 'TokenRing Writer',
-    emoji: '✍️',
-    description: (
-      <>
-        Unified platform for content creation and publishing. Research, write, and
-        publish articles with WordPress, Ghost.io, and NewsRPM integration.
+        One local AI assistant for software development, research, content work,
+        and workflow automation.
       </>
     ),
   },
@@ -65,8 +55,8 @@ const FeatureList: FeatureItem[] = [
     emoji: '🎯',
     description: (
       <>
-        Different AI agents for specific tasks: coding, writing, editing, research,
-        testing, security review, and publishing.
+        Different AI agents for specific tasks: coding, planning, research,
+        testing, security review, design, and operations.
       </>
     ),
   },

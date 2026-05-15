@@ -19,8 +19,7 @@ const sidebars: SidebarsConfig = {
       type: 'category',
       label: 'Apps',
       items: [
-        'apps/coder',
-        'apps/writer',
+        'apps/one',
       ],
     },
     {
@@ -28,14 +27,6 @@ const sidebars: SidebarsConfig = {
       label: 'Agents',
       items: [
         'agents/overview',
-        {
-          type: 'category',
-          label: 'Writing',
-          items: [
-            'agents/manager',
-            'agents/writer',
-          ],
-        },
         {
           type: 'category',
           label: 'Coding',

@@ -1069,4 +1069,4 @@ describe('Timer Utilities', () => {
 
 ## License
 
-MIT License - see [LICENSE](./LICENSE) for details.
+MIT License.

@@ -4,129 +4,97 @@ sidebar_position: 1
 
 # Introduction to TokenRing AI
 
-Welcome to **TokenRing AI** - a comprehensive ecosystem of AI-powered applications built on a shared plugin architecture. Whether you're developing software or creating content, TokenRing AI provides specialized tools to enhance your workflow.
+Welcome to **TokenRing AI**, a local-first AI assistant ecosystem built around **TokenRing One** and a shared plugin architecture. TokenRing One helps with software development, research, automation, and project workflows through one command-line and web-enabled application.
 
-## The TokenRing Ecosystem
+## TokenRing One
 
-TokenRing AI is more than a single tool—it's a family of applications that share a powerful plugin system. Each application leverages the same core infrastructure while providing specialized capabilities for different use cases.
+TokenRing One is the single TokenRing app. It runs locally, works directly with your project directory, and combines specialized agents with a modular plugin system.
 
-### 🎯 Shared Foundation
+**Key capabilities:**
 
-All TokenRing applications are built on:
+- Interactive chat for project work
+- Code editing, refactoring, testing, and review
+- Git integration with assisted commits
+- Multi-agent planning and orchestration
+- Web search and research workflows
+- Docker, Kubernetes, AWS, database, and filesystem integrations
+- Optional browser UI through the bundled web frontend
 
-- **Modular Plugin Architecture**: 40+ extensible plugins for specialized functionality
-- **Multi-Provider AI Support**: OpenAI, Anthropic, Google, Groq, and more
-- **Agent-Based Design**: Specialized AI agents for different tasks
-- **Local-First**: Your data stays on your machine
-- **Open Source**: MIT licensed and community-driven
+[Get started with TokenRing One →](/docs/apps/one)
 
-## Applications
+## Shared Foundation
 
-### TokenRing Coder
+TokenRing One is built on reusable packages and plugins:
 
-**AI-powered coding assistant for software development**
+- **Modular plugin architecture**: 40+ extensible plugins for specialized functionality
+- **Multi-provider AI support**: OpenAI, Anthropic, Google, Groq, and more
+- **Agent-based design**: Specialized AI agents for different tasks
+- **Local-first workflow**: Your project files stay on your machine
+- **Open source**: MIT licensed and community-driven
 
-TokenRing Coder works directly with your codebase to help you write, refactor, test, and debug code.
+## Plugin Ecosystem
 
-**Key Features:**
+Plugins are organized into functional categories:
 
-- 🤖 Interactive chat interface for code discussions
-- 🔧 Code operations: editing, refactoring, testing
-- 🔄 Git integration with auto-commit and branch management
-- 🧪 Testing framework with auto-repair capabilities
-- 🔍 Codebase analysis and semantic search
-- 🐳 Docker and Kubernetes integration
-
-[Get started with TokenRing Coder →](/docs/apps/coder)
-
-### TokenRing Writer
-
-**Unified platform for content creation and publishing**
-
-TokenRing Writer helps you research, write, and publish articles and blog posts with AI assistance.
-
-**Key Features:**
-
-- 📝 Specialized agents for writing, editing, research, and publishing
-- 🔍 Built-in web search and Wikipedia integration
-- 📰 NewsRPM integration for news article management
-- 📱 Blog platform support (WordPress, Ghost.io)
-- 💾 Persistent content history in SQLite
-- 🖼️ AI image generation for featured images
-- 🎯 Template system for common writing tasks
-
-[Get started with TokenRing Writer →](/docs/apps/writer)
-
-## Shared Plugin Ecosystem
-
-Both applications leverage the same powerful plugin system, with 40+ plugins organized into categories:
-
-### 🎯 Core Plugins
+### Core Plugins
 
 - Agent orchestration and team management
-- Multi-provider AI client (OpenAI, Anthropic, Google, etc.)
+- Multi-provider AI client
 - Memory and conversation history
 - Command-line interface
 
-### 🔧 Development Tools
+### Development Tools
 
 - Git integration with auto-commit
 - Testing framework with auto-repair
-- JavaScript/TypeScript tooling
+- JavaScript and TypeScript tooling
 - Code watching and live updates
 - Template system for reusable prompts
 
-### ☁️ Cloud & Infrastructure
+### Cloud and Infrastructure
 
-- AWS, Docker, Kubernetes integration
-- S3 filesystem and CDN
+- AWS, Docker, and Kubernetes integration
+- S3 filesystem and CDN support
 - Sandbox environments for isolated execution
 
-### 🌐 Web & Research
+### Web and Research
 
-- Web search (Serper, ScraperAPI)
+- Web search with Serper and ScraperAPI
 - Wikipedia integration
 - Reddit content retrieval
 - Chrome browser automation
-- AI-powered research with web search
+- AI-powered research workflows
 
-### 📝 Content & Publishing
+### Content and Publishing
 
 - Abstract blog interface
 - WordPress and Ghost.io integration
 - NewsRPM article management
-- CDN for media uploads
+- CDN-backed media uploads
 
-### 💾 Storage & Data
+### Storage and Data
 
-- Database support (MySQL, SQLite)
+- Database support with MySQL and SQLite
 - Checkpoint system for agent state
-- Secure vault for secrets management
+- Secure vault for secrets
 - File indexing with semantic search
-
-### 💰 Financial & Market Data
-
-- CloudQuote for stock quotes and market data
 
 [Explore all plugins →](/docs/plugins/overview)
 
 ## Why TokenRing AI?
 
-**Flexibility**: Choose the application that fits your workflow, or use both
+**Unified app**: Use one TokenRing One command for coding, research, and automation workflows.
 
-**Extensibility**: Add custom plugins or modify existing ones
+**Extensible**: Add custom plugins or modify existing ones.
 
-**Privacy**: All processing happens locally—your data never leaves your machine
+**Private by default**: Run locally against your own project files.
 
-**Multi-Model**: Use the best AI model for each task
+**Multi-model**: Use the best AI model for each task.
 
-**Open Source**: MIT licensed, community-driven development
+**Open source**: MIT licensed and community-driven development.
 
 ## Getting Started
 
-Choose your application:
-
-- [**TokenRing Coder**](/docs/apps/coder) - For software development
-- [**TokenRing Writer**](/docs/apps/writer) - For content creation
-
-Or explore the [**Plugin Ecosystem**](/docs/plugins/overview) to see what's possible.
+- [Install and run TokenRing One](/docs/apps/one)
+- [Browse available agents](/docs/agents/overview)
+- [Explore the plugin ecosystem](/docs/plugins/overview)

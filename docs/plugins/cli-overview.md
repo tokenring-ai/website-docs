@@ -9,6 +9,7 @@ Token Ring provides a primary CLI package for terminal interactions:
 **Purpose**: Provides a comprehensive terminal interface for interacting with Token Ring AI agents and services.
 
 **Key Features:**
+
 - Raw terminal UI with ANSI escape codes for maximum compatibility
 - Agent selection and management via interactive screen
 - Interactive chat with color-coded output and markdown styling
@@ -19,6 +20,7 @@ Token Ring provides a primary CLI package for terminal interactions:
 - Customizable theme with hex color values
 - File path completion using `@` syntax
 - Bracketed paste support for efficient text input
+- Web server management (start/stop)
 
 **Use Case**: Primary terminal interface for all TokenRing AI interactions.
 
@@ -32,6 +34,7 @@ The `@tokenring-ai/cli` package currently implements a raw terminal UI using ANS
 - **Styling**: Chalk-based hex color theming for consistent appearance
 
 This approach provides:
+
 - Maximum compatibility across terminal emulators
 - No external UI framework dependencies
 - Full control over rendering behavior
@@ -49,9 +52,26 @@ const config = {
     screenBanner: 'TokenRing CLI',
     uiFramework: 'opentui', // Reserved for future use
     verbose: false,
+    startAgent?: {
+      type: 'coder' | 'writer', // Agent type to spawn
+      prompt?: string,           // Initial prompt
+      shutdownWhenDone?: boolean // Shutdown after completion
+    }
   },
 };
 ```
+
+## Agent Selection Options
+
+The CLI provides an interactive agent selection screen with the following options:
+
+| Option | Description |
+|--------|-------------|
+| **Spawn Agent** | Create a new agent instance (e.g., 'coder', 'writer') |
+| **Connect** | Connect to an existing running agent |
+| **Open Web App** | Open a web application in the system browser |
+| **Run Workflow** | Spawn an agent running a workflow |
+| **Web Server** | Start or stop the web server |
 
 ## Usage
 
@@ -75,7 +95,7 @@ app.install(cliPlugin, {
 await app.start();
 ```
 
-### Using Ink Framework
+### Starting an Agent on Startup
 
 ```typescript
 import { TokenRingApp } from '@tokenring-ai/app';
@@ -85,11 +105,35 @@ const app = new TokenRingApp();
 app.install(cliPlugin, {
   cli: {
     chatBanner: 'TokenRing CLI',
-    uiFramework: 'ink',
     loadingBannerNarrow: 'Loading...',
     loadingBannerWide: 'Loading TokenRing CLI...',
     loadingBannerCompact: 'Loading',
     screenBanner: 'TokenRing CLI',
+    startAgent: {
+      type: 'coder',
+      prompt: 'Help me with this task...',
+      shutdownWhenDone: true
+    }
+  }
+});
+await app.start();
+```
+
+### Using Verbose Mode
+
+```typescript
+import { TokenRingApp } from '@tokenring-ai/app';
+import cliPlugin from '@tokenring-ai/cli';
+
+const app = new TokenRingApp();
+app.install(cliPlugin, {
+  cli: {
+    chatBanner: 'TokenRing CLI',
+    loadingBannerNarrow: 'Loading...',
+    loadingBannerWide: 'Loading TokenRing CLI...',
+    loadingBannerCompact: 'Loading',
+    screenBanner: 'TokenRing CLI',
+    verbose: true // Show reasoning and artifacts
   }
 });
 await app.start();
@@ -127,10 +171,37 @@ await app.start();
 - Regular updates and improvements
 - Comprehensive test coverage with vitest
 
+## Keyboard Shortcuts
+
+### General Navigation
+
+| Shortcut | Action |
+|----------|--------|
+| `Ctrl+C` | Cancel current activity or shut down agent |
+| `Ctrl+L` | Clear and replay the screen |
+| `Alt+A` / `F1` | Open agent selection screen |
+
+### Agent Configuration
+
+| Shortcut | Action |
+|----------|--------|
+| `Alt+M` / `F3` | Trigger "model select" command |
+| `Alt+T` / `F2` | Trigger "tools select" command |
+| `Alt+V` / `F4` | Toggle verbose mode |
+
+### Input Editing
+
+| Shortcut | Action |
+|----------|--------|
+| `Tab` | Command completion or insert file match |
+| `Escape` | Cancel activity or dismiss completion |
+| `Ctrl+P` / `Up` | Browse history (previous) or move up |
+| `Ctrl+N` / `Down` | Browse history (next) or move down |
+
 ## Related Documentation
 
 - [CLI Plugin Documentation](./cli.md) - Detailed documentation for `@tokenring-ai/cli`
-- [CLI Ink Documentation](./cli-ink.md) - Ink-specific implementation details
+- [CLI Ink Documentation](./cli-ink.md) - Ink-specific implementation details (deprecated)
 
 ## License
 

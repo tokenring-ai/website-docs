@@ -1,7 +1,7 @@
 # Integration Engineer
 
 **Agent ID:** `integration-engineer`  
-**Application:** TokenRing Coder  
+**Application:** TokenRing One  
 **Category:** `Coding - Specialized`
 
 ## Overview
@@ -10,7 +10,7 @@ Call this agent to implement third-party integrations, APIs, webhooks, and exter
 
 ## Source Configuration
 
-`app/coder/src/config/agents/specialized/integration-engineer.yaml`
+`app/one/config/agents/specialized/integration-engineer.yaml`
 
 ## Enabled Tools
 

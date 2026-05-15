@@ -1,7 +1,7 @@
 # Documentation Engineer
 
 **Agent ID:** `documentation-engineer`  
-**Application:** TokenRing Coder  
+**Application:** TokenRing One  
 **Category:** `Coding - Specialized`
 
 ## Overview
@@ -10,7 +10,7 @@ Specialized agent for creating, maintaining, and improving technical documentati
 
 ## Source Configuration
 
-`app/coder/src/config/agents/specialized/documentation-engineer.yaml`
+`app/one/config/agents/specialized/documentation-engineer.yaml`
 
 ## Enabled Tools
 

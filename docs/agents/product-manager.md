@@ -1,7 +1,7 @@
 # Product Manager
 
 **Agent ID:** `product-manager`  
-**Application:** TokenRing Coder  
+**Application:** TokenRing One  
 **Category:** `Coding - Specialized`
 
 ## Overview
@@ -10,7 +10,7 @@ Call this agent to analyze requirements and create comprehensive project plans. 
 
 ## Source Configuration
 
-`app/coder/src/config/agents/specialized/product-manager.yaml`
+`app/one/config/agents/specialized/product-manager.yaml`
 
 ## Enabled Tools
 

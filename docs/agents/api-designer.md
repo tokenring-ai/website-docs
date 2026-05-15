@@ -1,7 +1,7 @@
 # API Designer
 
 **Agent ID:** `api-designer`  
-**Application:** TokenRing Coder  
+**Application:** TokenRing One  
 **Category:** `Coding - Specialized`
 
 ## Overview
@@ -10,7 +10,7 @@ Call this agent to design and implement REST/GraphQL APIs and service contracts.
 
 ## Source Configuration
 
-`app/coder/src/config/agents/specialized/api-designer.yaml`
+`app/one/config/agents/specialized/api-designer.yaml`
 
 ## Enabled Tools
 

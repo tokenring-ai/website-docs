@@ -4,7 +4,11 @@
 
 A browser-based file system provider that implements the `FileSystemProvider` interface using in-memory mock data. This package provides a lightweight, browser-friendly file system abstraction for environments where direct file system access is not available, making it ideal for demos, tests, and web-based interfaces like web terminals.
 
-## Overview
+---
+
+## User Guide
+
+### Overview
 
 The `BrowserFileSystemProvider` implements the complete `FileSystemProvider` interface from `@tokenring-ai/filesystem` and provides a comprehensive set of file system operations that work entirely in memory. It ships with a built-in mock file system containing sample files, allowing for immediate exploration without external setup.
 
@@ -15,7 +19,7 @@ The `BrowserFileSystemProvider` implements the complete `FileSystemProvider` int
 - **Browser-Optimized**: Designed for browser environments where direct file system access is unavailable
 - **Plugin-Ready**: Integrates seamlessly with TokenRing's plugin system for automatic service registration
 
-## Key Features
+### Key Features
 
 - **In-Memory File System**: Complete file system operations that work entirely in memory, perfect for browser environments
 - **Full CRUD Operations**: Read, write, append, and delete files with proper content handling (string and Buffer support)
@@ -30,41 +34,13 @@ The `BrowserFileSystemProvider` implements the complete `FileSystemProvider` int
 - **Mock Behavior**: Graceful handling of non-existent files in copy/rename operations (returns true without error)
 - **Test Coverage**: Extensive unit and integration tests with vitest
 
-## Installation
+### Installation
 
 ```bash
 bun install @tokenring-ai/browser-file-system
 ```
 
-## Module Exports
-
-The package uses ES modules (`"type": "module"`) and exports the following:
-
-```typescript
-// Main provider export
-export { default as BrowserFileSystemProvider } from "./BrowserFileSystemProvider.ts";
-```
-
-**Note**: All exports use `.ts` extensions for direct TypeScript imports in the monorepo.
-
-The plugin can be imported separately from `./plugin.ts` for TokenRing integration.
-
-## Package Structure
-
-```text
-pkg/browser-file-system/
-├── BrowserFileSystemProvider.ts      # Main provider implementation
-├── BrowserFileSystemProvider.test.ts # Unit tests for provider
-├── integration.test.ts               # Integration tests
-├── index.ts                          # Module exports
-├── plugin.ts                         # TokenRing plugin integration
-├── package.json                      # Package configuration
-├── vitest.config.ts                  # Test configuration
-├── LICENSE                           # License information
-└── README.md                         # Package README
-```
-
-## Chat Commands
+### Chat Commands
 
 This package does not define any chat commands. File system operations are accessed through:
 
@@ -72,15 +48,15 @@ This package does not define any chat commands. File system operations are acces
 - **Service API**: Direct access through the FileSystemService
 - **Provider API**: Direct usage of BrowserFileSystemProvider
 
-## Tools
+### Tools
 
-This package does not define any tools directly. Tools can be created using the provider API and registered with the agent system.
+This package does not define any tools directly. Tools can be created using the provider API and registered with the agent system. See the [Developer Reference](#developer-reference) section for examples of creating tools.
 
-## Configuration
+### Configuration
 
 This package does not require any configuration. The plugin automatically registers the `BrowserFileSystemProvider` with the FileSystemService under the name `"browser"`.
 
-### Plugin Registration
+#### Plugin Registration
 
 The plugin automatically registers the `BrowserFileSystemProvider` with the FileSystemService:
 
@@ -106,25 +82,98 @@ app.services.waitForItemByType(
 
 **Note**: The plugin does not require configuration - it registers directly with the name `"browser"`.
 
-## Services
+### Integration
 
-### FileSystemService Integration
+#### TokenRing Plugin Integration
 
-This package integrates with the `FileSystemService` from `@tokenring-ai/filesystem`. The provider is automatically registered when the plugin is loaded.
-
-The plugin registers the browser file system provider with the name `"browser"`:
+The package integrates with the TokenRing plugin system and automatically registers the file system provider when loaded:
 
 ```typescript
-// Plugin registration logic from plugin.ts
-fileSystemService.registerFileSystemProvider(
-  "browser",
-  new BrowserFileSystemProvider()
+import { TokenRingApp } from "@tokenring-ai/app";
+import browserFileSystem from "@tokenring-ai/browser-file-system/plugin";
+
+const app = new TokenRingApp();
+
+// Register the browser file system plugin
+app.registerPlugin(browserFileSystem);
+
+// Access the file system service
+app.services.waitForItemByType(
+  FileSystemService,
+  (fileSystemService) => {
+    const fs = fileSystemService.getFileSystem("browser");
+    const content = fs.readFile("/README.md");
+    console.log(content?.toString("utf-8"));
+  }
 );
 ```
 
-## Core Components
+#### Agent System Integration
 
-### BrowserFileSystemProvider
+The browser file system provider can be used by agents through the FileSystemService:
+
+```typescript
+import { TokenRingAgent } from "@tokenring-ai/agent";
+import { FileSystemService } from "@tokenring-ai/filesystem";
+
+// Agent can access the file system through the service
+const fileSystemService = agent.requireServiceByType(FileSystemService);
+const fs = fileSystemService.getFileSystem("browser");
+
+// Perform file operations
+const content = fs.readFile("/README.md");
+```
+
+#### Tool Integration
+
+The file system provider can be used to create tools for agents:
+
+```typescript
+import { TokenRingAgentTool } from "@tokenring-ai/app";
+import { FileSystemService } from "@tokenring-ai/filesystem";
+
+const readFileTool: TokenRingAgentTool = {
+  name: "browser_read_file",
+  description: "Read a file from the browser file system",
+  parameters: {
+    type: "object",
+    properties: {
+      path: { type: "string", description: "Path to the file to read" }
+    },
+    required: ["path"]
+  },
+  execute: (agent, params) => {
+    const fileSystemService = agent.requireServiceByType(FileSystemService);
+    const fs = fileSystemService.getFileSystem("browser");
+    const content = fs.readFile(params.path);
+    return content?.toString("utf-8") || "File not found";
+  }
+};
+```
+
+### Best Practices
+
+1. **Use for Testing and Demos**: This package is designed for browser environments, testing, and demonstration purposes. For production file system operations, use a persistent file system provider.
+
+2. **Understand Mock Behavior**: The provider returns `true` for copy and rename operations even when the source file doesn't exist. This is intentional mock behavior for testing purposes.
+
+3. **Handle Missing Files**: Always check if a file exists before reading it, or handle the `null` return value from `readFile`.
+
+4. **Use Overwrite Option**: When copying or renaming files, use the `overwrite` option to avoid errors when the destination already exists.
+
+5. **Remember No Persistence**: All data is lost when the page reloads or the provider instance is destroyed.
+
+6. **Leverage Ignore Filters**: Use ignore filters in directory traversal and search operations to exclude unwanted files.
+
+7. **Test with Context**: When using `grep`, leverage the `includeContent` option to get context around matches for better debugging.
+
+---
+
+## Developer Reference
+
+### Core Components
+
+#### BrowserFileSystemProvider
 
 The main class that implements the complete `FileSystemProvider` interface:
 
@@ -155,11 +204,25 @@ const mockFileSystem: Record<string, { content: string }> = {
 
 **Note**: The mock file system is a shared module-level object. All instances share the same file system state. State is not persisted across page reloads.
 
-## Provider API
+### Services
+
+#### FileSystemService Integration
+
+This package integrates with the `FileSystemService` from `@tokenring-ai/filesystem`. The provider is automatically registered when the plugin is loaded.
+
+The plugin registers the browser file system provider with the name `"browser"`:
+
+```typescript
+// Plugin registration logic from plugin.ts
+fileSystemService.registerFileSystemProvider(
+  "browser",
+  new BrowserFileSystemProvider()
+);
+```
+
+### Provider API
 
 The provider implements the `FileSystemProvider` interface from `@tokenring-ai/filesystem`. All methods are synchronous and operate directly on the in-memory file system.
-
-### BrowserFileSystemProvider Methods
 
 #### getDirectoryTree
 
@@ -599,9 +662,9 @@ const filtered = fs.grep("import", {
 });
 ```
 
-## Usage Examples
+### Usage Examples
 
-### Basic File System Operations
+#### Basic File System Operations
 
 ```typescript
 import { BrowserFileSystemProvider } from "@tokenring-ai/browser-file-system";
@@ -628,7 +691,7 @@ for (const filePath of fs.getDirectoryTree("/", { recursive: true })) {
 }
 ```
 
-### Advanced Operations
+#### Advanced Operations
 
 ```typescript
 // Copy file with overwrite
@@ -662,7 +725,7 @@ for (const filePath of fs.getDirectoryTree("/", {
 }
 ```
 
-### Error Handling in Examples
+#### Error Handling in Examples
 
 ```typescript
 import { BrowserFileSystemProvider } from "@tokenring-ai/browser-file-system";
@@ -689,7 +752,7 @@ const copyResult = fs.copy("/non-existent.txt", "/dest.txt");
 console.log(copyResult); // true (mock behavior)
 ```
 
-### Complete Integration Example
+#### Complete Integration Example
 
 ```typescript
 import { TokenRingApp } from "@tokenring-ai/app";
@@ -731,7 +794,7 @@ app.services.waitForItemByType(
 );
 ```
 
-### Testing with Mock Files
+#### Testing with Mock Files
 
 ```typescript
 import { BrowserFileSystemProvider } from "@tokenring-ai/browser-file-system";
@@ -774,76 +837,7 @@ function testFileSystem() {
 testFileSystem();
 ```
 
-## Integration
-
-### TokenRing Plugin Integration
-
-The package integrates with the TokenRing plugin system and automatically registers the file system provider when loaded:
-
-```typescript
-import { TokenRingApp } from "@tokenring-ai/app";
-import browserFileSystem from "@tokenring-ai/browser-file-system/plugin";
-
-const app = new TokenRingApp();
-
-// Register the browser file system plugin
-app.registerPlugin(browserFileSystem);
-
-// Access the file system service
-app.services.waitForItemByType(
-  FileSystemService,
-  (fileSystemService) => {
-    const fs = fileSystemService.getFileSystem("browser");
-    const content = fs.readFile("/README.md");
-    console.log(content?.toString("utf-8"));
-  }
-);
-```
-
-### Agent System Integration
-
-The browser file system provider can be used by agents through the FileSystemService:
-
-```typescript
-import { TokenRingAgent } from "@tokenring-ai/agent";
-import { FileSystemService } from "@tokenring-ai/filesystem";
-
-// Agent can access the file system through the service
-const fileSystemService = agent.requireServiceByType(FileSystemService);
-const fs = fileSystemService.getFileSystem("browser");
-
-// Perform file operations
-const content = fs.readFile("/README.md");
-```
-
-### Tool Integration
-
-The file system provider can be used to create tools for agents:
-
-```typescript
-import { TokenRingAgentTool } from "@tokenring-ai/app";
-import { FileSystemService } from "@tokenring-ai/filesystem";
-
-const readFileTool: TokenRingAgentTool = {
-  name: "browser_read_file",
-  description: "Read a file from the browser file system",
-  parameters: {
-    type: "object",
-    properties: {
-      path: { type: "string", description: "Path to the file to read" }
-    },
-    required: ["path"]
-  },
-  execute: (agent, params) => {
-    const fileSystemService = agent.requireServiceByType(FileSystemService);
-    const fs = fileSystemService.getFileSystem("browser");
-    const content = fs.readFile(params.path);
-    return content?.toString("utf-8") || "File not found";
-  }
-};
-```
-
-## State Management
+### State Management
 
 The BrowserFileSystemProvider maintains state entirely in memory using a JavaScript object:
 
@@ -865,7 +859,7 @@ const mockFileSystem: Record<string, { content: string }> = {
 - No background processes or file watchers
 - Changes made programmatically are immediately reflected in the mock file system
 
-## Limitations
+### Limitations
 
 - **In-Memory Only**: No persistence across page reloads
 - **Browser Environment**: Designed for browser environments only
@@ -878,7 +872,7 @@ const mockFileSystem: Record<string, { content: string }> = {
 - **Shared State**: All instances share the same file system state
 - **Mock Behavior for Copy/Rename**: Returns `true` for non-existent source files
 
-## Error Handling
+### Error Handling
 
 The provider implements comprehensive error handling:
 
@@ -887,14 +881,14 @@ The provider implements comprehensive error handling:
 - **Invalid Operations**: Throws errors for unsupported operations (e.g., `watch`)
 - **Path Normalization**: Automatically normalizes paths for consistency
 
-### Error Types
+#### Error Types
 
 The provider may throw the following errors:
 
 - `Error` - Path conflicts during copy/rename operations (when destination exists without overwrite option)
 - `Error` - Unsupported operations (e.g., `watch` not implemented)
 
-### Error Handling Example
+#### Error Handling Example
 
 ```typescript
 import { BrowserFileSystemProvider } from "@tokenring-ai/browser-file-system";
@@ -926,7 +920,7 @@ try {
 }
 ```
 
-## Testing
+### Testing
 
 ```bash
 # Run all tests
@@ -945,7 +939,7 @@ bun test BrowserFileSystemProvider.test.ts
 bun test integration.test.ts
 ```
 
-### Test Coverage
+#### Test Coverage
 
 The package includes comprehensive unit and integration tests covering:
 
@@ -957,14 +951,14 @@ The package includes comprehensive unit and integration tests covering:
 - **Performance**: Large file handling and batch operations
 - **Integration**: Plugin registration and service integration
 
-### Test Files
+#### Test Files
 
 - `BrowserFileSystemProvider.test.ts` - Unit tests for provider methods
 - `integration.test.ts` - End-to-end integration tests
 
-## Development
+### Development
 
-### Build Instructions
+#### Build Instructions
 
 ```bash
 # Type checking
@@ -977,7 +971,7 @@ bun run eslint
 bun test
 ```
 
-### Adding New Mock Files
+#### Adding New Mock Files
 
 To add new mock files for testing:
 
@@ -991,27 +985,29 @@ const mockFileSystem: Record<string, { content: string }> = {
 };
 ```
 
-## Dependencies
+### Dependencies
 
-### Production Dependencies
+#### Production Dependencies
 
 - `@tokenring-ai/app` (0.2.0) - Core application framework and plugin system
 - `@tokenring-ai/filesystem` (0.2.0) - File system service and provider interface
 - `@tokenring-ai/utility` (0.2.0) - Utility functions including arrayable helpers
 
-### Development Dependencies
+#### Development Dependencies
 
 - `vitest` (^4.1.1) - Testing framework
 - `typescript` (^6.0.2) - TypeScript compiler
+
+### Related Components
+
+- [File System Service](./filesystem.md) - File system service and provider interface
+- [TokenRing App](./app.md) - Core application framework
+- [Agent System](./agent.md) - Agent orchestration and tool integration
+
+---
 
 ## License
 
 MIT License - see LICENSE file for details.
 
 Copyright (c) 2025 Mark Dierolf
-
-## Related Components
-
-- [File System Service](./filesystem.md) - File system service and provider interface
-- [TokenRing App](./app.md) - Core application framework
-- [Agent System](./agent.md) - Agent orchestration and tool integration

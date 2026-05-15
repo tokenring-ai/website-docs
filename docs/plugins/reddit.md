@@ -317,7 +317,7 @@ const customReddit = new RedditService({
 The service automatically sets a compliant User-Agent header for all requests:
 
 ```
-User-Agent: TokenRing-Writer/1.0 (https://github.com/tokenring/writer)
+User-Agent: TokenRing-One/1.0 (https://github.com/tokenring-ai/one)
 ```
 
 This header helps identify requests and complies with Reddit's API guidelines.

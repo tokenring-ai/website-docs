@@ -15,7 +15,7 @@ function HomepageHeader() {
         <Heading as="h1" className="hero__title">
           TokenRing AI
         </Heading>
-        <p className="hero__subtitle">A comprehensive ecosystem of AI-powered applications for development and content creation</p>
+        <p className="hero__subtitle">A comprehensive AI-powered assistant ecosystem for development, research, and automation</p>
         <div className={styles.buttons}>
           <Link
             className="button button--secondary button--lg"
@@ -39,7 +39,7 @@ export default function Home(): ReactNode {
   return (
     <Layout
       title="Home"
-      description="TokenRing AI - Ecosystem of AI-powered applications including TokenRing Coder for software development and TokenRing Writer for content creation, built on 40+ extensible plugins">
+      description="TokenRing AI - TokenRing One is a local AI assistant for software development, research, and automation, built on 40+ extensible plugins">
       <HomepageHeader />
       <main>
         <HomepageFeatures />

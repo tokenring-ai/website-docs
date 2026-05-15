@@ -690,7 +690,7 @@ const params = new URLSearchParams({
 The service sets a custom User-Agent header for all requests via `HTTPRetriever`:
 
 ```typescript
-headers: { "User-Agent": "TokenRing-Writer/1.0 (https://github.com/tokenring/writer)" }
+headers: { "User-Agent": "TokenRing-One/1.0 (https://github.com/tokenring-ai/one)" }
 ```
 
 This is required by Wikipedia's API policy for proper identification of API clients.
@@ -965,7 +965,7 @@ The service uses `HTTPRetriever` from `@tokenring-ai/utility` for HTTP requests 
 - Wikipedia API uses underscores for spaces in titles (`Token_Ring` not `Token Ring`)
 - The `getPage()` method uses `doFetchWithRetry` from utility package for reliability
 - The `search()` method uses `HTTPRetriever.fetchValidatedJson()` for validated JSON responses
-- User-Agent header defaults to `"TokenRing-Writer/1.0 (https://github.com/tokenring/writer)"`
+- User-Agent header defaults to `"TokenRing-One/1.0 (https://github.com/tokenring-ai/one)"`
 - Search results include HTML-formatted snippets for display purposes
 - Page content returns raw wiki markup
 - Maximum search results per request: 500
