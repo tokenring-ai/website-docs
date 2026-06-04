@@ -21,7 +21,7 @@ The Image Generation plugin provides AI-powered image creation capabilities for 
 ## Installation
 
 ```bash
-bun add @tokenring-ai/image-generation
+bun add @tokenring-ai/image
 ```
 
 ## Configuration
@@ -43,10 +43,10 @@ imageGeneration:
 The plugin uses the following configuration schema:
 
 ```typescript
-import { ImageGenerationServiceConfigSchema } from "@tokenring-ai/image-generation";
+import { ImageServiceConfigSchema } from "@tokenring-ai/image";
 
 // Schema structure
-ImageGenerationServiceConfigSchema = z.object({
+ImageServiceConfigSchema = z.object({
   defaultModels: z.array(z.string()).default([]),
   agentDefaults: z.object({
     model: z.string().exactOptional(),
@@ -367,7 +367,7 @@ console.log(result);
 
 ## RPC Endpoints
 
-The package exposes an RPC endpoint at `/rpc/image-generation` with the following methods:
+The package exposes an RPC endpoint at `/rpc/image` with the following methods:
 
 ### getImages
 
@@ -475,11 +475,11 @@ console.log(result);
 
 ### Core Components
 
-#### ImageGenerationService
+#### ImageService
 
 Main service managing image generation and indexing functionality.
 
-**Service Name:** `ImageGenerationService`
+**Service Name:** `ImageService`
 
 **Description:** Image generation with configurable output directories
 
@@ -676,17 +676,17 @@ async adjustImage(
 
 ### Services
 
-#### ImageGenerationService (Service)
+#### ImageService (Service)
 
 Core service for image generation and indexing functionality.
 
 **Registration:**
 
 ```typescript
-app.addServices(new ImageGenerationService(app, config.imageGeneration));
+app.addServices(new ImageService(app, config.imageGeneration));
 ```
 
-**Service Name:** `ImageGenerationService`
+**Service Name:** `ImageService`
 
 **Description:** Image generation with configurable output directories
 
@@ -720,7 +720,7 @@ console.log(state.show());
 
 The package registers the following RPC endpoint:
 
-**Path:** `/rpc/image-generation`
+**Path:** `/rpc/image`
 
 **Methods:**
 
@@ -862,10 +862,10 @@ The package has the following dependencies:
 
 The package registers the following services:
 
-1. **ImageGenerationService**: Core image generation and indexing functionality
+1. **ImageService**: Core image generation and indexing functionality
 2. **ChatService**: Registers tools for image generation, search, and adjustment
 3. **AgentCommandService**: Registers `/image` commands
-4. **RpcService**: Registers `/rpc/image-generation` endpoint
+4. **RpcService**: Registers `/rpc/image` endpoint
 5. **WebHostService**: Registers `/api/media` static file serving
 
 ### Tool Registration
@@ -928,10 +928,10 @@ The package includes comprehensive error handling:
 ## Package Structure
 
 ```text
-pkg/image-generation/
-├── index.ts                         # Package exports (ImageGenerationService)
+pkg/image/
+├── index.ts                         # Package exports (ImageService)
 ├── plugin.ts                        # Plugin integration logic and configuration
-├── ImageGenerationService.ts        # Core service implementation
+├── ImageService.ts        # Core service implementation
 ├── schema.ts                        # Configuration and state schemas
 ├── tools.ts                         # Tool exports
 ├── tools/

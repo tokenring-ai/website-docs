@@ -1679,7 +1679,7 @@ describe('FileSystemService Integration', () => {
 
 - `@tokenring-ai/cli` - Command-line interface for agent interaction
 - `@tokenring-ai/scheduler` - Automated scheduling service
-- `@tokenring-ai/image-generation` - AI-powered image generation
+- `@tokenring-ai/image` - AI-powered image generation
 
 ### Integration Patterns
 

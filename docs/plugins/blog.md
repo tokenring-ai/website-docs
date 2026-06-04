@@ -154,7 +154,7 @@ Generate an AI image for the currently selected blog post and set it as the feat
 
 **Returns:** JSON object with success status and image URL
 
-**Note:** This tool uses the `ImageGenerationService` to generate the image, uploads it to the active provider's configured `CDNService`, and updates the current post with the featured image. Requires both services to be available.
+**Note:** This tool uses the `ImageService` to generate the image, uploads it to the active provider's configured `CDNService`, and updates the current post with the featured image. Requires both services to be available.
 
 ### Configuration
 
@@ -599,7 +599,7 @@ Use the `/blog test` command to test blog connectivity. This will:
 - `@tokenring-ai/cdn` (0.2.0) - CDN service for image uploads
 - `@tokenring-ai/scripting` (0.2.0) - Scripting API
 - `@tokenring-ai/escalation` (0.2.0) - Review escalation service
-- `@tokenring-ai/image-generation` (0.2.0) - AI image generation service
+- `@tokenring-ai/image` (0.2.0) - AI image generation service
 - `zod` (^4.3.6) - Schema validation
 - `marked` (^17.0.6) - Markdown to HTML conversion
 - `uuid` (14.0.0) - Unique ID generation
@@ -609,7 +609,7 @@ Use the `/blog test` command to test blog connectivity. This will:
 - [@tokenring-ai/wordpress](./wordpress.md) - WordPress blog provider implementation
 - [@tokenring-ai/ghost-io](./ghost-io.md) - Ghost blog provider implementation
 - [@tokenring-ai/escalation](./escalation.md) - Review escalation service
-- [@tokenring-ai/image-generation](./image-generation.md) - AI image generation service
+- [@tokenring-ai/image](./image.md) - AI image generation service
 - [@tokenring-ai/cdn](./cdn.md) - CDN service for file uploads
 
 ## License

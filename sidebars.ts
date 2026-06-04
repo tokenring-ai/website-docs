@@ -106,7 +106,7 @@ const sidebars: SidebarsConfig = {
         'plugins/ghost-io',
         'plugins/git',
         'plugins/history',
-        'plugins/image-generation',
+        'plugins/image',
         'plugins/iterables',
         'plugins/javascript',
         'plugins/kalshi',
