@@ -713,6 +713,66 @@ The service uses `RequestError` from the ACP SDK for protocol-level errors:
 - `RequestError.invalidRequest()`: Invalid request state
 - Custom `Error`: Application-level errors
 
+#### Helper Functions
+
+##### ACPService Helper Functions
+
+The ACPService module includes several helper functions for content conversion and event handling:
+
+**`convertPromptToAgentInput(prompt: ContentBlock[]): { message: string; attachments: InputAttachment[] }`**
+
+Converts ACP prompt content blocks to TokenRing agent input format.
+
+- Processes text blocks, resource links, resources, images, and audio
+- Joins text parts with double newlines
+- Converts attachments with appropriate encoding (base64 for images/audio, text for resources, href for resource links)
+
+**`convertEmbeddedResourceToAttachment(block: EmbeddedResource): InputAttachment`**
+
+Converts an ACP embedded resource to a TokenRing attachment.
+
+- Handles both text and binary resources
+- Uses text encoding for text resources, base64 for binary resources
+
+**`convertArtifactToContentBlock(event: AgentEventEnvelope): ContentBlock`**
+
+Converts an agent artifact event to an ACP content block.
+
+- Creates resource content blocks with artifact URIs
+- Handles both text and binary artifacts
+
+**`getAttachmentName(uri: string | null | undefined, fallback: string): string`**
+
+Extracts a filename from a URI for use as an attachment name.
+
+- Parses URI to get last path component
+- Returns fallback if URI is invalid or empty
+
+**`waitForAbort(signal: AbortSignal): Promise<void>`**
+
+Creates a promise that resolves when the abort signal is triggered.
+
+- Returns immediately if signal is already aborted
+- Otherwise waits for the abort event
+
+**`asRecord(value: unknown): Record<string, unknown>`**
+
+Safely converts a value to a record object.
+
+- Returns empty object if value is not a plain object
+- Spreads object properties to create a copy
+
+##### ACPFileSystemProvider Helper Functions
+
+**`toTextContent(content: string | Buffer): string`**
+
+Converts string or Buffer content to a UTF-8 string for file operations.
+
+- Returns string as-is if already a string
+- Converts Buffer to UTF-8 string using `toString('utf-8')`
+
+---
+
 #### State Management
 
 ##### Session State
