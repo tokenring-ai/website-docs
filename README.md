@@ -1,6 +1,6 @@
-# TokenRing Coder Documentation
+# TokenRing One Documentation
 
-Comprehensive documentation for TokenRing Coder - an AI-powered coding assistant that works with your codebase locally.
+Comprehensive documentation for TokenRing One - a local-first, multi-agent workspace that bundles five purpose-built apps — coding, canvas, documents, media, and research — into a single product.
 
 ## 📚 Documentation Scope
 

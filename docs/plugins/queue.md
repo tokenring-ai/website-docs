@@ -1135,7 +1135,7 @@ import { describe, it, expect, beforeEach, vi } from "vitest";
 import WorkQueueService from "@tokenring-ai/queue/WorkQueueService";
 import { WorkQueueState } from "@tokenring-ai/queue/state/workQueueState";
 import createTestingAgent from "@tokenring-ai/agent/test/createTestingAgent";
-import createTestingApp from "@tokenring-ai/app/test/createTestingApp";
+import createTestingApp from "@tokenring-ai/app/test/createTestingApp.test";
 
 describe("WorkQueueService", () => {
   let app;
