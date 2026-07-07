@@ -28,6 +28,7 @@ The TokenRing AI Scripting package provides a powerful scripting language for au
 Manages and executes scripts, variables, functions, and scripting language features. Implements the `TokenRingService` interface.
 
 **Properties:**
+
 - `name: "ScriptingService"` - Service identifier
 - `description` - Service description
 - `scripts` - Registry of predefined scripts (KeyedRegistry)
@@ -37,7 +38,7 @@ Manages and executes scripts, variables, functions, and scripting language featu
 - `registerFunction(name, func)` - Registers a global function in the registry
 - `resolveFunction(name, agent)` - Resolves function from local context or global registry
 - `executeFunction(funcName, args, agent)` - Executes a function with arguments
-- `runScript({scriptName, input}, agent)` - Executes a script with input
+- `runScript(scriptName, agent)` - Executes a script by name
 - `attach(agent)` - Initializes ScriptingContext state for agent
 - `getScriptByName(name)` - Gets a script by name (alias for scripts.getItemByName)
 - `listScripts()` - Lists all script names (alias for scripts.getAllItemNames)
@@ -117,7 +118,7 @@ const serializationSchema = z.object({
 
 ## Services
 
-### ScriptingService
+### ScriptingService (Service Implementation)
 
 The `ScriptingService` is the core service that manages scripts, functions, and execution:
 
@@ -133,6 +134,7 @@ app.addServices(scriptingService);
 - Provides script and function registries
 - Manages script execution
 - Resolves and executes functions
+- Attaches to agents and initializes state
 
 ## Tools
 
@@ -142,24 +144,30 @@ Run a script with the given input. Scripts are predefined sequences of chat comm
 
 ```typescript
 const result = await agent.useTool("script_run", {
-  scriptName: "setupProject",
-  input: "MyProject"
+  scriptName: "setupProject"
 });
 ```
 
 **Parameters:**
-- `scriptName` (string) - The name of the script to run - **required**
-- `input` (string) - The input to pass to the script - **required**
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `scriptName` | `string` | Yes | The name of the script to run |
 
 **Returns:**
-- `ok` (boolean) - Whether the script completed successfully
-- `output` (string, optional) - Script output on success
-- `error` (string, optional) - Error message on failure
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `ok` | `boolean` | Whether the script completed successfully |
+| `output` | `string` (optional) | Script output on success |
+| `error` | `string` (optional) | Error message on failure |
 
 **Required Context Handlers:**
+
 - `available-scripts` - Required to determine available scripts
 
 **Throws:**
+
 - `Error` - When script execution fails
 
 ## Chat Commands
@@ -267,6 +275,57 @@ export const ScriptSchema = z.union([
 export const ScriptingServiceConfigSchema = z.record(z.string(), ScriptSchema);
 ```
 
+### ScriptingFunctionSchema
+
+Schema for defining functions:
+
+```typescript
+export const ScriptingFunctionSchema = z.object({
+  type: z.enum(["expression", "llm", "js"]),
+  params: z.array(z.string()),
+  body: z.string(),
+});
+
+export type ScriptionFunction = z.infer<typeof ScriptingFunctionSchema>;
+```
+
+**Fields:**
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `type` | `"expression" \| "llm" \| "js"` | The function type |
+| `params` | `string[]` | Array of parameter names |
+| `body` | `string` | Function body (expression text, LLM prompt, or JavaScript code) |
+
+### Serialization Schema
+
+Schema for persisting scripting context state:
+
+```typescript
+const serializationSchema = z.object({
+  variables: z.array(z.tuple([z.string(), z.string()])),
+  lists: z.array(z.tuple([z.string(), z.array(z.string())])),
+  functions: z.array(
+    z.tuple([
+      z.string(),
+      z.object({
+        type: z.enum(["expression", "llm", "js"]),
+        params: z.array(z.string()),
+        body: z.string(),
+      }),
+    ])
+  ),
+});
+```
+
+**Fields:**
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `variables` | `[string, string][]` | Array of variable name-value pairs |
+| `lists` | `[string, string[]][]` | Array of list name-value pairs |
+| `functions` | `[string, Function][]` | Array of function name-definition pairs |
+
 ## Plugin Configuration
 
 The package uses a minimal configuration schema:
@@ -326,12 +385,11 @@ chatService.addTools([
     name: "script_run",
     description: "Run a script with the given input",
     inputSchema: z.object({
-      scriptName: z.string(),
-      input: z.string()
+      scriptName: z.string()
     }),
-    execute: async ({scriptName, input}, agent) => {
+    execute: async ({scriptName}, agent) => {
       const scriptingService = agent.requireServiceByType(ScriptingService);
-      return await scriptingService.runScript({scriptName, input}, agent);
+      return await scriptingService.runScript(scriptName, agent);
     }
   }
 ]);
@@ -417,16 +475,17 @@ scriptingService.registerFunction("runAgent", {
   type: 'native',
   params: ['agentType', 'message', 'context'],
   async execute(this: ScriptingThis, agentType: string, message: string, context: string): Promise<string> {
-    const res = await runSubAgent({
+    const subAgentService = this.agent.requireServiceByType(SubAgentService);
+    const res = await subAgentService.runSubAgent({
       agentType: agentType,
       headless: this.agent.headless,
-      input: {
-        from: "Scripting plugin runAgent",
-        message: `/work ${message}\n\nImportant Context:\n${context}`
-      }
-    }, this.agent, true);
+      from: "Scripting plugin runAgent",
+      steps: [`${message}\n\nImportant Context:\n${context}`],
+      parentAgent: this.agent,
+      options: SubAgentConfigSchema.parse({}),
+    });
 
-    if (res.status === 'success') {
+    if (res.status === "success") {
       return res.response;
     } else {
       throw new Error(res.response);
@@ -616,7 +675,7 @@ scriptingService.registerFunction("runAgent", {
 The following names cannot be used for functions:
 - `var`, `vars`, `func`, `funcs`, `call`, `echo`, `sleep`, `prompt`, `confirm`, `list`, `lists`, `if`, `for`, `while`, `script`
 
-## Error Handling
+## Error Handling (Runtime)
 
 The scripting system provides comprehensive error handling:
 
@@ -646,6 +705,7 @@ export function parseArguments(argsStr: string): string[] {
 ```
 
 **Examples:**
+
 ```typescript
 parseArguments('"hello", "world"') // ['hello', 'world']
 parseArguments('arg1, (nested), arg3') // ['arg1', '(nested)', 'arg3']
@@ -663,6 +723,7 @@ export function parseScript(script: string): string[] {
 ```
 
 **Examples:**
+
 ```typescript
 parseScript('/echo hello; /echo world') // ['/echo hello', '/echo world']
 parseScript('/echo hello\n/echo world') // ['/echo hello', '/echo world']
@@ -677,6 +738,7 @@ Provides block parsing utilities:
 - `parseBlock(body)` - Parses block content into individual commands
 
 **Examples:**
+
 ```typescript
 extractBlock('/if $cond { /echo true } else { /echo false }', 0)
 // { content: '/echo true } else { /echo false', endPos: 45 }

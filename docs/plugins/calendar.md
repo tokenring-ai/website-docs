@@ -40,9 +40,9 @@ This package is intentionally abstract. Concrete integrations such as Google Cal
 
 | Command | Description |
 |---------|-------------|
-| `/calendar event list [limit]` | List upcoming events from the active calendar provider |
+| `/calendar event list [--limit <n>]` | List upcoming events (default: 10, range: 1-100) |
 | `/calendar event search <query>` | Search calendar events by query |
-| `/calendar event create <title> \| <start> \| <end> \| <description>` | Create a new calendar event |
+| `/calendar event create` | Create a new calendar event (see examples for syntax) |
 | `/calendar event get` | Display the currently selected calendar event title |
 | `/calendar event select` | Interactively select an upcoming event |
 | `/calendar event info` | Display detailed information about the currently selected event |
@@ -60,9 +60,9 @@ This package is intentionally abstract. Concrete integrations such as Google Cal
 
 # Event commands
 /calendar event list
-/calendar event list 20
+/calendar event list --limit 20
 /calendar event search standup
-/calendar event create "Team sync" \| 2026-03-10T17:00:00.000Z \| 2026-03-10T17:30:00.000Z \| Weekly status sync
+/calendar event create "Team sync" | 2026-03-10T17:00:00.000Z | 2026-03-10T17:30:00.000Z | "Weekly status sync"
 /calendar event get
 /calendar event select
 /calendar event info
@@ -119,7 +119,7 @@ This package is intentionally abstract. Concrete integrations such as Google Cal
   location?: string;                // Optional location
   allDay?: boolean;                 // Optional all-day flag
   attendees?: Array<{               // Optional attendees
-    email: string;
+    email: string;                  // Valid email address (validated)
     name?: string;
   }>;
 }
@@ -143,6 +143,58 @@ This package is intentionally abstract. Concrete integrations such as Google Cal
 {
   // No input required
 }
+```
+
+### Scripting Functions
+
+The package registers the following functions with the `ScriptingService`:
+
+| Function | Parameters | Description |
+|----------|------------|-------------|
+| `getUpcomingCalendarEvents` | `limit?` | Get upcoming events as JSON string |
+| `searchCalendarEvents` | `query`, `limit?` | Search events by query |
+| `createCalendarEvent` | `title`, `startIso`, `endIso`, `description?` | Create a new event |
+| `deleteCurrentCalendarEvent` | (none) | Delete the currently selected event |
+
+#### `getUpcomingCalendarEvents(limit?: string)`
+
+Get upcoming calendar events.
+
+```typescript
+const events = await getUpcomingCalendarEvents("10");
+const eventsArray = JSON.parse(events);
+```
+
+#### `searchCalendarEvents(query: string, limit?: string)`
+
+Search calendar events.
+
+```typescript
+const results = await searchCalendarEvents("team sync", "5");
+const eventsArray = JSON.parse(results);
+```
+
+#### `createCalendarEvent(title: string, startIso: string, endIso: string, description?: string)`
+
+Create a calendar event.
+
+```typescript
+const result = await createCalendarEvent(
+  "Team sync",
+  "2026-03-10T17:00:00.000Z",
+  "2026-03-10T17:30:00.000Z",
+  "Weekly status sync"
+);
+// Returns: "Created event: event-id"
+```
+
+#### `deleteCurrentCalendarEvent()`
+
+Delete the current calendar event.
+
+```typescript
+const result = await deleteCurrentCalendarEvent();
+// Returns: "Deleted current calendar event"
 ```
 
 ### Configuration
@@ -232,17 +284,17 @@ class CalendarService implements TokenRingService {
   setActiveProvider(name: string, agent: Agent): void;
 
   // Event operations
-  getUpcomingEvents(filter: CalendarEventFilterOptions, agent: Agent): Promise<CalendarEvent[]>;
-  searchEvents(filter: CalendarEventSearchOptions, agent: Agent): Promise<CalendarEvent[]>;
-  createEvent(data: CreateCalendarEventData, agent: Agent): Promise<CalendarEvent>;
-  updateEvent(data: UpdateCalendarEventData, agent: Agent): Promise<CalendarEvent>;
-  selectEventById(id: string, agent: Agent): Promise<CalendarEvent>;
-  getCurrentEvent(agent: Agent): CalendarEvent | null;
+  getUpcomingEvents(filter: CalendarEventFilterOptions, agent: Agent): Promise<ParsedCalendarEvent[]>;
+  searchEvents(filter: CalendarEventSearchOptions, agent: Agent): Promise<ParsedCalendarEvent[]>;
+  createEvent(data: CreateCalendarEventData, agent: Agent): Promise<ParsedCalendarEvent>;
+  updateEvent(data: UpdateCalendarEventData, agent: Agent): Promise<ParsedCalendarEvent>;
+  selectEventById(id: string, agent: Agent): Promise<ParsedCalendarEvent>;
+  getCurrentEvent(agent: Agent): ParsedCalendarEvent | null;
   clearCurrentEvent(agent: Agent): void;
   deleteCurrentEvent(agent: Agent): Promise<void>;
 
   // Utility
-  formatEventForPatternMatching(event: CalendarEvent): string;
+  formatEventForPatternMatching(event: ParsedCalendarEvent): string;
 }
 ```
 
@@ -267,31 +319,31 @@ interface CalendarProvider {
    * Get upcoming calendar events.
    * @returns Array of events
    */
-  getUpcomingEvents(filter: CalendarEventFilterOptions): Promise<CalendarEvent[]>;
+  getUpcomingEvents(filter: CalendarEventFilterOptions): Promise<ParsedCalendarEvent[]>;
 
   /**
    * Search calendar events.
    * @returns Array of events
    */
-  searchEvents(filter: CalendarEventSearchOptions): Promise<CalendarEvent[]>;
+  searchEvents(filter: CalendarEventSearchOptions): Promise<ParsedCalendarEvent[]>;
 
   /**
    * Create a new calendar event.
    * @returns The created event
    */
-  createEvent(data: CreateCalendarEventData): Promise<CalendarEvent>;
+  createEvent(data: CreateCalendarEventData): Promise<ParsedCalendarEvent>;
 
   /**
    * Update an event.
    * @returns The updated event
    */
-  updateEvent(id: string, data: UpdateCalendarEventData): Promise<CalendarEvent>;
+  updateEvent(id: string, data: UpdateCalendarEventData): Promise<ParsedCalendarEvent>;
 
   /**
    * Get an event by ID.
    * @returns The selected event
    */
-  getEventById(id: string): Promise<CalendarEvent>;
+  getEventById(id: string): Promise<ParsedCalendarEvent>;
 
   /**
    * Delete an event.
@@ -347,7 +399,7 @@ Agent-scoped state slice for calendar service.
 ```typescript
 class CalendarState extends AgentStateSlice<typeof serializationSchema> {
   activeProvider: string | null;
-  currentEvent: CalendarEvent | null;
+  currentEvent: ParsedCalendarEvent | null;
   watch: z.output<typeof CalendarWatchSchema> | undefined;
   processedEventIds: Set<string>;
   isWatching: boolean;
@@ -381,7 +433,7 @@ const serializationSchema = z.object({
 
 ### Types
 
-#### `CalendarEvent`
+#### `CalendarEvent` and `ParsedCalendarEvent`
 
 ```typescript
 const CalendarEventSchema = z.object({
@@ -389,8 +441,8 @@ const CalendarEventSchema = z.object({
   title: z.string(),                           // Event title
   description: z.string().exactOptional(),     // Event description
   location: z.string().exactOptional(),        // Event location
-  startAt: z.date(),                           // Event start time (Date object)
-  endAt: z.date(),                             // Event end time (Date object)
+  startAt: z.coerce.date(),                    // Event start time (coerced to Date)
+  endAt: z.coerce.date(),                      // Event end time (coerced to Date)
   allDay: z.boolean().exactOptional(),         // All-day flag
   attendees: z.array(                          // Event attendees
     z.object({
@@ -406,12 +458,15 @@ const CalendarEventSchema = z.object({
   ]).exactOptional(),
   url: z.string().exactOptional(),             // Event URL
   meetingUrl: z.string().exactOptional(),      // Meeting join URL
-  createdAt: z.number().exactOptional(),       // Creation timestamp (Unix ms)
-  updatedAt: z.number().exactOptional(),       // Update timestamp (Unix ms)
+  createdAt: z.coerce.date().exactOptional(),  // Creation timestamp (coerced to Date)
+  updatedAt: z.coerce.date().exactOptional(),  // Update timestamp (coerced to Date)
 });
 
 type CalendarEvent = z.input<typeof CalendarEventSchema>;
+type ParsedCalendarEvent = z.output<typeof CalendarEventSchema>;
 ```
+
+**Note:** `CalendarEvent` is the input type and `ParsedCalendarEvent` is the output type. The `z.coerce.date()` transforms string date inputs into `Date` objects. Service methods return `ParsedCalendarEvent`.
 
 #### `CalendarAttendee`
 
@@ -443,8 +498,8 @@ interface CalendarEventSearchOptions {
 #### Data Types
 
 ```typescript
-type CreateCalendarEventData = Omit<CalendarEvent, "id" | "createdAt" | "updatedAt">;
-type UpdateCalendarEventData = Partial<Omit<CalendarEvent, "id" | "createdAt" | "updatedAt">>;
+type CreateCalendarEventData = Omit<ParsedCalendarEvent, "id" | "createdAt" | "updatedAt">;
+type UpdateCalendarEventData = Partial<Omit<ParsedCalendarEvent, "id" | "createdAt" | "updatedAt">>;
 ```
 
 ### Configuration Schemas
@@ -708,27 +763,27 @@ import type { CalendarProvider } from "@tokenring-ai/calendar";
 const myProvider: CalendarProvider = {
   description: "My Calendar Provider",
 
-  async getUpcomingEvents(filter): Promise<CalendarEvent[]> {
+  async getUpcomingEvents(filter): Promise<ParsedCalendarEvent[]> {
     // Return events from provider
     return events;
   },
 
-  async searchEvents(filter): Promise<CalendarEvent[]> {
+  async searchEvents(filter): Promise<ParsedCalendarEvent[]> {
     // Search events
     return results;
   },
 
-  async createEvent(data): Promise<CalendarEvent> {
+  async createEvent(data): Promise<ParsedCalendarEvent> {
     // Create event via provider API
     return createdEvent;
   },
 
-  async updateEvent(id, data): Promise<CalendarEvent> {
+  async updateEvent(id, data): Promise<ParsedCalendarEvent> {
     // Update event via provider API
     return updatedEvent;
   },
 
-  async getEventById(id): Promise<CalendarEvent> {
+  async getEventById(id): Promise<ParsedCalendarEvent> {
     // Get event by ID
     return event;
   },
@@ -789,51 +844,6 @@ Meeting URL: <meetingUrl>
 
 Patterns are matched as case-insensitive regex against this formatted text.
 
-### Scripting Functions
-
-The package registers the following functions with the `ScriptingService`:
-
-#### `getUpcomingCalendarEvents(limit?: string)`
-
-Get upcoming calendar events.
-
-```typescript
-const events = await getUpcomingCalendarEvents("10");
-const eventsArray = JSON.parse(events);
-```
-
-#### `searchCalendarEvents(query: string, limit?: string)`
-
-Search calendar events.
-
-```typescript
-const results = await searchCalendarEvents("team sync", "5");
-const eventsArray = JSON.parse(results);
-```
-
-#### `createCalendarEvent(title: string, startIso: string, endIso: string, description?: string)`
-
-Create a calendar event.
-
-```typescript
-const result = await createCalendarEvent(
-  "Team sync",
-  "2026-03-10T17:00:00.000Z",
-  "2026-03-10T17:30:00.000Z",
-  "Weekly status sync"
-);
-// Returns: "Created event: event-id"
-```
-
-#### `deleteCurrentCalendarEvent()`
-
-Delete the current calendar event.
-
-```typescript
-const result = await deleteCurrentCalendarEvent();
-// Returns: "Deleted current calendar event"
-```
-
 ### Testing and Development
 
 The package uses `vitest` for unit testing.
@@ -866,6 +876,10 @@ pkg/calendar/
 │   ├── selectEvent.ts
 │   └── updateEvent.ts
 ├── commands.ts            # Command exports
+├── rpc/
+│   ├── calendar.ts        # RPC endpoint definition
+│   └── schema.ts          # RPC schema definitions
+├── vitest.config.ts       # Test configuration
 └── commands/
     └── calendar/
         ├── provider/

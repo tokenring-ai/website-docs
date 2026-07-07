@@ -746,7 +746,6 @@ import { AgentEventEnvelopeSchema } from "@tokenring-ai/agent/AgentEvents";
 Schema for agent not found errors in RPC responses:
 
 ```typescript
-import { AgentNotFoundSchema } from "@tokenring-ai/agent/schema";
 
 // Returns: { status: "agentNotFound" }
 ```

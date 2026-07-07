@@ -204,8 +204,8 @@ The package provides the following slash-prefixed commands for memory management
 | `/memory list` | Display all stored memory items | None | `/memory list` |
 | `/memory add` | Add a new memory item | `text` (remainder) | `/memory add Remember to call client` |
 | `/memory clear` | Clear all memory items | None | `/memory clear` |
-| `/memory remove` | Remove memory item at specified index (0-based) | `--index` (number, required) | `/memory remove --index 0` |
-| `/memory set` | Update memory item at specified index | `--index` (number, required), `text` (remainder) | `/memory set --index 1 Updated meeting notes` |
+| `/memory remove` | Remove memory item at specified index (0-based) | `index` (number, positional) | `/memory remove 0` |
+| `/memory set` | Update memory item at specified index | `index` (number, positional), `text` (remainder) | `/memory set 0 Updated meeting notes` |
 
 ### Command Details
 
@@ -263,11 +263,11 @@ Cleared all memory items
 
 #### `/memory remove`
 
-Remove memory item at specific index using the `--index` flag.
+Remove memory item at specific index using a positional argument.
 
 **Example:**
 ```bash
-/memory remove --index 0
+/memory remove 0
 ```
 
 **Output:**
@@ -286,11 +286,11 @@ No memory items stored
 
 #### `/memory set`
 
-Update memory item at specific index using the `--index` flag. The text after the flags is captured as a remainder parameter.
+Update memory item at specific index using a positional argument for the index. The text after the index is captured as a remainder parameter.
 
 **Example:**
 ```bash
-/memory set --index 0 Updated meeting notes
+/memory set 0 Updated meeting notes
 ```
 
 **Output:**
@@ -321,15 +321,15 @@ const result = await agent.executeCommand('/memory list');
 // [0] Remember to check emails tomorrow
 // [1] Meeting notes: Discuss project timeline
 
-// Remove memory at index 0 (using --index flag)
-await agent.executeCommand('/memory remove --index 0');
+// Remove memory at index 0 (using positional argument)
+await agent.executeCommand('/memory remove 0');
 // Output:
 // Removed memory item at index 0
 // Memory items:
 // [0] Meeting notes: Discuss project timeline
 
-// Update memory at index 0 (using --index flag, text as remainder)
-await agent.executeCommand('/memory set --index 0 Updated meeting time');
+// Update memory at index 0 (using positional argument for index, text as remainder)
+await agent.executeCommand('/memory set 0 Updated meeting time');
 // Output:
 // Updated memory item at index 0
 // Memory items:
@@ -596,7 +596,6 @@ pkg/memory/
 ├── tools/
 │   └── addMemory.ts                      # Tool to add memory items
 ├── commands/
-│   ├── memory.ts                         # /memory command index
 │   └── memory/
 │       ├── list.ts                       # /memory list
 │       ├── add.ts                        # /memory add
@@ -605,7 +604,7 @@ pkg/memory/
 │       ├── set.ts                        # /memory set
 │       └── _listMemories.ts              # Shared list helper
 ├── tools.ts                              # Exports agent tools
-├── commands.ts                           # Exports chat commands
+├── commands.ts                           # Exports chat commands (array of memory sub-commands)
 ├── contextHandlers.ts                    # Exports context handlers
 ├── plugin.ts                             # Plugin for automatic service registration
 ├── package.json                          # Package metadata and dependencies

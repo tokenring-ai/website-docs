@@ -411,7 +411,7 @@ Build application configuration by loading from multiple YAML files across direc
 
 - Creates the data directory if it doesn't exist
 - Creates a `.gitignore` file in the data directory if it doesn't exist (with `*.sqlite*` pattern)
-- Merges configs using `deepClone` from `@tokenring-ai/utility`
+- Merges configs using `deepMerge` from `@tokenring-ai/utility`
 - Validates the merged config at each step using `configSchema.parse()`
 - Supports YAML configuration files only
 
@@ -493,6 +493,31 @@ Returns all log entries from the application.
   }>;
 }
 ```
+
+#### streamLogs
+
+Streams log entries from the application starting from a given position.
+
+**Input**:
+```typescript
+{
+  fromPosition?: number; // defaults to 0
+}
+```
+
+**Output**:
+```typescript
+{
+  logs: Array<{
+    timestamp: number;
+    level: "info" | "error";
+    message: string;
+  }>;
+  position: number; // The position after the last log entry
+}
+```
+
+This is a streaming endpoint that yields new log entries as they are added.
 
 ### Types
 
@@ -1127,7 +1152,7 @@ This package depends on:
 - `@tokenring-ai/agent` (workspace:*) - Core agent orchestration
 - `@tokenring-ai/utility` (workspace:*) - Shared utilities and helpers
 - `@tokenring-ai/rpc` (workspace:*) - RPC infrastructure
-- `zod` (^4.3.6) - Type validation
+- `zod` (^4.4.3) - Type validation
 
 **Dev Dependencies**:
 
