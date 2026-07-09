@@ -112,7 +112,13 @@ Creates an RPC client that calls endpoint methods directly in-process. Useful fo
 
 **Function Signature:**
 ```typescript
-export default function createLocalRPCClient<T extends RPCSchema>(
+export function createLocalRPCClient<T extends RPCSchema>(
+  endpoint: TypedRpcEndpoint<T>,
+  app: TokenRingApp
+): {
+  [K in keyof T["methods"]]: FunctionTypeOfRPCCall<T, K>;
+};
+export function createLocalRPCClient<T extends RPCSchema>(
   endpoint: RpcEndpoint,
   app: TokenRingApp
 ): {
@@ -121,7 +127,7 @@ export default function createLocalRPCClient<T extends RPCSchema>(
 ```
 
 **Parameters:**
-- `endpoint`: The RPC endpoint to create a client for
+- `endpoint`: The RPC endpoint to create a client for. When you pass the result of `createRPCEndpoint` (a `TypedRpcEndpoint<T>`), `T` is inferred automatically. When the endpoint is retrieved from the runtime registry (`RpcService.getEndpoint`, which returns a loose `RpcEndpoint`), specify `<T>` explicitly so method calls stay type-checked.
 - `app`: TokenRingApp instance for method execution
 
 **Returns:**
@@ -131,19 +137,23 @@ export default function createLocalRPCClient<T extends RPCSchema>(
 ```typescript
 import createLocalRPCClient from '@tokenring-ai/rpc/createLocalRPCClient';
 
+// 1. Typed endpoint (recommended): T is inferred, no explicit type argument needed.
+const client = createLocalRPCClient(myEndpoint, app);
+
+// Call methods directly on the client
+const result = await client.greet({ name: 'World' });
+console.log(result.message); // "Hello, World!"
+
+// For streaming methods
+const controller = new AbortController();
+for await (const item of client.streamLogs({ count: 5 }, controller.signal)) {
+  console.log(item.log);
+}
+
+// 2. Registry-retrieved endpoint: specify <T> explicitly.
 const endpoint = rpcService.getEndpoint('myservice');
 if (endpoint) {
-  const client = createLocalRPCClient(endpoint, app);
-  
-  // Call methods directly on the client
-  const result = await client.greet({ name: 'World' });
-  console.log(result.message); // "Hello, World!"
-  
-  // For streaming methods
-  const controller = new AbortController();
-  for await (const item of client.streamLogs({ count: 5 }, controller.signal)) {
-    console.log(item.log);
-  }
+  const client = createLocalRPCClient<MyRpcSchema>(endpoint, app);
 }
 ```
 
@@ -318,22 +328,31 @@ if (streamMethod.type === 'stream') {
 
 ### Using the Local Client
 
+When you pass the result of `createRPCEndpoint` (a `TypedRpcEndpoint<T>`), `T` is inferred and the client is fully typed without an explicit type argument:
+
 ```typescript
 import createLocalRPCClient from '@tokenring-ai/rpc/createLocalRPCClient';
 
+// endpoint is the result of createRPCEndpoint(...) -> TypedRpcEndpoint<T>
+const client = createLocalRPCClient(endpoint, app);
+
+// Call methods directly on the client — params and results are type-checked
+const result = await client.greet({ name: 'World' });
+console.log(result.message); // "Hello, World!"
+
+// For streaming methods
+const controller = new AbortController();
+for await (const item of client.streamLogs({ count: 5 }, controller.signal)) {
+  console.log(item.log);
+}
+```
+
+When the endpoint is retrieved from the runtime registry (`RpcService.getEndpoint`, which returns a loose `RpcEndpoint`), specify `<T>` explicitly:
+
+```typescript
 const endpoint = rpcService.getEndpoint('myservice');
 if (endpoint) {
-  const client = createLocalRPCClient(endpoint, app);
-  
-  // Call methods directly on the client
-  const result = await client.greet({ name: 'World' });
-  console.log(result.message); // "Hello, World!"
-  
-  // For streaming methods
-  const controller = new AbortController();
-  for await (const item of client.streamLogs({ count: 5 }, controller.signal)) {
-    console.log(item.log);
-  }
+  const client = createLocalRPCClient<MyRpcSchema>(endpoint, app);
 }
 ```
 
