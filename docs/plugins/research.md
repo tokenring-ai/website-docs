@@ -1,45 +1,37 @@
 # @tokenring-ai/research
 
-**Version:** 0.2.0
-
 Research Tools - LLM-driven tools for systematic data gathering and deep analysis. This package enables agents to conduct comprehensive research on any topic using web search-enabled AI models, generating detailed research content with strict adherence to factual accuracy and source citation.
 
 ## User Guide
 
 ### Overview
 
-The research package integrates seamlessly with the Token Ring agent framework,
-providing both tool-based interactions and scripting functions for programmatic
-research. It leverages AI models with web search capabilities to gather and
-synthesize information from multiple sources while maintaining strict guidelines
-against hallucination and speculation.
+The research package integrates seamlessly with the Token Ring agent framework, providing both tool-based interactions and scripting functions for programmatic research. It leverages AI models with web search capabilities to gather and synthesize information from multiple sources while maintaining strict guidelines against hallucination and speculation.
 
 ### Key Features
 
-- **AI-Powered Research**: Uses web search-enabled AI models to conduct
-  comprehensive research
-- **Tool-Based Integration**: Available as the `research_run` tool in the
-  TokenRing chat system
-- **Scripting Support**: Provides a global `research` function for programmatic
-  usage
-- **Artifact Output**: Automatically generates markdown artifacts with research
-  results
+- **AI-Powered Research**: Uses web search-enabled AI models to conduct comprehensive research
+- **Tool-Based Integration**: Available as the `research_run` tool in the TokenRing chat system
+- **Scripting Support**: Provides a global `research` function for programmatic usage
+- **Artifact Output**: Automatically generates markdown artifacts with research results
 - **Analytics Tracking**: Provides detailed analytics on research execution
-- **Strict Factual Accuracy**: Enforces verbatim extraction, source citation,
-  and zero tolerance for hallucination
+- **Strict Factual Accuracy**: Enforces verbatim extraction, source citation, and zero tolerance for hallucination
 - **Type-Safe API**: Full TypeScript support with proper type definitions
+
+### Chat Commands
+
+This package does not define any chat commands. Research functionality is accessed through tools and scripting functions.
 
 ### Tools
 
-| Tool           | Description                                                    |
-|----------------|----------------------------------------------------------------|
-| `research_run` | Dispatches a research request to an AI agent, and returns the  |
-|                | generated research content.                                    |
+| Tool           | Display Name      | Description                                        |
+|----------------|-------------------|----------------------------------------------------|
+| `research_run` | Research/research | Dispatches a research request to an AI agent, and  |
+|                |                   | returns the generated research content.            |
 
 #### research_run
 
-Dispatches a research request to an AI agent, and returns the generated
-research content.
+Dispatches a research request to an AI agent, and returns the generated research content.
 
 **Input Parameters:**
 
@@ -51,14 +43,7 @@ research content.
 
 **Return Type:**
 
-The tool returns a `TokenRingToolResult` with:
-
-| Field     | Type   | Description                                  |
-|-----------|--------|----------------------------------------------|
-| `summary` | string | Short summary of the research completion     |
-| `result`  | string | JSON string containing the research result   |
-
-The `result` field is a JSON string with the following structure:
+The tool returns a `TokenRingToolResult` with a JSON string in the `result` field:
 
 ```typescript
 interface ResearchSuccessResult {
@@ -78,17 +63,15 @@ interface ResearchErrorResult {
 type ResearchResult = ResearchSuccessResult | ResearchErrorResult;
 ```
 
-**Result Schema:**
+**Result Fields:**
 
-The research tool returns results with the following structure:
-
-| Field     | Type   | Description                                          |
-|-----------|--------|------------------------------------------------------|
-| `status`  | string | `"completed"` for success, `"error"` for failure     |
-| `topic`   | string | The topic that was researched                        |
-| `research`| string | The generated research content (success only)        |
-| `error`   | string | Error message (error only)                           |
-| `message` | string | Human-readable status message                        |
+| Field      | Type   | Description                                          |
+|------------|--------|------------------------------------------------------|
+| `status`   | string | `"completed"` for success, `"error"` for failure     |
+| `topic`    | string | The topic that was researched                        |
+| `research` | string | The generated research content (success only)        |
+| `error`    | string | Error message (error only)                           |
+| `message`  | string | Human-readable status message                        |
 
 **Error Handling:**
 
@@ -108,8 +91,7 @@ The tool throws `ToolCallError` when:
 
 ### Scripting Functions
 
-The plugin registers a global `research` function available in scripting
-contexts for programmatic research operations.
+The plugin registers a global `research` function available in scripting contexts for programmatic research operations.
 
 **Function Signature:**
 
@@ -141,14 +123,14 @@ console.log(result);
 
 ### Configuration
 
-The research package supports configuration through the Token Ring application
-config system. The package defines a nested `research` configuration key.
+The research package supports configuration through the Token Ring application config system. The package defines a nested `research` configuration key.
 
 **Configuration Options:**
 
-| Option          | Type   | Default            | Description                                            |
-|-----------------|--------|--------------------|--------------------------------------------------------|
-| `researchModel` | string | `"auto?websearch"` | The AI model name for research (must support web search)|
+| Option          | Type   | Default            | Description                                       |
+|-----------------|--------|--------------------|---------------------------------------------------|
+| `researchModel` | string | `"auto?websearch"` | The AI model name for research (must support web  |
+|                 |        |                    | search)                                           |
 
 **Configuration Example:**
 
@@ -164,15 +146,77 @@ research:
   researchModel: "gemini-2.5-flash-web-search"
 ```
 
+### Integration
+
+#### With Agent System
+
+The plugin integrates with the agent system through several mechanisms:
+
+**Tool Registration:**
+
+Tools are registered through the plugin's install method:
+
+```typescript
+app.waitForService(ChatService, chatService =>
+  chatService.addTools(...tools),
+);
+```
+
+Where `tools` is exported from `@tokenring-ai/research/tools`:
+
+```typescript
+import tools from "@tokenring-ai/research/tools";
+
+// tools = [ { name: "research_run", ... } ]
+```
+
+**Scripting Function Registration:**
+
+```typescript
+app.services.waitForItemByType(
+  ScriptingService,
+  (scriptingService: ScriptingService) => {
+    scriptingService.registerFunction("research", {
+      type: "native",
+      params: ["topic", "prompt"],
+      async execute(
+        this: ScriptingThis,
+        topic: string,
+        prompt: string,
+      ): Promise<string> {
+        return await this.agent.requireServiceByType(ResearchService)
+          .runResearch(topic, prompt, this.agent);
+      },
+    });
+  },
+);
+```
+
+**Service Registration:**
+
+```typescript
+app.addServices(new ResearchService(config.research));
+```
+
+#### With AI Client
+
+The plugin integrates with the AI client system through the `ChatModelRegistry`, which retrieves the configured research model and handles the actual research operations.
+
+#### With ChatService
+
+The plugin uses `ChatService` for:
+
+- Adding the `research_run` tool to the chat system
+- Providing analytics through `getChatAnalytics(response)`
+- Generating artifact output for research results
+
 ### Best Practices
 
 #### Model Selection
 
-- **Choose a research model that supports web search capabilities** (e.g.,
-  `"auto?websearch"` or `"gemini-2.5-flash-web-search"`)
+- **Choose a research model that supports web search capabilities** (e.g., `"auto?websearch"` or `"gemini-2.5-flash-web-search"`)
 - For faster results, consider using experimental models
-- For comprehensive results, use models specifically designed for research
-  tasks
+- For comprehensive results, use models specifically designed for research tasks
 
 #### Topic Clarity
 
@@ -188,8 +232,7 @@ research:
 
 #### Tool Usage
 
-- **Use tools (`research_run`)** instead of direct service calls for better
-  integration
+- **Use tools (`research_run`)** instead of direct service calls for better integration
 - Leverage artifact output for easy access to research results
 - Use the scripting function for programmatic research in scripts and workflows
 
@@ -203,19 +246,11 @@ research:
 
 The research AI follows strict guidelines:
 
-1. **Verbatim Extraction**: Extracts relevant text verbatim from sources. Do
-   not paraphrase key data points.
-2. **Source Citation**: Every claim must be accompanied by a specific URL or
-   named reputable source. If you cannot cite it, you cannot include it.
-3. **Zero Tolerance for Hallucination**: If multiple reliable sources do not
-   explicitly confirm the user's premise, state: "The information could not be
-   found and the premise of the request may be incorrect." Never attempt to
-   fill in gaps with plausible-sounding information.
-4. **Conflicting Data**: If reputable sources provide conflicting information,
-   report both perspectives verbatim and note the discrepancy.
-5. **No Speculation**: Do not offer opinions, future predictions, or creative
-   interpretations. Return only what is explicitly documented in the search
-   results.
+1. **Verbatim Extraction**: Extracts relevant text verbatim from sources. Do not paraphrase key data points.
+2. **Source Citation**: Every claim must be accompanied by a specific URL or named reputable source. If you cannot cite it, you cannot include it.
+3. **Zero Tolerance for Hallucination**: If multiple reliable sources do not explicitly confirm the user's premise, state: "The information could not be found and the premise of the request may be incorrect." Never attempt to fill in gaps with plausible-sounding information.
+4. **Conflicting Data**: If reputable sources provide conflicting information, report both perspectives verbatim and note the discrepancy.
+5. **No Speculation**: Do not offer opinions, future predictions, or creative interpretations. Return only what is explicitly documented in the search results.
 
 ## Developer Reference
 
@@ -223,8 +258,7 @@ The research AI follows strict guidelines:
 
 #### ResearchService
 
-The main service class that implements `TokenRingService` and manages research
-operations using configured AI models with web search capabilities.
+The main service class that implements `TokenRingService` and manages research operations using configured AI models with web search capabilities.
 
 **Service Properties:**
 
@@ -239,9 +273,10 @@ constructor(options: ResearchServiceConfig)
 
 **Constructor Parameters:**
 
-| Parameter | Type                    | Description                                            |
-|-----------|-------------------------|--------------------------------------------------------|
-| `options` | `ResearchServiceConfig` | Configuration object containing research model settings|
+| Parameter | Type                    | Description                                       |
+|-----------|-------------------------|---------------------------------------------------|
+| `options` | `ResearchServiceConfig` | Configuration object containing research model    |
+|           |                         | settings                                          |
 
 **Methods:**
 
@@ -255,12 +290,12 @@ async runResearch(
 
 **Method Parameters:**
 
-| Parameter | Type   | Description                                               |
-|-----------|--------|-----------------------------------------------------------|
-| `topic`   | string | The main topic or subject to research                     |
-| `prompt`  | string | The detailed research prompt or specific questions to     |
-|           |        | investigate                                               |
-| `agent`   | Agent  | The agent instance for service access and output          |
+| Parameter | Type   | Description                                       |
+|-----------|--------|---------------------------------------------------|
+| `topic`   | string | The main topic or subject to research             |
+| `prompt`  | string | The detailed research prompt or specific questions|
+|           |        | to investigate                                    |
+| `agent`   | Agent  | The agent instance for service access and output  |
 
 **Returns:**
 
@@ -269,12 +304,10 @@ async runResearch(
 **Implementation Details:**
 
 1. Retrieves the configured research model from the agent's `ChatModelRegistry`
-2. Sends a system message instructing the AI to research the topic using web
-   search with strict adherence to factual accuracy
+2. Sends a system message instructing the AI to research the topic using web search with strict adherence to factual accuracy
 3. Returns detailed research content as a string
 4. Generates artifact output with the research results in markdown format
-5. Provides analytics on the research execution through
-   `getChatAnalytics(response)`
+5. Provides analytics on the research execution through `getChatAnalytics(response)`
 
 #### Research Tool
 
@@ -306,10 +339,11 @@ const inputSchema = z.object({
 
 **Input Schema Fields:**
 
-| Field    | Type   | Required | Description                                               |
-|----------|--------|----------|-----------------------------------------------------------|
-| `topic`  | string | Yes      | The main topic or subject to research                     |
-| `prompt` | string | Yes      | The detailed research prompt or specific questions to investigate about the topic |
+| Field    | Type   | Required | Description                                       |
+|----------|--------|----------|---------------------------------------------------|
+| `topic`  | string | Yes      | The main topic or subject to research             |
+| `prompt` | string | Yes      | The detailed research prompt or specific questions|
+|          |        |          | to investigate about the topic                    |
 
 #### Scripting Function
 
@@ -323,11 +357,11 @@ research(topic: string, prompt: string): Promise<string>
 
 **Parameters:**
 
-| Parameter | Type   | Required | Description                                           |
-|-----------|--------|----------|-------------------------------------------------------|
-| `topic`   | string | Yes      | The main topic or subject to research                 |
-| `prompt`  | string | Yes      | The detailed research prompt or specific questions to |
-|           |        |          | investigate                                           |
+| Parameter | Type   | Required | Description                                       |
+|-----------|--------|----------|---------------------------------------------------|
+| `topic`   | string | Yes      | The main topic or subject to research             |
+| `prompt`  | string | Yes      | The detailed research prompt or specific questions|
+|           |        |          | to investigate                                    |
 
 **Returns:**
 
@@ -391,9 +425,10 @@ const ResearchServiceConfigSchema = z.object({
 
 **Fields:**
 
-| Field         | Type   | Default            | Required | Description                                          |
-|---------------|--------|--------------------|----------|------------------------------------------------------|
-| `researchModel` | string | `"auto?websearch"` | No       | The AI model name for research (must support web search) |
+| Field           | Type   | Default            | Required | Description                                       |
+|-----------------|--------|--------------------|----------|---------------------------------------------------|
+| `researchModel` | string | `"auto?websearch"` | No       | The AI model name for research (must support web  |
+|                 |        |                    |          | search)                                           |
 
 **Notes:**
 
@@ -415,72 +450,6 @@ appInstance.addPlugin(researchPlugin, {
   },
 });
 ```
-
-### Integration
-
-#### With Agent System
-
-The plugin integrates with the agent system through several mechanisms:
-
-**Tool Registration:**
-
-Tools are registered through the plugin's install method:
-
-```typescript
-app.waitForService(ChatService, chatService =>
-  chatService.addTools(...tools),
-);
-```
-
-Where `tools` is exported from `@tokenring-ai/research/tools`:
-
-```typescript
-import tools from "@tokenring-ai/research/tools";
-
-// tools = [ { name: "research_run", ... } ]
-```
-
-**Scripting Function Registration:**
-
-```typescript
-app.services.waitForItemByType(
-  ScriptingService,
-  (scriptingService: ScriptingService) => {
-    scriptingService.registerFunction("research", {
-      type: "native",
-      params: ["topic", "prompt"],
-      async execute(
-        this: ScriptingThis,
-        topic: string,
-        prompt: string,
-      ): Promise<string> {
-        return await this.agent.requireServiceByType(ResearchService)
-          .runResearch(topic, prompt, this.agent);
-      },
-    });
-  },
-);
-```
-
-**Service Registration:**
-
-```typescript
-app.addServices(new ResearchService(config.research));
-```
-
-#### With AI Client
-
-The plugin integrates with the AI client system through the `ChatModelRegistry`,
-which retrieves the configured research model and handles the actual research
-operations.
-
-#### With ChatService
-
-The plugin uses `ChatService` for:
-
-- Adding the `research_run` tool to the chat system
-- Providing analytics through `getChatAnalytics(response)`
-- Generating artifact output for research results
 
 ### Usage Examples
 
@@ -583,8 +552,7 @@ console.log("Research result:", result);
 
 ### Artifacts
 
-Research results are automatically generated as artifacts with the following
-properties:
+Research results are automatically generated as artifacts with the following properties:
 
 - **name**: `Research on {topic}`
 - **encoding**: `text`
@@ -602,17 +570,13 @@ Result: {research}
 
 ### State Management
 
-The ResearchService does not maintain persistent state. Each research request is
-processed independently and returns a result without storing intermediate state.
-The service interacts with:
+The ResearchService does not maintain persistent state. Each research request is processed independently and returns a result without storing intermediate state. The service interacts with:
 
 - **ChatModelRegistry**: Retrieves the configured AI model for research
 - **Agent**: Uses the agent's system message and chat output capabilities
-- **ChatService**: Provides analytics and output through the agent's chat
-  interface
+- **ChatService**: Provides analytics and output through the agent's chat interface
 
-Research results are returned directly to the caller and are not persisted
-beyond the request lifecycle.
+Research results are returned directly to the caller and are not persisted beyond the request lifecycle.
 
 ### Testing
 
@@ -622,9 +586,7 @@ beyond the request lifecycle.
 bun test
 ```
 
-**Note:** No test files currently exist for this package. The test
-infrastructure is configured via `vitest.config.ts` and ready for test
-development.
+**Note:** No test files currently exist for this package. The test infrastructure is configured via `vitest.config.ts` and ready for test development.
 
 #### Test Configuration
 

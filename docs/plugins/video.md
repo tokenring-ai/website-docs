@@ -657,13 +657,13 @@ Run tests with Vitest:
 
 ```bash
 # Run all tests
-bun test
+bun run test
 
 # Run tests in watch mode
-bun test --watch
+bun run test:watch
 
 # Run tests with coverage
-bun test --coverage
+bun run test:coverage
 ```
 
 ### Dependencies

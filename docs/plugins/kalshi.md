@@ -1,7 +1,7 @@
 # @tokenring-ai/kalshi
 
-Kalshi Prediction Markets - Integration with Kalshi prediction markets for
-querying market series, markets, events, and orderbooks.
+Kalshi Prediction Markets Integration - Service and tools for querying
+Kalshi prediction market series, markets, events, and orderbooks.
 
 ## User Guide
 
@@ -825,6 +825,7 @@ pkg/kalshi/
 - **@tokenring-ai/agent**: Agent orchestration system
 - **@tokenring-ai/chat**: Chat service and tool definitions
 - **@tokenring-ai/utility**: HTTP service and utilities
+- **@tokenring-ai/polymarket**: Alternative prediction market integration
 
 ## License
 

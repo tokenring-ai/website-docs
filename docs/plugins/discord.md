@@ -862,6 +862,7 @@ The package exports the following from `index.ts`:
 | `ParsedDiscordBotConfig`      | type      | Parsed bot configuration type                  |
 | `ParsedDiscordServiceConfig`  | type      | Parsed service configuration type              |
 | `ParsedDiscordEscalationProviderConfig` | type | Parsed escalation provider config type              |
+| `ParsedDiscordEscalationBotConfig`      | type | Parsed escalation bot config type                   |
 
 #### Plugin
 
@@ -1207,80 +1208,6 @@ configuration validation and schema parsing.
 - `@tokenring-ai/app`: Base application framework
 - `@tokenring-ai/utility`: Shared utilities and helpers
 - `discord.js`: Discord API client library
-
-## Detailed State Management
-
-### Per-Channel State
-
-The DiscordBot maintains several state structures per channel:
-
-#### ChatResponse
-
-Tracks accumulated agent output per channel:
-
-```typescript
-type ChatResponse = {
-  text: string | null;                    // Accumulated response text
-  messageIds: (string | undefined)[];     // Discord message IDs for each chunk
-  sentTexts: string[];                    // Previously sent text chunks for sync
-  isComplete?: boolean;                   // Whether the response is finished
-};
-```
-
-#### UserChannel
-
-Tracks user communication for escalation:
-
-```typescript
-type UserChannel = {
-  destinationId: string;                  // Discord user/channel ID
-  trackedMessageIds: Set<string>;         // Message IDs to track for replies
-  queue: string[];                        // Buffered incoming messages
-  resolve?: (value: IteratorResult<string>) => void;  // Pending promise resolver
-  closed: boolean;                        // Channel closed state
-};
-```
-
-### Internal State Structures
-
-```typescript
-// Active requests tracking
-private activeRequests = new Map<string, { channelId: string; responseSent: boolean }>();
-
-// Pending channel buffers
-private pendingChannelIds = new Set<string>();
-
-// Message ID to bot user ID mapping
-private messageIdToBotUserId = new Map<string, string>();
-
-// Event listeners tracking
-private channelListeners = new Set<string>();
-
-// Rate limiting state
-private lastSendTime = 0;
-private sendTimer: NodeJS.Timeout | null = null;
-private isProcessing = false;
-```
-
-### State Lifecycle
-
-1. **Initialization**: State structures created when bot starts
-2. **Per-channel setup**: Agent spawned, event loop started on first message
-3. **Active request tracking**: Request ID mapped to channel when input sent
-4. **Response accumulation**: Chat output accumulated in `ChatResponse` buffer
-5. **Buffer flushing**: Messages sent in chunks with rate limiting; when
-   incomplete, only the last 2 chunks are synced to reduce edits
-6. **Completion**: When agent response completes, full buffer flushed and state
-   cleaned up (unless errors occurred)
-7. **Shutdown**: All state cleared, agents deleted, bots stopped
-
-### Cleanup Patterns
-
-- `ChatResponse` deleted when response complete and no errors
-- Pending channels re-scheduled if errors occur during flush
-- User channels cleaned up on async dispose
-- All state cleared on bot stop
-- Agents deleted via `AgentManager` on shutdown
 
 ## License
 

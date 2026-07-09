@@ -29,14 +29,20 @@ serving, SPA routing, WebSocket RPC, and authentication.
 
 ### Key Features
 
-- **High-Performance Server**: Built on Bun.serve for low-latency HTTP and WebSocket handling
-- **Resource Registration System**: Pluggable architecture using KeyedRegistry for web resources
-- **Static File Serving**: Serve static files with custom routing prefixes and index handling
-- **SPA Support**: Single Page Application routing with fallback for client-side navigation
+- **High-Performance Server**: Built on Bun.serve for low-latency HTTP and
+  WebSocket handling
+- **Resource Registration System**: Pluggable architecture using KeyedRegistry
+  for web resources
+- **Static File Serving**: Serve static files with custom routing prefixes and
+  index handling
+- **SPA Support**: Single Page Application routing with fallback for
+  client-side navigation
 - **WebSocket RPC**: Real-time WebSocket-based RPC with streaming support
-- **Authentication**: Basic and Bearer token authentication with per-user credentials
+- **Authentication**: Basic and Bearer token authentication with per-user
+  credentials
 - **Plugin Integration**: Seamless integration with TokenRing plugin system
-- **Automatic RPC Registration**: Auto-creates WebSocket RPC resource from RpcService endpoints
+- **Automatic RPC Registration**: Auto-creates WebSocket RPC resource from
+  RpcService endpoints
 - **Type Safety**: Full TypeScript support with Zod configuration validation
 - **Configurable Port**: Port 0 enables automatic port assignment
 
@@ -120,7 +126,9 @@ Web host stopped
 
 ### Tools
 
-This package does not define any tools. Tools are typically used for agent-assisted operations, and the web-host package focuses on web server functionality rather than agent tools.
+This package does not define any tools. Tools are typically used for
+agent-assisted operations, and the web-host package focuses on web server
+functionality rather than agent tools.
 
 ### Configuration
 
@@ -157,7 +165,7 @@ const WebHostConfigSchema = z
 | Option | Type | Required | Default | Description |
 |--------|------|----------|---------|-------------|
 | `autoStart` | boolean | No | `false` | Whether to automatically start the server when plugin starts |
-| `host` | string | No | `"127.0.0.1"` | Host address to bind to |
+| `host` | string | No | `127.0.0.1` | Host address to bind to |
 | `port` | number | No | `0` | Port number. If 0 or not specified, an available port is automatically assigned |
 | `auth` | AuthConfig | No | - | Authentication configuration |
 
@@ -204,7 +212,7 @@ const staticResourceConfigSchema = z.object({
 
 | Option | Type | Description |
 |--------|------|-------------|
-| `type` | `"static"` | Discriminator for static resource type |
+| `type` | `static` | Discriminator for static resource type |
 | `root` | string | Directory path for static files |
 | `description` | string | Human-readable description |
 | `indexFile` | string | Default index file name |
@@ -224,12 +232,12 @@ const spaResourceConfigSchema = z.object({
 
 | Option | Type | Description |
 |--------|------|-------------|
-| `type` | `"spa"` | Discriminator for SPA resource type |
+| `type` | `spa` | Discriminator for SPA resource type |
 | `file` | string | Path to the index.html file |
 | `description` | string | Human-readable description |
 | `prefix` | string | URL prefix for SPA routing |
 
-#### Sampling Configuration
+#### Sample Configuration
 
 ```yaml
 webHost:
@@ -247,9 +255,12 @@ webHost:
 
 **Configuration Notes:**
 
-- `autoStart`: Set to `true` to automatically start the server when the plugin starts
-- `port`: Use `0` for automatic port assignment, or specify a specific port number
-- `auth`: Optional; if not provided, the server accepts all requests without authentication
+- `autoStart`: Set to `true` to automatically start the server when the plugin
+  starts
+- `port`: Use `0` for automatic port assignment, or specify a specific port
+  number
+- `auth`: Optional; if not provided, the server accepts all requests without
+  authentication
 - Each user can have either `password`, `bearerToken`, or both credentials
 
 ### Integration
@@ -278,7 +289,8 @@ await app.start();
 **Install Phase:**
 
 1. Creates `WebHostService` with provided configuration
-2. Registers chat commands (`/webhost show`, `/webhost start`, `/webhost stop`) with AgentCommandService
+2. Registers chat commands (`/webhost show`, `/webhost start`, `/webhost stop`)
+   with AgentCommandService
 
 **Start Phase:**
 
@@ -290,11 +302,13 @@ await app.start();
 
 1. Stops the server if currently running
 2. Updates configuration with new values
-3. Restarts the server if it was listening before reconfiguration or if `autoStart` is enabled
+3. Restarts the server if it was listening before reconfiguration or if
+   `autoStart` is enabled
 
 **Stop Phase:**
 
-The plugin does not define a specific stop phase handler. The server can be stopped via:
+The plugin does not define a specific stop phase handler. The server can be
+stopped via:
 
 - The `/webhost stop` chat command
 - Calling `webHostService.stop()` programmatically
@@ -391,9 +405,11 @@ webHostService.registerResource("spa", spaResource);
 
 SPA routing behavior:
 
-- **Static files** (JS, CSS, images): Served directly by Bun's native file serving
+- **Static files** (JS, CSS, images): Served directly by Bun's native file
+  serving
 - **Root path**: Serves the specified index.html file
-- **Client-side routes**: All non-static-file requests serve index.html (for client-side routing)
+- **Client-side routes**: All non-static-file requests serve index.html (for
+  client-side routing)
 - **Missing files**: Returns 404 if static file doesn't exist
 
 **Example routing:**
@@ -582,7 +598,7 @@ class WebHostService implements TokenRingService {
 
 | Property | Type | Description |
 |----------|------|-------------|
-| `name` | string | Service name (`"WebHostService"`) |
+| `name` | string | Service name (`WebHostService`) |
 | `description` | string | Service description |
 | `resources` | `KeyedRegistry<WebResource>` | Registry of registered web resources |
 | `registerResource` | `(name: string, resource: WebResource) => void` | Register a web resource |
@@ -659,6 +675,75 @@ interface BunResponse {
 }
 ```
 
+#### RouteHandler Type
+
+Route handler function type.
+
+```typescript
+type RouteHandler = (
+  request: BunRequest,
+  response: BunResponse,
+) => MaybePromise<Response | void>;
+```
+
+#### WebSocketHandler Interface
+
+WebSocket handler interface for managing WebSocket connections.
+
+```typescript
+interface WebSocketHandler {
+  open?(ws: BunWebSocket): void;
+  close?(ws: BunWebSocket): void;
+  message?(ws: BunWebSocket, message: string | Buffer): void;
+}
+```
+
+**Properties:**
+
+| Property | Type | Description |
+|----------|------|-------------|
+| `open` | `(ws: BunWebSocket) => void` | Optional handler called when a WebSocket connection opens |
+| `close` | `(ws: BunWebSocket) => void` | Optional handler called when a WebSocket connection closes |
+| `message` | `(ws: BunWebSocket, message: string \| Buffer) => void` | Optional handler called when a message is received |
+
+#### BunWebSocket Interface
+
+WebSocket wrapper interface.
+
+```typescript
+interface BunWebSocket {
+  data: any;
+  send(data: string | object): void;
+  close(): void;
+}
+```
+
+**Properties and Methods:**
+
+| Property/Method | Type | Description |
+|-----------------|------|-------------|
+| `data` | `any` | Arbitrary data stored on the WebSocket connection |
+| `send` | `(data: string \| object) => void` | Send data to the client (objects are JSON-stringified) |
+| `close` | `() => void` | Close the WebSocket connection |
+
+#### StaticOptions Interface
+
+Static file serving options.
+
+```typescript
+interface StaticOptions {
+  index?: string;
+  notFound?: string;
+}
+```
+
+**Properties:**
+
+| Property | Type | Description |
+|----------|------|-------------|
+| `index` | `string` | Optional index file name for directory requests |
+| `notFound` | `string` | Optional custom 404 page file path |
+
 #### StaticResource Class
 
 Serves static files from a directory using Bun's native file serving.
@@ -683,11 +768,19 @@ Serves single-page applications with proper client-side routing support.
 
 ```typescript
 class SPAResource implements WebResource {
+  readonly config: z.output<typeof spaResourceConfigSchema>;
+
   constructor(config: z.output<typeof spaResourceConfigSchema>);
 
   register(router: BunRouter): void;
 }
 ```
+
+**Properties:**
+
+| Property | Type | Description |
+|----------|------|-------------|
+| `config` | `z.output<typeof spaResourceConfigSchema>` | The SPA resource configuration (public readonly property) |
 
 Routing behavior:
 
@@ -758,12 +851,14 @@ function createWsRPCClient<T extends RPCSchema>(
 
 Features:
 
-- **Automatic WebSocket connection management**: Socket caching with automatic reconnection for closed sockets
+- **Automatic WebSocket connection management**: Socket caching with
+  automatic reconnection for closed sockets
 - **Type-safe method calls**: Method signatures inferred from RPC schema
 - **Support for all method types**: Query, mutation, and stream method types
 - **Async generator support**: Streaming methods return async generators
 - **AbortSignal support**: Cancel streaming operations gracefully
-- **Request/Response tracking**: Automatic request ID management and response routing
+- **Request/Response tracking**: Automatic request ID management and response
+  routing
 
 **Socket Caching Behavior:**
 
@@ -778,7 +873,8 @@ const client2 = createWsRPCClient(url, schema);
 
 **Stream Method Implementation:**
 
-Stream methods use an internal queue system to handle asynchronous message delivery:
+Stream methods use an internal queue system to handle asynchronous message
+delivery:
 
 ```typescript
 // Stream method returns an async generator
@@ -869,6 +965,22 @@ registerResource = this.resources.set;
 // Get all resources
 getResourceEntries = this.resources.entriesArray;
 ```
+
+### State Management
+
+The web-host package is stateless in its request processing:
+
+- **WebHostService**: Maintains runtime state for the server lifecycle
+  (listening status, registered resources, active server instance). This state
+  is not serialized or persisted.
+- **Resources**: StaticResource and SPAResource are stateless; each request is
+  processed independently. SPAResource exposes its configuration as a readonly
+  public `config` property.
+- **WsRpcResource**: Stateless RPC execution; each RPC request is processed
+  independently. WebSocket connections maintain per-connection state
+  (AbortController) that is cleaned up on connection close.
+- **createWsRPCClient**: Maintains client-side state (socket cache, pending
+  requests, pending streams). This state is not serialized.
 
 ### RPC Endpoints
 
@@ -992,8 +1104,10 @@ The package exports the following Zod schemas:
 
 **Configuration Schemas:**
 
-- `WebHostConfigSchema`: Web host configuration schema with autoStart, host, port, and auth options
-- `WebHostAuthConfigSchema`: Authentication configuration schema for user credentials
+- `WebHostConfigSchema`: Web host configuration schema with autoStart, host,
+  port, and auth options
+- `WebHostAuthConfigSchema`: Authentication configuration schema for user
+  credentials
 
 **Resource Schemas:**
 

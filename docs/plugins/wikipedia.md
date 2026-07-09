@@ -599,15 +599,17 @@ await wikipedia.getPage("NonExistentPage");
 | title     | Page title       |
 | action    | raw (fixed)      |
 
-### Limitations
+### State Management
 
-- **Rate limits:** Wikipedia API enforces rate limits
-- **Read-only:** Cannot create or modify articles
-- **Raw markup only:** Returns wiki markup, not rendered HTML
-- **Namespace in tools:** The search tool does not expose namespace parameter
-- **No image handling:** Does not provide direct media access
-- **Network required:** Requires connectivity to Wikipedia API
+The WikipediaService is stateless and does not maintain persistent state. Each API
+request is processed independently without storing intermediate state. The service:
+
+- Does not cache search results or page content
+- Does not maintain session state between calls
+- Relies entirely on the Wikipedia API for data retrieval
+- Uses `HTTPRetriever` for each request, which handles connection and retry logic
+  internally
 
 ## License
 
-MIT License - see the root LICENSE file for details.
+MIT License - see the LICENSE file for details.

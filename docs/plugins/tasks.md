@@ -45,7 +45,7 @@ The package registers the following slash commands for task management:
 
 #### `/tasks list`
 
-Display all tasks in the current task queue with their status, agent type, and message content.
+Display all tasks in the current task queue with their status and details.
 
 **Example**:
 
@@ -70,7 +70,7 @@ Note: Task results are truncated to 100 characters with `...` appended.
 
 #### `/tasks execute`
 
-Execute all pending tasks by dispatching them to their respective agents. Only tasks with `pending` status will be executed.
+Execute all pending tasks in the task queue.
 
 **Example**:
 
@@ -88,7 +88,7 @@ Task execution completed:
 
 #### `/tasks clear`
 
-Remove all tasks from the current task queue. This action cannot be undone.
+Remove all tasks from the current task queue.
 
 **Example**:
 
@@ -104,7 +104,7 @@ Cleared all tasks
 
 #### `/tasks settings`
 
-View or modify task settings. Settings are stored in the agent state and apply to the current agent.
+View or modify task settings. Omit arguments to show current settings.
 
 **Examples**:
 

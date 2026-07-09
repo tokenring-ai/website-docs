@@ -41,7 +41,7 @@ The checkpoint package provides two types of checkpoint services:
 | Command | Description |
 |---------|-------------|
 | `/agent checkpoint create [label]` | Create a checkpoint with an optional label (defaults to "New Checkpoint") |
-| `/agent checkpoint restore <id>` | Restore agent state from a specific checkpoint by numeric ID |
+| `/agent checkpoint restore <id>` | Restore agent state from a specific checkpoint by numeric ID (must be an integer) |
 | `/agent checkpoint list` | Open an interactive tree browser to select and restore a checkpoint |
 | `/agent checkpoint history` | Browse checkpoint history grouped by agent ID |
 
@@ -51,7 +51,7 @@ The checkpoint package provides two types of checkpoint services:
 |---------|-------------|
 | `/app checkpoint create` | Create a checkpoint of the current app state |
 | `/app checkpoint list` | Open an interactive tree browser to select and restore an app checkpoint |
-| `/app checkpoint history` | Browse app checkpoint history grouped by date |
+| `/app checkpoint history` | Browse app checkpoint history grouped by date, select by session ID |
 
 ### Tools
 
@@ -212,6 +212,15 @@ entire application including all agents.
 
 **Exports:**
 `import AppCheckpointService from "@tokenring-ai/checkpoint/AppCheckpointService"`
+
+**Constructor Behavior:**
+
+The constructor requires the `TokenRingApp` instance and
+`ParsedAppCheckpointConfig` options. During construction, it automatically
+initializes the `AppCheckpointState` state slice by obtaining the
+`AgentManager` service and calling
+`app.stateManager.initializeState(AppCheckpointState, agentManager)`. This
+enables app-level checkpointing of all agent states.
 
 **Properties:**
 
@@ -750,10 +759,13 @@ Retrieve a specific agent checkpoint with full state data.
 
 **Input:** `{ id: number }`
 
-**Result:** Discriminated union on `status`:
+**Result:** Discriminated union on `status` field, using
+`z.discriminatedUnion("status", [SuccessSchema.extend({ checkpoint:
+NamedAgentCheckpointSchema }), CheckpointNotFoundSchema])`:
 
-- `{ status: "success", checkpoint: NamedAgentCheckpoint }`
-- `{ status: "checkpointNotFound" }`
+- `{ status: "success", checkpoint: StoredAgentCheckpoint }` - checkpoint
+  found, includes full state data
+- `{ status: "checkpointNotFound" }` - checkpoint does not exist
 
 **Request:**
 
@@ -800,16 +812,22 @@ Retrieve a specific agent checkpoint with full state data.
 
 #### launchAgentFromCheckpoint
 
-Create a new agent from a checkpoint.
+Create a new agent from a checkpoint. Spawns a new agent instance from the
+checkpoint data.
 
 **Type:** `mutation`
 
 **Input:** `{ checkpointId: number, headless?: boolean }`
 
-**Result:** Discriminated union on `status`:
+**Result:** Discriminated union on `status` field, using
+`z.discriminatedUnion("status", [SuccessSchema.extend({ agentId: z.string(),
+agentName: z.string(), agentType: z.string().exactOptional() }),
+CheckpointNotFoundSchema])`:
 
 - `{ status: "success", agentId: string, agentName: string, agentType?: string }`
-- `{ status: "checkpointNotFound" }`
+  - `agentType` is an exact optional field (only present if the agent
+    configuration defines one)
+- `{ status: "checkpointNotFound" }` - checkpoint does not exist
 
 **Request:**
 
@@ -1238,8 +1256,8 @@ bun run test:coverage         # Coverage report
 - **Name**: `@tokenring-ai/checkpoint`
 - **Version**: `0.2.0`
 - **License**: MIT
-- **Description**: State preservation service for pausing and resuming agent
-  workflows
+- **Description**: Persistent state management for agents and applications,
+  enabling checkpoint creation, restoration, and session recovery
 
 ### Related Components
 

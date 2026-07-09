@@ -23,6 +23,12 @@ operations, particularly focusing on cost tracking across different categories.
 - **Plugin Architecture**: Installable as a Token Ring plugin for
   easy integration
 
+### Installation
+
+```bash
+bun add @tokenring-ai/metrics
+```
+
 ### Chat Commands
 
 | Command | Description |
@@ -147,7 +153,7 @@ class MetricsService implements TokenRingService {
   readonly name = "MetricsService";
   description = "Collects metrics about the agent's performance.";
 
-  constructor(options: MetricsServiceConfig);
+  constructor(options: z.output<typeof MetricsServiceConfigSchema>);
 
   /**
    * Attach the service to an agent and initialize state
@@ -177,6 +183,7 @@ and deserialization support.
 **Properties:**
 
 - `costs: Record<string, number>` - Map of cost categories to amounts
+- `initialCosts: Costs` - Initial costs provided at construction (readonly)
 
 **Interface:**
 
@@ -186,10 +193,10 @@ class CostTrackingState extends AgentStateSlice<
 > {
   costs: Costs;
 
-  constructor(initialCosts?: Costs);
+  constructor(readonly initialCosts: Costs = {});
 
   /**
-   * Reset all costs to zero
+   * Clear all costs by resetting the costs record to an empty object
    */
   reset(): void;
 
@@ -207,6 +214,7 @@ class CostTrackingState extends AgentStateSlice<
    * Display costs as formatted string
    * @returns Formatted cost string with overall total
    *   and per-category breakdown
+   *   Uses markdownList utility for consistent formatting
    */
   show(): string;
 }
@@ -226,6 +234,14 @@ import { MetricsService } from '@tokenring-ai/metrics';
 
 app.addServices(new MetricsService({}));
 ```
+
+### Provider Documentation
+
+This package does not define any providers.
+
+### RPC Endpoints
+
+This package does not define any RPC endpoints.
 
 ### Schema Documentation
 
@@ -327,6 +343,19 @@ costState.reset();
 // State is restored when agent is reinitialized
 ```
 
+### State Management
+
+The package uses `CostTrackingState` to manage cost data:
+
+- **Initialization**: State is initialized when the agent attaches the
+  MetricsService
+- **Persistence**: Costs are automatically persisted through the agent's
+  state system
+- **Checkpoint Generation**: State is included in agent checkpoints for
+  recovery
+- **Session Tracking**: Costs accumulate within a session and can be
+  reset with `reset()`
+
 ### Exports
 
 The package exports the following modules:
@@ -397,5 +426,9 @@ pkg/metrics/
 
 - [@tokenring-ai/agent](./agent.md) - Core agent orchestration
 - [@tokenring-ai/app](./app.md) - Application framework
-- [@tokenring-ai/ai-client](./ai-client.md) - AI client for
-  cost tracking integration
+- [@tokenring-ai/utility](./utility.md) - Shared utilities (deepClone,
+  markdownList)
+
+## License
+
+MIT License - see the root LICENSE file for details.

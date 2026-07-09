@@ -4,19 +4,21 @@
 
 The `@tokenring-ai/database` package provides an abstract SQL interface for
 schema inspection and query execution across providers. It enables the
-registration and interaction with multiple database connections through a unified
-`DatabaseService` that integrates with the TokenRing plugin system and agent
-framework.
+registration and interaction with multiple database connections through a
+unified `DatabaseService` that integrates with the TokenRing plugin system and
+agent framework.
 
 The package focuses on abstraction, requiring implementers to extend
 `DatabaseProvider` for specific database types. It supports tool-based
 interaction with agents, context handlers for database availability injection,
-and write operation protection through human confirmation for non-SELECT queries.
+and write operation protection through human confirmation for non-SELECT
+queries.
 
 ### Key Features
 
 - Abstract database provider interface for multiple database systems
-- Unified service management through `DatabaseService` with KeyedRegistry pattern
+- Unified service management through `DatabaseService` with KeyedRegistry
+  pattern
 - Tool-based interaction with agents via ChatService
 - Context handlers for database availability injection
 - Write protection with human confirmation for non-SELECT queries
@@ -37,15 +39,15 @@ tools.
 
 ### Tools
 
-| Tool Name             | Display Name        | Description                                            |
-|-----------------------|---------------------|--------------------------------------------------------|
-| `database_executeSql` | Database/executeSql | Execute arbitrary SQL queries on a database            |
-| `database_showSchema` | Database/showSchema | Show CREATE TABLE statements for all tables in a database |
+| Tool Name             | Display Name        | Description                                  |
+|-----------------------|---------------------|----------------------------------------------|
+| `database_executeSql` | Database/executeSql | Execute arbitrary SQL queries on a database  |
+| `database_showSchema` | Database/showSchema | Show CREATE TABLE statements for all tables  |
 
 #### database_executeSql
 
-Executes an arbitrary SQL query on a database. WARNING: Use with extreme caution
-as this can modify or delete data.
+Executes an arbitrary SQL query on a database. WARNING: Use with extreme
+caution as this can modify or delete data.
 
 **Input Schema:**
 
@@ -61,12 +63,12 @@ z.object({
 
 **Behavior:**
 
-1. Retrieves the target database from the `DatabaseService` using `databaseName`
-   or an empty string `""` if not provided
+1. Retrieves the target database from the `DatabaseService` using
+   `databaseName` or an empty string `""` if not provided
 2. If the database is not found, throws `ToolCallError`:
    `"Database ${databaseName} not found"`
-3. If the query does not start with `"SELECT"` (case-sensitive), requests human
-   approval via `agent.askForApproval()` with message:
+3. If the query does not start with `"SELECT"` (case-sensitive), requests
+   human approval via `agent.askForApproval()` with message:
    `"Execute SQL write operation on database '${databaseName}'?\n\nQuery: ${sqlQuery}"`
 4. If approval is denied, throws `ToolCallError`:
    `"User did not approve the SQL query that was provided."`
@@ -85,9 +87,9 @@ z.object({
 }
 ```
 
-**Note:** The SELECT check is case-sensitive. Only queries starting with uppercase
-`"SELECT"` bypass the approval requirement. Queries starting with `"select"`
-(lowercase) will require approval.
+**Note:** The SELECT check is case-sensitive. Only queries starting with
+uppercase `"SELECT"` bypass the approval requirement. Queries starting with
+`"select"` (lowercase) will require approval.
 
 #### database_showSchema
 
@@ -153,8 +155,9 @@ database: {}
 `@tokenring-ai/database` and can be imported for type-safe configuration.
 
 The plugin accepts a configuration object with a `database` property, which is
-used to signal that the plugin should be activated. The actual database provider
-instantiation and registration must be done manually by the implementer.
+used to signal that the plugin should be activated. The actual database
+provider instantiation and registration must be done manually by the
+implementer.
 
 **Important:** The plugin does not automatically instantiate database providers
 from configuration. The configuration object serves two purposes:
@@ -192,7 +195,7 @@ app.waitForService(DatabaseService, dbService => {
     process.env.PROD_DB_URL,
     true // allowWrites
   );
-  dbService.registerDatabase('production', postgresProvider);
+  dbService.registerDatabase("production", postgresProvider);
 });
 ```
 
@@ -204,8 +207,8 @@ app.waitForService(DatabaseService, dbService => {
 - **Parameterized Queries**: Use parameterized queries to prevent SQL injection
   attacks
 
-- **Write Protection**: Use the `allowWrites` flag to restrict write operations.
-  Non-SELECT queries automatically require human confirmation via
+- **Write Protection**: Use the `allowWrites` flag to restrict write
+  operations. Non-SELECT queries automatically require human confirmation via
   `agent.askForApproval()`
 
 - **Error Handling**: Ensure proper error handling when executing database
@@ -226,8 +229,9 @@ app.waitForService(DatabaseService, dbService => {
   required by both tools. It is automatically registered when the plugin is
   installed with a database configuration and the ChatService is available
 
-- **Case-Sensitive SELECT Check**: The write protection check is case-sensitive.
-  Only queries starting with uppercase `"SELECT"` bypass the approval requirement
+- **Case-Sensitive SELECT Check**: The write protection check is
+  case-sensitive. Only queries starting with uppercase `"SELECT"` bypass the
+  approval requirement
 
 - **Provider Abstraction**: Implement custom providers for specific database
   systems (PostgreSQL, MySQL, SQLite, etc.) to maintain the abstraction layer
@@ -240,12 +244,12 @@ app.waitForService(DatabaseService, dbService => {
   app.install(databasePlugin, { database: {} });
   app.waitForService(DatabaseService, dbService => {
     const provider = new MyCustomProvider(config);
-    dbService.registerDatabase('mydb', provider);
+    dbService.registerDatabase("mydb", provider);
   });
   ```
 
-- **Service Availability**: The `DatabaseService` is available immediately after
-  plugin installation. Tools and context handlers are registered after
+- **Service Availability**: The `DatabaseService` is available immediately
+  after plugin installation. Tools and context handlers are registered after
   `ChatService` is available
 
 - **Tool Execution Flow**: Tools retrieve the database from `DatabaseService`,
@@ -266,10 +270,10 @@ a registry of `DatabaseProvider` instances using the `KeyedRegistry` from
 
 **Service Properties:**
 
-| Property      | Type                              | Description              |
-|---------------|-----------------------------------|--------------------------|
-| `name`        | `string`                          | Service identifier       |
-| `description` | `string`                          | Service description      |
+| Property      | Type                              | Description            |
+|---------------|-----------------------------------|------------------------|
+| `name`        | `string`                          | Service identifier     |
+| `description` | `string`                          | Service description    |
 | `databases`   | `KeyedRegistry<DatabaseProvider>` | Database provider registry |
 
 **Resource Management Methods:**
@@ -303,8 +307,9 @@ export default class DatabaseService implements TokenRingService {
 
 #### DatabaseProvider
 
-Abstract base class for concrete database implementations. All database provider
-implementations must extend this class and implement the required methods.
+Abstract base class for concrete database implementations. All database
+provider implementations must extend this class and implement the required
+methods.
 
 **Constructor:**
 
@@ -324,6 +329,10 @@ export interface DatabaseProviderOptions {
   allowWrites?: boolean | undefined;
 }
 ```
+
+**Note:** The `DatabaseProviderOptions` interface is exported for use by
+concrete provider implementations. The `DatabaseProvider` constructor itself
+accepts a boolean `allowWrites` parameter directly.
 
 **ExecuteSqlResult Interface:**
 
@@ -428,7 +437,8 @@ export default {
   from `package.json`
 - The `DatabaseService` is registered when the plugin is installed with a
   `database` configuration
-- The `DatabaseService` is added to the app immediately during plugin installation
+- The `DatabaseService` is added to the app immediately during plugin
+  installation
 - Tools and context handlers are registered asynchronously after the
   `ChatService` is available via `waitForService`
 - The plugin does not instantiate database providers - this must be done
@@ -444,7 +454,7 @@ All database provider implementations must extend `DatabaseProvider` and
 implement the required methods:
 
 ```typescript
-import DatabaseProvider, { ExecuteSqlResult } from '@tokenring-ai/database';
+import DatabaseProvider from "@tokenring-ai/database";
 
 export class PostgresProvider extends DatabaseProvider {
   private pool: Pool;
@@ -501,7 +511,8 @@ export class PostgresProvider extends DatabaseProvider {
 
 #### Context Handlers Implementation
 
-The `available-databases` context handler is implemented as a generator function:
+The `available-databases` context handler is implemented as a generator
+function:
 
 ```typescript
 import type { ContextHandlerOptions, ContextItem }
@@ -583,8 +594,8 @@ database providers using the `KeyedRegistry` pattern from
 **Recommended State Management Patterns:**
 
 ```typescript
-import DatabaseService from '@tokenring-ai/database/DatabaseService';
-import PostgresProvider from './PostgresProvider';
+import DatabaseService from "@tokenring-ai/database/DatabaseService";
+import PostgresProvider from "./PostgresProvider";
 
 // Create service instance (singleton pattern)
 const dbService = new DatabaseService();
@@ -594,7 +605,7 @@ const postgresProvider = new PostgresProvider(
   process.env.PROD_DB_URL,
   true  // allowWrites
 );
-dbService.registerDatabase('production', postgresProvider);
+dbService.registerDatabase("production", postgresProvider);
 
 // Connection state is managed internally by the provider
 // Service maintains only the registry of providers
@@ -605,8 +616,8 @@ dbService.registerDatabase('production', postgresProvider);
 #### 1. Using Direct Service API
 
 ```typescript
-import DatabaseService from '@tokenring-ai/database/DatabaseService';
-import PostgresProvider from './PostgresProvider';
+import DatabaseService from "@tokenring-ai/database/DatabaseService";
+import PostgresProvider from "./PostgresProvider";
 
 // Create the service
 const dbService = new DatabaseService();
@@ -617,18 +628,18 @@ const postgresDb = new PostgresProvider(
   true  // allowWrites
 );
 
-dbService.registerDatabase('myPostgres', postgresDb);
+dbService.registerDatabase("myPostgres", postgresDb);
 
 // List available databases
 const available = dbService.getAvailableDatabases();
-console.log('Available databases:', available);
+console.log("Available databases:", available);
 // Output: ['myPostgres']
 
 // Get specific database
-const postgresResource = dbService.getDatabaseByName('myPostgres');
+const postgresResource = dbService.getDatabaseByName("myPostgres");
 if (postgresResource) {
   const schema = await postgresResource.showSchema();
-  console.log('Schema:', schema);
+  console.log("Schema:", schema);
 }
 ```
 
@@ -645,37 +656,37 @@ const databaseService = agent.requireServiceByType(DatabaseService);
 
 // List available databases
 const available = databaseService.getAvailableDatabases();
-console.log('Available databases:', available);
+console.log("Available databases:", available);
 
 // Show schema
-const schema = await agent.callTool('database_showSchema', {
-  databaseName: 'myPostgres'
+const schema = await agent.callTool("database_showSchema", {
+  databaseName: "myPostgres"
 });
 
 // Execute SELECT query
-const result = await agent.callTool('database_executeSql', {
-  databaseName: 'myPostgres',
-  sqlQuery: 'SELECT * FROM users WHERE active = true'
+const result = await agent.callTool("database_executeSql", {
+  databaseName: "myPostgres",
+  sqlQuery: "SELECT * FROM users WHERE active = true"
 });
 
-console.log('Query results:', result);
+console.log("Query results:", result);
 ```
 
 #### 3. Error Handling
 
 ```typescript
 try {
-  const result = await agent.callTool('database_executeSql', {
-    databaseName: 'myPostgres',
-    sqlQuery: 'DELETE FROM users WHERE id = 1'
+  const result = await agent.callTool("database_executeSql", {
+    databaseName: "myPostgres",
+    sqlQuery: "DELETE FROM users WHERE id = 1"
   });
 } catch (error) {
-  if (error.message.includes('User did not approve')) {
-    console.log('Query was not approved by user');
-  } else if (error.message.includes('not found')) {
-    console.log('Database not found');
+  if (error.message.includes("User did not approve")) {
+    console.log("Query was not approved by user");
+  } else if (error.message.includes("not found")) {
+    console.log("Database not found");
   } else {
-    console.log('Query execution failed:', error);
+    console.log("Query execution failed:", error);
   }
 }
 ```
@@ -705,9 +716,9 @@ bun test:coverage
 **Test Setup Example:**
 
 ```typescript
-import { describe, it, expect, beforeEach, afterEach } from 'vitest';
-import DatabaseService from './DatabaseService';
-import DatabaseProvider from './DatabaseProvider';
+import { describe, it, expect, beforeEach, afterEach } from "vitest";
+import DatabaseService from "./DatabaseService";
+import DatabaseProvider from "./DatabaseProvider";
 
 // Mock provider for testing
 class MockProvider extends DatabaseProvider {
@@ -716,11 +727,11 @@ class MockProvider extends DatabaseProvider {
   }
 
   async showSchema() {
-    return { 'mock_table': 'CREATE TABLE mock_table (...)' };
+    return { "mock_table": "CREATE TABLE mock_table (...)" };
   }
 }
 
-describe('DatabaseService', () => {
+describe("DatabaseService", () => {
   let dbService: DatabaseService;
   let mockProvider: MockProvider;
 
@@ -733,15 +744,15 @@ describe('DatabaseService', () => {
     dbService.databases.clear();
   });
 
-  it('registers and retrieves databases', () => {
-    dbService.registerDatabase('test-db', mockProvider);
+  it("registers and retrieves databases", () => {
+    dbService.registerDatabase("test-db", mockProvider);
 
-    expect(dbService.getDatabaseByName('test-db')).toBe(mockProvider);
-    expect(dbService.getAvailableDatabases()).toEqual(['test-db']);
+    expect(dbService.getDatabaseByName("test-db")).toBe(mockProvider);
+    expect(dbService.getAvailableDatabases()).toEqual(["test-db"]);
   });
 
-  it('returns undefined for non-existent database', () => {
-    expect(dbService.getDatabaseByName('non-existent')).toBeUndefined();
+  it("returns undefined for non-existent database", () => {
+    expect(dbService.getDatabaseByName("non-existent")).toBeUndefined();
     expect(dbService.getAvailableDatabases()).toEqual([]);
   });
 });
@@ -752,10 +763,10 @@ describe('DatabaseService', () => {
 When testing tools, mock the `Agent` and `DatabaseService`:
 
 ```typescript
-import { describe, it, expect } from 'vitest';
-import executeSql from './tools/executeSql';
-import DatabaseService from './DatabaseService';
-import Agent from '@tokenring-ai/agent/Agent';
+import { describe, it, expect } from "vitest";
+import executeSql from "./tools/executeSql";
+import DatabaseService from "./DatabaseService";
+import Agent from "@tokenring-ai/agent/Agent";
 
 const mockAgent = {
   requireServiceByType: () => mockDbService,
@@ -768,24 +779,24 @@ const mockDbService = {
   }),
 } as unknown as DatabaseService;
 
-describe('executeSql tool', () => {
-  it('executes SELECT queries without approval', async () => {
+describe("executeSql tool", () => {
+  it("executes SELECT queries without approval", async () => {
     const result = await executeSql.execute(
-      { databaseName: 'test', sqlQuery: 'SELECT * FROM users' },
+      { databaseName: "test", sqlQuery: "SELECT * FROM users" },
       mockAgent
     );
     expect(result).toBeDefined();
   });
 
-  it('requests approval for non-SELECT queries', async () => {
+  it("requests approval for non-SELECT queries", async () => {
     (mockAgent.askForApproval as any) = async () => false;
 
     await expect(
       executeSql.execute(
-        { databaseName: 'test', sqlQuery: 'DELETE FROM users' },
+        { databaseName: "test", sqlQuery: "DELETE FROM users" },
         mockAgent
       )
-    ).rejects.toThrow('User did not approve');
+    ).rejects.toThrow("User did not approve");
   });
 });
 ```
@@ -822,9 +833,7 @@ describe('executeSql tool', () => {
 
 Concrete database provider implementations that extend `DatabaseProvider`:
 
-- `@tokenring-ai/drizzle-storage`: Drizzle ORM-based storage
-- `@tokenring-ai/sqlite-storage`: SQLite database storage
-- `@tokenring-ai/mysql`: MySQL database provider (if available)
+- `@tokenring-ai/mysql`: MySQL database provider
 
 Note: These packages implement the `DatabaseProvider` interface to provide
 concrete database functionality while leveraging the abstract service layer

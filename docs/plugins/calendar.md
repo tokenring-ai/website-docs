@@ -1,16 +1,22 @@
 # @tokenring-ai/calendar
 
-Abstract calendar interface for Token Ring with provider-based event listing, search, creation, updates, and deletion.
+Abstract calendar interface for Token Ring with provider-based event listing,
+search, creation, updates, and deletion.
 
 ## Overview
 
-The `@tokenring-ai/calendar` package provides a provider-based calendar abstraction for Token Ring agents. It supplies a shared `CalendarService`, a provider interface for concrete implementations, chat tools, slash commands, RPC endpoints, and scripting functions for calendar workflows.
+The `@tokenring-ai/calendar` package provides a provider-based calendar
+abstraction for Token Ring agents. It supplies a shared `CalendarService`, a
+provider interface for concrete implementations, chat tools, slash commands, RPC
+endpoints, and scripting functions for calendar workflows.
 
-This package is intentionally abstract. Concrete integrations such as Google Calendar register providers into `CalendarService`.
+This package is intentionally abstract. Concrete integrations such as Google
+Calendar register providers into `CalendarService`.
 
 ## Key Features
 
-- Provider-based calendar architecture with `KeyedRegistry` for provider management
+- Provider-based calendar architecture with `KeyedRegistry` for provider
+  management
 - Upcoming-event listing with filtering options
 - Free-text event search
 - Current-event selection for follow-up work
@@ -40,9 +46,9 @@ This package is intentionally abstract. Concrete integrations such as Google Cal
 
 | Command | Description |
 |---------|-------------|
-| `/calendar event list [--limit <n>]` | List upcoming events (default: 10, range: 1-100) |
+| `/calendar event list [<limit>]` | List upcoming events (default: 10, range: 1-100) |
 | `/calendar event search <query>` | Search calendar events by query |
-| `/calendar event create` | Create a new calendar event (see examples for syntax) |
+| `/calendar event create --title <title> --start <start> --end <end> <description>` | Create a new calendar event |
 | `/calendar event get` | Display the currently selected calendar event title |
 | `/calendar event select` | Interactively select an upcoming event |
 | `/calendar event info` | Display detailed information about the currently selected event |
@@ -60,9 +66,9 @@ This package is intentionally abstract. Concrete integrations such as Google Cal
 
 # Event commands
 /calendar event list
-/calendar event list --limit 20
+/calendar event list 20
 /calendar event search standup
-/calendar event create "Team sync" | 2026-03-10T17:00:00.000Z | 2026-03-10T17:30:00.000Z | "Weekly status sync"
+/calendar event create --title "Team sync" --start "2026-03-10T17:00:00.000Z" --end "2026-03-10T17:30:00.000Z" "Weekly status sync"
 /calendar event get
 /calendar event select
 /calendar event info
@@ -74,10 +80,10 @@ This package is intentionally abstract. Concrete integrations such as Google Cal
 
 | Tool | Description |
 |------|-------------|
-| `calendar_getUpcomingEvents` | Retrieve upcoming calendar events from the active provider |
-| `calendar_searchEvents` | Search calendar events using the active provider |
-| `calendar_selectEvent` | Select a calendar event by ID for follow-up actions |
-| `calendar_getCurrentEvent` | Retrieve the currently selected calendar event |
+| `calendar_getUpcomingEvents` | Retrieve upcoming calendar events from the active provider (returns a markdown table) |
+| `calendar_searchEvents` | Search calendar events using the active provider (returns a markdown table) |
+| `calendar_selectEvent` | Select a calendar event by ID for follow-up actions (returns formatted event details and JSON) |
+| `calendar_getCurrentEvent` | Retrieve the currently selected calendar event (returns JSON or "no event selected") |
 | `calendar_createEvent` | Create a new calendar event |
 | `calendar_updateEvent` | Update the currently selected calendar event |
 | `calendar_deleteCurrentEvent` | Delete the currently selected calendar event |
@@ -87,7 +93,7 @@ This package is intentionally abstract. Concrete integrations such as Google Cal
 ```typescript
 // calendar_getUpcomingEvents
 {
-  limit?: number;        // Optional limit (default: 10)
+  limit?: number;        // Optional limit (default: 10, minimum: 1)
   from?: string;         // Optional ISO date-time start bound
   to?: string;           // Optional ISO date-time end bound
 }
@@ -95,7 +101,7 @@ This package is intentionally abstract. Concrete integrations such as Google Cal
 // calendar_searchEvents
 {
   query: string;         // Required search query
-  limit?: number;        // Optional limit (default: 10)
+  limit?: number;        // Optional limit (default: 10, minimum: 1)
   from?: string;         // Optional ISO date-time start bound
   to?: string;           // Optional ISO date-time end bound
 }
@@ -240,7 +246,8 @@ The calendar package integrates with the following Token Ring services:
 
 - Normalize provider data into the shared `CalendarEvent` shape
 - Keep current-event selection in `CalendarState`, not provider state
-- Prefer explicit UTC timestamps or full ISO strings when creating or updating events
+- Prefer explicit UTC timestamps or full ISO strings when creating or
+  updating events
 - Use `selectEventById` before update/delete operations
 - Configure watches carefully to avoid excessive command triggering
 - Handle provider errors gracefully in provider implementations
@@ -258,7 +265,8 @@ Main service for calendar operations implementing `TokenRingService`.
 
 - Register and manage calendar providers via `KeyedRegistry`
 - Resolve the active provider for each agent
-- Proxy event listing, search, selection, creation, update, and delete operations
+- Proxy event listing, search, selection, creation, update, and delete
+  operations
 - Manage provider selection and event state in `CalendarState`
 - Implement watch functionality for automated event monitoring
 
@@ -302,11 +310,15 @@ class CalendarService implements TokenRingService {
 
 Provider interface implemented by concrete calendar platform integrations.
 
-**Important:** State management (`currentEvent`, `activeProvider`) is handled by `CalendarService` and stored in `CalendarState`. Providers should NOT manage their own state slices.
+**Important:** State management (`currentEvent`, `activeProvider`) is handled by
+`CalendarService` and stored in `CalendarState`. Providers should NOT manage
+their own state slices.
 
 - Providers should return event data without modifying agent state
-- `CalendarService` manages setting `currentEvent` after create/select/update operations
-- Providers can read `currentEvent` via `getCurrentEvent()` for operations like update/delete
+- `CalendarService` manages setting `currentEvent` after create/select/update
+  operations
+- Providers can read `currentEvent` via `getCurrentEvent()` for operations like
+  update/delete
 - Providers should NOT call `agent.mutateState()` or `agent.initializeState()`
 
 **Interface:**
@@ -466,7 +478,9 @@ type CalendarEvent = z.input<typeof CalendarEventSchema>;
 type ParsedCalendarEvent = z.output<typeof CalendarEventSchema>;
 ```
 
-**Note:** `CalendarEvent` is the input type and `ParsedCalendarEvent` is the output type. The `z.coerce.date()` transforms string date inputs into `Date` objects. Service methods return `ParsedCalendarEvent`.
+**Note:** `CalendarEvent` is the input type and `ParsedCalendarEvent` is the
+output type. The `z.coerce.date()` transforms string date inputs into `Date`
+objects. Service methods return `ParsedCalendarEvent`.
 
 #### `CalendarAttendee`
 
@@ -800,11 +814,13 @@ calendarService.registerCalendarProvider("my-provider", myProvider);
 
 ### Watch Functionality
 
-Calendar watches enable automated monitoring and command triggering based on event patterns.
+Calendar watches enable automated monitoring and command triggering based on
+event patterns.
 
 #### How Watches Work
 
-1. When `watch` is configured in agent defaults, the service starts a background task
+1. When `watch` is configured in agent defaults, the service starts a
+   background task
 2. The task periodically checks for new events within the lookback window
 3. New events are matched against configured patterns
 4. Matching events trigger the associated commands as user input
@@ -843,6 +859,19 @@ Meeting URL: <meetingUrl>
 ```
 
 Patterns are matched as case-insensitive regex against this formatted text.
+
+#### Watch Artifact Output
+
+When a watch action triggers, the agent receives input with an attachment
+containing the formatted event text:
+
+- **From**: `Calendar event: <event title>`
+- **Message**: The configured command string
+- **Attachment**:
+  - `name`: Event title
+  - `encoding`: `text`
+  - `mimeType`: `text/plain`
+  - `body`: The formatted event text (as shown in the pattern matching format above)
 
 ### Testing and Development
 
