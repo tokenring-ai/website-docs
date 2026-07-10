@@ -41,7 +41,8 @@ const sidebars: SidebarsConfig = {
           type: 'category',
           label: 'Research',
           items: [
-            'agents/research',
+            'agents/search',
+            'agents/deep-research',
           ],
         },
         {

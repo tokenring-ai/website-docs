@@ -21,7 +21,8 @@ Reference an agent by its configured ID with `@agent-id`:
 
 ## Research
 
-- `research` - Web Research
+- `search-agent` - Search Agent (verified web search reports)
+- `research` - Deep Research (multi-file dossiers on disk)
 
 ## Specialized Agents
 

@@ -75,7 +75,7 @@ Web scraping, search, and browser automation.
 | [Wikipedia](./wikipedia.md) | Wikipedia API integration for knowledge retrieval |
 | [Chrome](./chrome.md) | Chrome browser automation via Puppeteer |
 | [Reddit](./reddit.md) | Reddit integration for searching posts and retrieving content |
-| [Research](./research.md) | Web-enabled AI research using Gemini models |
+| [Research](./research.md) | Deep research orchestration (spawn agents, research directory, RPC) |
 
 ## 🎵 Audio & Media
 
