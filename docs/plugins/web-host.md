@@ -1026,7 +1026,7 @@ The package uses vitest as the testing framework with Bun as the runtime.
 
 - `WebHostService.test.ts` - Service lifecycle and resource registration
 - `StaticResource.test.ts` - Static file serving
-- `SPAResource.test.ts` - SPA routing
+- `FallbackResource.test.ts` - SPA routing
 - `auth.test.ts` - Authentication
 - `integration.test.ts` - Integration tests
 
@@ -1083,8 +1083,8 @@ pkg/web-host/
 | `WebHostService` | default | Main web host service class |
 | `StaticResource` | default | Static file serving resource |
 | `staticResourceConfigSchema` | const | Zod schema for static resource config |
-| `SPAResource` | default | SPA routing resource |
-| `spaResourceConfigSchema` | const | Zod schema for SPA resource config |
+| `FallbackResource` | default | SPA routing resource |
+| `FallbackResourceConfigSchema` | const | Zod schema for SPA resource config |
 | `WsRpcResource` | default | WebSocket RPC resource |
 | `createWsRPCClient` | default | WebSocket RPC client factory |
 | `WebHostConfigSchema` | const | Zod schema for web host configuration |
@@ -1112,7 +1112,7 @@ The package exports the following Zod schemas:
 **Resource Schemas:**
 
 - `staticResourceConfigSchema`: Static file resource configuration schema
-- `spaResourceConfigSchema`: SPA resource configuration schema
+- `FallbackResourceConfigSchema`: SPA resource configuration schema
 
 **Schema Usage:**
 
